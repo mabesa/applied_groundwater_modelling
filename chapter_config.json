@@ -1,0 +1,22 @@
+{
+    "chapters": [
+        {
+            "id": "intro",
+            "title": "Introduction to the course",
+            "filename": "01_introduction/notebook/introduction.ipynb",
+            "prerequisites": []
+        },
+        {
+            "id": "case_studies",
+            "title": "Introduction to the Case Studies",
+            "filename": "01_introduction/notebook/case_studies.ipynb",
+            "prerequisites": ["intro"]
+        },
+        {
+            "id": "gw_flow",
+            "title": "Groundwater Flow",
+            "filename": "02_groundwater_flow/notebook/groundwater_flow.ipynb",
+            "prerequisites": ["case_studies"]
+        }
+    ]
+}
