@@ -1,4 +1,4 @@
-# Groundwater Modeling Course
+# Applied Groundwater Modeling - Exercises and Case Study
 
 ![Groundwater Model Visualization](static/Groundwater_course.jpg)
 
