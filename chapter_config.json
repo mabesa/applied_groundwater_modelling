@@ -3,20 +3,74 @@
         {
             "id": "intro",
             "title": "Introduction to the course",
-            "filename": "01_introduction/notebook/introduction.ipynb",
+            "filename": "01_introduction/content/introduction.ipynb",
             "prerequisites": []
         },
         {
-            "id": "case_studies",
+            "id": "case_study",
             "title": "Introduction to the Case Studies",
-            "filename": "01_introduction/notebook/case_studies.ipynb",
+            "filename": "01_introduction/content/case_study.ipynb",
             "prerequisites": ["intro"]
+        },
+        {
+            "id": "modflow-0",
+            "title": "Modflow fundamentals and FloPy",
+            "filename": "01_introduction/content/modflow_fundamenetals.ipynb",
+            "prerequisites": ["case_study"]
+        },
+        {
+            "id": "waterbalance",
+            "title": "Water Balance of the Limmat Valley Aquifer",
+            "filename": "01_introduction/assignment/water_balance.ipynb",
+            "prerequisites": ["modflow-0"]
         },
         {
             "id": "gw_flow",
             "title": "Groundwater Flow",
-            "filename": "02_groundwater_flow/notebook/groundwater_flow.ipynb",
-            "prerequisites": ["case_studies"]
+            "filename": "02_groundwater_flow/content/groundwater_flow.ipynb",
+            "prerequisites": ["waterbalance"]
+        },
+        {
+            "id": "analytical_solutions_flow",
+            "title": "Analytical Solutions to Groundwater Flow Problems",
+            "filename": "02_groundwater_flow/assignment/analytical_solutions_flow.ipynb",
+            "prerequisites": ["gw_flow"]
+        },
+        {
+            "id": "modflow",
+            "title": "Modflow",
+            "filename": "03_modflow/content/modflow.ipynb",
+            "prerequisites": ["analytical_solutions_flow"]
+        },
+        {
+            "id": "flow_model_setup",
+            "title": "Set up your flow model",
+            "filename": "03_modflow/assignment/set_up_your_flow_model.ipynb",
+            "prerequisites": ["modflow"]
+        },
+        {
+            "id": "transport",
+            "title": "Solute transport in groundwater",
+            "filename": "04_transport/content/transport.ipynb",
+            "prerequisites": ["flow_model_setup"]
+        },
+        {
+            "id": "analytical_solutions_transport",
+            "title": "Analytical Solutions to Groundwater Transport Problems",
+            "filename": "02_groundwater_flow/assignment/analytical_solutions_transport.ipynb",
+            "prerequisites": ["transport"]
+        },
+        {
+            "id": "mt3d",
+            "title": "MT3D",
+            "filename": "05_MT3D/content/mt3d.ipynb",
+            "prerequisites": ["analytical_solutions_transport"]
+        },
+        {
+            "id": "transport_model_setup",
+            "title": "Set up your transport model",
+            "filename": "05_MT3D/assignment/mt3d.ipynb",
+            "prerequisites": ["mt3d"]
         }
     ]
 }
