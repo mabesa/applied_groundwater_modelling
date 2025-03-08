@@ -28,4 +28,4 @@ jobs:
           pip install -r requirements.txt
 
       - name: Check notebook dependencies, except flopy
-        run: python .github/scripts/check_notebook_dependencies.py
+        run: python src/scripts/check_notebook_dependencies.py
