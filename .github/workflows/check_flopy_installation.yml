@@ -14,19 +14,38 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v2
       with:
+        auto-update-conda: true
         python-version: '3.13'
+        activate-environment: flopy-env
 
-    - name: Install dependencies
+    - name: Install flopy
+      shell: bash -l {0}
       run: |
-        python -m pip install --upgrade pip
         conda install -c conda-forge flopy
 
     - name: Install modflow
+      shell: bash -l {0}
       run: |
-        get-modflow :flopy
+        # Verify the conda environment is active
+        echo "Current Python: $(which python)"
+        echo "Current conda env: $CONDA_PREFIX"
+
+        # Try to find and run get-modflow
+        which get-modflow || echo "get-modflow not found in PATH"
+
+        # Try to run using full path
+        CONDA_BIN=$(dirname $(which conda))
+        echo "Checking for get-modflow in: $CONDA_BIN"
+        if [ -f "$CONDA_BIN/get-modflow" ]; then
+          $CONDA_BIN/get-modflow :flopy
+        else
+          echo "Trying alternative method to download MODFLOW"
+          python -c "import flopy; flopy.utils.get_modflow_exes()"
+        fi
 
     - name: Run flopy test
+      shell: bash -l {0}
       run: python src/scripts/test_flopy_installation.py
