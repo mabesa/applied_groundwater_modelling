@@ -1,3 +1,5 @@
+[![Package Dependencies](https://github.com/{username}/applied_groundwater_modelling/actions/workflows/check-dependencies.yml/badge.svg)](https://github.com/{username}/applied_groundwater_modelling/actions/workflows/check-dependencies.yml) [![Flopy Installation](https://github.com/{username}/applied_groundwater_modelling/actions/workflows/test_flopy_installation.yml/badge.svg)](https://github.com/{username}/applied_groundwater_modelling/actions/workflows/test_flopy_installation.yml)
+
 # Applied Groundwater Modeling - Exercises and Case Study
 
 ![Groundwater Model Visualization](static/Groundwater_course.jpg)
@@ -41,9 +43,13 @@ Currently not covered: Sensitivity & uncertainty analysis, model calibration, mo
 ETH students can access these materials through the course JupyterHub environment linked in Moodle.
 
 ### Local Installation
+To run these materials locally, follow these steps:
 1. Clone this repository: `git clone https://github.com/your-repo/groundwater-modeling.git`
-2. Install dependencies: `pip install -r requirements.txt`
-3. Launch Jupyter: `jupyter lab` or `jupyter notebook`
+2. Set up your Python environment (e.g., using conda)
+3. Install dependencies: `pip install -r requirements.txt`
+4. Install flopy: `conda install -c conda-forge flopy`
+5. Get modflow executables `get-modflow :flopy`
+6. Launch Jupyter: `jupyter lab` or `jupyter notebook`
 
 ## The Limmat Valley Aquifer Case Study
 This course uses a numerical groundwater flow and transport model of the Limmat valley aquifer as its central case study. Students will:

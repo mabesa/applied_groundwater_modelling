@@ -1,0 +1,29 @@
+name: Test flopy Installation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-flopy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        conda install -c conda-forge flopy
+        get-modflow :flopy
+
+    - name: Run flopy test
+      run: python src/scripts/test_flopy_installation.py
