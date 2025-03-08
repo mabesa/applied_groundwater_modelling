@@ -1,4 +1,4 @@
-[![Package Dependencies](https://github.com/{username}/applied_groundwater_modelling/actions/workflows/check-dependencies.yml/badge.svg)](https://github.com/{username}/applied_groundwater_modelling/actions/workflows/check-dependencies.yml) [![Flopy Installation](https://github.com/{username}/applied_groundwater_modelling/actions/workflows/test_flopy_installation.yml/badge.svg)](https://github.com/{username}/applied_groundwater_modelling/actions/workflows/test_flopy_installation.yml)
+[![Package Dependencies](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml) [![Flopy Installation](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/test_flopy_installation.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/test_flopy_installation.yml)
 
 # Applied Groundwater Modeling - Exercises and Case Study
 
