@@ -164,3 +164,7 @@ cython_debug/
 
 # Ignore vscode settings
 .vscode/
+
+# Ignore all files in the folders 'model_ws'
+03_modflow/content/model_ws/*
+03_modflow/content/model_ws/**/*

@@ -44,12 +44,21 @@ ETH students can access these materials through the course JupyterHub environmen
 
 ### Local Installation
 To run these materials locally, follow these steps:
-1. Clone this repository: `git clone https://github.com/your-repo/groundwater-modeling.git`
-2. Set up your Python environment (e.g., using conda)
-3. Install dependencies: `pip install -r requirements.txt`
-4. Install flopy: `conda install -c conda-forge flopy`
-5. Get modflow executables `get-modflow :flopy`
-6. Launch Jupyter: `jupyter lab` or `jupyter notebook`
+1. Clone this repository:
+   `git clone https://github.com/your-repo/groundwater-modeling.git`
+2. Set up your Python environment (e.g., using conda). We recommend Python 3.12 as scientific packages we use here have not yet been updated to Python 3.13 at time of writing.
+    - Create a new environment:
+     `conda create -n gw_course_312 python=3.12`
+    - Activate the environment:
+     `conda activate gw_course_312`
+3. Install dependencies via conda-forge:
+   `conda install -c conda-forge numpy matplotlib scipy pandas jupyterlab ipywidgets`
+   `conda install -c conda-forge porespy "scikit-image<0.25.0"`
+   `conda install -c conda-forge flopy`
+4. Get modflow executables:
+   `get-modflow :flopy`
+5. Launch Jupyter:
+   `jupyter lab` or `jupyter notebook`
 
 ## The Limmat Valley Aquifer Case Study
 This course uses a numerical groundwater flow and transport model of the Limmat valley aquifer as its central case study. Students will:
