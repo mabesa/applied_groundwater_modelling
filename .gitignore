@@ -164,3 +164,11 @@ cython_debug/
 
 # Ignore vscode settings
 .vscode/
+
+# Ignore all files in the folder 'test_model_ws'
+03_modflow/content/test_model_ws/*
+03_modflow/content/test_model_ws/**/*
+
+# Ignore all files in the folder 'limmat_model_ws
+03_modflow/content/limmat_model_ws/*
+03_modflow/content/limmat_model_ws/**/*
