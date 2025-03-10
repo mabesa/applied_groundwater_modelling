@@ -5,7 +5,7 @@ import glob
 import nbformat
 
 # Packages that are installed by other means (e.g., conda)
-EXCLUDED_PACKAGES = {'flopy'}
+EXCLUDED_PACKAGES = {'flopy', 'porespy'}
 
 def extract_imports_from_notebook(notebook_path):
     """Extract all import statements from a Jupyter notebook."""
@@ -35,7 +35,7 @@ def is_stdlib_module(module_name):
     stdlib_modules = {
         'os', 'sys', 're', 'math', 'datetime', 'time', 'random', 'json',
         'csv', 'argparse', 'collections', 'copy', 'functools', 'itertools',
-        'glob', 'pathlib', 'typing', 'warnings', 'io', 'tempfile'
+        'glob', 'pathlib', 'typing', 'warnings', 'io', 'tempfile', 'inspect'
     }
     return module_name in stdlib_modules
 
