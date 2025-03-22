@@ -5,10 +5,10 @@ on:
     paths:
       - '**.ipynb'
       - 'requirements.txt'
-  pull_request:
-    paths:
-      - '**.ipynb'
-      - 'requirements.txt'
+  #pull_request:
+  #  paths:
+  #    - '**.ipynb'
+  #    - 'requirements.txt'
   workflow_dispatch:
 
 jobs:

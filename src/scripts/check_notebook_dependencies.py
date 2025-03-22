@@ -5,7 +5,7 @@ import glob
 import nbformat
 
 # Packages that are installed by other means (e.g., conda)
-EXCLUDED_PACKAGES = {'flopy', 'porespy'}
+EXCLUDED_PACKAGES = {'flopy', 'porespy', 'tools'}
 
 def extract_imports_from_notebook(notebook_path):
     """Extract all import statements from a Jupyter notebook."""
