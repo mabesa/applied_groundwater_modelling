@@ -18,21 +18,12 @@ Project-based course materials for Master-level groundwater modeling (4 ECTS) at
 - Groundwater flow concepts and boundary conditions
 - Basic Python programming skills
 
-Self-assessment notebooks are available in the `00_prerequisites` directory.
-
 ## Repository Structure
 (to be refined)
 ```
-├── 00_prerequisites/    # Self-assessment materials
-├── 01_introduction/     # Introduction to course & case study
-├── 02_groundwater_flow/ # Groundwater flow & analytical solutions
-├── 03_modflow/          # MODFLOW fundamentals and FloPy interface
-├── 04_transport/        # Transport in groundwater & analytical solutions
-├── 05_MT3D/             # MT3D fundamentals and FloPy interface
-├── 06_case_studies/     # Templates for student projects
-├── ...                  # Additional course materials
-├── requirements.txt     # Python dependencies
-└── README.md            # Course overview and instructions
+exercise01 : The long-term groundwater balance
+exercise02 : Porosity and the representative elementary volume
+exercise03 : Darcy's Law and hydraulic conductivity
 ```
 
 Currently not covered: Sensitivity & uncertainty analysis, model calibration, model validation
