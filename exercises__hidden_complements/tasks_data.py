@@ -24,6 +24,16 @@ The mean residence time of water $\tau$ was estimated to be 1 year.
 ## Task 3:
 Based on the previous results :
 - **Estimate $M_{aq}$ the mean thickness of the aquifer**" 
+""",
+
+"task04_1": r"""
+## Task 1:
+Based on given data, estimate the water table level at $x$ = 200m :
+""",
+
+"task04_2": r"""
+## Task 2:
+Based on given data, estimate the water table level at $x$ = 400m :
 """
 }
 
@@ -33,7 +43,9 @@ Based on the previous results :
 solutions = {
     "task01_1": (1.6, 1.8),  # Correct solution 1.7
     "task01_2": (3100000, 3200000),  # Correct solution 3153600
-    "task01_3": (1.8, 2.0)  # Correct solution 1.9
+    "task01_3": (1.8, 2.0),  # Correct solution 1.9
+    "task04_1": (37, 39),  # Correct solution 38
+    "task04_2": (25, 27),  # Correct solution 26
     # Add more tasks and their correct intervals here
 }
 
@@ -43,7 +55,9 @@ solutions = {
 solutions_exact = {
     "task01_1": "1.7 ",
     "task01_2": "3153600 ",
-    "task01_3": "1.9 "
+    "task01_3": "1.9 ",
+    "task04_1": "38.0",  
+    "task04_2": "26.0"
     # Add more tasks and their correct intervals here
 }
 
@@ -57,7 +71,9 @@ solutions_exact = {
 solution_unit = {
     "task01_1": "km^2",
     "task01_2": "m^3",
-    "task01_3": "m"
+    "task01_3": "m",
+    "task04_1": "m",  
+    "task04_2": "m"
     # Add more tasks and their correct intervals here
 
 }
@@ -102,6 +118,24 @@ Finally, $V_{acq} = 1728 \times 365 \text{m}^3 / 0.2 = 3153600 \text{m}^3$
 "task01_3": r"""
 
 The thickness is : $M_{aq} = \frac{V_{acq}}{A} = \frac{3123600}{1.7} \frac{ \text{m}^3 }{\text{km}^2} = \frac{3123600}{1.7 \times 10^6}\text{m} \simeq 1.9 \text{m}$
-"""
+""",
 
+"task04_1": r"""
+
+The Darcy law is : $h(x) = -\frac{q}{K}(x - x_0) + h_0$ where:
+- $q$ = 0.000003$\text{m}^2$/s
+- $K = 0.00005 \text{m/day}$
+- $x_0 = 0 \text{m}$
+- $h_0 = 50 \text{m}$
+- $x = 200 \text{m}$
+
+As a result, $h(200) = -\frac{0.000003}{0.00005}(200 - 0) + 50 = 38.0 \text{m}$
+""",
+
+"task04_2": r"""
+
+The solution is the same as for the previous question, but plugging x = 400m instead.
+
+As a result, $h(400) = -\frac{0.000003}{0.00005}(400 - 0) + 50 = 26.0 \text{m}$
+ """,
 }
