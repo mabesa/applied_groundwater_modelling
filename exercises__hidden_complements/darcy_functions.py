@@ -5,7 +5,7 @@ import numpy as np
 import ipywidgets as widgets
 from IPython.display import display
 
-def launch_darcy_experiment(qmin=0.000001, qmax=0.00001, kmin=0.00001, kmax=0.0001):
+def launch_darcy_experiment_interactive(qmin=0.000001, qmax=0.00001, kmin=0.00001, kmax=0.0001):
     """
     Launch an interactive Darcy experiment visualization with adjustable sliders for q and K.
 
@@ -48,7 +48,7 @@ def launch_darcy_experiment(qmin=0.000001, qmax=0.00001, kmin=0.00001, kmax=0.00
         # Add coordinate system at the bottom left
         ax1.arrow(1.5, 1.5, 7, 0, head_width=0.2, head_length=0.2, fc='black', ec='black')  # X-axis
         ax1.text(3, 1.2, r'$x_0 = 0$', fontsize=14, color='black', ha='center')  # Label x0
-        ax1.text(7, 1.2, r'$x_1 = 40$m', fontsize=14, color='black', ha='center')  # Label x1
+        ax1.text(7, 1.2, r'$x_1 = 400$m', fontsize=14, color='black', ha='center')  # Label x1
         
         # Add vertical lines to mark x0 and x1
         ax1.vlines(3, 1.5, 2, colors='black', linestyles='dashed')  # Vertical line at x0
@@ -124,3 +124,5 @@ def launch_darcy_experiment(qmin=0.000001, qmax=0.00001, kmin=0.00001, kmax=0.00
 
     # Display the sliders and the interactive plot
     display(interactive_plot)
+
+
