@@ -123,7 +123,7 @@ The thickness is : $M_{aq} = \frac{V_{acq}}{A} = \frac{3123600}{1.7} \frac{ \tex
 "task04_1": r"""
 
 The Darcy law is : $h(x) = -\frac{q}{K}(x - x_0) + h_0$ where:
-- $q$ = 0.000003$\text{m}^2$/s
+- $q = 0.000003 \text{m}^2$ /s
 - $K = 0.00005 \text{m/day}$
 - $x_0 = 0 \text{m}$
 - $h_0 = 50 \text{m}$
@@ -134,7 +134,7 @@ As a result, $h(200) = -\frac{0.000003}{0.00005}(200 - 0) + 50 = 38.0 \text{m}$
 
 "task04_2": r"""
 
-The solution is the same as for the previous question, but plugging x = 400m instead.
+The solution is the same as for the previous question, but plugging $x$ = 400m instead.
 
 As a result, $h(400) = -\frac{0.000003}{0.00005}(400 - 0) + 50 = 26.0 \text{m}$
  """,
