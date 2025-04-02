@@ -1,8 +1,8 @@
 
 import ipywidgets as widgets
 from IPython.display import display, Markdown, clear_output
-from tasks_data import solutions, solutions_exact, solution_unit, questions_markdown, solutions_markdown
-
+from tasks_data import solutions, solutions_exact, solution_unit, questions_markdown, solutions_markdown, task_functions
+from uncertainty_plot import display_disc_area_interactive
 
 
 
@@ -76,6 +76,10 @@ def check_task_with_solution(task_id):
                 display(Markdown(solution_to_print))
                 solution_button.description = "Hide Solution"
                 solution_visible["state"] = True
+                # Execute the task-specific function if provided
+                if task_functions and task_id in task_functions:
+                    task_functions[task_id]()  # Call the function
+
 
     # Attach event handlers
     submit_button.on_click(on_submit)
