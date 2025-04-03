@@ -133,7 +133,9 @@ Water output volume over 1 day is $ V_{out} = Q \times t $ where:
 
 So we have that $ P \times A \times t = Q \times t $
 
-We can solve $ A = \frac{1728 \times 10^{-9}}{1 \times 10^{-6}} \simeq 1.7 \text{km}^2 $
+We can solve $ A = \frac{1728 \times 10^{-9}}{1 \times 10^{-6}} \simeq 1.7 \text{km}^2 $.
+
+This is not far from the BAFU estimation of 1.58 km², as you can see on the following snapshot.
 
 """,
 
@@ -224,7 +226,7 @@ As a result, $h(400) = -\frac{0.000003}{0.00005}(400 - 0) + 50 = 26.0 \text{m}$
 
 # Dictionary to map tasks to Python functions to execute
 task_functions = {
-    "task01_1": display_image("TestImage.png"),
-    "task01_4": display_disc_area_interactive
+    "task01_1": lambda: display_image("SwissTopoTsaletArea.png"),
+    "task01_4": lambda: display_disc_area_interactive()
 
 }

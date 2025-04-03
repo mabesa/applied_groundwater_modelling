@@ -10,8 +10,7 @@ def display_image(image_filename):
     - image_filename (str): The name of the image file to display.
     """
     # Define the path to the image in the 'sources' folder
-    image_path = os.path.join("images", image_filename)
-
+    image_path = os.path.join("../exercises_complements/images", image_filename)
     # Check if the file exists
     if not os.path.exists(image_path):
         print(f"Error: The file '{os.path.abspath(image_path)}' does not exist.")

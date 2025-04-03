@@ -90,14 +90,3 @@ def check_task_with_solution(task_id):
     display(input_box, submit_button, output, solution_button, solution_output)
 
 
-# Function to display the image for a specific task
-
-def show_task_image(image_filename):
-    """
-    Display an image for a specific task.
-
-    Parameters:
-    - image_filename (str): The name of the image file to display.
-    """
-    print(f"Displaying image: {image_filename}")
-    display_image(image_filename)
