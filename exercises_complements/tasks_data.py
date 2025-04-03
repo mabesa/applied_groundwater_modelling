@@ -224,6 +224,7 @@ As a result, $h(400) = -\frac{0.000003}{0.00005}(400 - 0) + 50 = 26.0 \text{m}$
 
 # Dictionary to map tasks to Python functions to execute
 task_functions = {
+    "task01_1": display_image("TestImage.png"),
     "task01_4": display_disc_area_interactive
 
 }
