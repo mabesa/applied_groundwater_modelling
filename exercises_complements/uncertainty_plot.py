@@ -17,7 +17,7 @@ def display_disc_area_interactive(Q_min=15, Q_max=25, P_min=0.9, P_max=1.1):
     """
 
     # Label to display the current value of A
-    A_label = widgets.Label(value="Current A: ")
+    A_label = widgets.Label(value=" ")
 
     def plot_disc(Q, P):
         # Calculate the area A
@@ -37,9 +37,7 @@ def display_disc_area_interactive(Q_min=15, Q_max=25, P_min=0.9, P_max=1.1):
         A_bafu = 1.58  # BAFU estimation
         r_bafu = np.sqrt(A_bafu / np.pi)
 
-        # Update the label with the current value of A
-        A_label.value = f"Current A: {A:.4f} km²"
-
+        
         # Create a 2D disc
         theta = np.linspace(0, 2 * np.pi, 100)
         x = r * np.cos(theta)
@@ -60,11 +58,11 @@ def display_disc_area_interactive(Q_min=15, Q_max=25, P_min=0.9, P_max=1.1):
 
         # Plot the discs
         fig, ax = plt.subplots(figsize=(6, 6))
-        ax.fill(x, y, color='b', alpha=0.6, label=r"Result for currently selected $P$ and $Q$")
-        ax.plot(x_ref, y_ref, 'r-', label=r"Our initial Area estimation")
-        ax.plot(x_min, y_min, 'g--', label=r"$A_{min}$ and $A_{max}$, uncertainty interval.")
-        ax.plot(x_max, y_max, 'g--')
-        ax.plot(x_bafu, y_bafu, color='gray', linestyle='-', label=r"BAFU estimation ($A = 1.58$)")
+        ax.fill(x, y, color='b', alpha=0.2, label=fr"Result for currently selected $P$ and $Q$ : A = {A:.2f} km²")
+        ax.plot(x_ref, y_ref, 'r-', label=r"Our initial Area estimation ($A = 1.7$ km²)")
+        ax.plot(x_min, y_min, 'b-', label=r"$A_{min}$ and $A_{max}$, uncertainty interval.")
+        ax.plot(x_max, y_max, 'b-')
+        ax.plot(x_bafu, y_bafu, color='g', linestyle='-', label=r"BAFU estimation ($A = 1.58$ km²)")
 
         # Configure plot
         ax.set_title(r"Uncertainty on the area estimation", fontsize=14)
