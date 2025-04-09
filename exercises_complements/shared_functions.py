@@ -1,7 +1,7 @@
 
 import ipywidgets as widgets
 from IPython.display import display, Markdown, clear_output
-from tasks_data import solutions, solutions_exact, solution_unit, questions_markdown, solutions_markdown, task_functions
+from tasks_data import solutions, solutions_exact, solution_unit, questions_markdown, solutions_markdown, task_functions, task_functions_start
 from uncertainty_plot import display_disc_area_interactive
 from print_images import display_image
 
@@ -87,6 +87,8 @@ def check_task_with_solution(task_id):
 
     # Display widgets
     display(Markdown(question_to_print))
+    if task_functions_start and task_id in task_functions_start:
+        task_functions_start[task_id]()  # Call the function
     display(input_box, submit_button, output, solution_button, solution_output)
 
 

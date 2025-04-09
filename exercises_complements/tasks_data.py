@@ -69,9 +69,9 @@ solutions = {
     "task01_2": (3100000, 3200000),  # Correct solution 3153600
     "task01_3": (0.18, 0.20),  # Correct solution 1.9
     "task01_4": (1.1, 1.3),
-    "task03_1": (1.1, 1.3), 
-    "task03_2": (0.60, 0.62), 
-    "task03_3": (4.7, 4.9), 
+    "task03_1": (0.1, 0.2),  # Correct solution 0.12
+    "task03_2": (60, 62), 
+    "task03_3": (0.47, 0.49), 
     "task04_1": (37, 39),  # Correct solution 38
     "task04_2": (25, 27),  # Correct solution 26
     # Add more tasks and their correct intervals here
@@ -85,9 +85,9 @@ solutions_exact = {
     "task01_2": "3153600 ",
     "task01_3": "0.19 ",
     "task01_4": "1.2 ",
-    "task03_1": "1.2",
-    "task03_2": "0.61",
-    "task03_3": "4.8",
+    "task03_1": "0.12",
+    "task03_2": "61",
+    "task03_3": "0.48",
     "task04_1": "38.0",  
     "task04_2": "26.0"
     # Add more tasks and their correct intervals here
@@ -106,7 +106,7 @@ solution_unit = {
     "task01_3": "m",
     "task01_4": "km^2",
     "task03_1": "mm/s",
-    "task03_2": "cm^3/s",
+    "task03_2": "mm^3/s",
     "task03_3": "mm/s",
     "task04_1": "m",  
     "task04_2": "m"
@@ -184,7 +184,7 @@ You might want to have a look at the following interactive plot which shows all 
 r"""
 According to Darcy 's law, we have that :
 
-$q = KI = K \cdot \frac{\Delta h}{L} = 0.0003 \cdot \frac{0.4}{1} = 1.2 \cdot 10^{-4} \cdot\text{m}/\text{s}^{-1} = 0.12 \cdot \text{cm}/\text{s}^{-1}$.
+$q = KI = K \cdot \frac{\Delta h}{L} = 0.0003 \cdot \frac{0.4}{1} = 1.2 \cdot 10^{-4} \cdot\text{m}/\text{s}^{-1} = 0.12 \cdot \text{mm}/\text{s}^{-1}$.
 """,
 
 "task03_2":
@@ -192,7 +192,7 @@ r"""
 The discharge is derived from the specific discharge, accounting for the soil column cross section area : 
 
 $Q = q \cdot A = 
-1.2 \cdot 10^{-4} \cdot \pi \cdot \frac{d}{2}^2 = 6.1 \cdot 10^{-8} \cdot\text{mm}^3/\text{s}^{-1} = 6.1 \cdot \text{cm}^3/\text{s}^{-1}$.
+1.2 \cdot 10^{-4} \cdot \pi \cdot \frac{d}{2}^2 = 6.1 \cdot 10^{-8} \cdot\text{m}^3/\text{s}^{-1} = 61 \cdot \text{mm}^3/\text{s}^{-1}$.
 """,
 
 "task03_3":
@@ -200,7 +200,7 @@ r"""
 The mean velocity is derived from the specific discharge, accounting for the soil column effective porosity : 
 
 $u = \frac{q}{\phi_e} = 
- \frac{1.2 \cdot 10^{-4}}{0.25} = 4.8 \cdot 10^{-4} \cdot\text{m}/\text{s}^{-1} = 0.48 \cdot \text{cm}/\text{s}^{-1}$.
+ \frac{1.2 \cdot 10^{-4}}{0.25} = 4.8 \cdot 10^{-4} \cdot\text{m}/\text{s}^{-1} = 0.48 \cdot \text{mm}/\text{s}^{-1}$.
 """,
 
 "task04_1": r"""
@@ -224,9 +224,15 @@ As a result, $h(400) = -\frac{0.000003}{0.00005}(400 - 0) + 50 = 26.0 \text{m}$
 }
 
 
-# Dictionary to map tasks to Python functions to execute
+# Dictionary to map tasks to Python functions to execute with the solution
 task_functions = {
     "task01_1": lambda: display_image("SwissTopoTsaletArea.png"),
     "task01_4": lambda: display_disc_area_interactive()
+
+}
+
+# Dictionary to map tasks to Python functions to execute before the question
+task_functions_start = {
+    "task03_1": lambda: display_image("DarcyExperimentSetup.png")
 
 }
