@@ -37,7 +37,7 @@ ETH students can access these materials through the course JupyterHub environmen
 We recommend Visual Studio Code as an IDE (available for free [here](https://code.visualstudio.com/)) but any other Python IDE will work.
 To run these materials locally, follow these steps:
 1. Clone this repository:  
-   `git clone https://github.com/your-repo/groundwater-modeling.git`
+   `git clone https://github.com/mabesa/applied_groundwater_modelling.git`
 2. Set up your Python environment (e.g., using conda). We recommend Python 3.12 as scientific packages we use here have not yet been updated to Python 3.13 at time of writing.
     - Create a new environment:  
       `conda create -n gw_course_312 python=3.12`
