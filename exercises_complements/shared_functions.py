@@ -39,23 +39,22 @@ def check_task_with_solution(task_id):
     # Track solution visibility state
     solution_visible = {"state": False}
 
-    # Function to handle submission
+   # Function to handle submission
     def on_submit(b):
         with output:
             output.clear_output()
             user_input = input_box.value
-            print(f"Your answer: {user_input}")
+            display(Markdown(f"**Your answer:** {user_input}"))
             if correct_interval[0] <= user_input <= correct_interval[1]:
                 output.clear_output()
-                print("Correct!")
-                print(f"Your input is within the correct interval.")
-                print(f"The exact solution is: {exact_solution}")
+                display(Markdown("**Correct!** Your input is within the correct interval."))
+                display(Markdown(f"The exact solution is: **{exact_solution}**"))
                 solution_button.disabled = False  # Enable the "Show Solution" button
             else:
                 output.clear_output()
-                print(f"Incorrect")
-                print(f"The accepted interval is {correct_interval}{unit_to_print}.")
-                print(f"The exact solution is: {exact_solution}{unit_to_print}")
+                display(Markdown("**Incorrect.**"))
+                display(Markdown(f"The accepted interval is **{correct_interval}{unit_to_print}**."))
+                display(Markdown(f"The exact solution is: **{exact_solution}{unit_to_print}**"))
                 solution_button.disabled = False  # Enable the "Show Solution" button
             # Disable the submit button after submission
             submit_button.disabled = True
