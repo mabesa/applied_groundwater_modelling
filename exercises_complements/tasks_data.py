@@ -37,7 +37,7 @@ Given the uncertainety intervals for $P$ and $Q$ :
 
 "task03_1": r"""
 ## Task 1:
-Let's first check the theory.  Someone observes that $\Delta h=0.4$m.
+Let's first check the theory.  Someone observes that $\Delta h=0.4$ m.
 - What is your estimate of the specific discharge $q$?
 """,
 
