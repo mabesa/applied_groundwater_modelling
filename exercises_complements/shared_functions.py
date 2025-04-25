@@ -41,6 +41,7 @@ def check_task_with_solution(task_id):
 
    # Function to handle submission
     def on_submit(b):
+        global user_input
         with output:
             output.clear_output()
             user_input = input_box.value
@@ -88,6 +89,7 @@ def check_task_with_solution(task_id):
     display(Markdown(question_to_print))
     if task_functions_start and task_id in task_functions_start:
         task_functions_start[task_id]()  # Call the function
-    display(input_box, submit_button, output, solution_button, solution_output)
+    display(widgets.HBox([input_box, submit_button]), output, solution_button, solution_output)    
 
 
+    

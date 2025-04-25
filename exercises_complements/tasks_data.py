@@ -37,12 +37,13 @@ Given the uncertainety intervals for $P$ and $Q$ :
 
 "task03_1": r"""
 ## Task 1:
-Based on given data, estimate the specific discharge $q$ : 
+Let's first check the theory.  Someone observes that $\Delta h=0.4$m.
+- What is your estimate of the specific discharge $q$?
 """,
 
 "task03_2": r"""
 ## Task 2:
-Based on given data, estimate the  discharge $Q$ in the soil column :
+Based on the linear fit derived from Darcy experiment, estimate the  soil specific conductivity $K$ in the soil column :
 """,
 
 "task03_3": r"""
@@ -233,6 +234,6 @@ task_functions = {
 
 # Dictionary to map tasks to Python functions to execute before the question
 task_functions_start = {
-    "task03_1": lambda: display_image("DarcyExperimentSetup.png")
+    #"task03_1": lambda: display_image("DarcyExperimentSetup.png"),
 
 }
