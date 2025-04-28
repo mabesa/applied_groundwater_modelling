@@ -19,8 +19,8 @@ def darcy_experiment_simulation():
     - Adds an "End Experiment" button to finalize the experiment.
     """
 
-    display(Markdown("<br><h2> Task 3:"))
-    display(Markdown("<br> You can now perform a simulation of a Darcy experiment. <br>Start by adding (I, q) points for at least 5 different hydraulic head difference. <br> Note that the result from task 1 is also plotted, in green. <br>Once enough points are added, you will be able to plot the linear fit. <br><br><br>"))
+    display(Markdown("<br><h2> Task 4:"))
+    display(Markdown("<br>You can now perform a simulation of a Darcy experiment. <br><br> Start by adding (I, q) points for at least 5 different hydraulic head difference. <br> Note that the result from task 1 is also plotted, in green. <br>Once at least 5 points are added, you will be able to plot the linear fit. <br><br><br>"))
 
     # Initialize variables
     delta_h_values = [0.4]  # Start with the point (0.4, 0.00012)
@@ -109,6 +109,7 @@ def darcy_experiment_simulation():
         # check_task_with_solution("task03_2")  # if we want to call the function to launch a new task
         plot_fit_button.disabled = True
         validate_button.disabled = True
+        check_task_with_solution("task03_4")  # Call the function to launch a new task
 
     # Create the slider and buttons
     slider = FloatSlider(value=0.5, min=0.05, max=0.95, step=0.05, description='Δh:')
@@ -164,9 +165,10 @@ def mcp_behaviour_curve():
             clear_output(wait=True)
             selected_answer = radio_buttons.value
             if selected_answer == correct_answer:
-                display(Markdown("<br>**Correct! Darcy's law describes a linear relationship : q = KI.**<br><br><br>"))
+                display(Markdown("<br>**Correct!** Darcy's law describes a **linear** relationship : q = KI.**<br><br><br>"))
             else:
-                display(Markdown("<br>**Incorrect.** The correct answer is linear : q = KI.<br><br><br>"))
+                display(Markdown("<br>**Incorrect.** The correct answer is **linear** : q = KI.<br><br><br>"))
+            submit_button.disabled = True
             darcy_experiment_simulation()  # Call the simulation function
 
     # Attach the event handler to the submit button
@@ -174,7 +176,9 @@ def mcp_behaviour_curve():
 
     # Display the question and widgets
     with question_output:
-        display(Markdown("<br><h2> Task 2:"))
-        display(Markdown(f"What fit do you expect to use for Darcy's experiment plot of $q$ versus $I$?<br>"))
+        display(Markdown("<br><h2> Task 3:"))
+        display(Markdown(f"What behavior do you expect for the curve of $q$ versus $I$?<br>"))
     display(VBox([question_output, radio_buttons, submit_button, answer_output]))
 
+
+    
