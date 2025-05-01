@@ -19,16 +19,16 @@ def darcy_experiment_simulation():
     - Adds an "End Experiment" button to finalize the experiment.
     """
 
-    display(Markdown("<br><h2> Task 4:"))
-    display(Markdown("<br>You can now perform a simulation of a Darcy experiment. <br><br> Start by adding (I, q) points for at least 5 different hydraulic head difference. <br> Note that the result from task 1 is also plotted, in green. <br>Once at least 5 points are added, you will be able to plot the linear fit. <br><br><br>"))
+    display(Markdown("<br><h2> Task 2:"))
+    display(Markdown("<br>You can now perform the Darcy experiment simulation. <br><br> Start by adding (I, q) points for at least 5 different hydraulic head differences. <br>Once at least 5 points are added, you will be able to plot the linear fit. <br><br><br>"))
 
     # Initialize variables
-    delta_h_values = [0.4]  # Start with the point (0.4, 0.00012)
-    q_values = [0.00012]  # Corresponding q value
+    delta_h_values = []  # Start with the point (0.4, 0.00012)
+    q_values = []  # Corresponding q value
     output = Output()
     feedback_output = Output()  # For feedback messages
     feedback_texts = []  # To keep track of all feedback messages
-    point_count = 1  # Start with 1 point already added
+    point_count = 0  # Start with 1 point already added
     fit_coefficients = None  # Store the fit coefficients
 
     # Darcy's law function
@@ -50,13 +50,9 @@ def darcy_experiment_simulation():
             ax.set_ylim(0, 0.3)  # Convert 0.0003 m/s to mm/s
 
             # Plot the points
-            ax.scatter(delta_h_values[:1], [q * 1000 for q in q_values[:1]], color='green')  # First point in green
-            ax.scatter(delta_h_values[1:], [q * 1000 for q in q_values[1:]], color='blue')  # Other points in blue
+            ax.scatter(delta_h_values, [q * 1000 for q in q_values], color='blue')  # Other points in blue
 
-            # Highlight the first point again if requested
-            if highlight_first_point:
-                ax.scatter(delta_h_values[:1], [q * 1000 for q in q_values[:1]], color='green', edgecolor='black', s=100)
-
+        
             # Plot the fit line if it has been calculated
             if fit_coefficients is not None:
                 fit_line = np.poly1d(fit_coefficients)
@@ -85,7 +81,7 @@ def darcy_experiment_simulation():
             update_plot()
 
             # Enable the "Plot Fit" button if more than 5 points are added
-            if len(delta_h_values) > 5:
+            if len(delta_h_values) > 4:
                 plot_fit_button.disabled = False
 
             # Add feedback message
@@ -110,6 +106,7 @@ def darcy_experiment_simulation():
         plot_fit_button.disabled = True
         validate_button.disabled = True
         check_task_with_solution("task03_4")  # Call the function to launch a new task
+        end_experiment_button.disabled = True  # Disable the button after ending the experiment
 
     # Create the slider and buttons
     slider = FloatSlider(value=0.5, min=0.05, max=0.95, step=0.05, description='Δh:')
@@ -128,15 +125,14 @@ def darcy_experiment_simulation():
     # Initial plot with the pre-added point
     update_plot()
     with feedback_output:
-        feedback_text = f"**Point 1 added from previous question:** Δh = 0.4 m, q = 0.12 mm/s"
-        feedback_texts.append(feedback_text)
+        #feedback_texts.append(feedback_text)
         for text in feedback_texts:
             display(Markdown(text))
 
 
 
 
-def mcp_behaviour_curve():
+def darcy_experiment_simulation_global():
     """
     Creates a multiple-choice question with three options:
     - Linear
@@ -165,9 +161,9 @@ def mcp_behaviour_curve():
             clear_output(wait=True)
             selected_answer = radio_buttons.value
             if selected_answer == correct_answer:
-                display(Markdown("<br>**Correct!** Darcy's law describes a **linear** relationship : q = KI.**<br><br><br>"))
+                display(Markdown(r"""<br>**Correct!** Darcy's law describes a **linear** relationship : $q$ = $K\cdotI$, where $K$ is the hydraulic conductivity (property of the soil).<br><br><br>"""))
             else:
-                display(Markdown("<br>**Incorrect.** The correct answer is **linear** : q = KI.<br><br><br>"))
+                display(Markdown(r"""<br>**Incorrect.** The correct answer is **linear** : $q$ = $K \cdot I$, where $K$ is the hydraulic conductivity (property of the soil).<br><br><br>"""))
             submit_button.disabled = True
             darcy_experiment_simulation()  # Call the simulation function
 
@@ -176,7 +172,7 @@ def mcp_behaviour_curve():
 
     # Display the question and widgets
     with question_output:
-        display(Markdown("<br><h2> Task 3:"))
+        display(Markdown("<br><h2> Task 1:"))
         display(Markdown(f"What behavior do you expect for the curve of $q$ versus $I$?<br>"))
     display(VBox([question_output, radio_buttons, submit_button, answer_output]))
 

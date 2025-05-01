@@ -31,28 +31,26 @@ Based on the previous results :
 
 "task01_4": r"""
 ## Task 3:
-Given the uncertainety intervals for $P$ and $Q$ :
-- **Estimate the lower bound of *A* uncertainety interval**
+Given the uncertainty intervals for $P$ and $Q$ :
+- **Estimate the lower bound of *A* uncertainty interval**
 """,
 
 "task03_1": r"""
-## Task 1:
-Let's first check the theory.  You observe that $\Delta h=0.4$ m.
+## Task 4:
+With Tsalet's mixed deposits in the setup column, you now observe that $\Delta h=0.4$ m.
 - What is your estimate of the specific discharge $q$ in mm/s?
 """,
 
 "task03_2": r"""
-## Task 5:
-Based on the linear fit derived from Darcy experiment, estimate the  soil specific conductivity $K$ in the soil column :
+- What is the discharge $Q$ in the soil column in mm/s?
 """,
 
 "task03_3": r"""
-## Task 2:
-Based on given data, estimate the mean velocity of water $u$ in the soil column in mm/s:
+- What is the mean velocity of water $u$ in the soil column in mm/s?
 """,
 
 "task03_4": r"""
-## Task 5:
+## Task 3:
 Based on the experiment's graph, what is your estimate for the hydraulic conductivity $K$ in mm/s?
 """,
 
@@ -75,9 +73,9 @@ solutions = {
     "task01_2": (3100000, 3200000),  # Correct solution 3153600
     "task01_3": (0.18, 0.20),  # Correct solution 1.9
     "task01_4": (1.1, 1.3),
-    "task03_1": (0.1, 0.2),  # Correct solution 0.12
-    "task03_2": (60, 62), 
-    "task03_3": (0.47, 0.49), 
+    "task03_1": (1.2, 1.4),  # Correct solution 1.25
+    "task03_2": (620, 640), 
+    "task03_3": (6, 6.5), 
     "task03_4": (0.25, 0.35),  # Correct solution 0.3
     "task04_1": (37, 39),  # Correct solution 38
     "task04_2": (25, 27),  # Correct solution 26
@@ -92,9 +90,9 @@ solutions_exact = {
     "task01_2": "3153600 ",
     "task01_3": "0.19 ",
     "task01_4": "1.2 ",
-    "task03_1": "0.12",
-    "task03_2": "61",
-    "task03_3": "0.48",
+    "task03_1": "1.25",
+    "task03_2": "630",
+    "task03_3": "6.25",
     "task03_4": "0.30",
     "task04_1": "38.0",  
     "task04_2": "26.0"
@@ -194,7 +192,7 @@ You might want to have a look at the following interactive plot which shows all 
 r"""
 According to Darcy 's law, we have that :
 
-$q = KI = K \cdot \frac{\Delta h}{L} = 0.0003 \cdot \frac{0.4}{1} = 1.2 \cdot 10^{-4} \cdot\text{m}/\text{s}^{-1} = 0.12 \cdot \text{mm}/\text{s}^{-1}$.
+$q = KI = K \cdot \frac{\Delta h}{L} = 0.0005 \cdot \frac{0.4}{1} = 12.5 \cdot 10^{-4} \cdot\text{m}\text{s}^{-1} = 1.25 \cdot \text{mm}\text{s}^{-1}$.
 <br>
 """,
 
@@ -203,7 +201,7 @@ r"""
 The discharge is derived from the specific discharge, accounting for the soil column cross section area : 
 
 $Q = q \cdot A = 
-1.2 \cdot 10^{-4} \cdot \pi \cdot \frac{d}{2}^2 = 6.1 \cdot 10^{-8} \cdot\text{m}^3/\text{s}^{-1} = 61 \cdot \text{mm}^3/\text{s}^{-1}$.
+1.25 \cdot 10^{-3} \cdot \pi \cdot \frac{d}{2}^2 \simeq 6.3 \cdot 10^{-7} \cdot\text{m}^3\text{s}^{-1} = 630 \cdot \text{mm}^3\text{s}^{-1}$.
 <br>
 """,
 
@@ -212,13 +210,13 @@ r"""
 The mean velocity is derived from the specific discharge, accounting for the soil column effective porosity : 
 
 $u = \frac{q}{\phi_e} = 
- \frac{1.2 \cdot 10^{-4}}{0.25} = 4.8 \cdot 10^{-4} \cdot\text{m}/\text{s}^{-1} = 0.48 \cdot \text{mm}/\text{s}^{-1}$.
+ \frac{1.25 \cdot 10^{-3}}{0.2} = 6.25 \cdot 10^{-3} \cdot\text{m}.\text{s}^{-1} = 6.25 \cdot \text{mm}.\text{s}^{-1}$.
 <br>
 """,
 
 "task03_4":
 r"""
-$K$ can be derived from the slope of the linear fit ( Darcy's law : $q$ = $K \cdot I$).<br>We can see here that its value is $0.3 \text{mm}/\text{s}^{-1}$, being careful about the units on the graph where $q$ is given in $\text{mm}/\text{s}^{-1}$.
+$K$ can be derived from the slope of the linear fit ( Darcy's law : $q$ = $K \cdot I$).<br>From the graph, its value is $0.30$  $\text{mm}.\text{s}^{-1}$.<br> Be careful about the units : on the graph, $q$ is given in $\text{mm}.\text{s}^{-1}$.
 <br>
 """,
 

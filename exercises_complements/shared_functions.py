@@ -74,6 +74,7 @@ def check_task_with_solution(task_id):
                 # Show the solution
                 solution_output.clear_output()
                 display(Markdown(solution_to_print))
+                display(Markdown(r"""<br><br>"""))
                 solution_button.description = "Hide Solution"
                 solution_visible["state"] = True
                 # Execute the task-specific function if provided
