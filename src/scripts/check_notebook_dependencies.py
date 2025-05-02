@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import glob
+import yaml
 import nbformat
 
 # Packages that are installed by other means (e.g., conda)
@@ -47,7 +48,58 @@ def is_local_module(module_name):
     local_packages = glob.glob(f"**/{module_name}/__init__.py", recursive=True)
     return len(local_modules) > 0 or len(local_packages) > 0
 
+def get_packages_from_environment(env_file):
+    """Parse environment.yml and return a set of package names."""
+    if not os.path.exists(env_file):
+        print(f"Warning: Environment file {env_file} not found.")
+        return set()
+
+    with open(env_file, 'r') as f:
+        try:
+            env_data = yaml.safe_load(f)
+            if not env_data or 'dependencies' not in env_data:
+                print(f"Warning: No dependencies found in {env_file}")
+                return set()
+            
+            packages = set()
+            for dep in env_data['dependencies']:
+                if isinstance(dep, str):
+                    # Handle package specifiers like package=1.0
+                    if '=' in dep:
+                        package = dep.split('=')[0].strip()
+                    else:
+                        package = dep.strip()
+                    # Avoid pip, python, etc.
+                    if package not in ['python', 'pip']:
+                        packages.add(package)
+                elif isinstance(dep, dict) and 'pip' in dep:
+                    # Handle pip dependencies if present
+                    for pip_dep in dep['pip']:
+                        if '=' in pip_dep:
+                            package = pip_dep.split('=')[0].strip()
+                        else:
+                            package = pip_dep.strip()
+                        packages.add(package)
+            return packages
+            
+        except yaml.YAMLError as e:
+            print(f"Error parsing {env_file}: {e}")
+            return set()
+
 def get_requirements():
+    """Parse environment yml files and return a set of package names."""
+    packages = set()
+    
+    # Check both environment files
+    student_env = 'environment_students.yml'
+    dev_env = 'environment_development.yml'
+    
+    packages.update(get_packages_from_environment(student_env))
+    packages.update(get_packages_from_environment(dev_env))
+    
+    return packages
+
+'''def get_requirements():
     """Parse requirements.txt and return a set of package names."""
     if not os.path.exists('requirements.txt'):
         return set()
@@ -64,10 +116,10 @@ def get_requirements():
             package = re.split(r'[=<>]', line)[0].strip()
             requirements.add(package)
 
-    return requirements
+    return requirements'''
 
 def main():
-    """Check if all packages imported in notebooks are in requirements.txt"""
+    """Check if all packages imported in notebooks are in environment"""
     # Get all notebooks
     notebooks = glob.glob('**/*.ipynb', recursive=True)
 
@@ -91,12 +143,12 @@ def main():
             missing.add(imp)
 
     if missing:
-        print("Missing packages in requirements.txt:")
+        print("Missing packages in environment:")
         for package in sorted(missing):
             print(f"  - {package}")
         sys.exit(1)
     else:
-        print("All notebook dependencies are in requirements.txt!")
+        print("All notebook dependencies are in environment files!")
         print(f"Note: The following packages were excluded from the check: {', '.join(sorted(EXCLUDED_PACKAGES))}")
         sys.exit(0)
 
