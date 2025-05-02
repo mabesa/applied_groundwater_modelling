@@ -1,7 +1,7 @@
 
 import ipywidgets as widgets
 from IPython.display import display, Markdown, clear_output
-from tasks_data import solutions, solutions_exact, solution_unit, questions_markdown, solutions_markdown, task_functions
+from tasks_data import solutions, solutions_exact, solution_unit, questions_markdown, solutions_markdown, task_functions, task_functions_start
 from uncertainty_plot import display_disc_area_interactive
 from print_images import display_image
 
@@ -39,23 +39,23 @@ def check_task_with_solution(task_id):
     # Track solution visibility state
     solution_visible = {"state": False}
 
-    # Function to handle submission
+   # Function to handle submission
     def on_submit(b):
+        global user_input
         with output:
             output.clear_output()
             user_input = input_box.value
-            print(f"Your answer: {user_input}")
+            display(Markdown(f"**Your answer:** {user_input}"))
             if correct_interval[0] <= user_input <= correct_interval[1]:
                 output.clear_output()
-                print("Correct!")
-                print(f"Your input is within the correct interval.")
-                print(f"The exact solution is: {exact_solution}")
+                display(Markdown("**Correct!** Your input is within the correct interval."))
+                display(Markdown(f"The exact solution is: **{exact_solution}**"))
                 solution_button.disabled = False  # Enable the "Show Solution" button
             else:
                 output.clear_output()
-                print(f"Incorrect")
-                print(f"The accepted interval is {correct_interval}{unit_to_print}.")
-                print(f"The exact solution is: {exact_solution}{unit_to_print}")
+                display(Markdown("**Incorrect.**"))
+                display(Markdown(f"The accepted interval is **{correct_interval}{unit_to_print}**."))
+                display(Markdown(f"The exact solution is: **{exact_solution}{unit_to_print}**"))
                 solution_button.disabled = False  # Enable the "Show Solution" button
             # Disable the submit button after submission
             submit_button.disabled = True
@@ -74,6 +74,7 @@ def check_task_with_solution(task_id):
                 # Show the solution
                 solution_output.clear_output()
                 display(Markdown(solution_to_print))
+                display(Markdown(r"""<br><br>"""))
                 solution_button.description = "Hide Solution"
                 solution_visible["state"] = True
                 # Execute the task-specific function if provided
@@ -87,6 +88,9 @@ def check_task_with_solution(task_id):
 
     # Display widgets
     display(Markdown(question_to_print))
-    display(input_box, submit_button, output, solution_button, solution_output)
+    if task_functions_start and task_id in task_functions_start:
+        task_functions_start[task_id]()  # Call the function
+    display(widgets.HBox([input_box, submit_button]), output, solution_button, solution_output)    
 
 
+    
