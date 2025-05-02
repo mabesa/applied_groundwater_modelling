@@ -6,7 +6,7 @@ import yaml
 import nbformat
 
 # Packages that are installed by other means (e.g., conda)
-EXCLUDED_PACKAGES = {'flopy', 'porespy', 'tools'}
+EXCLUDED_PACKAGES = {'tools'}  # {'flopy', 'porespy', 'tools'}
 
 def extract_imports_from_notebook(notebook_path):
     """Extract all import statements from a Jupyter notebook."""
