@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - '**.ipynb'
-      - 'environment_*.yml'
+      - 'environment_students.yml'
+      - 'environment_development.yml'
   #pull_request:
   #  paths:
   #    - '**.ipynb'
