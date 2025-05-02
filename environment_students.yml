@@ -21,3 +21,4 @@ dependencies:
   - gdal=3.10.2
   - statsmodels=0.14.4
   - contextily=1.6.2
+  - PyYAML=6.0.2

@@ -21,4 +21,5 @@ dependencies:
   - gdal=3.10.2
   - statsmodels=0.14.4
   - contextily=1.6.2
-  - pre-commit
+  - PyYAML=6.0.2
+  - pre-commit=4.2.0
