@@ -63,6 +63,7 @@ def display_disc_area_interactive(Q_min=15, Q_max=25, P_min=0.9, P_max=1.1):
         ax.plot(x_min, y_min, 'b-', label=r"$A_{min}$ and $A_{max}$, uncertainty interval.")
         ax.plot(x_max, y_max, 'b-')
         ax.plot(x_bafu, y_bafu, color='g', linestyle='-', label=r"BAFU estimation ($A = 1.58$ km²)")
+        ax.text(0, 0, f"A = {A:.2f} km²", color='black', fontsize=12, ha='center', va='center')
 
         # Configure plot
         ax.set_title(r"Uncertainty on the area estimation", fontsize=14)

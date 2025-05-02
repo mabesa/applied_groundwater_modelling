@@ -30,24 +30,28 @@ Based on the previous results :
 """,
 
 "task01_4": r"""
-## Task 4:
-Given the uncertainety intervals for $P$ and $Q$ :
-- **Estimate the lower bound of *A* uncertainety interval**
+## Task 3:
+Given the uncertainty intervals for $P$ and $Q$ :
+- **Estimate the lower bound of *A* uncertainty interval**
 """,
 
 "task03_1": r"""
-## Task 1:
-Based on given data, estimate the specific discharge $q$ : 
+## Task 4:
+With Tsalet's mixed deposits in the setup column, you now observe that $\Delta h=0.4$ m.
+- What is your estimate of the specific discharge $q$ in mm/s?
 """,
 
 "task03_2": r"""
-## Task 2:
-Based on given data, estimate the  discharge $Q$ in the soil column :
+- What is the discharge $Q$ in the soil column in mm/s?
 """,
 
 "task03_3": r"""
+- What is the mean velocity of water $u$ in the soil column in mm/s?
+""",
+
+"task03_4": r"""
 ## Task 3:
-Based on given data, estimate the mean velocity of water $u$ in the soil column :
+Based on the experiment's graph, what is your estimate for the hydraulic conductivity $K$ in mm/s?
 """,
 
 "task04_1": r"""
@@ -69,9 +73,10 @@ solutions = {
     "task01_2": (3100000, 3200000),  # Correct solution 3153600
     "task01_3": (0.18, 0.20),  # Correct solution 1.9
     "task01_4": (1.1, 1.3),
-    "task03_1": (1.1, 1.3), 
-    "task03_2": (0.60, 0.62), 
-    "task03_3": (4.7, 4.9), 
+    "task03_1": (1.2, 1.4),  # Correct solution 1.25
+    "task03_2": (620, 640), 
+    "task03_3": (6, 6.5), 
+    "task03_4": (0.25, 0.35),  # Correct solution 0.3
     "task04_1": (37, 39),  # Correct solution 38
     "task04_2": (25, 27),  # Correct solution 26
     # Add more tasks and their correct intervals here
@@ -85,9 +90,10 @@ solutions_exact = {
     "task01_2": "3153600 ",
     "task01_3": "0.19 ",
     "task01_4": "1.2 ",
-    "task03_1": "1.2",
-    "task03_2": "0.61",
-    "task03_3": "4.8",
+    "task03_1": "1.25",
+    "task03_2": "630",
+    "task03_3": "6.25",
+    "task03_4": "0.30",
     "task04_1": "38.0",  
     "task04_2": "26.0"
     # Add more tasks and their correct intervals here
@@ -106,8 +112,9 @@ solution_unit = {
     "task01_3": "m",
     "task01_4": "km^2",
     "task03_1": "mm/s",
-    "task03_2": "cm^3/s",
+    "task03_2": "mm^3/s",
     "task03_3": "mm/s",
+    "task03_4": "mm/s",
     "task04_1": "m",  
     "task04_2": "m"
     # Add more tasks and their correct intervals here
@@ -136,7 +143,7 @@ So we have that $ P \times A \times t = Q \times t $
 We can solve $ A = \frac{1728 \times 10^{-9}}{1 \times 10^{-6}} \simeq 1.7 \text{km}^2 $.
 
 This is not far from the BAFU estimation of 1.58 km², as you can see on the following snapshot.
-
+<br>
 """,
 
 "task01_2": r"""
@@ -148,6 +155,7 @@ Overall we have that $V_{aq} = \frac{V_{out}}{\phi}$ where :
 - ${\phi} = 0.2$
 
 Finally, $V_{aq} = 1728 \times 365 \text{m}^3 / 0.2 = 3153600 \text{m}^3$
+<br>
 """,
 
 
@@ -164,6 +172,7 @@ Overall we have that $V_{aq} = \frac{V_{out}}{\phi}$ where :
 Finally, $V_{aq} = 1728 \times 365 \text{m}^3 / 0.2 = 3153600 \text{m}^3$
 
 Back to the mean aquifer thickness : $M_{aq} = \frac{V_{aq}}{A} = \frac{3123600}{1.7} \frac{ \text{m}^3 }{\text{km}^2} = \frac{3123600}{1.7 \times 10^6}\text{m} \simeq 1.9 \text{m}$
+<br>
 """,
 
 "task01_4": r"""
@@ -176,15 +185,15 @@ We have that $A_{min} = \frac{Q_{min}}{P_{max}}$.
 It results that $A_{min} = \frac{1296 \times 10^{-9}}{1.1 \times 10^{-6}} \simeq 1.2 \text{km}^2$.
 
 You might want to have a look at the following interactive plot which shows all possible values of $A$ reachable given the uncertainety intervals for $P$ and $Q$.
-
-
+<br>
 """,
 
 "task03_1":
 r"""
 According to Darcy 's law, we have that :
 
-$q = KI = K \cdot \frac{\Delta h}{L} = 0.0003 \cdot \frac{0.4}{1} = 1.2 \cdot 10^{-4} \cdot\text{m}/\text{s}^{-1} = 0.12 \cdot \text{cm}/\text{s}^{-1}$.
+$q = KI = K \cdot \frac{\Delta h}{L} = 0.0005 \cdot \frac{0.4}{1} = 12.5 \cdot 10^{-4} \cdot\text{m}\text{s}^{-1} = 1.25 \cdot \text{mm}\text{s}^{-1}$.
+<br>
 """,
 
 "task03_2":
@@ -192,7 +201,8 @@ r"""
 The discharge is derived from the specific discharge, accounting for the soil column cross section area : 
 
 $Q = q \cdot A = 
-1.2 \cdot 10^{-4} \cdot \pi \cdot \frac{d}{2}^2 = 6.1 \cdot 10^{-8} \cdot\text{mm}^3/\text{s}^{-1} = 6.1 \cdot \text{cm}^3/\text{s}^{-1}$.
+1.25 \cdot 10^{-3} \cdot \pi \cdot \frac{d}{2}^2 \simeq 6.3 \cdot 10^{-7} \cdot\text{m}^3\text{s}^{-1} = 630 \cdot \text{mm}^3\text{s}^{-1}$.
+<br>
 """,
 
 "task03_3":
@@ -200,7 +210,14 @@ r"""
 The mean velocity is derived from the specific discharge, accounting for the soil column effective porosity : 
 
 $u = \frac{q}{\phi_e} = 
- \frac{1.2 \cdot 10^{-4}}{0.25} = 4.8 \cdot 10^{-4} \cdot\text{m}/\text{s}^{-1} = 0.48 \cdot \text{cm}/\text{s}^{-1}$.
+ \frac{1.25 \cdot 10^{-3}}{0.2} = 6.25 \cdot 10^{-3} \cdot\text{m}.\text{s}^{-1} = 6.25 \cdot \text{mm}.\text{s}^{-1}$.
+<br>
+""",
+
+"task03_4":
+r"""
+$K$ can be derived from the slope of the linear fit ( Darcy's law : $q$ = $K \cdot I$).<br>From the graph, its value is $0.30$  $\text{mm}.\text{s}^{-1}$.<br> Be careful about the units : on the graph, $q$ is given in $\text{mm}.\text{s}^{-1}$.
+<br>
 """,
 
 "task04_1": r"""
@@ -213,6 +230,7 @@ The Darcy law is : $h(x) = -\frac{q}{K}(x - x_0) + h_0$ where:
 - $x = 200 \text{m}$
 
 As a result, $h(200) = -\frac{0.000003}{0.00005}(200 - 0) + 50 = 38.0 \text{m}$
+<br>
 """,
 
 "task04_2": r"""
@@ -220,13 +238,20 @@ As a result, $h(200) = -\frac{0.000003}{0.00005}(200 - 0) + 50 = 38.0 \text{m}$
 The solution is the same as for the previous question, but plugging $x$ = 400m instead.
 
 As a result, $h(400) = -\frac{0.000003}{0.00005}(400 - 0) + 50 = 26.0 \text{m}$
- """,
+<br>
+""",
 }
 
 
-# Dictionary to map tasks to Python functions to execute
+# Dictionary to map tasks to Python functions to execute with the solution
 task_functions = {
     "task01_1": lambda: display_image("SwissTopoTsaletArea.png"),
     "task01_4": lambda: display_disc_area_interactive()
+
+}
+
+# Dictionary to map tasks to Python functions to execute before the question
+task_functions_start = {
+    #"task03_1": lambda: display_image("DarcyExperimentSetup.png"),
 
 }
