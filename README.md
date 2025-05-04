@@ -15,6 +15,9 @@ Project-based course materials for Master-level groundwater modeling (4 ECTS) at
 - Implement and analyze numerical solutions using MODFLOW, MT3D and FloPy
 - Critically evaluate modeling results and their implications
 
+What is not covered but highly recommended if you want to make your career in modeling:
+- Numerical discretization schemes and optimization 
+
 ## Prerequisites
 - Basic understanding of hydrogeology (Darcy's Law, hydraulic conductivity, aquifer properties)
 - Groundwater flow concepts and boundary conditions
