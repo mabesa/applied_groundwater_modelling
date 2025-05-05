@@ -21,7 +21,7 @@ def launch_darcy_experiment_interactive(qmin=0.000001, qmax=0.00001, kmin=0.0000
         pipe_color = ((qmax - q) / (qmax - qmin), (qmax - q) / (qmax - qmin), 1)  # Gradient from white (low q) to blue (high q)
 
         # Create the figure and axes for two subplots
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12), gridspec_kw={'height_ratios': [1, 1]})
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(5, 7), gridspec_kw={'height_ratios': [1, 1]})
         
         # --- First Subfigure: Darcy Experiment ---
         # Map K to a color (white for low K, dark gray for high K)
