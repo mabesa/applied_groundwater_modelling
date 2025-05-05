@@ -152,41 +152,6 @@ def h_function_plot(type_layers, K1, K2, K3, L1, L2, L3, L=None, h0=50, q=3e-7):
         raise ValueError("Invalid type_layers. Use 'vertical' or 'horizontal'.")
 
 
-# Gestion of the correction of submission for the results table
-def on_submit(b):
-        with output:
-            clear_output(wait=True)
-            display(Markdown(r"""  ## Correction  <br> ### $K_{eq}$ are obtained from formulas. Profiles can be qualitatively attributed given that K0<K1<K2<K3."""))
-
-            # Get user inputs
-            user_K_eq = [float(widget.value) if widget.value else None for widget in k_eq_inputs]
-            user_profiles = [int(widget.value) if widget.value else None for widget in profile_inputs]
-
-            # Create styled K_eq values
-            styled_K_eq = []
-            for i, (user_val, correct_val) in enumerate(zip(user_K_eq, correction_K_eq)):
-                if user_val is not None and np.isclose(user_val, correct_val, rtol=0.5):  # Adjust rtol as needed
-                    styled_K_eq.append(f"<td style='background-color: green;'>{round(correct_val)}</td>")
-                else:
-                    styled_K_eq.append(f"<td style='background-color: red;'>{round(correct_val)}</td>")
-
-            # Create styled profile values
-            styled_profiles = []
-            for i, (user_val, correct_val) in enumerate(zip(user_profiles, correction_profile_to_schematic)):
-                if user_val is not None and user_val == correct_val:
-                    styled_profiles.append(f"<td style='background-color: green;'>{round(correct_val)}</td>")
-                else:
-                    styled_profiles.append(f"<td style='background-color: red;'>{round(correct_val)}</td>")
-
-            # Create the corrected table with styled values
-            corrected_table = "<table>\n"
-            corrected_table += "  <tr><th>Schematic</th><th>(a)</th><th>(b)</th><th>(c)</th><th>(d)</th><th>(e)</th><th>(f)</th></tr>\n"
-            corrected_table += "  <tr><th>K_{eq}</th>" + "".join(styled_K_eq) + "</tr>\n"
-            corrected_table += "  <tr><th>Profile</th>" + "".join(styled_profiles) + "</tr>\n"
-            corrected_table += "</table>"
-
-            display(Markdown(corrected_table))
-            submit_button.disabled = True
 
 
 def exercise_aquifers_layered_keq_attribution():
@@ -242,9 +207,9 @@ def exercise_aquifers_layered_keq_attribution():
     # Table of submission and submit button  -------------------------------
     k_eq_inputs = [widgets.Text(layout=widgets.Layout(width='100px')) for _ in range(6)]
     profile_inputs = [widgets.Text(layout=widgets.Layout(width='100px')) for _ in range(6)]
-    display(Markdown(r"""  ## Submission <br>
-    ### Enter the values of $K_{eq}$ *in um/s* and the profile number (1-6) for each schematic. Once you have entered the values, click the "Submit All" button to check your answers. <br>"""))
-
+    display(Markdown(r"""  ## <br> Submission """))
+    display(Markdown(r"""  Enter the values of $K_{eq}$ in $\mu$/s and the profile number (1-6) for each schematic. <br> Once you have entered the values, click the "Submit All" button to check your answers. <br><br>"""))
+    
     # Create the interactive table
     table = widgets.GridBox(
         children=[
@@ -255,7 +220,7 @@ def exercise_aquifers_layered_keq_attribution():
             widgets.Label(value="(d)", layout=widgets.Layout(width='100px', height='30px', border='solid 1px black', align_items='center', justify_content='center')),
             widgets.Label(value="(e)", layout=widgets.Layout(width='100px', height='30px', border='solid 1px black', align_items='center', justify_content='center')),
             widgets.Label(value="(f)", layout=widgets.Layout(width='100px', height='30px', border='solid 1px black', align_items='center', justify_content='center')),
-            widgets.Label(r"""K_{eq}""", layout=widgets.Layout(width='100px', height='30px', border='solid 1px black', align_items='center', justify_content='center')),
+            widgets.Label("Keq", layout=widgets.Layout(width='100px', height='30px', border='solid 1px black', align_items='center', justify_content='center')),
             *k_eq_inputs,
             widgets.Label(value="Profile (1-6):", layout=widgets.Layout(width='100px', height='30px', border='solid 1px black', align_items='center', justify_content='center')),
             *profile_inputs,
@@ -263,13 +228,58 @@ def exercise_aquifers_layered_keq_attribution():
         layout=widgets.Layout(grid_template_columns="150px repeat(6, 100px)")
     )
 
+    # Gestion of the correction of submission for the results table
+    def on_submit(b):
+        nb_correct_cells=0
+        with output:
+            #clear_output(wait=True)
+            display(Markdown(r"""  ## <br> Solution """))
+            display(Markdown(r""" $K_{eq}$ are obtained from formulas. <br> Profiles can be qualitatively attributed given that K0<K1<K2<K3. <br><br>"""))
+
+            # Get user inputs
+            user_K_eq = [float(widget.value) if widget.value else None for widget in k_eq_inputs]
+            user_profiles = [int(widget.value) if widget.value else None for widget in profile_inputs]
+
+            # Create styled K_eq values
+            styled_K_eq = []
+            for i, (user_val, correct_val) in enumerate(zip(user_K_eq, correction_K_eq)):
+                if user_val is not None and np.isclose(user_val, correct_val, rtol=0.5):  # Adjust rtol as needed
+                    nb_correct_cells += 1
+                    styled_K_eq.append(f"<td style='background-color: green;'>{round(correct_val)}</td>")
+                else:
+                    styled_K_eq.append(f"<td style='background-color: red;'>{round(correct_val)}</td>")
+
+            # Create styled profile values
+            styled_profiles = []
+            for i, (user_val, correct_val) in enumerate(zip(user_profiles, correction_profile_to_schematic)):
+                if user_val is not None and user_val == correct_val:
+                    nb_correct_cells += 1
+                    styled_profiles.append(f"<td style='background-color: green;'>{round(correct_val)}</td>")
+                else:
+                    styled_profiles.append(f"<td style='background-color: red;'>{round(correct_val)}</td>")
+
+            # Create the corrected table with styled values
+            corrected_table = "<table>\n"
+            corrected_table += "  <tr><th>Schematic</th><th>(a)</th><th>(b)</th><th>(c)</th><th>(d)</th><th>(e)</th><th>(f)</th></tr>\n"
+            corrected_table += "  <tr><th>Keq</th>" + "".join(styled_K_eq) + "</tr>\n"
+            corrected_table += "  <tr><th>Profile</th>" + "".join(styled_profiles) + "</tr>\n"
+            corrected_table += "</table>"
+
+            display(Markdown(corrected_table))
+            submit_button.disabled = True
+            display(Markdown(f"**<br>Number of correct cells: {nb_correct_cells}/12**"))
+        
+
+
     # Submit button
-    submit_button = widgets.Button(description="Submit All", layout=widgets.Layout(width='150px', height='30px'))
+    submit_button = widgets.Button(description="Submit", layout=widgets.Layout(width='100px', height='30px'))
     output = widgets.Output()
     submit_button.on_click(on_submit)
 
     # Display both
     display(table, submit_button, output)
+
+    return
 
 
 #K3 = 5e-5
