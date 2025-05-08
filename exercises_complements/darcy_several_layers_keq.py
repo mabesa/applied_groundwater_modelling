@@ -2,8 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 import ipywidgets as widgets
-
-from IPython.display import display, Markdown
+from IPython.display import display, Markdown, clear_output
 
 def draw_schematic(ax, label, configuration):
     """
@@ -158,7 +157,7 @@ def exercise_aquifers_layered_keq_attribution():
     """
     Displays the exercise for K_eq attribution.
     """
-    
+    display(Markdown("<br><h2> Task 1:"))
     ## Generate and plot the schematics -------------------------------
     n=1.5 # figure size scaling parameter 
     fig, axes = plt.subplots(2, 3, figsize=(11.2/n, 7/n),layout="constrained")  # Reduced overall figure height
@@ -233,7 +232,7 @@ def exercise_aquifers_layered_keq_attribution():
         nb_correct_cells=0
         with output:
             #clear_output(wait=True)
-            display(Markdown(r"""  ## <br> Solution """))
+            display(Markdown(r"""  ## <br> Solution <br> """))
             display(Markdown(r""" $K_{eq}$ are obtained from formulas. <br> Profiles can be qualitatively attributed given that K0<K1<K2<K3. <br><br>"""))
 
             # Get user inputs
@@ -286,4 +285,116 @@ def exercise_aquifers_layered_keq_attribution():
 #K2 = 2e-5
 #K1 = 1e-5
 #K0 = 5e-6
+
+
+## for the exercise asking the hydraulic head at the interface between the two layers
+
+
+
+# Parameters
+L = 7  # Length of each layer for the plot proportions (m)
+K1 = 5e-5  # Hydraulic conductivity of the first layer (m/s)
+K2 = 1e-5  # Hydraulic conductivity of the second layer (m/s)
+q = 3.35e-5  # Specific discharge (m^2/s)
+h0 = 50  # Hydraulic head at x = 0 (m)
+hMID = 43.3  # Hydraulic head at the interface between the two layers (m)
+h2L = 40  # Hydraulic head at x = 2L (m)
+
+
+
+# Function to draw the schematic# Function to draw the schematic
+def draw_schematic_interface():
+    fig, ax = plt.subplots(figsize=(6.5, 4), layout="constrained")
+
+    # Draw the two layers
+    ax.add_patch(plt.Rectangle((0, 4), L, 2, edgecolor="black", facecolor="blue", alpha=0.3))
+    ax.text(L/2,5 , r"K1=50 $\mu$m/s", color="black", fontsize=10, ha="center", va="center")
+    ax.add_patch(plt.Rectangle((L, 4), L, 2, edgecolor="black", facecolor="green", alpha=0.3))
+
+    # Draw the wells as piezometers (tubes)
+    # Well at x=0
+    ax.add_patch(plt.Rectangle((-0.5, 4), 0.5, 3, edgecolor="black", facecolor="white"))
+    ax.text(2*L-L/2, 5 , r"K2=10 $\mu$m/s", color="black", fontsize=10, ha="center", va="center")
+    ax.hlines(6.8, -0.5, 0, colors="blue", linewidth=2)  # Water table level inside the well
+    
+    # Add the blue arrows (square + triangle)
+    x_start, y_start = -3, 5
+    # Square part
+    ax.add_patch(plt.Rectangle((x_start, y_start-0.25), 1, 0.5, edgecolor="blue", facecolor="blue", alpha=1.0))
+    # Triangle part (arrowhead)
+    triangle = plt.Polygon(
+        [[x_start + 1, y_start- 1/2], [x_start + 1, y_start + 1/2], [x_start + 2, y_start]],
+        edgecolor="blue",
+        facecolor="blue",
+        alpha=1.0,
+    )
+    ax.add_patch(triangle)
+    x_start, y_start = 2*L+1, 5
+    # Square part
+    ax.add_patch(plt.Rectangle((x_start, y_start-0.25), 1, 0.5, edgecolor="blue", facecolor="blue", alpha=1.0))
+    # Triangle part (arrowhead)
+    triangle = plt.Polygon(
+        [[x_start + 1, y_start- 1/2], [x_start + 1, y_start + 1/2], [x_start + 2, y_start]],
+        edgecolor="blue",
+        facecolor="blue",
+        alpha=1.0,
+    )
+    ax.add_patch(triangle)
+
+    # Well at x=2L
+    ax.add_patch(plt.Rectangle((2 * L, 4), 0.5, 3, edgecolor="black", facecolor="white"))
+    ax.hlines(6.3, 2 * L , 2 * L + 0.5, colors="blue", linewidth=2)  # Water table level inside the well
+
+    # Well at x=L (Boundary)
+    ax.vlines(L, 4, 6, colors="red", linewidth=2)
+
+    # Add labels for the wells
+    ax.text(0, 7.5, f"h(0) = {h0} m", fontsize=10, ha="center")
+    ax.text(L, 6.5, "h(100) = ?", fontsize=10, ha="center", color="red")
+    ax.text(2 * L, 7.5, f"h(200) = {h2L} m", fontsize=10, ha="center")
+
+    # Add the x-axis at the bottom
+    ax.hlines(3.5, 0, 2 * L, colors="black", linewidth=1)  # Horizontal line for the x-axis
+    ax.text(0, 3, "$x$ = 0", fontsize=10, ha="center")  # Label for x=0
+    ax.text(L, 3, "$x$ = 100 m", fontsize=10, ha="center")  # Label for x=L
+    ax.text(2 * L, 3, "$x$ = 200 m", fontsize=10, ha="center")  # Label for x=2L
+
+    # Add ticks on the x-axis
+    ax.vlines(0, 3.4, 3.6, colors="black", linewidth=1)  # Tick at x=0
+    ax.vlines(L, 3.4, 3.6, colors="black", linewidth=1)  # Tick at x=L
+    ax.vlines(2 * L, 3.4, 3.6, colors="black", linewidth=1)  # Tick at x=2L
+
+    ax.set_xlim(-5, 2 * L + 5)
+    ax.set_ylim(0, 10)
+    ax.set_xlabel("$x$ [m]", fontsize=12)
+    ax.axis("off")
+
+    plt.show()
+
+# Function to draw the h(x) plot
+def draw_hx_plot():
+    fig, ax = plt.subplots(figsize=(6.2, 4),layout="constrained")
+
+    # Calculate h(x) for the two layers
+    x1 = np.linspace(0, 100, 100)  # x values for the first layer
+    x2 = np.linspace(100, 200, 100)  # x values for the second layer
+    h1 = h0 + (hMID-h0)/100*x1  # h(x) in the first layer
+    h2 = hMID + (h2L-hMID)/100*(x2 - 100)  # h(x) in the second layer
+
+    # Plot h(x)
+    ax.plot(x1, h1, color="blue")
+    ax.plot(x2, h2, color="green")
+    ax.axvline(100, color="red", linestyle="--", label="x = L (Boundary)")
+
+    ax.set_title("Hydraulic Head $h(x)$ vs Horizontal Location $x$", fontsize=14)
+    ax.set_xlabel("$x$ [m]", fontsize=10)
+    ax.set_ylabel("$h(x)$ [m]", fontsize=10)
+    ax.legend(fontsize=10)
+    ax.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+
+
+
 

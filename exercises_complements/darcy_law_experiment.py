@@ -116,7 +116,7 @@ def darcy_experiment_simulation():
     plot_fit_button = Button(description="Plot Fit", disabled=True)  # Initially disabled
     plot_fit_button.on_click(on_plot_fit)
 
-    end_experiment_button = Button(description="End Experiment", disabled=True)  # Initially disabled
+    end_experiment_button = Button(description="Next task", disabled=True)  # Initially disabled
     end_experiment_button.on_click(on_end_experiment)
 
     # Display the widgets and output
@@ -161,7 +161,7 @@ def darcy_experiment_simulation_global():
             clear_output(wait=True)
             selected_answer = radio_buttons.value
             if selected_answer == correct_answer:
-                display(Markdown(r"""<br>**Correct!** Darcy's law describes a **linear** relationship : $q$ = $K\cdotI$, where $K$ is the hydraulic conductivity (property of the soil).<br><br><br>"""))
+                display(Markdown(r"""<br>**Correct!** Darcy's law describes a **linear** relationship : $q$ = $K \cdot I$, where $K$ is the hydraulic conductivity (property of the soil).<br><br><br>"""))
             else:
                 display(Markdown(r"""<br>**Incorrect.** The correct answer is **linear** : $q$ = $K \cdot I$, where $K$ is the hydraulic conductivity (property of the soil).<br><br><br>"""))
             submit_button.disabled = True
