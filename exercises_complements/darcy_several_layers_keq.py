@@ -105,7 +105,7 @@ def K_eq(type_layers, K1, K2, K3, L1, L2, L3,L=None):
     return K_eq
 
 
-def h_function_plot(type_layers, K1, K2, K3, L1, L2, L3, L=None, h0=50, q=3e-7):
+def h_function_plot(type_layers, K1, K2, K3, L1, L2, L3, L=None, h0=50, q=3e-7, add_correction=True):
     """
     Generates the hydraulic head h(x) based on the type of layering (vertical or horizontal).
     """
@@ -127,7 +127,8 @@ def h_function_plot(type_layers, K1, K2, K3, L1, L2, L3, L=None, h0=50, q=3e-7):
         h = np.concatenate([h_bef, h, h_aft])
         x = np.concatenate([x_bef, x, x_aft])
 
-        correction_K_equiv.append(K_eq(type_layers, K1, K2, K3, L1, L2, L3)*1e6)  # Convert to um/s
+        if add_correction:
+            correction_K_equiv.append(K_eq(type_layers, K1, K2, K3, L1, L2, L3)*1e6)  # Convert to um/s
 
         return x, h
 
@@ -148,7 +149,8 @@ def h_function_plot(type_layers, K1, K2, K3, L1, L2, L3, L=None, h0=50, q=3e-7):
         h = np.concatenate([h_bef, h1, h2, h_aft])
         x = np.concatenate([x_bef, x1, x2, x_aft])
 
-        correction_K_equiv.append( (K_eq(type_layers, K1, K2, K3, L1, L2, L3))*1e6) # Convert to um/s
+        if add_correction:
+            correction_K_equiv.append( (K_eq(type_layers, K1, K2, K3, L1, L2, L3))*1e6) # Convert to um/s
 
         return x, h
 
@@ -452,26 +454,23 @@ def draw_schematic_interface():
 
 # Function to draw the h(x) plot
 def draw_hx_plot():
-    fig, ax = plt.subplots(figsize=(6.2, 4),layout="constrained")
+    fig, ax = plt.subplots(figsize=(5, 3),layout="constrained")
 
-    # Calculate h(x) for the two layers
-    x1 = np.linspace(0, 100, 100)  # x values for the first layer
-    x2 = np.linspace(100, 200, 100)  # x values for the second layer
-    h1 = h0 + (hMID-h0)/100*x1  # h(x) in the first layer
-    h2 = hMID + (h2L-hMID)/100*(x2 - 100)  # h(x) in the second layer
 
     # Plot h(x)
-    ax.plot(x1, h1, color="blue")
-    ax.plot(x2, h2, color="green")
-    ax.axvline(100, color="red", linestyle="--", label="x = L (Boundary)")
+    x, h = h_function_plot("vertical", 5e-5, 1e-5, 0, 100, 100, 0, 200, q=3.3500000000000013e-07, add_correction=False)
+    ax.plot(x, h)
+    ax.axvline(100, color="red")
+    ax.axhline(43.3, color="green", linestyle="--")
 
-    ax.set_title("Hydraulic Head $h(x)$ vs Horizontal Location $x$", fontsize=14)
+    ax.set_title("Hydraulic head profile", fontsize=10)
     ax.set_xlabel("$x$ [m]", fontsize=10)
     ax.set_ylabel("$h(x)$ [m]", fontsize=10)
-    ax.legend(fontsize=10)
+    ax.set_ylim(40, 51)
+    ax.set_xlim(-20, 220)
+    ax.set_yticks(np.arange(46, 52, 1))
     ax.grid(True)
 
-    plt.tight_layout()
     plt.show()
 
 
