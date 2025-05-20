@@ -131,7 +131,7 @@ solutions_markdown = {
 We must have that $ V_{in} = V_{out} $.
 
 Water input volume over 1 day is $ V_{in} = P \times A \times t $ where:
-- $ P $ is the precipitation recharge rate in km/day, $ P = 1 \text{mm/day} = 1 \times 10^{-6} \text{km/day} $
+- $ P $ is the net recharge rate in km/day, $ P = 1 \text{mm/day} = 1 \times 10^{-6} \text{km/day} $
 - $ A $ is the area of the catchment in $\text{km}^2$
 - $ t $ is 1 day
 
@@ -149,7 +149,7 @@ This is not far from the BAFU estimation of 1.58 km², as you can see on the fol
 
 "task01_2": r"""
 
-The volume of water $V_{out}$ going out from the aquifer in one residence time period $\tau$ is needed to estimate the volume of the aquifer itself $V_{aq}$. We also need to take into account the aquifer porosity. 
+We assume steady state conditions and an average year. The volume of water $V_{out}$ going out from the aquifer in one year $\tau$ is needed to estimate the volume of the aquifer itself $V_{aq}$. We also need to take into account the aquifer porosity. 
 
 Overall we have that $V_{aq} = \frac{V_{out}}{\phi}$ where :
 - $V_{out} = Q \times \tau = 1728 \text{m}^3/\text{day} \times 365 \text{ day} = 1728 \times 365 \text{m}^3 $
@@ -164,7 +164,7 @@ Finally, $V_{aq} = 1728 \times 365 \text{m}^3 / 0.2 = 3153600 \text{m}^3$
 
 The thickness is : $M_{aq} = \frac{V_{aq}}{A}$. $A$ being known, we still need to compute the aquifer volume $V_{aq}$.
 
-The volume of water $V_{out}$ going out from the aquifer in one residence time period $\tau$ is needed to estimate the volume of the aquifer itself $V_{aq}$. We also need to take into account the aquifer porosity. 
+We assume steady state conditions and an average year. The volume of water $V_{out}$ going out from the aquifer in one year $\tau$ is needed to estimate the volume of the aquifer itself $V_{aq}$. We also need to take into account the aquifer porosity. 
 
 Overall we have that $V_{aq} = \frac{V_{out}}{\phi}$ where :
 - $V_{out} = Q \times \tau = 1728 \text{m}^3/\text{day} \times 365 \text{ day} = 1728 \times 365 \text{m}^3 $
@@ -178,7 +178,7 @@ Back to the mean aquifer thickness : $M_{aq} = \frac{V_{aq}}{A} = \frac{3123600}
 
 "task01_4": r"""
 
-The lower bound $A_{min}$ of the area is given by the lower bound of the precipitation recharge rate $P_{min}$ and the upper bound of the flow rate $Q_{max}$.
+The lower bound $A_{min}$ of the area is given by the lower bound of the net recharge rate $P_{min}$ and the upper bound of the flow rate $Q_{max}$.
 
 We have that $A_{min} = \frac{Q_{min}}{P_{max}}$.
 - $P_{max} = 1.1 \text{mm/day} = 1.1 \times 10^{-6} \text{km/day}$
@@ -223,12 +223,10 @@ $K$ can be derived from the slope of the linear fit ( Darcy's law : $q$ = $K \cd
 
 "task04_1": r"""
 
-The Darcy law is : q = $K \cdot I$. Lets apply it separately to each layer of the aquifer. <br> <br>
+The Darcy law is : q = $K \cdot I$. Let's apply it separately to each layer of the aquifer. <br> <br>
 To the left, $q$ = $K1 \cdot \frac{h(100)-h(0)}{100}$. To the right, $q$ = $K2 \cdot \frac{h(200)-h(100)}{100}$ <br><br>
-Both sides being equal to $q$, we can isolate $h(100)$ reexpress it as a function of known parameters : 
-$h(100) = \frac{K1 \cdot h(0) + K2 \cdot h(200)}{K1 + K2}$ <br>
-
-The solution in then $h(100) = 43.3$ m.
+Both sides being equal to $q$, we can isolate $h(100)$ and reexpress it as a function of known parameters : 
+$h(100) = \frac{K1 \cdot h(0) + K2 \cdot h(200)}{K1 + K2} = 43.3$ m.
 <br>
 """,
 
