@@ -1,0 +1,61 @@
+/* custom_styles.css */
+
+/* Base style for all custom boxes (optional, but good for common properties) */
+.custom-box {
+    padding: 1em;
+    margin: 1em 0;
+    border-left-style: solid;
+}
+
+/* --- Think Box (Purple) --- */
+.custom-box.exercise-box { /* Make it more specific for testing */
+    border: 5px dashed limegreen !important; /* Very obvious and important */
+    /* Your other .exercise-box rules can remain */
+    background-color: #f5eef8;
+    border-left-width: 3px;
+    border-left-color: #8e44ad;
+}
+.exercise-box strong {
+    color: #8e44ad; /* Purple text for the title */
+    font-size: 1.1em; /* Slightly larger title */
+}
+
+/* --- Exercise Box (Green) --- */
+.theory-box {
+    background-color: #e8f5e9; /* Light green background */
+    border-left-color: #4CAF50; /* Green border */
+}
+.theory-box strong {
+    color: #4CAF50; /* Green text for the title */
+    font-size: 1.1em;
+}
+
+/* --- Warning Box (Red) --- */
+.warning-box {
+    background-color: #ffebee; /* Light red background */
+    border-left-color: #f44336; /* Red border */
+}
+.warning-box strong {
+    color: #f44336; /* Red text for the title */
+    font-size: 1.1em;
+}
+
+/* --- Info Box (Blue) --- */
+.info-box {
+    background-color: #e3f2fd; /* Light blue background */
+    border-left-color: #2196F3; /* Blue border */
+}
+.info-box strong {
+    color: #2196F3; /* Blue text for the title */
+    font-size: 1.1em;
+}
+
+/* --- Tip Box (Yellow/Orange) --- */
+.tip-box {
+    background-color: #fff3e0; /* Light orange background */
+    border-left-color: #ff9800; /* Orange border */
+}
+.tip-box strong {
+    color: #ff9800; /* Orange text for the title */
+    font-size: 1.1em;
+}
