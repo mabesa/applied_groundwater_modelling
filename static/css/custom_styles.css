@@ -9,7 +9,6 @@
 
 /* --- Think Box (Purple) --- */
 .custom-box.exercise-box { /* Make it more specific for testing */
-    border: 5px dashed limegreen !important; /* Very obvious and important */
     /* Your other .exercise-box rules can remain */
     background-color: #f5eef8;
     border-left-width: 3px;
@@ -23,6 +22,7 @@
 /* --- Exercise Box (Green) --- */
 .theory-box {
     background-color: #e8f5e9; /* Light green background */
+    border-left-width: 3px; /* Left border width */
     border-left-color: #4CAF50; /* Green border */
 }
 .theory-box strong {
@@ -33,6 +33,7 @@
 /* --- Warning Box (Red) --- */
 .warning-box {
     background-color: #ffebee; /* Light red background */
+    border-left-width: 3px; /* Left border width */
     border-left-color: #f44336; /* Red border */
 }
 .warning-box strong {
@@ -41,11 +42,12 @@
 }
 
 /* --- Info Box (Blue) --- */
-.info-box {
+.furtherthinking-box {
     background-color: #e3f2fd; /* Light blue background */
+    border-left-width: 3px; /* Left border width */
     border-left-color: #2196F3; /* Blue border */
 }
-.info-box strong {
+.furtherthinking-box strong {
     color: #2196F3; /* Blue text for the title */
     font-size: 1.1em;
 }
@@ -53,6 +55,7 @@
 /* --- Tip Box (Yellow/Orange) --- */
 .tip-box {
     background-color: #fff3e0; /* Light orange background */
+    border-left-width: 3px; /* Left border width */
     border-left-color: #ff9800; /* Orange border */
 }
 .tip-box strong {
