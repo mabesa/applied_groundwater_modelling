@@ -131,7 +131,7 @@ solutions_markdown = {
 We must have that $ V_{in} = V_{out} $.
 
 Water input volume over 1 day is $ V_{in} = P \times A \times t $ where:
-- $ P $ is the precipitation recharge rate in km/day, $ P = 1 \text{mm/day} = 1 \times 10^{-6} \text{km/day} $
+- $ P $ is the net recharge rate in km/day, $ P = 1 \text{mm/day} = 1 \times 10^{-6} \text{km/day} $
 - $ A $ is the area of the catchment in $\text{km}^2$
 - $ t $ is 1 day
 
@@ -178,7 +178,7 @@ Back to the mean aquifer thickness : $M_{aq} = \frac{V_{aq}}{A} = \frac{3123600}
 
 "task01_4": r"""
 
-The lower bound $A_{min}$ of the area is given by the lower bound of the precipitation recharge rate $P_{min}$ and the upper bound of the flow rate $Q_{max}$.
+The lower bound $A_{min}$ of the area is given by the lower bound of the net recharge rate $P_{min}$ and the upper bound of the flow rate $Q_{max}$.
 
 We have that $A_{min} = \frac{Q_{min}}{P_{max}}$.
 - $P_{max} = 1.1 \text{mm/day} = 1.1 \times 10^{-6} \text{km/day}$
@@ -223,12 +223,10 @@ $K$ can be derived from the slope of the linear fit ( Darcy's law : $q$ = $K \cd
 
 "task04_1": r"""
 
-The Darcy law is : q = $K \cdot I$. Lets apply it separately to each layer of the aquifer. <br> <br>
+The Darcy law is : q = $K \cdot I$. Let's apply it separately to each layer of the aquifer. <br> <br>
 To the left, $q$ = $K1 \cdot \frac{h(100)-h(0)}{100}$. To the right, $q$ = $K2 \cdot \frac{h(200)-h(100)}{100}$ <br><br>
-Both sides being equal to $q$, we can isolate $h(100)$ reexpress it as a function of known parameters : 
-$h(100) = \frac{K1 \cdot h(0) + K2 \cdot h(200)}{K1 + K2}$ <br>
-
-The solution in then $h(100) = 43.3$ m.
+Both sides being equal to $q$, we can isolate $h(100)$ and reexpress it as a function of known parameters : 
+$h(100) = \frac{K1 \cdot h(0) + K2 \cdot h(200)}{K1 + K2} = 43.3$ m.
 <br>
 """,
 
