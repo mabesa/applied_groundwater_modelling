@@ -131,7 +131,7 @@ solutions_markdown = {
 We must have that $ V_{in} = V_{out} $.
 
 Water input volume over 1 day is $ V_{in} = P \times A \times t $ where:
-- $ P $ is the precipitation recharge rate in km/day, $ P = 1 \text{mm/day} = 1 \times 10^{-6} \text{km/day} $
+- $ P $ is the net recharge rate in km/day, $ P = 1 \text{mm/day} = 1 \times 10^{-6} \text{km/day} $
 - $ A $ is the area of the catchment in $\text{km}^2$
 - $ t $ is 1 day
 
@@ -178,7 +178,7 @@ Back to the mean aquifer thickness : $M_{aq} = \frac{V_{aq}}{A} = \frac{3123600}
 
 "task01_4": r"""
 
-The lower bound $A_{min}$ of the area is given by the lower bound of the precipitation recharge rate $P_{min}$ and the upper bound of the flow rate $Q_{max}$.
+The lower bound $A_{min}$ of the area is given by the lower bound of the net recharge rate $P_{min}$ and the upper bound of the flow rate $Q_{max}$.
 
 We have that $A_{min} = \frac{Q_{min}}{P_{max}}$.
 - $P_{max} = 1.1 \text{mm/day} = 1.1 \times 10^{-6} \text{km/day}$

@@ -458,7 +458,7 @@ def draw_hx_plot():
 
 
     # Plot h(x)
-    x, h = h_function_plot("vertical", 5e-5, 1e-5, 0, 100, 100, 0, 200, q=3.3500000000000013e-07, add_correction=False)
+    x, h = h_function_plot("vertical", 5e-5, 1e-4, 0, 100, 100, 0, h0 = 50, q=3.35e-06, add_correction=False)
     ax.plot(x, h)
     ax.axvline(100, color="red")
     ax.axhline(43.3, color="green", linestyle="--")
@@ -466,9 +466,9 @@ def draw_hx_plot():
     ax.set_title("Hydraulic head profile", fontsize=10)
     ax.set_xlabel("$x$ [m]", fontsize=10)
     ax.set_ylabel("$h(x)$ [m]", fontsize=10)
-    ax.set_ylim(40, 51)
+    ax.set_ylim(39, 51)
     ax.set_xlim(-20, 220)
-    ax.set_yticks(np.arange(46, 52, 1))
+    ax.set_yticks(np.arange(39, 52, 2))
     ax.grid(True)
 
     plt.show()
