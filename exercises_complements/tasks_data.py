@@ -223,12 +223,10 @@ $K$ can be derived from the slope of the linear fit ( Darcy's law : $q$ = $K \cd
 
 "task04_1": r"""
 
-The Darcy law is : q = $K \cdot I$. Lets apply it separately to each layer of the aquifer. <br> <br>
+The Darcy law is : q = $K \cdot I$. Let's apply it separately to each layer of the aquifer. <br> <br>
 To the left, $q$ = $K1 \cdot \frac{h(100)-h(0)}{100}$. To the right, $q$ = $K2 \cdot \frac{h(200)-h(100)}{100}$ <br><br>
-Both sides being equal to $q$, we can isolate $h(100)$ reexpress it as a function of known parameters : 
-$h(100) = \frac{K1 \cdot h(0) + K2 \cdot h(200)}{K1 + K2}$ <br>
-
-The solution in then $h(100) = 43.3$ m.
+Both sides being equal to $q$, we can isolate $h(100)$ and reexpress it as a function of known parameters : 
+$h(100) = \frac{K1 \cdot h(0) + K2 \cdot h(200)}{K1 + K2} = 43.3$ m.
 <br>
 """,
 
