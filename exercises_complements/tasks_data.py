@@ -1,4 +1,5 @@
 from uncertainty_plot import display_disc_area_interactive
+from darcy_several_layers_keq import draw_schematic_interface, draw_hx_plot
 from print_images import display_image
 
 ### File to define the questions and solutions of tasks / all necessary data
@@ -55,8 +56,8 @@ Based on the experiment's graph, what is your estimate for the hydraulic conduct
 """,
 
 "task04_1": r"""
-## Task 1:
-Based on given data, estimate the water table level at $x$ = 200m :
+## Task 2:
+Estimate the water table level (in meter) at the interface $x$ = 100m for the following confined aquifer :
 """,
 
 "task04_2": r"""
@@ -77,7 +78,7 @@ solutions = {
     "task03_2": (620, 640), 
     "task03_3": (6, 6.5), 
     "task03_4": (0.25, 0.35),  # Correct solution 0.3
-    "task04_1": (37, 39),  # Correct solution 38
+    "task04_1": (43, 44),  # Correct solution 38
     "task04_2": (25, 27),  # Correct solution 26
     # Add more tasks and their correct intervals here
 }
@@ -94,7 +95,7 @@ solutions_exact = {
     "task03_2": "630",
     "task03_3": "6.25",
     "task03_4": "0.30",
-    "task04_1": "38.0",  
+    "task04_1": "43.3",  
     "task04_2": "26.0"
     # Add more tasks and their correct intervals here
 }
@@ -130,7 +131,7 @@ solutions_markdown = {
 We must have that $ V_{in} = V_{out} $.
 
 Water input volume over 1 day is $ V_{in} = P \times A \times t $ where:
-- $ P $ is the precipitation recharge rate in km/day, $ P = 1 \text{mm/day} = 1 \times 10^{-6} \text{km/day} $
+- $ P $ is the net recharge rate in km/day, $ P = 1 \text{mm/day} = 1 \times 10^{-6} \text{km/day} $
 - $ A $ is the area of the catchment in $\text{km}^2$
 - $ t $ is 1 day
 
@@ -177,7 +178,7 @@ Back to the mean aquifer thickness : $M_{aq} = \frac{V_{aq}}{A} = \frac{3123600}
 
 "task01_4": r"""
 
-The lower bound $A_{min}$ of the area is given by the lower bound of the precipitation recharge rate $P_{min}$ and the upper bound of the flow rate $Q_{max}$.
+The lower bound $A_{min}$ of the area is given by the lower bound of the net recharge rate $P_{min}$ and the upper bound of the flow rate $Q_{max}$.
 
 We have that $A_{min} = \frac{Q_{min}}{P_{max}}$.
 - $P_{max} = 1.1 \text{mm/day} = 1.1 \times 10^{-6} \text{km/day}$
@@ -222,22 +223,18 @@ $K$ can be derived from the slope of the linear fit ( Darcy's law : $q$ = $K \cd
 
 "task04_1": r"""
 
-The Darcy law is : $h(x) = -\frac{q}{K}(x - x_0) + h_0$ where:
-- $q = 0.000003 \text{m}^2$ /s
-- $K = 0.00005 \text{m/day}$
-- $x_0 = 0 \text{m}$
-- $h_0 = 50 \text{m}$
-- $x = 200 \text{m}$
-
-As a result, $h(200) = -\frac{0.000003}{0.00005}(200 - 0) + 50 = 38.0 \text{m}$
+The Darcy law is : q = $K \cdot I$. Let's apply it separately to each layer of the aquifer. <br> <br>
+To the left, $q$ = $K1 \cdot \frac{h(100)-h(0)}{100}$. To the right, $q$ = $K2 \cdot \frac{h(200)-h(100)}{100}$ <br><br>
+Both sides being equal to $q$, we can isolate $h(100)$ and reexpress it as a function of known parameters : 
+$h(100) = \frac{K1 \cdot h(0) + K2 \cdot h(200)}{K1 + K2} = 43.3$ m.
 <br>
 """,
 
 "task04_2": r"""
 
 The solution is the same as for the previous question, but plugging $x$ = 400m instead.
-
-As a result, $h(400) = -\frac{0.000003}{0.00005}(400 - 0) + 50 = 26.0 \text{m}$
+<br>
+As a result, $h(400)$ = $-\frac{0.000003}{0.00005}(400 - 0)$ + 50 = 26.0 $\text{m}$
 <br>
 """,
 }
@@ -246,12 +243,13 @@ As a result, $h(400) = -\frac{0.000003}{0.00005}(400 - 0) + 50 = 26.0 \text{m}$
 # Dictionary to map tasks to Python functions to execute with the solution
 task_functions = {
     "task01_1": lambda: display_image("SwissTopoTsaletArea.png"),
-    "task01_4": lambda: display_disc_area_interactive()
+    "task01_4": lambda: display_disc_area_interactive(),
+    "task04_1": lambda: draw_hx_plot(),
 
 }
 
 # Dictionary to map tasks to Python functions to execute before the question
 task_functions_start = {
-    #"task03_1": lambda: display_image("DarcyExperimentSetup.png"),
+    "task04_1": lambda: draw_schematic_interface()
 
 }
