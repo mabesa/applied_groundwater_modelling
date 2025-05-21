@@ -53,12 +53,12 @@
 }
 
 /* --- Tip Box (Yellow/Orange) --- */
-.tip-box {
+.example-box {
     background-color: #fff3e0; /* Light orange background */
     border-left-width: 3px; /* Left border width */
     border-left-color: #ff9800; /* Orange border */
 }
-.tip-box strong {
+.example-box strong {
     color: #ff9800; /* Orange text for the title */
     font-size: 1.1em;
 }
