@@ -74,9 +74,9 @@ solutions = {
     "task01_2": (3100000, 3200000),  # Correct solution 3153600
     "task01_3": (0.18, 0.20),  # Correct solution 1.9
     "task01_4": (1.1, 1.3),
-    "task03_1": (1.2, 1.4),  # Correct solution 1.25
-    "task03_2": (620, 640), 
-    "task03_3": (6, 6.5), 
+    "task03_1": (0.15, 0.25),  # Correct solution 0.2
+    "task03_2": (0.005, 0.015),  # Correct solution 0.01
+    "task03_3": (0.5, 1.5), 
     "task03_4": (0.25, 0.35),  # Correct solution 0.3
     "task04_1": (43, 44),  # Correct solution 38
     "task04_2": (25, 27),  # Correct solution 26
@@ -91,9 +91,9 @@ solutions_exact = {
     "task01_2": "3153600 ",
     "task01_3": "0.19 ",
     "task01_4": "1.2 ",
-    "task03_1": "1.25",
-    "task03_2": "630",
-    "task03_3": "6.25",
+    "task03_1": "0.2",
+    "task03_2": "0.01",
+    "task03_3": "1",
     "task03_4": "0.30",
     "task04_1": "43.3",  
     "task04_2": "26.0"
@@ -193,7 +193,7 @@ You might want to have a look at the following interactive plot which shows all 
 r"""
 According to Darcy 's law, we have that :
 
-$q = KI = K \cdot \frac{\Delta h}{L} = 0.0005 \cdot \frac{0.4}{1} = 12.5 \cdot 10^{-4} \cdot\text{m}\text{s}^{-1} = 1.25 \cdot \text{mm}\text{s}^{-1}$.
+$q = KI = K \cdot \frac{\Delta h}{L} = 0.0005 \cdot \frac{0.4}{1} = 20 \cdot 10^{-5} \cdot\text{m}\text{s}^{-1} = 0.2 \cdot \text{mm}\text{s}^{-1}$.
 <br>
 """,
 
@@ -202,7 +202,7 @@ r"""
 The discharge is derived from the specific discharge, accounting for the soil column cross section area : 
 
 $Q = q \cdot A = 
-1.25 \cdot 10^{-3} \cdot \pi \cdot \frac{d}{2}^2 \simeq 6.3 \cdot 10^{-7} \cdot\text{m}^3\text{s}^{-1} = 630 \cdot \text{mm}^3\text{s}^{-1}$.
+0.2 \cdot \pi \cdot r^2 \simeq 0.2 \cdot 0.051 \cdot \text{mm}^3\text{s}^{-1} = 0.01 \cdot \text{mm}^3\text{s}^{-1}$.
 <br>
 """,
 
@@ -211,7 +211,7 @@ r"""
 The mean velocity is derived from the specific discharge, accounting for the soil column effective porosity : 
 
 $u = \frac{q}{\phi_e} = 
- \frac{1.25 \cdot 10^{-3}}{0.2} = 6.25 \cdot 10^{-3} \cdot\text{m}.\text{s}^{-1} = 6.25 \cdot \text{mm}.\text{s}^{-1}$.
+ \frac{0.2}{0.2} = 1 \cdot \text{mm}.\text{s}^{-1}$.
 <br>
 """,
 
