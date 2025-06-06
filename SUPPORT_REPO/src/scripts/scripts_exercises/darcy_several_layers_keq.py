@@ -6,10 +6,6 @@ from IPython.display import display, Markdown, clear_output, HTML
 
 def draw_schematic(ax, label, configuration):
 
-
-
-
-
     """
     Draws the schematic of the confined aquifer on the given axis based on the configuration.
     """
