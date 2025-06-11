@@ -40,3 +40,4 @@ def create_modelling_process_flowchart():
     dot.edge('I:s', 'J:n', weight='10')
 
     return dot
+
