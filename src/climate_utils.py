@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import glob
+import numpy as np
+import pyet 
 
 import matplotlib.pyplot as plt
 
@@ -185,9 +187,179 @@ def plot_climate_data(df, station_string="Fluntern"):
     ax2.legend(loc='upper right')
 
     # Set title and legend
-    plt.title(f'Climate Data for Fluntern\nPrecipitation: {annual_precipitation.sum().round().astype(int)} mm/a\nMean temperature: {annual_mean_temp.mean().round(1)} °C')
+    plt.title(f'Figure 4: Climate Data for Fluntern\nPrecipitation: {annual_precipitation.sum().round().astype(int)} mm/a\nMean temperature: {annual_mean_temp.mean().round(1)} °C')
     fig.tight_layout()  # Adjust layout to prevent labels from overlapping
 
     return plt, fig
 
+# endregion
+
+# region evapotranspiration
+def calculate_pet_fao56(
+    climate_df,
+    lat,
+    elevation,
+    station_string="Fluntern",
+    tmean_sc='tre200m0',
+    tmin_sc='tre2dymn',
+    tmax_sc='tre2dymx',
+    wind_sc='fkl010m0',
+    rh_sc='ure200m0',
+    ea_sc='pva200m0',
+    ea_conversion_factor=0.1,
+    rs_sc='gre000m0',
+    rs_conversion_factor=0.0864,
+    anemo_height=2.0
+    ):
+    """
+    Calculates monthly potential evapotranspiration (PET) using the FAO-56 method.
+    // ... existing docstring ...
+    """
+    month_cols = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    original_month_index = pd.Index(month_cols)
+
+    # Create a dummy DatetimeIndex for a representative year (e.g., 2001, a non-leap year)
+    # pyet often expects a DatetimeIndex for its internal calculations
+    datetime_index = pd.to_datetime([f'2001-{i:02d}-01' for i in range(1, 13)])
+
+    station_df = climate_df[climate_df['station'].str.contains(station_string, na=False)]
+    if station_df.empty:
+        print(f"Warning: No data found for station {station_string}. Cannot calculate PET.")
+        return pd.Series(dtype=float)
+
+    def get_monthly_series(df, shortname, columns, dt_index):
+        if shortname is None:
+            return pd.Series([np.nan]*len(columns), index=dt_index, dtype=float)
+        data_row = df[df['shortname'] == shortname]
+        if data_row.empty:
+            return pd.Series([np.nan]*len(columns), index=dt_index, dtype=float)
+        try:
+            values = data_row[columns].iloc[0].astype(float).values
+            return pd.Series(values, index=dt_index, dtype=float)
+        except ValueError:
+            return pd.Series([np.nan]*len(columns), index=dt_index, dtype=float)
+
+    tmean_series = get_monthly_series(station_df, tmean_sc, month_cols, datetime_index)
+    tmin_series = get_monthly_series(station_df, tmin_sc, month_cols, datetime_index)
+    tmax_series = get_monthly_series(station_df, tmax_sc, month_cols, datetime_index)
+    wind_series = get_monthly_series(station_df, wind_sc, month_cols, datetime_index)
+    
+    rs_series_raw = get_monthly_series(station_df, rs_sc, month_cols, datetime_index)
+    rs_input_series = None
+    if not rs_series_raw.isnull().all():
+        rs_input_series = rs_series_raw * rs_conversion_factor
+    else:
+        print(f"Info: Solar radiation data ('{rs_sc}') not found or invalid for {station_string}.")
+
+    ea_series_raw = get_monthly_series(station_df, ea_sc, month_cols, datetime_index)
+    ea_input_series = None
+    if not ea_series_raw.isnull().all():
+        ea_input_series = ea_series_raw * ea_conversion_factor
+        print(f"Info: Using actual vapor pressure data ('{ea_sc}') for {station_string}.")
+    else:
+        print(f"Info: Actual vapor pressure data ('{ea_sc}') not found or invalid for {station_string}.")
+
+    rh_series_raw = get_monthly_series(station_df, rh_sc, month_cols, datetime_index)
+    rh_input_series = None
+    if not rh_series_raw.isnull().all():
+        rh_input_series = rh_series_raw 
+        if ea_input_series is not None and not ea_input_series.isnull().all(): # Check if ea_input_series has data
+             print(f"Info: Both ea and rh available; pyet will prioritize ea for {station_string}.")
+        else:
+            print(f"Info: Using relative humidity data ('{rh_sc}') for {station_string}.")
+    elif ea_input_series is None or ea_input_series.isnull().all(): # Neither ea nor rh data found
+         print(f"Info: Neither actual vapor pressure ('{ea_sc}') nor relative humidity ('{rh_sc}') data found for {station_string}. Pyet will estimate from Tmin if available.")
+
+    if tmean_series.isnull().all():
+        print(f"Warning: Mean temperature data ('{tmean_sc}') is missing or invalid for {station_string}. Cannot calculate PET.")
+        return pd.Series(dtype=float)
+    if np.isnan(lat) or np.isnan(elevation):
+        print(f"Warning: Latitude or elevation is NaN. Cannot calculate PET.")
+        return pd.Series(dtype=float)
+
+    # Ensure optional series are None if all NaN, otherwise pass the series
+    def prep_optional_series(series):
+        return series if (series is not None and not series.isnull().all()) else None
+
+    pet_daily_mm_day = pyet.pm_fao56(
+        tmean=tmean_series, # This is mandatory and should have data
+        wind=prep_optional_series(wind_series),
+        rs=prep_optional_series(rs_input_series),
+        ea=prep_optional_series(ea_input_series),
+        rh=prep_optional_series(rh_input_series) if (ea_input_series is None or ea_input_series.isnull().all()) else None,
+        tmax=prep_optional_series(tmax_series),
+        tmin=prep_optional_series(tmin_series),
+        elevation=elevation,
+        lat=lat
+    )
+
+    if pet_daily_mm_day is None or (isinstance(pet_daily_mm_day, pd.Series) and pet_daily_mm_day.isnull().all()):
+        print(f"Warning: pyet.pm_fao56 returned no valid data for {station_string}.")
+        return pd.Series(dtype=float)
+
+    # Ensure pet_daily_mm_day is a Series and set its index back to original month names
+    if not isinstance(pet_daily_mm_day, pd.Series):
+        # This case might be unlikely if inputs are series, but good for safety
+        pet_daily_mm_day_series = pd.Series(pet_daily_mm_day, index=datetime_index)
+    else:
+        pet_daily_mm_day_series = pet_daily_mm_day
+    
+    pet_daily_mm_day_series.index = original_month_index # Revert to Jan, Feb, ... index
+
+    days_in_month = pd.Series(
+        [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+        index=original_month_index # Ensure this index matches
+    )
+    pet_monthly_mm = pet_daily_mm_day_series * days_in_month
+    pet_monthly_mm.name = "PET_mm_month"
+
+    return pet_monthly_mm
+
+# endregion
+
+# region plot montly PET
+def plot_monthly_pet(pet_series, station_name=""):
+    """
+    Plots monthly potential evapotranspiration (PET) as a bar chart.
+
+    Args:
+        pet_series (pd.Series): A pandas Series containing monthly PET data,
+                                 with month names (e.g., 'Jan', 'Feb') as index
+                                 and PET values (mm/month) as data.
+        station_name (str, optional): Name of the station for the plot title. 
+                                      Defaults to an empty string.
+
+    Returns:
+        tuple: (matplotlib.pyplot, matplotlib.figure.Figure)
+               Returns (None, None) if pet_series is empty or not a Series.
+    """
+    if not isinstance(pet_series, pd.Series) or pet_series.empty:
+        print("Warning: Input PET data is empty or not a pandas Series. Cannot plot.")
+        return None, None
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Calculate annual PET
+    annual_pet = pet_series.sum()
+
+    # Create the bar chart
+    bar_label = f'Monthly PET\nAnnual Total: {annual_pet:.2f} mm'
+    ax.bar(pet_series.index, pet_series.values, color='skyblue', alpha=0.8, label=bar_label)
+
+    # Set labels and title
+    ax.set_xlabel('Month')
+    ax.set_ylabel('Potential Evapotranspiration (mm/month)')
+    
+    title = 'Monthly Potential Evapotranspiration'
+    if station_name:
+        title += f' for {station_name}'
+    ax.set_title(title)
+    
+    # Add a legend
+    ax.legend()
+
+    # Improve layout
+    fig.tight_layout()
+
+    return plt, fig
 # endregion
