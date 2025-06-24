@@ -1,0 +1,612 @@
+/* custom_styles.css */
+/* Define color variables for diagrams */
+/* Blue color scheme for diagrams */
+:root {
+    --diagram-main-bg-color: #e3f2fd; /* Light blue background */
+    --diagram-main-border-color: #2196F3; /* Blue border */
+    --diagram-title-text-color: #2196F3; /* Blue text for titles */
+    --diagram-panel-bg-color: #eef7fe;  /* Lighter blue for panels */
+    --diagram-panel-border-color: #2196F3; /* Blue border for panels */
+    --diagram-panel-title-text-color: #2196F3; /* Blue text for panel titles */
+    --diagram-panel-content-text-color: var(--diagram-panel-content-text-color); /* Standard dark grey for readability */
+    --diagram-panel-example-text-color: var(--diagram-panel-example-text-color); /* Slightly lighter grey for example text */
+}
+/* Green color scheme for diagrams */
+/* :root { */
+/*    --diagram-main-bg-color: #e8f5e9;*/ /* Light green background */
+/*    --diagram-main-border-color: #4CAF50;*/ /* Green border */
+/*    --diagram-title-text-color: #4CAF50;*/ /* Green text for titles */
+/*    --diagram-panel-bg-color: #f0f8f0;*/  /* Lighter green for panels */
+/*    --diagram-panel-border-color: #4CAF50;*/ /* Green border for panels */
+/*    --diagram-panel-title-text-color: #4CAF50;*/ /* Green text for panel titles */
+/*    --diagram-panel-content-text-color: var(--diagram-panel-content-text-color);*/
+/*    --diagram-panel-example-text-color: var(--diagram-panel-example-text-color);*/
+/*} */
+
+
+/* Base style for all custom boxes (optional, but good for common properties) */
+.custom-box {
+    padding: 1em;
+    margin: 1em 0;
+    border-left-style: solid;
+}
+
+/* --- Exercise Box (Purple) --- */
+.custom-box.exercise-box { /* Make it more specific for testing */
+    /* Your other .exercise-box rules can remain */
+    background-color: #f5eef8;
+    border-left-width: 3px;
+    border-left-color: #8e44ad;
+}
+.exercise-box strong {
+    color: #8e44ad; /* Purple text for the title */
+    font-size: 1.1em; /* Slightly larger title */
+}
+
+/* --- Theory Box (Green) --- */
+.theory-box {
+    background-color: #e8f5e9; /* Light green background */
+    border-left-width: 3px; /* Left border width */
+    border-left-color: #4CAF50; /* Green border */
+}
+.theory-box strong {
+    color: #4CAF50; /* Green text for the title */
+    font-size: 1.1em;
+}
+
+/* --- Warning Box (Red) --- */
+.warning-box {
+    background-color: #ffebee; /* Light red background */
+    border-left-width: 3px; /* Left border width */
+    border-left-color: #f44336; /* Red border */
+}
+.warning-box strong {
+    color: #f44336; /* Red text for the title */
+    font-size: 1.1em;
+}
+
+/* --- Info Box (Blue) --- */
+.furtherthinking-box {
+    background-color: #e3f2fd; /* Light blue background */
+    border-left-width: 3px; /* Left border width */
+    border-left-color: #2196F3; /* Blue border */
+}
+.furtherthinking-box strong {
+    color: #2196F3; /* Blue text for the title */
+    font-size: 1.1em;
+}
+
+/* --- Tip Box (Yellow/Orange) --- */
+.example-box {
+    background-color: #fff3e0; /* Light orange background */
+    border-left-width: 3px; /* Left border width */
+    border-left-color: #ff9800; /* Orange border */
+}
+.example-box strong {
+    color: #ff9800; /* Orange text for the title */
+    font-size: 1.1em;
+}
+
+
+/* --- Problem Definition Blueprint Illustration --- */
+/* Main container for the "Problem Definition" illustration.
+   Styled to visually match the theme of an 'example-box'. */
+.problem-definition-blueprint {
+    border: 2px solid var(--diagram-main-border-color); /* Orange border, consistent with example-box */
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: var(--diagram-main-bg-color); /* Light orange background, consistent with example-box */
+    border-radius: 8px;
+}
+
+/* Title for the entire "Problem Definition" illustration (e.g., "Step 1: Blueprinting..."). */
+.blueprint-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--diagram-main-border-color); /* Orange text, consistent with example-box strong elements */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Container for the individual panels (e.g., Mission Objectives, Setting the Scene)
+   within the blueprint. Uses flexbox for layout. */
+.blueprint-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around;
+}
+
+/* Styles for each individual panel within the "Problem Definition" illustration. */
+.blueprint-panel {
+    background-color: var(--diagram-panel-bg-color); /* A very light orange, complementary to the main container */
+    border: 1px solid var(--diagram-main-border-color); /* Orange border for consistency */
+    padding: 15px;
+    border-radius: 5px;
+    width: calc(50% - 30px); /* Aims for two panels per row, accounting for gap */
+    box-sizing: border-box;
+    min-width: 250px; /* Ensures panels don't become too narrow */
+}
+
+/* Title within each individual panel (e.g., "🎯 Mission Objectives"). */
+.panel-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: var(--diagram-main-border-color); /* Orange text for panel titles */
+}
+
+/* Content text within each individual panel. */
+.panel-content {
+    font-size: 0.9em;
+    line-height: 1.4;
+    color: var(--diagram-panel-content-text-color); /* Standard dark grey for readability of main content */
+}
+
+/* Example text (e.g., "Limmat Valley Example:") within each individual panel. */
+.panel-example {
+    font-style: italic;
+    font-size: 0.85em;
+    margin-top: 8px;
+    color: var(--diagram-panel-example-text-color); /* Slightly lighter grey for example text */
+}
+
+/* --- Perceptual Model Diagram Illustration --- */
+/* Main container for the "Perceptual Model" illustration.
+   Styled to visually match the theme of an 'example-box'. */
+.perceptual-model-diagram {
+    border: 2px solid var(--diagram-main-border-color); /* Orange border, consistent with example-box */
+    padding: 15px;
+    margin-top: 1em; /* Add some space above if replacing a list */
+    margin-bottom: 20px;
+    background-color: var(--diagram-main-bg-color); /* Light orange background, consistent with example-box */
+    border-radius: 8px;
+}
+
+/* Title for the entire "Perceptual Model" illustration (e.g., "Step 2: Unveiling..."). */
+.perceptual-model-diagram .diagram-title { /* Scoping to this specific diagram */
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--diagram-main-border-color); /* Orange text, consistent with example-box strong elements */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Container for the individual panels within the diagram. Uses flexbox for layout. */
+.perceptual-model-diagram .diagram-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around;
+}
+
+/* Styles for each individual panel within the "Perceptual Model" illustration. */
+.perceptual-model-diagram .diagram-panel {
+    background-color: var(--diagram-panel-bg-color); /* A very light orange, complementary to the main container */
+    border: 1px solid var(--diagram-main-border-color); /* Orange border for consistency */
+    padding: 15px;
+    border-radius: 5px;
+    width: calc(50% - 30px); /* Aims for two panels per row, accounting for gap */
+    box-sizing: border-box;
+    min-width: 250px; /* Ensures panels don't become too narrow */
+}
+
+/* Title within each individual panel (e.g., "⛰️ System Characterization"). */
+.perceptual-model-diagram .panel-title { /* Reusing .panel-title, .panel-content, .panel-example if they are generic enough */
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: var(--diagram-main-border-color); /* Orange text for panel titles */
+}
+
+/* Content text within each individual panel. */
+.perceptual-model-diagram .panel-content {
+    font-size: 0.9em;
+    line-height: 1.4;
+    color: var(--diagram-panel-content-text-color); /* Standard dark grey for readability of main content */
+}
+
+/* Example text (e.g., "Limmat Valley Example:") within each individual panel. */
+.perceptual-model-diagram .panel-example {
+    font-style: italic;
+    font-size: 0.85em;
+    margin-top: 8px;
+    color: var(--diagram-panel-example-text-color); /* Slightly lighter grey for example text */
+}
+
+/* --- Conceptual Model Diagram Illustration --- */
+/* Main container for the "Conceptual Model" illustration.
+   Styled to visually match the theme of an 'example-box'. */
+.conceptual-model-diagram {
+    border: 2px solid var(--diagram-main-border-color); /* Orange border, consistent with example-box */
+    padding: 15px;
+    margin-top: 1em; /* Add some space above if replacing a list */
+    margin-bottom: 20px;
+    background-color: var(--diagram-main-bg-color); /* Light orange background, consistent with example-box */
+    border-radius: 8px;
+}
+
+/* Title for the entire "Conceptual Model" illustration. */
+.conceptual-model-diagram .diagram-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--diagram-main-border-color); /* Orange text, consistent with example-box strong elements */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Container for the individual panels within the diagram. Uses flexbox for layout. */
+.conceptual-model-diagram .diagram-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around;
+}
+
+/* Styles for each individual panel within the "Conceptual Model" illustration. */
+.conceptual-model-diagram .diagram-panel {
+    background-color: var(--diagram-panel-bg-color); /* A very light orange, complementary to the main container */
+    border: 1px solid var(--diagram-main-border-color); /* Orange border for consistency */
+    padding: 15px;
+    border-radius: 5px;
+    width: calc(50% - 30px); /* Aims for two panels per row, accounting for gap */
+    box-sizing: border-box;
+    min-width: 250px; /* Ensures panels don't become too narrow */
+}
+
+/* Title within each individual panel.
+   These reuse the generic .panel-title, .panel-content, .panel-example styles
+   if they are defined globally and are suitable. If more specific styling is needed,
+   you can scope them like .conceptual-model-diagram .panel-title */
+/* .conceptual-model-diagram .panel-title { ... } */
+/* .conceptual-model-diagram .panel-content { ... } */
+/* .conceptual-model-diagram .panel-example { ... } */
+
+/* --- Model Implementation Diagram Illustration --- */
+/* Main container for the "Model Implementation" illustration. */
+.model-implementation-diagram {
+    border: 2px solid var(--diagram-main-border-color);
+    padding: 15px;
+    margin-top: 1em;
+    margin-bottom: 20px;
+    background-color: var(--diagram-main-bg-color);
+    border-radius: 8px;
+}
+
+/* Title for the "Model Implementation" illustration. */
+.model-implementation-diagram .diagram-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--diagram-main-border-color);
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Container for the individual panels. */
+.model-implementation-diagram .diagram-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around;
+}
+
+/* Styles for each panel. Since there are three, they might stretch more.
+   Adjust width as needed, or let flexbox handle it.
+   Using calc(33.333% - 20px) for a three-column layout, adjust gap compensation as needed.
+   Or, for more flexibility if panel content varies:
+   flex-grow: 1; flex-basis: 280px; /* Allows panels to grow and wrap */
+.model-implementation-diagram .diagram-panel {
+    background-color: var(--diagram-panel-bg-color);
+    border: 1px solid var(--diagram-main-border-color);
+    padding: 15px;
+    border-radius: 5px;
+    box-sizing: border-box;
+    min-width: 250px; /* Minimum width */
+    width: calc(50% - 30px); /* Ensures two panels per row */
+}
+
+/* Panel titles, content, and examples will reuse the generic .panel-title,
+   .panel-content, and .panel-example styles if they are suitable.
+   If specific styling is needed for this diagram, scope them:
+   .model-implementation-diagram .panel-title { ... }
+*/
+
+/* --- Calibration Diagram Illustration --- */
+/* Main container for the "Calibration" illustration. */
+.calibration-diagram {
+    border: 2px solid var(--diagram-main-border-color); /* Orange border, consistent with example-box */
+    padding: 15px;
+    margin-top: 1em; /* Add some space above */
+    margin-bottom: 20px;
+    background-color: var(--diagram-main-bg-color); /* Light orange background, consistent with example-box */
+    border-radius: 8px;
+}
+
+/* Title for the "Calibration" illustration. */
+.calibration-diagram .diagram-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--diagram-main-border-color); /* Orange text, consistent with example-box strong elements */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Container for the individual panels. */
+.calibration-diagram .diagram-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around;
+}
+
+/* Styles for each panel.
+   Adjust width as needed, or let flexbox handle it.
+   Using calc(33.333% - 20px) for a three-column layout, adjust gap compensation as needed.
+   Or, for more flexibility if panel content varies:
+   flex-grow: 1; flex-basis: 280px; /* Allows panels to grow and wrap */
+.calibration-diagram .diagram-panel {
+    background-color: var(--diagram-panel-bg-color); /* A very light orange, complementary to the main container */
+    border: 1px solid var(--diagram-main-border-color); /* Orange border for consistency */
+    padding: 15px;
+    border-radius: 5px;
+    box-sizing: border-box;
+    min-width: 250px; /* Minimum width */
+    width: calc(33.333% - 20px); /* Aims for three panels per row, adjust gap if needed */
+    /* If you prefer two panels per row like other diagrams, use:
+    width: calc(50% - 30px); */
+}
+
+/* Panel titles, content, and examples will reuse the generic .panel-title,
+   .panel-content, and .panel-example styles if they are suitable and defined globally.
+   If specific styling is needed for this diagram, scope them:
+   .calibration-diagram .panel-title { ... }
+   .calibration-diagram .panel-content { ... }
+   .calibration-diagram .panel-example { ... }
+*/
+
+/* --- Verification Validation Diagram Illustration --- */
+/* Main container for the "Verification & Validation" illustration. */
+.verification-validation-diagram {
+    border: 2px solid var(--diagram-main-border-color); /* Orange border, consistent with example-box */
+    padding: 15px;
+    margin-top: 1em; /* Add some space above */
+    margin-bottom: 20px;
+    background-color: var(--diagram-main-bg-color); /* Light orange background, consistent with example-box */
+    border-radius: 8px;
+}
+
+/* Title for the "Verification & Validation" illustration. */
+.verification-validation-diagram .diagram-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--diagram-main-border-color); /* Orange text, consistent with example-box strong elements */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Container for the individual panels. */
+.verification-validation-diagram .diagram-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around;
+}
+
+/* Styles for each panel. */
+.verification-validation-diagram .diagram-panel {
+    background-color: var(--diagram-panel-bg-color); /* A very light orange, complementary to the main container */
+    border: 1px solid var(--diagram-main-border-color); /* Orange border for consistency */
+    padding: 15px;
+    border-radius: 5px;
+    box-sizing: border-box;
+    min-width: 250px; /* Minimum width */
+    width: calc(33.333% - 20px); /* Aims for three panels per row, adjust gap if needed */
+}
+
+/* --- Sensitivity Uncertainty Diagram Illustration --- */
+/* Main container for the "Sensitivity and Uncertainty Analysis" illustration. */
+.sensitivity-uncertainty-diagram {
+    border: 2px solid var(--diagram-main-border-color); /* Orange border */
+    padding: 15px;
+    margin-top: 1em;
+    margin-bottom: 20px;
+    background-color: var(--diagram-main-bg-color); /* Light orange background */
+    border-radius: 8px;
+}
+
+/* Title for the "Sensitivity and Uncertainty Analysis" illustration. */
+.sensitivity-uncertainty-diagram .diagram-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--diagram-main-border-color); /* Orange text */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Container for the individual panels. */
+.sensitivity-uncertainty-diagram .diagram-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around;
+}
+
+/* Styles for each panel. */
+.sensitivity-uncertainty-diagram .diagram-panel {
+    background-color: var(--diagram-panel-bg-color); /* Very light orange */
+    border: 1px solid var(--diagram-main-border-color); /* Orange border */
+    padding: 15px;
+    border-radius: 5px;
+    box-sizing: border-box;
+    min-width: 250px;
+    width: calc(50% - 30px); /* Two panels per row */
+}
+
+.sensitivity-uncertainty-diagram .diagram-panel {
+    background-color: var(--diagram-panel-bg-color); /* Very light orange */
+    border: 1px solid var(--diagram-main-border-color); /* Orange border */
+    padding: 15px;
+    border-radius: 5px;
+    box-sizing: border-box;
+    min-width: 250px;
+    width: calc(50% - 30px); /* Two panels per row */
+}
+
+/* --- Model Application Diagram Illustration --- */
+/* Main container for the "Model Application" illustration. */
+.model-application-diagram {
+    border: 2px solid var(--diagram-main-border-color); /* Orange border */
+    padding: 15px;
+    margin-top: 1em;
+    margin-bottom: 20px;
+    background-color: var(--diagram-main-bg-color); /* Light orange background */
+    border-radius: 8px;
+}
+
+/* Title for the "Model Application" illustration. */
+.model-application-diagram .diagram-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--diagram-main-border-color); /* Orange text */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Container for the individual panels. */
+.model-application-diagram .diagram-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around;
+}
+
+/* Styles for each panel. */
+.model-application-diagram .diagram-panel {
+    background-color: var(--diagram-panel-bg-color); /* Very light orange */
+    border: 1px solid var(--diagram-main-border-color); /* Orange border */
+    padding: 15px;
+    border-radius: 5px;
+    box-sizing: border-box;
+    min-width: 250px;
+    width: calc(50% - 30px); /* Two panels per row */
+}
+
+/* --- Model Documentation & Maintenance Diagram Illustration --- */
+/* Main container for the "Model Documentation & Maintenance" illustration. */
+.model-documentation-diagram {
+    border: 2px solid var(--diagram-main-border-color); /* Orange border */
+    padding: 15px;
+    margin-top: 1em;
+    margin-bottom: 20px;
+    background-color: var(--diagram-main-bg-color); /* Light orange background */
+    border-radius: 8px;
+}
+
+/* Title for the "Model Documentation & Maintenance" illustration. */
+.model-documentation-diagram .diagram-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--diagram-main-border-color); /* Orange text */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Container for the individual panels. */
+.model-documentation-diagram .diagram-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around;
+}
+
+/* Styles for each panel. */
+.model-documentation-diagram .diagram-panel {
+    background-color: var(--diagram-panel-bg-color); /* Very light orange */
+    border: 1px solid var(--diagram-main-border-color); /* Orange border */
+    padding: 15px;
+    border-radius: 5px;
+    box-sizing: border-box;
+    min-width: 250px;
+    width: calc(33.333% - 20px); /* Aims for three panels per row, adjust gap if needed */
+}
+
+/* Ensure generic panel styles are applied if not overridden */
+.model-documentation-diagram .panel-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: var(--diagram-main-border-color);
+}
+
+.model-documentation-diagram .panel-content {
+    font-size: 0.9em;
+    line-height: 1.4;
+    color: var(--diagram-panel-content-text-color);
+}
+
+.model-documentation-diagram .panel-example {
+    font-style: italic;
+    font-size: 0.85em;
+    margin-top: 8px;
+    color: var(--diagram-panel-example-text-color);
+}
+
+/* --- Result Communication Diagram Illustration --- */
+/* Main container for the "Result Communication" illustration. */
+.result-communication-diagram {
+    border: 2px solid var(--diagram-main-border-color); /* Orange border */
+    padding: 15px;
+    margin-top: 1em;
+    margin-bottom: 20px;
+    background-color: var(--diagram-main-bg-color); /* Light orange background */
+    border-radius: 8px;
+}
+
+/* Title for the "Result Communication" illustration. */
+.result-communication-diagram .diagram-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--diagram-main-border-color); /* Orange text */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Container for the individual panels. */
+.result-communication-diagram .diagram-panels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-around;
+}
+
+/* Styles for each panel. */
+.result-communication-diagram .diagram-panel {
+    background-color: var(--diagram-panel-bg-color); /* Very light orange */
+    border: 1px solid var(--diagram-main-border-color); /* Orange border */
+    padding: 15px;
+    border-radius: 5px;
+    box-sizing: border-box;
+    min-width: 250px;
+    width: calc(33.333% - 20px); /* Aims for three panels per row, adjust gap if needed */
+}
+
+/* Ensure generic panel styles are applied if not overridden */
+.result-communication-diagram .panel-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: var(--diagram-main-border-color);
+}
+
+.result-communication-diagram .panel-content {
+    font-size: 0.9em;
+    line-height: 1.4;
+    color: var(--diagram-panel-content-text-color);
+}
+
+.result-communication-diagram .panel-example {
+    font-style: italic;
+    font-size: 0.85em;
+    margin-top: 8px;
+    color: var(--diagram-panel-example-text-color);
+}
