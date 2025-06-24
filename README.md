@@ -2,7 +2,7 @@
 
 # Applied Groundwater Modeling - Exercises and Case Study
 
-![Groundwater Model Visualization](static/Groundwater_course.jpg)
+![Groundwater Model Visualization](SUPPORT_REPO/static/figures/Groundwater_course.jpg)
 
 ## Overview
 Project-based course materials for Master-level groundwater modeling (4 ECTS) at ETH Zurich. Focuses on practical modeling skills using MODFLOW and FloPy through a real-world case study of the Limmat valley aquifer.
@@ -23,29 +23,21 @@ Project-based course materials for Master-level groundwater modeling (4 ECTS) at
 ## Repository Structure
 (to be refined)
 ```
-01_introduction : Lesson 1 - Introduction to the course
- |_ assignment : (optionsl) assignment for lesson 1
- |_ content : Content for lesson 1
-     |_ 0_introduction.ipynb : Introduction to the course
-     |_ 1_case_study.ipynb : Introduction to the Limmat valley aquifer
-     |_ 2_modflow_funddamentals.ipynb : Introduction to MODFLOW
-
-exercises
- |_ exercise01 : The long-term groundwater balance
- |_ exercise02 : Porosity and the representative elementary volume
- |_ exercise03 : Darcy's Law and hydraulic conductivity
- |_ exercises_complements : Methods used in the exercises
-
-case_studies : Data and assingment templates for the case studies
- |_ Zurich : The Limmat valley aquifer
-     |_ data : Data for the Limmat valley aquifer
-         |_ climate : Climate data for the Limmat valley aquifer
-     |_ model : Model of the Limmat valley aquifer
- |_ other : Case study to be defined
+APPLIED_GROUNDWATER_MODELING/
+├── ADDITIONAL_MATERIAL/         # Additional optional materials for the course 
+├── CASE_STUDY/                  # Case study materials
+├── EXERCISES/                   # Exercises for the course
+│   ├── exercise01.ipynb         # Exercise 1: Groundwater balance
+│   ├── ...
+├── SUPPORT_REPO/                # Support files for the course
+│   ├── src/                     # Support code for the course
+│   ├── static/                  # Static files (images, figures, etc.)
+├── environment_development.yml  # Conda environment for development
+├── environment_students.yml      # Conda environment for students
+├── .gitignore                    # Git ignore file
+├── README.md                     # This file
+└── LICENSE                       # License file
 ```
-
-Currently not covered: Sensitivity & uncertainty analysis, model calibration, model validation
-
 
 ## How to Use this Repository as a Student
 ### JupyterHub (ETH Students)
@@ -172,4 +164,4 @@ The course stretches over 13 weeks with 4 lectures per week. For each lecture we
 </details>
 
 ## Acknowledgments
-Funded by the ETH Zurich Department of Earth and Planetary Sciences and the Rectors Innovendum Fund ([project link](https://ww2.lehrbetrieb.ethz.ch/id-workflows/faces/instances/Innovedum/ProzessInnovedum$1/195511738774A87D/innovedumPublic.Details/Details.xhtml)).
+Funded by the ETH Zurich Department of Earth and Planetary Sciences and the Rectors Innovendum Fund ([project link](https://ww2.lehrbetrieb.ethz.ch/id-workflows/faces/instances/Innovedum/ProzessInnovedum$1/197A35DA732E83F5/innovedumPublic.Details/Details.xhtml)).
