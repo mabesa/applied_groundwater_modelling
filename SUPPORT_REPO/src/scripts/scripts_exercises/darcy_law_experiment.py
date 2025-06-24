@@ -97,16 +97,13 @@ def darcy_experiment_simulation():
         # Fit a line to the points
         fit_coefficients = np.polyfit(delta_h_values, q_values, 1)
         update_plot(show_fit=True)
-        end_experiment_button.disabled = False  # Enable the "End Experiment" button
-
-    # Function to handle the "End Experiment" button
-    def on_end_experiment(button):
-        update_plot(highlight_first_point=True)  # Highlight the first point again
-        # check_task_with_solution("task03_2")  # if we want to call the function to launch a new task
+        # update_plot(highlight_first_point=True)  # Highlight the first point again
         plot_fit_button.disabled = True
         validate_button.disabled = True
         check_task_with_solution("task03_4")  # Call the function to launch a new task
-        end_experiment_button.disabled = True  # Disable the button after ending the experiment
+
+
+        
 
     # Create the slider and buttons
     slider = FloatSlider(value=0.5, min=0.05, max=0.95, step=0.05, description='Δh:')
@@ -116,11 +113,9 @@ def darcy_experiment_simulation():
     plot_fit_button = Button(description="Plot Fit", disabled=True)  # Initially disabled
     plot_fit_button.on_click(on_plot_fit)
 
-    end_experiment_button = Button(description="Next task", disabled=True)  # Initially disabled
-    end_experiment_button.on_click(on_end_experiment)
 
     # Display the widgets and output
-    display(VBox([slider, validate_button, plot_fit_button, end_experiment_button, feedback_output, output]))
+    display(VBox([slider, validate_button, plot_fit_button, feedback_output, output]))
 
     # Initial plot with the pre-added point
     update_plot()

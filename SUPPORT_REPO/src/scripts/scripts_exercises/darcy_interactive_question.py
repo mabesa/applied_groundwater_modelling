@@ -10,7 +10,7 @@ def darcy_law(K, dh_L):
 # Plotting function
 def plot_darcy(K):
     # Load the Darcy experiment setup image
-    img_path = "../exercises_complements/images/DarcyExperimentSetup.png"
+    img_path = "../SUPPORT_REPO/static/DarcyExperimentSetup.png"
     img = mpimg.imread(img_path)
 
     # Create a figure with two subplots
