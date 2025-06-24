@@ -281,8 +281,11 @@ class REVExplorer:
             color = self.colors[color_idx]
             marker = self.markers[marker_idx]
             
-            areas = [d[0] for d in data_points]
-            porosities = [d[1] for d in data_points]
+            # Sort data points by area
+            sorted_data_points = sorted(data_points, key=lambda x: x[0])
+        
+            areas = [d[0] for d in sorted_data_points]
+            porosities = [d[1] for d in sorted_data_points]
             
             # Plot scatter points with both color (blobiness) and marker shape (porosity)
             self.ax_rev.scatter(
@@ -292,6 +295,16 @@ class REVExplorer:
                 marker=marker,
                 s=60,  # Slightly larger marker size for better visibility
                 label=f'P={porosity_value}, B={blobiness_value}'
+            )
+
+            # Add connecting line between sorted points
+            self.ax_rev.plot(
+                areas,
+                porosities,
+                color=color,
+                linestyle='-',
+                alpha=0.7,
+                linewidth=1.5
             )
         
         # Set labels and title

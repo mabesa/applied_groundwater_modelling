@@ -149,7 +149,7 @@ This is not far from the BAFU estimation of 1.58 km², as you can see on the fol
 
 "task01_2": r"""
 
-The volume of water $V_{out}$ going out from the aquifer in one residence time period $\tau$ is needed to estimate the volume of the aquifer itself $V_{aq}$. We also need to take into account the aquifer porosity. 
+We assume steady state conditions and an average year. The volume of water $V_{out}$ going out from the aquifer in one year $\tau$ is needed to estimate the volume of the aquifer itself $V_{aq}$. We also need to take into account the aquifer porosity. 
 
 Overall we have that $V_{aq} = \frac{V_{out}}{\phi}$ where :
 - $V_{out} = Q \times \tau = 1728 \text{m}^3/\text{day} \times 365 \text{ day} = 1728 \times 365 \text{m}^3 $
@@ -164,7 +164,7 @@ Finally, $V_{aq} = 1728 \times 365 \text{m}^3 / 0.2 = 3153600 \text{m}^3$
 
 The thickness is : $M_{aq} = \frac{V_{aq}}{A}$. $A$ being known, we still need to compute the aquifer volume $V_{aq}$.
 
-The volume of water $V_{out}$ going out from the aquifer in one residence time period $\tau$ is needed to estimate the volume of the aquifer itself $V_{aq}$. We also need to take into account the aquifer porosity. 
+We assume steady state conditions and an average year. The volume of water $V_{out}$ going out from the aquifer in one year $\tau$ is needed to estimate the volume of the aquifer itself $V_{aq}$. We also need to take into account the aquifer porosity. 
 
 Overall we have that $V_{aq} = \frac{V_{out}}{\phi}$ where :
 - $V_{out} = Q \times \tau = 1728 \text{m}^3/\text{day} \times 365 \text{ day} = 1728 \times 365 \text{m}^3 $
