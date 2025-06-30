@@ -20,6 +20,114 @@ Project-based course materials for Master-level groundwater modeling (4 ECTS) at
 - Groundwater flow concepts and boundary conditions
 - Basic Python programming skills
 
+## 🔧 Accessibility Features
+
+This course includes comprehensive accessibility features designed to support diverse learning needs and preferences. Over time, all materials will be designed to work well both with and without accessibility enhancements.
+
+<details>
+<summary><strong>🎓 For Students: Using Accessibility Controls</strong></summary>
+
+### Quick Start
+1. **In any notebook**, look for the "🔧 Accessibility Settings" section near the top
+2. **Click the toggle** to enable/disable accessibility mode
+3. **Customize settings** using the detailed options that appear
+4. **Re-run cells** to see the changes take effect
+
+### What Accessibility Mode Provides
+
+**When Accessibility Mode is ON:**
+- **📝 Image Descriptions**: Detailed alt-text displayed visually for all figures and diagrams
+- **🎯 Learning Context**: Blue boxes explaining how each figure relates to learning objectives
+- **📏 Larger Figures**: Increased figure sizes for better visibility
+- **🔍 Enhanced Error Messages**: Detailed troubleshooting guidance when things go wrong
+- **📚 Source Citations**: Proper attribution for images and data
+- **🎨 Accessible Colors**: Colorblind-friendly visualizations
+
+**When Accessibility Mode is OFF:**
+- **Clean Interface**: Minimal, distraction-free presentation
+- **Faster Loading**: Reduced visual elements for quicker rendering
+- **Simple Feedback**: Concise error messages and basic figure display
+
+### Customizing Your Experience
+
+The accessibility panel offers fine-grained control:
+- ✅ **Show image descriptions** - Toggle visual alt-text on/off
+- ✅ **Show learning context** - Control educational context boxes
+- ✅ **Show accessibility reminders** - Enable/disable accessibility tips
+- ✅ **Enhanced error messages** - Choose detailed vs. simple error feedback
+- ✅ **Use larger figure sizes** - Adjust figure scaling for visibility
+
+### Who Benefits?
+- **Visual impairments**: Screen reader support and high-contrast options
+- **Learning differences**: Multiple information formats and clear structure
+- **Non-native speakers**: Enhanced explanations and context
+- **All learners**: Improved understanding through detailed descriptions
+
+</details>
+
+<details>
+<summary><strong>👩‍💻 For Developers: Implementing Accessibility</strong></summary>
+
+### Basic Implementation
+
+Add accessibility support to any notebook:
+
+```python
+# Standard imports
+import sys
+sys.path.append('../SUPPORT_REPO/src')
+from accessibility_config import create_accessibility_switch
+from print_images import display_image
+
+# Add accessibility control panel
+accessibility_switch = create_accessibility_switch()
+display(accessibility_switch)
+```
+
+### Best Practices
+
+**1. Always Include Alt-Text:**
+```python
+display_image(
+    "diagram.png",
+    alt_text="Detailed description of the diagram content and significance",
+    caption="Figure 1: Descriptive caption",
+    educational_context="How this relates to learning objectives"
+)
+```
+
+**2. Provide Educational Context:**
+```python
+display_figure_with_context(
+    "complex_diagram.png",
+    figure_number=1,
+    title="Groundwater Flow Patterns",
+    description="Cross-section showing flow lines and equipotential lines",
+    learning_objective="Understanding flow visualization techniques",
+    source="Course Materials 2025"
+)
+```
+
+### Key Functions
+
+| Function | Purpose | Accessibility Features |
+|----------|---------|----------------------|
+| `display_image()` | Basic image display | Conditional alt-text, context boxes, adaptive sizing |
+| `display_figure_with_context()` | Academic figure display | Full citation, numbered figures, comprehensive descriptions |
+| `create_accessibility_switch()` | Control panel | User customization interface |
+| `is_accessibility_enabled()` | Check status | Conditional logic in custom functions |
+
+### Testing Guidelines
+
+1. Test with accessibility mode ON - verify all features work
+2. Test with accessibility mode OFF - ensure clean, functional interface
+3. Check backward compatibility with existing code
+4. Include meaningful alt-text and context in your implementations
+
+**Files:** See `SUPPORT_REPO/accessibility_demo.ipynb` for detailed examples.
+
+</details>
+
 ## Repository Structure
 (to be refined)
 ```
@@ -40,42 +148,65 @@ APPLIED_GROUNDWATER_MODELING/
 ```
 
 ## How to Use this Repository as a Student
+
 ### JupyterHub (ETH Students)
 ETH students can access these materials through the course JupyterHub environment linked in Moodle.
 
-### Local Installation
-We recommend Visual Studio Code as an IDE (available for free [here](https://code.visualstudio.com/)) but any other Python IDE will work. We further recomment using the Anaconda distribution of Python (available for free [here](https://www.anaconda.com/products/distribution)) to manage your Python environment.  
+<details>
+<summary><strong>💻 Local Installation Setup</strong></summary>
+
+We recommend Visual Studio Code as an IDE (available for free [here](https://code.visualstudio.com/)) but any other Python IDE will work. We further recommend using the Anaconda distribution of Python (available for free [here](https://www.anaconda.com/products/distribution)) to manage your Python environment.  
 
 To run these materials locally, follow these steps:
-1. In your terminal, navigate to the directory where you want to clone the repository. You can do this by using the `cd` command. For example, if you want to clone it into a folder called `gw_modeling_course`, you would run:
+
+1. **Navigate to your desired directory** in your terminal using the `cd` command:
    ```bash
    cd path/to/your/folder
    ```
    Replace `path/to/your/folder` with the actual path to your desired folder.
-2. Clone this repository:  
-   `git clone https://github.com/mabesa/applied-groundwater-modeling.git`
-   This will create a new folder called `gw_modeling_course` in your current directory.
-3. Navigate into the cloned repository:
+
+2. **Clone this repository:**  
    ```bash
-   cd gw_modeling_course
+   git clone https://github.com/mabesa/applied-groundwater-modeling.git
    ```
-4. Set up your Python environment, e.g. using conda.
-    - Update conda (may take a long while):  
-      `conda update -n base -c conda-forge conda`
-    - Create a new environment with Python 3.12 and the required packages:  
-      `conda env create -f environment_students.yml`
-    - Activate the environment:  
-      `conda activate gw_course_students`
-5. Get modflow executables:  
-   `get-modflow :flopy`  
-6. You might need to install support for visualizing latex in jupyter notebooks. In Visual Studio Code, you can do this by installing the `Markdown+Math` and the `Markdown All in One` extensions or the `LaTeX Workshop` extension.
+   This will create a new folder called `applied-groundwater-modeling` in your current directory.
 
-### Repository structure
-Main branches: 
+3. **Navigate into the cloned repository:**
+   ```bash
+   cd applied-groundwater-modeling
+   ```
+
+4. **Set up your Python environment using conda:**
+   - Update conda (may take a while):  
+     ```bash
+     conda update -n base -c conda-forge conda
+     ```
+   - Create a new environment with Python 3.12 and the required packages:  
+     ```bash
+     conda env create -f environment_students.yml
+     ```
+   - Activate the environment:  
+     ```bash
+     conda activate gw_course_students
+     ```
+
+5. **Get MODFLOW executables:**  
+   ```bash
+   get-modflow :flopy
+   ```
+
+6. **Install LaTeX support for notebooks** (optional):
+   In Visual Studio Code, install the `Markdown+Math` and `Markdown All in One` extensions or the `LaTeX Workshop` extension.
+
+### Repository Branches
 - `main`: Contains the latest stable version of the course materials
-- `course_2025`: Contains the latest version of the course materials for the 2025 course which is displayed on the course JupyterHub
+- `course_2025`: Contains the latest version for the 2025 course (displayed on course JupyterHub)
 
-## How to Contribute
+</details>
+
+<details>
+<summary><strong>🤝 How to Contribute</strong></summary>
+
 We welcome contributions to improve the course materials! 
 
 ### Setting up Your Environment
@@ -91,44 +222,60 @@ If, during development, you need to install additional packages, please add them
 ```bash
 conda env update --from-history -f environment_development.yml
 ```
-Please also keep the `environmnet_students.yml` file up to date. 
+Please also keep the `environment_students.yml` file up to date. 
 
 ### Git Workflow to Contribute
 Here's how you can contribute if you are not yet a collaborator in this repository:  
 
-- Fork the repository: Create your own fork of this repository (skip this step if you are a collaborator in this repository).
-- Create a feature branch: Base your work on the develop branch.  
-   `git checkout year_feature_name`  
-   `git checkout -b your-feature-name`  
-- Make your changes: Implement your contribution, focusing on one specific improvement or addition.
-- Test your changes: Ensure your notebooks run without errors in the JupyterHub environment.
-- Document your work: Add clear comments and documentation to any code or notebooks.
-- Submit a Pull Request: Create a pull request to the develop branch with a clear description of what your changes accomplish. We will review your contribution and provide feedback.
+- **Fork the repository**: Create your own fork of this repository (skip this step if you are a collaborator in this repository).
+- **Create a feature branch**: Base your work on the develop branch.  
+   ```bash
+   git checkout year_feature_name  
+   git checkout -b your-feature-name
+   ```
+- **Make your changes**: Implement your contribution, focusing on one specific improvement or addition.
+- **Test your changes**: Ensure your notebooks run without errors in the JupyterHub environment.
+- **Document your work**: Add clear comments and documentation to any code or notebooks.
+- **Submit a Pull Request**: Create a pull request to the develop branch with a clear description of what your changes accomplish. We will review your contribution and provide feedback.
 
-### Stripping Notebooks
-To ensure that the notebooks are clean and free of unnecessary output, we use the `nbstripout` tool. This tool automatically removes all output cells from Jupyter notebooks when committing changes. We use it as a pre-commit hook to ensure that all notebooks are stripped before they are committed to the repository. To set up `nbstripout`, follow these steps:
-1. Activate the pre-commit hook (installed with the `environment_development.yml` file):
+### Notebook Output Management (Required)
+To keep the repository clean and free of unnecessary output, notebook outputs should be cleared before committing. Contributors have two options:
+
+#### Option 1: Manual Output Clearing (Simple)
+Before committing notebooks, manually clear all outputs:
+- **In Jupyter/JupyterLab**: `Kernel` → `Restart & Clear Output`
+- **In VS Code**: Use the "Clear All Outputs" button in the notebook toolbar
+- **Command line**: Use `jupyter nbconvert --clear-output --inplace your_notebook.ipynb`
+
+#### Option 2: Automated with nbstripout (Recommended for Regular Contributors)
+Set up `nbstripout` to automatically strip outputs during commits:
+
+1. **Activate the pre-commit hook** (installed with the `environment_development.yml` file):
    ```bash
    pre-commit install
    ```
-2. Install `nbstripout` in your conda environment: 
+2. **Install `nbstripout`** in your conda environment: 
    ```bash
    conda install nbstripout
    ```
-3. Enable `nbstripout` for your repository:
+3. **Enable `nbstripout`** for your repository:
    ```bash
    nbstripout --install
    ```
-4. Verify that `nbstripout` is working by checking the `.git/hooks/pre-commit` file. It should contain a line similar to:
+4. **Verify the setup** by checking the `.git/hooks/pre-commit` file. It should contain a line similar to:
    ```bash
    #!/bin/sh
    nbstripout --strip
    ```
-5. Now, whenever you commit changes to the repository, `nbstripout` will automatically strip the output from all Jupyter notebooks.
-6. If you want to disable `nbstripout` for a specific notebook, you can use the following command:
+5. **Automatic stripping**: Once set up, `nbstripout` will automatically strip output from all Jupyter notebooks when you commit changes.
+6. **Skip specific notebooks** (if needed):
    ```bash
    nbstripout --skip-notebook your_notebook.ipynb
    ```
+
+**Important**: Please ensure notebook outputs are cleared using either method before submitting pull requests to maintain clean repository history.
+
+</details>
 
 
 ## The Limmat Valley Aquifer Case Study
