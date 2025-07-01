@@ -2,7 +2,7 @@
 
 # Applied Groundwater Modeling - Exercises and Case Study
 
-![Groundwater Model Visualization](SUPPORT_REPO/static/figures/Groundwater_course.jpg)
+![Groundwater Model Visualization](SUPPORT_REPO/static/figures/0_readme/Groundwater_course.jpg)
 
 ## Overview
 Project-based course materials for Master-level groundwater modeling (4 ECTS) at ETH Zurich. Focuses on practical modeling skills using MODFLOW and FloPy through a real-world case study of the Limmat valley aquifer.
