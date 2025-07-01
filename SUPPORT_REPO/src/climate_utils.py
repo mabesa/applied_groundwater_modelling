@@ -185,7 +185,7 @@ def plot_climate_data(df, station_string="Fluntern"):
     ax2.legend(loc='upper right')
 
     # Set title and legend
-    plt.title(f'Climate Data for Fluntern\nPrecipitation: {annual_precipitation.sum().round().astype(int)} mm/a\nMean temperature: {annual_mean_temp.mean().round(1)} °C')
+    plt.title(f'Climate Data for Fluntern\nPrecipitation: {annual_precipitation.sum().round().astype(int)} mm/year\nMean temperature: {annual_mean_temp.mean().round(1)} °C')
     fig.tight_layout()  # Adjust layout to prevent labels from overlapping
 
     return plt, fig
