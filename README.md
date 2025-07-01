@@ -25,106 +25,291 @@ Project-based course materials for Master-level groundwater modeling (4 ECTS) at
 This course includes comprehensive accessibility features designed to support diverse learning needs and preferences. Over time, all materials will be designed to work well both with and without accessibility enhancements.
 
 <details>
-<summary><strong>🎓 For Students: Using Accessibility Controls</strong></summary>
+<summary><strong>🎓 For Students: Current accessibility features</strong></summary>
 
-### Quick Start
-1. **In any notebook**, look for the "🔧 Accessibility Settings" section near the top
-2. **Click the toggle** to enable/disable accessibility mode
-3. **Customize settings** using the detailed options that appear
-4. **Re-run cells** to see the changes take effect
+### Current Accessibility Features
 
-### What Accessibility Mode Provides
+✅ **Screen Reader Compatibility**
+- All content boxes use standard Markdown blockquotes that screen readers can process naturally
+- Interactive elements use proper `ipywidgets` with descriptive labels
+- Images include alternative text descriptions where applicable
 
-**When Accessibility Mode is ON:**
-- **📝 Image Descriptions**: Detailed alt-text displayed visually for all figures and diagrams
-- **🎯 Learning Context**: Blue boxes explaining how each figure relates to learning objectives
-- **📏 Larger Figures**: Increased figure sizes for better visibility
-- **🔍 Enhanced Error Messages**: Detailed troubleshooting guidance when things go wrong
-- **📚 Source Citations**: Proper attribution for images and data
-- **🎨 Accessible Colors**: Colorblind-friendly visualizations
+✅ **Simple, Portable Design**
+- Minimal HTML and CSS to ensure consistent rendering across platforms
+- Standard Markdown formatting for maximum compatibility
+- No complex custom styling that might interfere with assistive technologies
 
-**When Accessibility Mode is OFF:**
-- **Clean Interface**: Minimal, distraction-free presentation
-- **Faster Loading**: Reduced visual elements for quicker rendering
-- **Simple Feedback**: Concise error messages and basic figure display
+✅ **Keyboard Navigation**
+- All interactive elements (checkboxes, widgets) are keyboard accessible
+- Progress tracking uses standard Jupyter widgets with full keyboard support
 
-### Customizing Your Experience
+✅ **Clear Structure**
+- Consistent heading hierarchy for easy navigation
+- Descriptive section titles and clear content organization
+- Logical flow from concept to application
 
-The accessibility panel offers fine-grained control:
-- ✅ **Show image descriptions** - Toggle visual alt-text on/off
-- ✅ **Show learning context** - Control educational context boxes
-- ✅ **Show accessibility reminders** - Enable/disable accessibility tips
-- ✅ **Enhanced error messages** - Choose detailed vs. simple error feedback
-- ✅ **Use larger figure sizes** - Adjust figure scaling for visibility
+### Platform Compatibility
 
-### Who Benefits?
-- **Visual impairments**: Screen reader support and high-contrast options
-- **Learning differences**: Multiple information formats and clear structure
-- **Non-native speakers**: Enhanced explanations and context
-- **All learners**: Improved understanding through detailed descriptions
+The course materials are designed to work across multiple environments:
+- **JupyterLab/JupyterHub**: Full interactive experience with widgets
+- **VS Code**: Markdown content displays properly, with fallback options for interactive elements
+- **Screen Readers**: Content structure and labels designed for accessibility
+
+### Ongoing Accessibility Improvements
+
+🔄 **We continuously work to improve accessibility by:**
+- Simplifying complex visualizations and providing text alternatives
+- Testing with screen readers when possible
+- Using semantic HTML and proper ARIA labels
+- Maintaining clean, logical document structure
+- Seeking feedback from users with accessibility needs
+
+### Current Limitations
+
+⚠️ **Areas we're still working on:**
+- Some complex diagrams may not have comprehensive text alternatives
+- Interactive visualizations may have limited screen reader support
+- Color-dependent information (we're working to add text/pattern alternatives)
+
+### Reporting Accessibility Issues
+
+If you encounter accessibility barriers while using this course:
+
+1. **Open an issue** on our GitHub repository describing the specific problem
+2. **Include details** about your assistive technology setup
+3. **Suggest improvements** if you have ideas for better accessibility
+
+We welcome feedback and contributions to improve accessibility for all learners.
+
+### Alternative Formats
+
+If you need course materials in alternative formats:
+- The Markdown source files can be converted to various formats using tools like Pandoc
+- All text content is available in plain text format
+- Contact the instructors if you need specific accommodations
+
+---
+
+*We believe that accessible education benefits everyone. While we're not perfect, we're committed to continuous improvement and welcome your feedback on how we can make this course more inclusive.*
 
 </details>
 
 <details>
 <summary><strong>👩‍💻 For Developers: Implementing Accessibility</strong></summary>
 
-### Basic Implementation
+### 🎯 Core Design Principles
 
-Add accessibility support to any notebook:
+#### 1. Keep It Simple
+- **Minimal layouts**: Avoid complex HTML structures or custom CSS
+- **Standard Markdown**: Use native Markdown features whenever possible
+- **Portable design**: Ensure content works across VS Code, JupyterLab, and JupyterHub
+- **Screen reader first**: Design with screen readers in mind, not as an afterthought
 
-```python
-# Standard imports
-import sys
-sys.path.append('../SUPPORT_REPO/src')
-from accessibility_config import create_accessibility_switch
-from print_images import display_image
+#### 2. Accessibility-First Development
+Every contribution should consider accessibility from the start, not as a retrofit.
 
-# Add accessibility control panel
-accessibility_switch = create_accessibility_switch()
-display(accessibility_switch)
+### 📝 Content Guidelines
+
+#### Markdown Content Boxes
+**✅ DO:**
+```markdown
+> 💡 **Example: Clear Title**
+> 
+> Content goes here with clear, descriptive text.
+> Mathematical expressions should include text explanations.
 ```
 
-### Best Practices
+**❌ DON'T:**
+```html
+<div class="custom-box fancy-styling">
+  <h4>Example</h4>
+  <p>Content without clear structure</p>
+</div>
+```
 
-**1. Always Include Alt-Text:**
+#### Headings and Structure
+**✅ DO:**
+- Use logical heading hierarchy (H1 → H2 → H3)
+- Make headings descriptive and meaningful
+- Include section numbers when appropriate
+
+```markdown
+# 1. Introduction to Groundwater Flow
+## 1.1 Basic Principles
+### 1.1.1 Darcy's Law
+```
+
+**❌ DON'T:**
+- Skip heading levels
+- Use headings for styling only
+- Make vague headings like "More Info"
+
+### 🖼️ Images and Visual Content
+
+#### Alt Text Requirements
+**All images MUST include descriptive alt text:**
+
+```markdown
+![Graph showing groundwater head decline over time from 2010 to 2020, starting at 15m and declining to 8m with steepest decline between 2015-2017](path/to/image.png)
+```
+
+#### Alt Text Guidelines
+**✅ Good alt text:**
+- Describes the content and purpose of the image
+- Includes key data points for graphs/charts
+- Explains relationships shown in diagrams
+- Mentions relevant colors/patterns when they convey information
+
+**❌ Poor alt text:**
+- "Graph" or "Image" (too vague)
+- "See image above" (not descriptive)
+- Overly long descriptions (keep under 125 characters for simple images)
+
+#### Complex Figures
+For complex diagrams or multi-panel figures:
+
+```markdown
+![Conceptual model of the Limmat Valley aquifer showing three main layers: unconfined gravel aquifer (top, 0-10m depth), confining clay layer (middle, 10-15m), and confined sandstone aquifer (bottom, 15-30m). Arrows indicate groundwater flow from recharge areas in the east toward discharge at the Limmat River in the west.](path/to/figure.png)
+
+**Figure description:** This conceptual cross-section illustrates...
+[Provide detailed text description in following paragraph]
+```
+
+### 🧩 Interactive Elements
+
+#### Progress Trackers and Widgets
+**✅ DO:**
+- Use standard `ipywidgets` with proper labels
+- Include descriptive text for all interactive elements
+- Provide fallback text versions for non-interactive environments
+
 ```python
-display_image(
-    "diagram.png",
-    alt_text="Detailed description of the diagram content and significance",
-    caption="Figure 1: Descriptive caption",
-    educational_context="How this relates to learning objectives"
+checkbox = widgets.Checkbox(
+    value=False,
+    description="Step 1: Problem Definition - Mark complete when you understand how to define modeling objectives",
+    style={'description_width': 'initial'},
+    layout=widgets.Layout(width='100%')
 )
 ```
 
-**2. Provide Educational Context:**
+**❌ DON'T:**
+- Create custom widgets without accessibility testing
+- Use unlabeled interactive elements
+- Rely solely on color to convey information
+
+#### Forms and Input
+- Always provide clear labels for input fields
+- Include help text or examples when needed
+- Use logical tab order for keyboard navigation
+
+### 🎨 Visual Design
+
+#### Color and Contrast
+**✅ DO:**
+- Ensure sufficient color contrast (4.5:1 minimum for normal text)
+- Use color plus another indicator (icons, patterns, text) to convey information
+- Test with color blindness simulators
+
+**❌ DON'T:**
+- Use color alone to distinguish important information
+- Use low-contrast color combinations
+- Assume all users can perceive color differences
+
+#### Layout and Spacing
+**✅ DO:**
+- Use consistent spacing and alignment
+- Keep line lengths readable (45-75 characters)
+- Provide white space for visual breathing room
+
+```markdown
+> 📚 **Theory: Groundwater Flow Equation**
+> 
+> The groundwater flow equation combines Darcy's law with the principle of mass conservation:
+> 
+> ∇ · (K∇h) = S ∂h/∂t + Q
+> 
+> Where K is hydraulic conductivity, h is hydraulic head, S is specific storage, and Q represents sources/sinks.
+```
+
+### 💻 Code and Technical Content
+
+#### Code Blocks
+**✅ DO:**
+- Use syntax highlighting with language specification
+- Include comments explaining complex sections
+- Provide context for code examples
+
 ```python
-display_figure_with_context(
-    "complex_diagram.png",
-    figure_number=1,
-    title="Groundwater Flow Patterns",
-    description="Cross-section showing flow lines and equipotential lines",
-    learning_objective="Understanding flow visualization techniques",
-    source="Course Materials 2025"
+# Calculate hydraulic conductivity from pumping test data
+# Using the Theis method for confined aquifers
+def theis_analysis(time, drawdown, pumping_rate, distance):
+    """
+    Analyze pumping test data using the Theis method.
+    
+    Args:
+        time (array): Time since pumping started (days)
+        drawdown (array): Observed drawdown (meters)
+        pumping_rate (float): Constant pumping rate (m³/day)
+        distance (float): Distance from pumping well (meters)
+    
+    Returns:
+        dict: Calculated aquifer properties
+    """
+    # Implementation here...
+```
+
+#### Mathematical Content
+**✅ DO:**
+- Provide text explanations alongside equations
+- Define all variables and symbols
+- Use consistent mathematical notation
+
+```markdown
+The Darcy velocity (v) is calculated as:
+
+v = Ki
+
+Where:
+- v = Darcy velocity (m/day)
+- K = hydraulic conductivity (m/day)  
+- i = hydraulic gradient (dimensionless)
+```
+
+### 🚀 Quick Reference
+
+#### Standard Content Box Format
+```markdown
+> [EMOJI] **[TYPE]: [TITLE]**
+> 
+> Content goes here. Keep it clear and concise.
+> 
+> For complex content, break into multiple paragraphs.
+```
+
+#### Image with Alt Text
+```markdown
+![Descriptive alt text explaining what the image shows, including key data points and relationships](path/to/image.png)
+```
+
+#### Interactive Widget Template
+```python
+widget = widgets.WidgetType(
+    value=default_value,
+    description="Clear, descriptive label explaining the widget's purpose",
+    style={'description_width': 'initial'},
+    layout=widgets.Layout(width='100%')
 )
 ```
 
-### Key Functions
+### 🤝 Getting Help
 
-| Function | Purpose | Accessibility Features |
-|----------|---------|----------------------|
-| `display_image()` | Basic image display | Conditional alt-text, context boxes, adaptive sizing |
-| `display_figure_with_context()` | Academic figure display | Full citation, numbered figures, comprehensive descriptions |
-| `create_accessibility_switch()` | Control panel | User customization interface |
-| `is_accessibility_enabled()` | Check status | Conditional logic in custom functions |
+- **Accessibility questions**: Open an issue with the `accessibility` label
+- **Design consistency**: Check existing notebooks for patterns
+- **Technical issues**: Use the `developer-support` label
 
-### Testing Guidelines
+---
 
-1. Test with accessibility mode ON - verify all features work
-2. Test with accessibility mode OFF - ensure clean, functional interface
-3. Check backward compatibility with existing code
-4. Include meaningful alt-text and context in your implementations
-
-**Files:** See `SUPPORT_REPO/accessibility_demo.ipynb` for detailed examples.
+*Remember: Accessible design benefits everyone. When in doubt, choose the simpler, more accessible option.*
 
 </details>
 
