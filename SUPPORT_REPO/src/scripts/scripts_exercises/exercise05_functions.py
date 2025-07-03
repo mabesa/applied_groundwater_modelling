@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 import ipywidgets as widgets
 from IPython.display import display, Markdown, clear_output, HTML
-
+from math import sqrt
 
 
 cmap = 'cividis_r' #cividis
@@ -64,25 +64,27 @@ def plot_initial_wells():
 
 def plot_head_full_field(method_passed = 'linear', resolution_interpolation_passed = 1000):
     heads_new = griddata(
-    (x_all, y_all), head_all, (x_new, y_new), method=method_passed
+        (x_all, y_all), head_all, (x_new, y_new), method=method_passed
     )
     # Grid for interpolation
-    xi = np.linspace(0, 100, resolution_interpolation)
-    yi = np.linspace(0, 100, resolution_interpolation)
+    xi = np.linspace(0, 100, resolution_interpolation_passed)
+    yi = np.linspace(0, 100, resolution_interpolation_passed)
     xi, yi = np.meshgrid(xi, yi)
     zi = griddata((x_all, y_all), head_all, (xi, yi), method=method_passed)
     fig, ax = plt.subplots(figsize=(8, 6))
-    contour = ax.contourf(xi, yi, zi, 20, cmap=cmap)
-    plt.colorbar(contour, label='Head [m]')
+    # Plot only line contours (no filled colormap)
+    contour = ax.contour(xi, yi, zi, 15, cmap=cmap)
+    # Add "m" unit to contour labels
+    fmt = lambda x: f"{x:.1f} m"
+    plt.clabel(contour, inline=True, fontsize=8, fmt=fmt)
     # Plot all wells
-    #ax.scatter(x_wells, y_wells, c=head_wells, cmap=cmap, edgecolor='blue', marker='.', s=80, label='Known wells')
     ax.scatter(x_new, y_new, c=heads_new, cmap=cmap, edgecolor='red', s=80, marker='.', label='A, B, C (your answer)')
     for i, label in enumerate(labels_new):
         ax.text(x_new[i] + 1, y_new[i], label, fontsize=14, color='red', va='center')
     ax.set_xlabel('X [m]')
     ax.set_ylabel('Y [m]')
-    ax.set_title(f"Interpolated $h(x,y)$ field ( {method_passed} mode)")
-    ax.grid(True)  # Add grid here
+    ax.set_title(f"Interpolated $h(x,y)$ field ({method_passed} mode)")
+    ax.grid(True)
     enable_hover_coordinates(ax)
     plt.show()
 
@@ -94,9 +96,9 @@ def attribution_observation_well_student(method, resolution_interpolation):
     # Create dropdowns for student selection
     dropdowns = {
         label: widgets.Dropdown(
-            options=[round(head, 1) for head in shuffled_heads],
+            options=[str(round(head, 1))+"m" for head in shuffled_heads],
             description=label + ":",
-            layout=widgets.Layout(width='150px')
+            layout=widgets.Layout(width='180px')
         ) for label in labels_new
     }
     # Output widget
@@ -143,3 +145,78 @@ def task_05_01(method_passed = 'linear', resolution_interpolation_passed = 1000)
     plot_initial_wells()
     # 2. Ask the student to guess the heads and then show the interpolatde field
     attribution_observation_well_student(method, resolution_interpolation)
+
+
+def linear_interpolation_task():
+    # Select 5 known points randomly from x_all, y_all, head_all
+    indices = np.random.choice(len(x_all), 5, replace=False)
+    x_5 = x_all[indices]
+    y_5 = y_all[indices]
+    h_5 = head_all[indices]
+    
+    # Pick 2 points from the 5 for linear interpolation
+    idx1, idx2 = np.random.choice(5, 2, replace=False)
+    
+    x1, y1, h1 = x_5[idx1], y_5[idx1], h_5[idx1]
+    x2, y2, h2 = x_5[idx2], y_5[idx2], h_5[idx2]
+    
+    # Midpoint
+    x_mid = (x1 + x2) / 2
+    y_mid = (y1 + y2) / 2
+    h_mid_actual = (h1 + h2) / 2  # Linear interpolation
+
+    # Distance
+    dist = sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
+    # Plot the points
+    fig, ax = plt.subplots(figsize=(8, 6))
+    scatter = ax.scatter(x_5, y_5, c=h_5, cmap=cmap, s=150, edgecolor='black')
+    for i in range(5):
+        ax.text(x_5[i] + 1, y_5[i], f"{h_5[i]:.1f} m", fontsize=12, color='black')
+    
+    # Highlight selected points
+    ax.plot([x1, x2], [y1, y2], 'r--', label="Interpolation segment")
+    ax.scatter(x1, y1, color='red', s=120)
+    ax.scatter(x2, y2, color='red', s=120)
+    
+    # Midpoint
+    ax.scatter(x_mid, y_mid, color='blue', s=120, label='Midpoint')
+    ax.text(x_mid + 1, y_mid, "(Your answer here)", fontsize=12, color='blue')
+
+    ax.set_title(f"Linear Interpolation Task: Distance = {dist:.2f} m")
+    ax.set_xlabel("X [m]")
+    ax.set_ylabel("Y [m]")
+    ax.grid(True)
+    ax.legend()
+    plt.colorbar(scatter, label="Head [m]")
+    plt.show()
+
+    # Input box for user guess
+    guess_input = widgets.FloatText(
+        description='Your guess:',
+        value=0.0,
+        step=0.1,
+        layout=widgets.Layout(width='250px')
+    )
+
+    check_output = widgets.Output()
+    submit_btn = widgets.Button(description="Check Answer")
+
+    def check_guess(b):
+        check_output.clear_output()
+        with check_output:
+            selected = guess_input.value
+            if abs(selected - h_mid_actual) < 0.05:
+                display(Markdown(f"**Correct!** The interpolated head is **{h_mid_actual:.2f} m**"))
+            else:
+                display(Markdown(f"**Incorrect.** Your guess: {selected:.2f} m, Correct value: **{h_mid_actual:.2f} m**"))
+
+    submit_btn.on_click(check_guess)
+
+    display(Markdown("## Interpolation Question"))
+    display(Markdown(
+        f"Estimate the hydraulic head at the midpoint **assuming linear variation** between the two red points."
+        f"<br>**Distance between them**: {dist:.2f} m"
+    ))
+    display(widgets.HBox([guess_input, submit_btn]))
+    display(check_output)
