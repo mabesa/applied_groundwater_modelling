@@ -3,7 +3,6 @@ import ipywidgets as widgets
 from IPython.display import display, Markdown, clear_output
 from tasks_data import solutions, solutions_exact, solution_unit, questions_markdown, solutions_markdown, task_functions, task_functions_start
 from uncertainty_plot import display_disc_area_interactive
-from print_images import display_image
 
 
 
