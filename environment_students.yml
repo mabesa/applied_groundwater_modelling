@@ -26,3 +26,4 @@ dependencies:
   - statsmodels=0.14.4
   - contextily=1.6.2
   - PyYAML=6.0.2
+  - pykrige=1.7.2
