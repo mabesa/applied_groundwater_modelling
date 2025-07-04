@@ -32,11 +32,9 @@ def display_image(image_filename: str,
     ...               alt_text="Topographic map showing the Tsalet catchment boundary",
     ...               caption="Figure 1: Tsalet catchment area from Swiss Federal Office")
     """
-    # Construct path to image
-    base_path = os.path.join("..", "SUPPORT_REPO", image_folder)
+    base_path = os.path.join("..", "SUPPORT_REPO/static/figures", image_folder)
     image_path = os.path.join(base_path, image_filename)
     
-    # Check if file exists
     if not os.path.exists(image_path):
         print(f"Error: Image '{image_filename}' not found at {os.path.abspath(image_path)}")
         return

@@ -1,6 +1,6 @@
 from uncertainty_plot import display_disc_area_interactive
 from darcy_several_layers_keq import draw_schematic_interface, draw_hx_plot
-from print_images import display_image
+import print_images as du
 
 ### File to define the questions and solutions of tasks / all necessary data
 
@@ -242,7 +242,7 @@ As a result, $h(400)$ = $-\frac{0.000003}{0.00005}(400 - 0)$ + 50 = 26.0 $\text{
 
 # Dictionary to map tasks to Python functions to execute with the solution
 task_functions = {
-    "task01_1": lambda: display_image("SwissTopoTsaletArea.png"),
+    "task01_1": lambda: du.display_image(image_filename='SwissTopoTsaletArea.png', image_folder='3_exercises'),
     "task01_4": lambda: display_disc_area_interactive(),
     "task04_1": lambda: draw_hx_plot(),
 
