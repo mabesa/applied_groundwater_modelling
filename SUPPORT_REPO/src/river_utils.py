@@ -11,14 +11,9 @@ import os
 from datetime import datetime
 from typing import Tuple, Optional, Dict, Any, Union
 
-# Try to import matplotlib, handle gracefully if not available
-try:
-    import matplotlib.pyplot as plt
-    MATPLOTLIB_AVAILABLE = True
-except ImportError as e:
-    print(f"Warning: matplotlib not available: {e}")
-    MATPLOTLIB_AVAILABLE = False
-    plt = None
+import matplotlib.pyplot as plt
+from ipywidgets import interactive, FloatSlider
+
 
 
 def read_river_level_data(data_path: str, station_id: str) -> pd.DataFrame:
@@ -139,8 +134,6 @@ def plot_yearly_river_levels(data_path: str,
     tuple
         Matplotlib figure and axes objects
     """
-    if not MATPLOTLIB_AVAILABLE:
-        raise ImportError("matplotlib is required for plotting functions but is not available")
     # Set default years if not provided
     if start_year is None:
         start_year = 2010
@@ -293,8 +286,6 @@ def plot_combined_river_levels(data_path: str,
     tuple
         Matplotlib figure and axes objects
     """
-    if not MATPLOTLIB_AVAILABLE:
-        raise ImportError("matplotlib is required for plotting functions but is not available")
     # Set default years if not provided
     if start_year is None:
         start_year = 2010
@@ -347,3 +338,174 @@ def plot_combined_river_levels(data_path: str,
     plt.tight_layout()
     
     return fig, ax
+
+
+def plot_river_aquifer_interaction():
+    """
+    Generates an interactive plot to illustrate river-aquifer interaction
+    and the corresponding flux vs. head relationship.
+    """
+    def create_plot(h_aq, h_riv):
+        # Create a figure with two subplots, sharing the y-axis
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7), 
+                                       gridspec_kw={'width_ratios': [3, 1]},
+                                       sharey=True)
+        fig.subplots_adjust(wspace=0.05)
+
+        # --- Plot 1: Cross-section ---
+        
+        # Static elements
+        r_bot = 10  # Riverbed bottom elevation
+        aquifer_bottom = 0
+        river_banks = [45, 55]
+
+        # Aquifer material
+        ax1.fill_between([0, 100], aquifer_bottom, r_bot, color='sandybrown', alpha=0.4, label='Aquifer')
+        ax1.axhline(r_bot, color='saddlebrown', linestyle='--', linewidth=2, label=f'Riverbed Bottom (R_bot = {r_bot}m)')
+
+        # River channel
+        ax1.fill_between(river_banks, r_bot, 20, color='lightgrey')
+        
+        # Water in aquifer
+        ax1.fill_between([0, 100], aquifer_bottom, h_aq, color='lightblue', alpha=0.7)
+        ax1.axhline(h_aq, color='blue', linestyle='-', linewidth=2, label=f'Aquifer Head (H_aq = {h_aq:.1f}m)')
+
+        # Water in river
+        ax1.fill_between(river_banks, r_bot, h_riv, color='blue', alpha=0.6)
+        ax1.axhline(h_riv, xmin=0.45, xmax=0.55, color='darkblue', linestyle='-', linewidth=2, label=f'River Stage (H_riv = {h_riv:.1f}m)')
+
+        ax1.set_ylim(7, 16)
+        ax1.set_xlim(0, 100)
+        ax1.set_xlabel("Horizontal Distance (m)")
+        ax1.set_ylabel("Elevation / Head (m)")
+        
+        # --- Logic for conditions and arrows ---
+        if h_aq > h_riv:
+            # 1. Gaining Stream
+            condition_title = "Gaining Stream (Connected)"
+            equation = r'$Q_{riv} \propto (H_{riv} - H_{aq})$'
+            # Arrow shows head difference
+            ax1.annotate("", xy=(40, h_riv), xytext=(40, h_aq),
+                         arrowprops=dict(arrowstyle='<->', color='green', lw=2))
+            ax1.text(30, (h_riv + h_aq)/2, 'ΔH', color='green', ha='center', va='center')
+
+        elif h_aq > r_bot:
+            # 2. Losing Stream (Connected)
+            condition_title = "Losing Stream (Connected)"
+            equation = r'$Q_{riv} \propto (H_{riv} - H_{aq})$'
+            # Arrow shows head difference
+            ax1.annotate("", xy=(60, h_aq), xytext=(60, h_riv),
+                         arrowprops=dict(arrowstyle='<->', color='red', lw=2))
+            ax1.text(70, (h_riv + h_aq)/2, 'ΔH', color='red', ha='center', va='center')
+
+        else: # h_aq <= r_bot
+            # 3. Losing Stream (Disconnected)
+            condition_title = "Losing Stream (Disconnected)"
+            equation = r'$Q_{riv} \propto (H_{riv} - R_{bot})$'
+            # Arrow shows head difference relative to riverbed bottom
+            ax1.annotate("", xy=(60, r_bot), xytext=(60, h_riv),
+                         arrowprops=dict(arrowstyle='<->', color='darkred', lw=2))
+            ax1.text(70, (h_riv + r_bot)/2, 'ΔH', color='darkred', ha='center', va='center')
+            # Vadose zone
+            ax1.fill_between([0, 100], h_aq, r_bot, color='ivory', alpha=0.8, label='Vadose Zone')
+
+        ax1.set_title(f"{condition_title}\n{equation}", fontsize=14)
+        ax1.legend(loc='upper left')
+        ax1.grid(True, linestyle=':', alpha=0.6)
+
+        # --- Plot 2: Flux vs. Head Relationship ---
+        c_riv = 2.0 # Assume a conductance value for plotting
+        
+        # Calculate flux for a range of aquifer heads
+        h_aq_range = np.linspace(7, 16, 100)
+        q_riv = np.zeros_like(h_aq_range)
+        
+        # Apply conditional logic for flux calculation
+        connected_mask = h_aq_range > r_bot
+        q_riv[connected_mask] = c_riv * (h_riv - h_aq_range[connected_mask])
+        q_riv[~connected_mask] = c_riv * (h_riv - r_bot)
+
+        ax2.plot(q_riv, h_aq_range, color='black', lw=2)
+        
+        # Plot the current point on the curve
+        current_q = c_riv * (h_riv - h_aq) if h_aq > r_bot else c_riv * (h_riv - r_bot)
+        ax2.plot(current_q, h_aq, 'ro', markersize=10, label='Current State')
+
+        ax2.set_xlabel("Flux into GW (Q_riv)")
+        ax2.set_title("Flux Relationship")
+        ax2.grid(True, linestyle=':', alpha=0.6)
+        ax2.axhline(r_bot, color='saddlebrown', linestyle='--', lw=2)
+        ax2.axhline(h_riv, color='darkblue', linestyle='--', lw=2, alpha=0.5)
+        ax2.axvline(0, color='grey', linestyle='-', lw=1)
+        
+        # Add annotations for key points on the flux plot
+        ax2.text(ax2.get_xlim()[0]*0.9, r_bot + 0.1, 'R_bot', color='saddlebrown', va='bottom')
+        ax2.text(ax2.get_xlim()[0]*0.9, h_riv + 0.1, 'H_riv', color='darkblue', va='bottom')
+        
+        plt.show()
+
+    # Create interactive sliders
+    interactive_plot = interactive(create_plot,
+                                   h_aq=FloatSlider(min=7.0, max=16.0, step=0.2, value=11, description='Aquifer Head (H_aq)'),
+                                   h_riv=FloatSlider(min=10.0, max=15.0, step=0.2, value=12, description='River Stage (H_riv)'))
+    
+    return interactive_plot
+
+
+def plot_cross_section(ax, title, gw_mean, gw_high, river_mean, river_high, typical_depth):
+    """Helper function to plot a single river cross-section."""
+    # Define a generic topography for the cross-section
+    x = np.linspace(0, 100, 200)
+    river_banks = [40, 60]
+    
+    # Calculate riverbed elevation based on mean water level and depth
+    river_bed_elevation = river_mean - typical_depth
+    bank_elevation = max(river_high, gw_high) + 2 # Ensure banks are above high water
+    
+    # Create a simple rectangular channel shape for clarity
+    topo = np.full_like(x, bank_elevation)
+    river_mask = (x >= river_banks[0]) & (x <= river_banks[1])
+    topo[river_mask] = river_bed_elevation
+    
+    # Plot aquifer material
+    ax.fill_between(x, 0, topo, color='sandybrown', alpha=0.5, label='Aquifer Material')
+    
+    # --- Plot Groundwater Levels ---
+    # Fill area for mean groundwater level
+    ax.fill_between(x, 0, gw_mean, color='lightblue', alpha=0.6)
+    # Fill area for high groundwater level (difference)
+    ax.fill_between(x, gw_mean, gw_high, color='cornflowerblue', alpha=0.7)
+    
+    # Plot lines for groundwater levels
+    ax.axhline(gw_mean, color='blue', linestyle='-', lw=1.5, label=f'GW Mean: {gw_mean} m')
+    ax.axhline(gw_high, color='blue', linestyle='--', lw=1.5, label=f'GW High: {gw_high} m')
+
+    # --- Plot River Water Levels ---
+    river_x = np.linspace(river_banks[0], river_banks[1], 50)
+    # Fill area for mean river level
+    ax.fill_between(river_x, river_bed_elevation, river_mean, color='blue', alpha=0.8)
+    # Fill area for high river level (difference)
+    ax.fill_between(river_x, river_mean, river_high, color='darkblue', alpha=0.8)
+
+    # Plot lines for river levels
+    ax.plot(river_x, np.full_like(river_x, river_mean), color='cyan', linestyle='-', lw=2, label=f'River Mean: {river_mean} m')
+    ax.plot(river_x, np.full_like(river_x, river_high), color='cyan', linestyle='--', lw=2, label=f'River High: {river_high} m')
+
+    # --- Formatting ---
+    ax.set_title(title, fontsize=14, weight='bold')
+    ax.set_xlabel("Horizontal Distance (m)")
+    ax.set_ylabel("Elevation (m a.s.l.)")
+    ax.grid(True, linestyle=':', alpha=0.7)
+    ax.legend(loc='upper right')
+    
+    # Set y-limits to be consistent and appropriate
+    all_levels = [gw_mean, gw_high, river_mean, river_high, river_bed_elevation]
+    ax.set_ylim(min(all_levels) - 2, max(all_levels) + 3)
+    ax.set_xlim(x.min(), x.max())
+
+
+
+
+
+
+

@@ -39,8 +39,9 @@ def download_named_file(name, dest_folder=None, data_type=None):
     if name not in url_dict:
         raise ValueError(f"No URL configured for '{name}' in {DATA_SOURCE} data for case study '{CASE_STUDY}'.")
 
-    url = url_dict[name]
-    filename = os.path.basename(url.split("?")[0])
+    file_info = url_dict[name]
+    url = file_info['url']
+    filename = file_info['filename']
     
     # Determine destination folder
     if dest_folder is None:
