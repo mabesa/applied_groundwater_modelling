@@ -1,3 +1,6 @@
+from pykrige.ok import OrdinaryKriging
+from pykrige.uk import UniversalKriging
+import numpy as np
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
@@ -220,3 +223,75 @@ def linear_interpolation_task():
     ))
     display(widgets.HBox([guess_input, submit_btn]))
     display(check_output)
+
+
+def plot_head_full_field_interactive(method_passed, resolution_interpolation_passed=1000):
+    xi = np.linspace(0, 100, resolution_interpolation_passed)
+    yi = np.linspace(0, 100, resolution_interpolation_passed)
+    xi_grid, yi_grid = np.meshgrid(xi, yi)
+
+    if method_passed in ['linear', 'nearest', 'cubic']:
+        zi = griddata((x_all, y_all), head_all, (xi_grid, yi_grid), method=method_passed)
+        heads_new = griddata((x_all, y_all), head_all, (x_new, y_new), method=method_passed)
+    elif method_passed == 'ordinary_kriging':
+        x_all_float = x_all.astype(float)
+        y_all_float = y_all.astype(float)
+        x_new_float = x_new.astype(float)
+        y_new_float = y_new.astype(float)       
+        OK = OrdinaryKriging(x_all_float, y_all_float, head_all, variogram_model='linear', verbose=False, enable_plotting=False)
+        zi, _ = OK.execute('grid', xi, yi)
+        heads_new = np.array([OK.execute('points', [x], [y])[0][0] for x, y in zip(x_new_float, y_new_float)])
+    elif method_passed == 'universal_kriging':
+        x_all_float = x_all.astype(float)
+        y_all_float = y_all.astype(float)
+        x_new_float = x_new.astype(float)
+        y_new_float = y_new.astype(float)   
+        UK = UniversalKriging(x_all_float, y_all_float, head_all, variogram_model='linear', drift_terms=['regional_linear'])
+        zi, _ = UK.execute('grid', xi, yi)
+        heads_new = np.array([UK.execute('points', [x], [y])[0][0] for x, y in zip(x_new_float, y_new_float)])
+    else:
+        raise ValueError("Unknown interpolation method.")
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    contour = ax.contour(xi_grid, yi_grid, zi, 15, cmap=cmap)
+    fmt = lambda x: f"{x:.1f} m"
+    plt.clabel(contour, inline=True, fontsize=8, fmt=fmt)
+    ax.scatter(x_new, y_new, c=heads_new, cmap=cmap, edgecolor='red', s=80, marker='.', label='A, B, C')
+    for i, label in enumerate(labels_new):
+        ax.text(x_new[i] + 1, y_new[i], label, fontsize=14, color='red', va='center')
+    ax.set_xlabel('X [m]')
+    ax.set_ylabel('Y [m]')
+    ax.set_title(f"Interpolated $h(x,y)$ field ({method_passed})")
+    ax.grid(True)
+    enable_hover_coordinates(ax)
+    plt.show()
+
+# Interactive widget for method selection
+def interactive_interpolation():
+    methods = [
+        ('Linear', 'linear'),
+        ('Nearest', 'nearest'),
+        ('Cubic', 'cubic'),
+        ('Ordinary Kriging', 'ordinary_kriging'),
+        ('Universal Kriging', 'universal_kriging')
+    ]
+    method_buttons = widgets.ToggleButtons(
+        options=methods,
+        description='Click on the interpolation method to display the field:',
+        button_style='info'
+    )
+    output = widgets.Output()
+
+    def on_method_change(change):
+        output.clear_output(wait=True)
+        with output:
+            display(Markdown("###         Loading the new interpolated field..."))
+        # Now update plot
+        output.clear_output(wait=True)
+        with output:
+            plot_head_full_field_interactive(change['new'])
+
+    method_buttons.observe(on_method_change, names='value')
+    display(method_buttons)
+    display(output)
+
