@@ -21,6 +21,7 @@ dependencies:
   - pandas=2.2.3
   - plotly=6.2.0
   - porespy=2.4.1
+  - pykrige=1.7.2
   - pre-commit=4.2.0
   - PyYAML=6.0.2
   - pykrige=1.7.2
