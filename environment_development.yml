@@ -5,6 +5,7 @@ channels:
   - defaults
 dependencies:
   - python=3.12
+  - affine=2.4.0
   - contextily=1.6.2
   - elevation
   - flopy=3.9.2

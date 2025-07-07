@@ -4,7 +4,9 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - python=3.12
   - contextily=1.6.2
+  - affine=2.4.0
   - elevation
   - flopy=3.9.2
   - gdal=3.10.2
@@ -22,7 +24,6 @@ dependencies:
   - porespy=2.4.1
   - pykrige=1.7.2
   - PyYAML=6.0.2
-  - python=3.12
   - python-graphviz=0.20.3
   - rasterio=1.4.3
   - rasterstats=0.20.0
