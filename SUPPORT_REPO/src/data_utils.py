@@ -14,12 +14,10 @@ def get_data_urls():
     
     return DATA_URLS[CASE_STUDY][DATA_SOURCE]
 
-
 def get_default_data_folder():
     """Get the default data folder for the current case study."""
     home_dir = os.path.expanduser("~")
     return os.path.join(home_dir, "applied_groundwater_modelling_data", CASE_STUDY)
-
 
 def download_named_file(name, dest_folder=None, data_type=None):
     """
@@ -86,7 +84,6 @@ def download_named_file(name, dest_folder=None, data_type=None):
             os.remove(dest_path)
         raise
 
-
 def get_data_path(data_type=None):
     """
     Get the path to data folder for the current case study.
@@ -102,7 +99,6 @@ def get_data_path(data_type=None):
         return os.path.join(base_path, data_type)
     return base_path
 
-
 def list_available_datasets():
     """List all available datasets for the current case study and data source."""
     try:
@@ -112,3 +108,4 @@ def list_available_datasets():
             print(f"  - {name}")
     except Exception as e:
         print(f"Error listing datasets: {e}")
+
