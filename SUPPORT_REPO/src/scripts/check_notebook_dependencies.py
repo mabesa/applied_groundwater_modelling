@@ -36,7 +36,8 @@ def is_stdlib_module(module_name):
     stdlib_modules = {
         'os', 'sys', 're', 'math', 'datetime', 'time', 'random', 'json',
         'csv', 'argparse', 'collections', 'copy', 'functools', 'itertools',
-        'glob', 'pathlib', 'typing', 'warnings', 'io', 'tempfile', 'inspect'
+        'glob', 'pathlib', 'typing', 'warnings', 'io', 'tempfile', 'inspect', 
+        'pickle'
     }
     return module_name in stdlib_modules
 

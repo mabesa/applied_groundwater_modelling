@@ -313,10 +313,60 @@ widget = widgets.WidgetType(
 
 </details>
 
+## Data Management
+
+This course uses external datasets that are automatically downloaded when needed. The data download system is configured through a `config.py` file that specifies data sources and repository links.
+
+### Default Public Data Access
+
+By default, the course uses publicly available data for the Limmat valley aquifer case study. No additional configuration is required for most users.
+
+### Private Data Access (Workshop Participants)
+
+Workshop participants will receive a `config.py` file with links to additional private datasets and repositories. Place this file in the root directory of the repository (same level as `README.md`).
+
+**Important:** The `config.py` file contains links to private repositories and should not be shared or committed to version control. It is automatically ignored by git.
+
+### Data Configuration
+
+The data system supports multiple case studies and data sources:
+
+- **Case Studies**: `limmat` (default), `zarafshan`
+- **Data Sources**: `dropbox`, `switch`
+
+To modify data sources, edit your `config.py` file:
+
+```python
+# Choose case study
+CASE_STUDY = "limmat"  # or "zarafshan"
+
+# Choose data source
+DATA_SOURCE = "dropbox"  # or "switch"
+```
+
+### Data Download
+
+Data is automatically downloaded when needed using functions like:
+
+```python
+from data_utils import download_named_file
+
+# Download a specific dataset
+file_path = download_named_file(
+    name='groundwater_map_norm',
+    data_type='gis'
+)
+```
+
+Downloaded data is stored in `~/applied_groundwater_modelling_data/[case_study]/` and organized by data type (climate, rivers, gis, etc.).
+
 ## Repository Structure
 (to be refined)
-```
-APPLIED_GROUNDWATER_MODELING/
+
+The applied groundwater modelling course uses data downloaded from sources configured in the file config.py (see config_template.py for a template). The downloaded data is stored in the `applied_groundwater_modelling_data` folder on the same hierarchical level as the course repository. 
+
+``` 
+applied_groundwater_modelling/
 ├── ADDITIONAL_MATERIAL/         # Additional optional materials for the course 
 ├── CASE_STUDY/                  # Case study materials
 ├── EXERCISES/                   # Exercises for the course
@@ -326,10 +376,16 @@ APPLIED_GROUNDWATER_MODELING/
 │   ├── src/                     # Support code for the course
 │   ├── static/                  # Static files (images, figures, etc.)
 ├── environment_development.yml  # Conda environment for development
-├── environment_students.yml      # Conda environment for students
-├── .gitignore                    # Git ignore file
-├── README.md                     # This file
-└── LICENSE                       # License file
+├── environment_students.yml     # Conda environment for students
+├── .gitignore                   # Git ignore file
+├── README.md                    # This file
+└── LICENSE                      # License file
+
+applied_groundwater_modelling_data/
+├── limmat/
+│   ├── data/                    # Data files for the Limmat case study
+|   |   ├── climate/             # Climate data
+│   ├── model/                   # Model files for the Limmat case study
 ```
 
 ## How to Use this Repository as a Student
@@ -494,6 +550,28 @@ The course stretches over 13 weeks with 4 lectures per week. For each lecture we
 - Project work
 - Final exam
 </details>
+
+## Troubleshooting
+### Troubleshooting Data Downloads
+
+**"No URL configured" error:**
+- Ensure you have a valid `config.py` file or that `config_template.py` contains the required dataset
+- Check that the dataset name matches exactly (case-sensitive)
+
+**Download failures:**
+- Check your internet connection
+- Verify that the repository links are accessible
+- For private repositories, ensure the links in your `config.py` are current
+
+**"Path does not exist" errors:**
+- The data download system creates directories automatically
+- Ensure you have write permissions in your home directory
+- Check that `~/applied_groundwater_modelling_data/` can be created
+
+**For workshop participants:**
+- Do not share your `config.py` file as it contains links to private repositories
+- If you lose your `config.py`, contact the instructors for a replacement
+- The `config.py` file should be placed in the root directory of the repository
 
 ## Acknowledgments
 Funded by the ETH Zurich Department of Earth and Planetary Sciences and the Rectors Innovendum Fund ([project link](https://ww2.lehrbetrieb.ethz.ch/id-workflows/faces/instances/Innovedum/ProzessInnovedum$1/197A35DA732E83F5/innovedumPublic.Details/Details.xhtml)).
