@@ -5,6 +5,7 @@ channels:
   - defaults
 dependencies:
   - python=3.12
+  - affine=2.4.0
   - contextily=1.6.2
   - elevation
   - flopy=3.9.2
@@ -27,6 +28,7 @@ dependencies:
   - pykrige=1.7.2
   - python-graphviz=0.20.3
   - rasterio=1.4.3
+  - rasterstats=0.20.0
   - scikit-image[version='<0.25.0']
   - scipy=1.15.2
   - shapely=2.1.0

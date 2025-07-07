@@ -3,6 +3,8 @@ import geopandas as gpd
 from matplotlib.colors import ListedColormap
 import json
 from typing import Tuple, Any
+from matplotlib.lines import Line2D
+from matplotlib.legend import Legend
 
 def display_groundwater_resources_map(gw_map_path, zoom_level=10, map_center=None):
     """
@@ -148,18 +150,18 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10, map_center=Non
     
     return m
 
-
-def plot_model_delineation_map(
+def plot_model_area_map(
     gw_depth_path: str, 
     rivers_path: str, 
     gauges_path: str,
+    model_boundary_path: str = None,
     figsize: Tuple[int, int] = (12, 12)
 ) -> Tuple[Any, Any]:
     """
-    Displays a map with groundwater depth, rivers, and gauges.
+    Displays a map with groundwater depth, rivers, gauges, and an optional model boundary.
 
     This function loads and plots geospatial data for groundwater depth, 
-    river networks, and monitoring gauges.
+    river networks, monitoring gauges, and an optional model boundary outline.
 
     Requires the 'geopandas' and 'matplotlib' libraries.
 
@@ -171,6 +173,8 @@ def plot_model_delineation_map(
         File path to the rivers GeoPackage (.gpkg).
     gauges_path : str
         File path to the gauges GeoPackage (.gpkg).
+    model_boundary_path : str, optional
+        File path to the model boundary GeoPackage (.gpkg), by default None.
     figsize : tuple, optional
         Figure size (width, height) in inches, by default (12, 12).
 
@@ -188,13 +192,11 @@ def plot_model_delineation_map(
         return None, None
 
     # --- 1. Load Geospatial Data ---
-    # Specify layer names to avoid ambiguity and errors with multi-layer gpkg files
     gw_depth = gpd.read_file(gw_depth_path, layer='GS_GW_LEITER_F')
     rivers = gpd.read_file(rivers_path, layer='AVZH_GEWAESSER_F')
     gauges = gpd.read_file(gauges_path, layer='GS_GRUNDWASSERPEGEL_P')
 
-    # --- 2. Define Color Scheme ---
-    # Reuse the same color scheme as the interactive map
+    # --- 2. Define Color Scheme and Labels ---
     custom_colors = {
         1: '#eda53f',  # light orange
         2: '#cfe2f3',  # pale blue
@@ -205,40 +207,74 @@ def plot_model_delineation_map(
         10: '#d5a6bd',  # light pink
     }
     
-    # Get unique types present in the data and sort them
-    gw_types = sorted(gw_depth['GWLTYP'].unique())
-    # Create a list of colors corresponding to the sorted types
-    colors_list = [custom_colors.get(t, '#999999') for t in gw_types] # Use grey for undefined
+    # English labels for groundwater types
+    type_labels = {
+        1: 'Low thickness (<2m)',
+        2: 'Medium thickness (2-10m)',
+        3: 'Suspected occurrence',
+        4: 'High thickness (10-20m)',
+        6: 'Very high thickness (>20m)',
+        8: 'Gravel aquifer, low thickness',
+        10: 'Gravel aquifer, medium thickness',
+    }
+
+    # Add a new column with descriptive labels for the legend
+    gw_depth['GWL_DESC'] = gw_depth['GWLTYP'].map(type_labels).fillna('Other')
+
+    # Create a mapping from description back to GWLTYP to find the correct color
+    desc_to_type = {v: k for k, v in type_labels.items()}
+    
+    # Get the unique descriptions and sort them alphabetically (this is how geopandas orders them)
+    sorted_descriptions = sorted(gw_depth['GWL_DESC'].unique())
+    
+    # Create the color list in the same order as the sorted descriptions
+    colors_list = [custom_colors.get(desc_to_type.get(desc), '#999999') for desc in sorted_descriptions]
     custom_cmap = ListedColormap(colors_list)
 
     # --- 3. Create the Plot ---
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
     # Plot base layers
-    gw_depth.plot(
-        ax=ax, 
-        column='GWLTYP', 
-        categorical=True, 
-        legend=True,
-        legend_kwds={'title': "Groundwater Thickness Type"},
-        cmap=custom_cmap,
-        alpha=0.7
-    )
-    rivers.plot(ax=ax, color='blue', linewidth=1.5, label='Rivers')
-    gauges.plot(ax=ax, color='red', marker='^', markersize=50, label='Gauges')
+    # This plot call creates its own legend for the groundwater types (Legend 1)
+    gw_depth.plot(ax=ax, column='GWL_DESC', categorical=True, legend=True,
+                  legend_kwds={'title': "Groundwater Type", 'loc': 'upper right', 'bbox_to_anchor': (1.0, 1.0)},
+                  cmap=custom_cmap, alpha=0.7)
+    
+    # Plot other layers. We will create a manual legend for these.
+    rivers.plot(ax=ax, color='blue', linewidth=1.5)
+    gauges.plot(ax=ax, color='red', marker='^', markersize=50)
 
-    # --- 3. Formatting ---
-    ax.set_title('Groundwater Resources, Rivers, and Gauges', fontsize=16, weight='bold')
-    ax.set_xlabel('Easting (m)')
-    ax.set_ylabel('Northing (m)')
+    # --- 4. Create a second, manual legend (Legend 2) ---
+    # Create proxy artists for the legend handles
+    legend_handles = [
+        Line2D([0], [0], color='blue', lw=1.5, label='Rivers'),
+        Line2D([0], [0], marker='^', color='red', label='Gauges', linestyle='None', markersize=8)
+    ]
+    legend_labels = ['Rivers', 'Gauges']
+
+    # Plot model boundary if provided and add its handle to the legend
+    if model_boundary_path:
+        try:
+            model_boundary = gpd.read_file(model_boundary_path)
+            model_boundary.plot(ax=ax, facecolor='none', edgecolor='black', 
+                                linestyle='--', linewidth=2.5)
+            legend_handles.append(Line2D([0], [0], color='black', lw=2.5, linestyle='--', label='Model Boundary'))
+            legend_labels.append('Model Boundary')
+        except Exception as e:
+            print(f"Could not load or plot model boundary from {model_boundary_path}: {e}")
+
+    # Create the second legend object from the handles and labels
+    legend2 = Legend(ax, legend_handles, legend_labels, loc='upper left')
+    
+    # Add the second legend to the plot manually, which preserves the first legend
+    ax.add_artist(legend2)
+
+    # --- 5. Formatting ---
+    ax.set_title('Model Area Delineation', fontsize=16, weight='bold')
+    ax.set_xlabel('Easting (m, CH1903+ / LV95)')
+    ax.set_ylabel('Northing (m, CH1903+ / LV95)')
     ax.grid(True, linestyle=':', alpha=0.6)
     
-    # Create a single legend for layers plotted with 'label'
-    handles, labels = ax.get_legend_handles_labels()
-    # The legend for gw_depth is created by its own plot call, so we only need the others.
-    ax.legend(handles, labels, loc='upper left')
-    
-    # Set plot limits to focus on the Limmat Valley
     ax.set_xlim(2674000, 2684000)
     ax.set_ylim(1246000, 1252000)
 
