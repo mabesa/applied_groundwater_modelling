@@ -2,6 +2,17 @@ import os
 import requests
 from tqdm.notebook import tqdm
 
+# Find path to project root directory from both the src and the home folder
+try: 
+    # Try to add from src folder
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+except NameError:
+    # If __file__ is not defined, assume running from home folder
+    project_root = os.path.expanduser("~")
+# Add the project root to the system path
+if project_root not in os.sys.path:
+    os.sys.path.append(project_root)
+
 from config import CASE_STUDY, DATA_SOURCE, DATA_URLS
 
 def get_data_urls():
