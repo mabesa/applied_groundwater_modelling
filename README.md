@@ -552,6 +552,16 @@ The course stretches over 13 weeks with 4 lectures per week. For each lecture we
 </details>
 
 ## Troubleshooting
+
+### Troubleshooting Git repo on JupyterHub
+It may happen, that your repository on JupyterHub is not up to date with the latest version of the course repository. In this case, you can update your repository by running the following commands in a terminal on JupyterHub:
+
+```bash
+cd ~/applied_groundwater_modelling
+git fetch origin
+git reset --hard origin/main
+```
+
 ### Troubleshooting Data Downloads
 
 **"No URL configured" error:**
