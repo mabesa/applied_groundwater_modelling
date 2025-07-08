@@ -317,6 +317,8 @@ widget = widgets.WidgetType(
 
 This course uses external datasets that are automatically downloaded when needed. The data download system is configured through a `config.py` file that specifies data sources and repository links.
 
+Please look at `config_template.py` for a template of the configuration file, containing publicly available data for the Limmat valley aquifer model. You can copy this file to `config.py` and modify it according to your needs.
+
 ### Default Public Data Access
 
 By default, the course uses publicly available data for the Limmat valley aquifer case study. No additional configuration is required for most users.
@@ -557,9 +559,15 @@ The course stretches over 13 weeks with 4 lectures per week. For each lecture we
 It may happen, that your repository on JupyterHub is not up to date with the latest version of the course repository. In this case, you can update your repository by running the following commands in a terminal on JupyterHub:
 
 ```bash
+# Navigate to the course repository
 cd ~/applied_groundwater_modelling
+# Fetch the latest changes from the remote repository
 git fetch origin
-git reset --hard origin/main
+# Check the status of your local repository
+git status
+# You cannot commit any changes. You need to reset your local repository to match the remote 'course_2025' branch
+# Reset your local repository to match the remote 'course_2025' branch
+git reset --hard origin/course_2025
 ```
 
 ### Troubleshooting Data Downloads

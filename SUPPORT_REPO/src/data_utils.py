@@ -3,8 +3,8 @@ import sys
 import requests
 from tqdm.notebook import tqdm
 
-def find_project_root(marker_file='config.py'):
-    """Find the project root by searching for a marker file."""
+def find_project_root(marker_files=['config.py', 'config_template.py']):
+    """Find the project root by searching for a list of marker files."""
     # Start from current working directory. In a locally run Jupyter notebook, 
     # this will be the directory where the notebook is located.
     # In a JupyterHub environment, it will be the user's home directory.
@@ -14,10 +14,11 @@ def find_project_root(marker_file='config.py'):
     # or reach the filesystem root.
     while os.path.dirname(path) != path: # Stop at filesystem root
         print(f"Checking path: {path}")
-        if os.path.exists(os.path.join(path, marker_file)):
-            print(f"Found project root: {path}")
-            return path
-        print(f"Marker file '{marker_file}' not found in {path}. Moving up...")
+        for marker in marker_files:
+            if os.path.exists(os.path.join(path, marker)):
+                print(f"Found project root: {path} (marker: {marker})")
+                return path
+        print(f"Marker file not found in {path}. Moving up...")
         path = os.path.dirname(path)
     
     # Fallback 
@@ -26,18 +27,25 @@ def find_project_root(marker_file='config.py'):
         print(f"Trying to find project root using __file__...")
         path = os.path.dirname(os.path.abspath(__file__))
         while os.path.dirname(path) != path:
-            if os.path.exists(os.path.join(path, marker_file)):
-                return path
+            for marker in marker_files:
+                if os.path.exists(os.path.join(path, marker)):
+                    return path
             path = os.path.dirname(path)
     except NameError:
         pass # __file__ is not defined in interactive environments
-    raise FileNotFoundError(f"Project root with '{marker_file}' not found.")
+    raise FileNotFoundError(f"Project root with one of {marker_files} not found.")
 
 project_root = find_project_root()
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from config import CASE_STUDY, DATA_SOURCE, DATA_URLS
+try:
+    from config import CASE_STUDY, DATA_SOURCE, DATA_URLS
+    print("Loaded configuration from 'config.py'")
+except ImportError:
+    print("Warning: 'config.py' not found. Falling back to 'config_template.py'.")
+    from config_template import CASE_STUDY, DATA_SOURCE, DATA_URLS
+
 
 def get_data_urls():
     """Get data URLs based on current case study and data source settings."""
