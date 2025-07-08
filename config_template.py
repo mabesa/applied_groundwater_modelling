@@ -37,6 +37,11 @@ DATA_URLS = {
                 "layer": "AVZH_GEWAESSER_F",  # Layer name for rivers
             },  
             # Add other public limmat data URLs
+            "model_boundary": {
+                "url": "https://www.dropbox.com/scl/fi/0q5z2n343ne9g4kttrecs/model_boundary.gpkg?rlkey=epwc8zjxn6u2tvnvqwu0gx70g&dl=1", 
+                "filename": "limmat_model_boundary.gpkg",
+                "layer": "id",  # Layer name for model boundary
+            }
         },
         "switch": {
             "groundwater_map_norm": "https://ethz-my.sharepoint.com/:u:/r/personal/XXXX/applied_gw_modelling_zurich_case_study_data/Grundwasservorkommen_-OGD/Grundwasservorkommen_-OGD.gpkg?csf=1&web=1&e=henbgz",
