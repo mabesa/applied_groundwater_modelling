@@ -383,11 +383,11 @@ applied_groundwater_modelling/
 ├── README.md                    # This file
 └── LICENSE                      # License file
 
-applied_groundwater_modelling_data/
+applied_groundwater_modelling_data/ (will be created automatically)
 ├── limmat/
 │   ├── data/                    # Data files for the Limmat case study
 |   |   ├── climate/             # Climate data
-│   ├── model/                   # Model files for the Limmat case study
+│   ├── limmat_valley_model/     # Model files for the Limmat case study
 ```
 
 ## How to Use this Repository as a Student
