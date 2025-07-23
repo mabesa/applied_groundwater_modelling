@@ -131,9 +131,9 @@ def transport_matching():
 
 def transport_observation_matching():
     possibilities_solution = {
-        'Advection term' : "Translation of the gaussian mean position with time",
-        'Molecular diffusion term' : "Change in the Gaussian integral with time",
-        'Dispersion term' : "Change in the Gaussian width with time",
+        'Advection term' : "Translation of the peak location in time",
+        'Dispersion term' : "Change in the peak width with time",
+        'Molecular diffusion term' : "Change in the signal integral with time",
     }
     dictionnary_matching(possibilities_solution)
     return
@@ -209,4 +209,98 @@ def solution_transport_matching():
 
     plt.tight_layout()
     plt.show()
+    return
+
+
+def transport_gaussian_plot():
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import ipywidgets as widgets
+    from IPython.display import display
+
+    def c_x_t_curve(v=1.0, D=0.05, alpha=1.0, t=1.0, M=1.0, phi_0=0.3, R=1.0, x_range=(0, 100), n_points=200):
+        """
+        Returns x, c(x,t) arrays for given parameters for an instantaneous source solution.
+        """
+        x = np.linspace(*x_range, n_points)
+        D_L = D + alpha * v  # Effective dispersion
+
+        if t == 0:
+            c = np.zeros_like(x)
+            idx = np.argmin(np.abs(x))  # Approximate delta function at x=0
+            c[idx] = M / (R * phi_0)  
+            return x, c
+
+        factor1 = M / (R * phi_0 * np.sqrt(4 * np.pi * D_L * t / R))
+        exponent = -((x - v * t / R) ** 2) / (4 * D_L * t / R)
+        c = factor1 * np.exp(exponent)
+        return x, c
+
+    # Fixed y max value using t=0.01 to avoid delta peak
+    x_fixed, c_fixed = c_x_t_curve(t=0.5)
+    c_fixed_max = np.max(c_fixed)
+
+
+    def plot_cx_t_interactive(v, D, alpha, t):
+        x, c = c_x_t_curve(v, D, alpha, t)
+
+        # Normalize c(x,t) to use as PDF
+        dx = x[1] - x[0]
+        c_pdf = c / (np.sum(c) * dx)
+
+        # Compute cumulative distribution
+        c_cdf = np.cumsum(c_pdf) * dx
+
+        # Interpolate to get mean and quantiles
+        mean_x = np.sum(x * c_pdf * dx)
+        q1_x = np.interp(0.25, c_cdf, x)
+        q3_x = np.interp(0.75, c_cdf, x)
+
+
+        c_mean = np.interp(mean_x, x, c)
+        c_q1 = np.interp(q1_x, x, c)
+        c_q3 = np.interp(q3_x, x, c)
+
+        # Observation wells
+        obs_x = [5, 10, 15, 20]
+        obs_c = np.interp(obs_x, x, c)
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.plot(x, c, label=r'$c(x, t)$', color='blue')
+        ax.scatter(obs_x, obs_c, color='red', zorder=5, label='Observation wells')
+
+        # Vertical lines to curve (not full height)
+        ax.vlines(mean_x, 0, c_mean, color='green', linestyle='--', linewidth=2, label='Mean')
+        ax.vlines(q1_x, 0, c_q1, color='green', linestyle=':', linewidth=2, label='1st Quartile')
+        ax.vlines(q3_x, 0, c_q3, color='green', linestyle=':', linewidth=2, label='3rd Quartile')
+
+        # Mean line from x-axis up to curve
+        c_mean = np.interp(mean_x, x, c)
+        ax.vlines(mean_x, 0, c_mean, color='green', linestyle='--', linewidth=2)
+
+        ax.set_xlabel('$x$ [m]')
+        ax.set_ylabel('$c(x,t)$ [mass / volume]')
+        ax.set_title('Instantaneous Source Transport: $c(x,t)$')
+        ax.set_xlim(0, 30)
+        ax.set_ylim(0, 1 * c_fixed_max)
+        ax.legend(loc='upper right')
+        ax.grid(True)
+        plt.show()
+
+    def interactive_cx_t():
+        v_slider = widgets.FloatSlider(value=1.0, min=0.1, max=3, step=0.2,
+                                    description='Seepage velocity u [m/d]', layout=widgets.Layout(width='400px'), style={'description_width': '200px'})
+        D_slider = widgets.FloatSlider(value=0.1, min=0.001, max=1.0, step=0.1,
+                                    description='Diffusion coefficient D [m²/d]', layout=widgets.Layout(width='400px'), style={'description_width': '200px'})
+        alpha_slider = widgets.FloatSlider(value=0.5, min=0.1, max=3, step=0.2,
+                                        description='Dispersivity α [m]', layout=widgets.Layout(width='400px'), style={'description_width': '200px'})
+        t_slider = widgets.FloatSlider(value=0.1, min=0, max=50.0, step=0.2,
+                                    description='Time t [d]', layout=widgets.Layout(width='400px'))
+        ui = widgets.VBox([v_slider, D_slider, alpha_slider, t_slider])
+        out = widgets.interactive_output(plot_cx_t_interactive, {
+            'v': v_slider, 'D': D_slider, 'alpha': alpha_slider, 't': t_slider
+        })
+        display(ui, out)
+
+    interactive_cx_t()
     return
