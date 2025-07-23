@@ -52,18 +52,20 @@ def plot_initial_wells():
         s=300, label='Known wells'
     )
     plt.colorbar(sc, label='$h(x,y)$ [m]')
+    # Annotate only the observation wells (not the river)
+    for x, y, h in zip(x_wells, y_wells, head_wells):
+        ax.text(x + 1, y, f"{h:.0f}", fontsize=8, color='black', va='bottom')
     for i, (x, y, label) in enumerate(zip(x_new, y_new, labels_new)):
         ax.scatter(x, y, facecolors='red', edgecolors='red', marker='.', s=200, linewidths=1)
         ax.text(x + 1, y, label, fontsize=14, color='red', va='center')
     ax.set_xlabel('$x$ [m]')
     ax.set_ylabel('$y$ [m]')
-    ax.set_xlim(0, 100)
-    ax.set_ylim(0, 100)
+    ax.set_xlim(-3, 103)
+    ax.set_ylim(-3, 103)
     ax.set_title(f"Field data : only known hydraulic heads are shown (observation wells and river).")
     ax.grid(True)
     enable_hover_coordinates(ax)
     plt.show()
-
 
 
 def attribution_observation_well_student(resolution_interpolation):
