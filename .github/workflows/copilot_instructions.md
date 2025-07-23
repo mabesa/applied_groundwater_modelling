@@ -25,12 +25,41 @@ This is an educational groundwater modeling course for Master-level students at 
 
 ## Notebook Structure Standards
 - Start notebooks with standardized imports from SUPPORT_REPO/src
-- Use consistent markdown formatting with custom CSS boxes:
-  - `exercise-box` for required thinking exercises
-  - `example-box` for practical examples
-  - `furtherthinking-box` for optional advanced topics
+- Use consistent markdown formatting with > for boxes. Below you find examples of the different boxes we use. 
 - Include clear section headers and learning objectives
 - Provide context and motivation before technical content
+
+### Example Boxes
+```markdown
+> ✏️ **Exercise: Limmat Valley Aquifer Analysis**
+> 
+> What are the major hydrological processes in the Limmat valley aquifer?
+> 
+> Where would you set the boundaries of the Limmat valley aquifer?
+```
+
+```markdown
+> 🤔 **Further Thinking: River Flow Analysis**
+> 
+> Please take some time to familiarize yourself with the yearbook sheets.
+> 
+> Did you notice the different shapes of the flow duration curves? What does this tell you about the hydrological regime of the rivers?
+> 
+> Can you find the highest ever measured discharge in both rivers? Which one might be the more difficult to manage?
+```
+
+```markdown 
+> 📚 **Theory: Groundwater Flow Equation**
+> 
+> The groundwater flow equation is a partial differential equation that describes the movement of groundwater through porous media. It is based on Darcy's law and the principle of mass conservation.
+```
+
+```markdown
+> 💡 **Example: Simple Classification**
+> 
+> A mouse is an example of a mammal.
+```
+
 
 ## Domain-Specific Considerations
 - **Units**: Always specify units for hydrogeological parameters (m/day, m³/s, etc.)
