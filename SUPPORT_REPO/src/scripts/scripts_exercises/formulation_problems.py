@@ -117,28 +117,11 @@ def flow_analytical_solutions_matching():
         'Steady-state 1D flow, confined aquifer, with a well' : "$h(r)= h(r=0) - \\frac{Q_w}{2 \\pi T} \\ln (\\frac{r}{R(t)})$",
         'Steady-state 1D flow, unconfined aquifer, with a well' : "$h(r)^2 = h(r=0)^2 - \\frac{Q_w}{K \\pi} \\ln (\\frac{r}{R(t)})$",
     }
-    dictionnary_matching(possibilities_solution, solution_transport_matching)
+    dictionnary_matching(possibilities_solution, solution_flow_matching)
     return
 
-def transport_matching():
-    possibilities_solution = {
-        'Advection term' : "$\\vec{j_1} = \\phi_e \\vec{u} c = \\vec{q} c$",
-        'Molecular diffusion term' : "$\\vec{j_2} = - \\phi_e \\bold{D_{me}} \\vec{\\nabla}c$",
-        'Dispersion term' : "$\\vec{j_3} = - \\phi_e \\bold{D} \\vec{\\nabla}c$",
-    }
-    dictionnary_matching(possibilities_solution)
-    return
 
-def transport_observation_matching():
-    possibilities_solution = {
-        'Advection term' : "Translation of the peak location in time",
-        'Dispersion term' : "Change in the peak width with time",
-        'Molecular diffusion term' : "Change in the signal integral with time",
-    }
-    dictionnary_matching(possibilities_solution)
-    return
-
-def solution_transport_matching(): 
+def solution_flow_matching(): 
 
     L = 20  
     x = np.linspace(0.01, L, 500) 
@@ -165,58 +148,75 @@ def solution_transport_matching():
 
     # --- Graph 1: ---
     axs[0].plot(x, h1, label='h(x)')
-    axs[0].axvline(L, color='gray', linestyle='--', label='x = L')
-    axs[0].axhline(hL, color='gray', linestyle='--', label='h = h(L)')
-    axs[0].axvline(0, color='gray', linestyle=':', label='x = 0')
-    axs[0].axhline(h0, color='gray', linestyle=':', label='h = h(0)')
+    axs[0].axvline(L, color='blue', linestyle='--', label='x = L')
+    axs[0].axhline(hL, color='green', linestyle='--', label='h = h(L)')
+    axs[0].axvline(0, color='red', linestyle=':', label='x = 0')
+    axs[0].axhline(h0, color='orange', linestyle=':', label='h = h(0)')
     axs[0].set_title('Steady-state 1D flow, confined aquifer, no source/sink')
     axs[0].set_xlabel('x (m)')
     axs[0].set_ylabel('h (m)')
     axs[0].legend(loc='upper right')
+    axs[0].grid(True)
 
     # --- Graph 2:---
     axs[1].plot(x, h2, label='h(x)')
-    axs[1].axvline(L, color='gray', linestyle='--', label='x = L')
-    axs[1].axhline(hL, color='gray', linestyle='--', label='h = h(L)')
-    axs[1].axvline(0, color='gray', linestyle=':', label='x = 0')
-    axs[1].axhline(h0, color='gray', linestyle=':', label='h = h(0)')
+    axs[1].axvline(L, color='blue', linestyle='--', label='x = L')
+    axs[1].axhline(hL, color='green', linestyle='--', label='h = h(L)')
+    axs[1].axvline(0, color='red', linestyle=':', label='x = 0')
+    axs[1].axhline(h0, color='orange', linestyle=':', label='h = h(0)')
     axs[1].set_title('Steady-state 1D flow, unconfined aquifer, no source/sink (Dupuit solution)')
     axs[1].set_xlabel('x (m)')
     axs[1].set_ylabel('h (m)')
     axs[1].legend(loc='upper right')
+    axs[1]. grid(True)
 
     # --- Graph 3:  ---
     axs[2].plot(r, h3, label='h(r)')
-    axs[2].axvline(Rt, color='gray', linestyle='--', label='r = R(t)')
-    axs[2].axhline(h3[-1], color='gray', linestyle='--', label='h = h(R(t))')
-    axs[2].axvline(0, color='gray', linestyle=':', label='x = $r_{well}$')
-    axs[2].axhline(20, color='gray', linestyle=':', label='h = $h_{well}$')
+    axs[2].axvline(Rt, color='blue', linestyle='--', label='r = R(t)')
+    axs[2].axhline(h3[-1], color='green', linestyle='--', label='h = h(R(t))')
+    axs[2].axvline(0, color='red', linestyle=':', label='x = $r_{well}$')
+    axs[2].axhline(20, color='orange', linestyle=':', label='h = $h_{well}$')
     axs[2].set_title('Steady-state 1D flow, confined aquifer, with a well')
     axs[2].set_xlabel('r (m)')
     axs[2].set_ylabel('h (m)')
     axs[2].legend(loc='upper right')
+    axs[2].grid(True)
 
     # --- Graph 4: ---
     axs[3].plot(r, h4, label='h(r)')
-    axs[3].axvline(Rt, color='gray', linestyle='--', label='r = R(t)')
-    axs[3].axhline(h4[-1], color='gray', linestyle='--', label='h = h(R(t))')
-    axs[3].axvline(0, color='gray', linestyle=':', label='x = $r_{well}$')
-    axs[3].axhline(20, color='gray', linestyle=':', label='h = $h_{well}$')
+    axs[3].axvline(Rt, color='blue', linestyle='--', label='r = R(t)')
+    axs[3].axhline(h4[-1], color='green', linestyle='--', label='h = h(R(t))')
+    axs[3].axvline(0, color='red', linestyle=':', label='x = $r_{well}$')
+    axs[3].axhline(20, color='orange', linestyle=':', label='h = $h_{well}$')
     axs[3].set_title('Steady-state 1D flow, unconfined aquifer, with a well')
     axs[3].set_xlabel('r (m)')
     axs[3].set_ylabel('h (m)')
     axs[3].legend(loc='upper right')
+    axs[3].grid(True)
 
     plt.tight_layout()
     plt.show()
     return
 
+def transport_matching():
+    possibilities_solution = {
+        'Advection term' : "$\\vec{j_1} = \\phi_e \\vec{u} c = \\vec{q} c$",
+        'Molecular diffusion term' : "$\\vec{j_2} = - \\phi_e \\bold{D_{me}} \\vec{\\nabla}c$, where $\\bold{D_{me}}$ is about $10^{-9} m^2/s^{-1}$",
+        'Dispersion term' : "$\\vec{j_3} = - \\phi_e \\bold{D} \\vec{\\nabla}c$, where $\\bold{D}$ is a tensor : $D_{ij}=\\frac{1}{\\mid u \\mid} u_i u_j (\\alpha_l-\\alpha_t)$",
+    }
+    dictionnary_matching(possibilities_solution)
+    return
+
+def transport_observation_matching():
+    possibilities_solution = {
+        'Advection term' : "Translation of the peak location in time",
+        'Diffusion and dispersion term' : "Change in the peak width with time",
+        }
+    dictionnary_matching(possibilities_solution)
+    return
 
 def transport_gaussian_plot():
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import ipywidgets as widgets
-    from IPython.display import display
+
 
     def c_x_t_curve(v=1.0, D=0.05, alpha=1.0, t=1.0, M=1.0, phi_0=0.3, R=1.0, x_range=(0, 100), n_points=200):
         """
