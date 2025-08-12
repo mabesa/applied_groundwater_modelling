@@ -206,7 +206,8 @@ class PerceptualModelProgressTracker(ProgressTracker):
             ('section1', 'Aquifer Geometry'),
             ('section2', 'Climate'),
             ('section3', 'River Discharge & River Water Levels'),
-            ('section4', 'Monitoring the Limmat Valley Aquifer')
+            ('section4', 'Summary of Model Boundaries'), 
+            ('section5', 'Monitoring the Limmat Valley Aquifer')
         ]
         
         # Initialize base class
