@@ -204,8 +204,8 @@ class PerceptualModelProgressTracker(ProgressTracker):
         # Define the major sections from the perceptual model notebook first
         self.steps = [
             ('section1', 'Aquifer Geometry'),
-            ('section2', 'Climate'),
-            ('section3', 'River Discharge & River Water Levels'),
+            ('section2', 'Climate Forcing'),
+            ('section3', 'River Aquifer Interaction'),
             ('section4', 'Summary of Model Boundaries'), 
             ('section5', 'Monitoring the Limmat Valley Aquifer')
         ]

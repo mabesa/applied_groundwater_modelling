@@ -7,22 +7,28 @@ import matplotlib.pyplot as plt
 # region data processing
 def read_climate_data(data_path, station_string="Zuerich-Fluntern"):
     """
-    Reads climate data for a specific station from a directory of MeteoSwiss text files.
+    Reads climate data for a specific station from a directory of MeteoSwiss 
+    text files.
 
     Args:
         data_path (str): Path to the directory containing the climate data files.
-        station_string (str, optional): String to search for in the station name. Defaults to "Fluntern".
+        station_string (str, optional): String to search for in the station name. 
+            Defaults to "Fluntern".
 
     Returns:
-        pandas.DataFrame: A DataFrame containing the monthly climate data for the specified station.
+        pandas.DataFrame: A DataFrame containing the monthly climate data for 
+            the specified station.
     
     Usage: 
     df = read_climate_data(data_path, station_string="Fluntern")    
     
     Details: 
-    Climate data is downloaded from MeteoSwiss 
+    Climate data is downloaded from the Open Data Swiss repository:
+    Author: Federal Office of Meterology and Climatology MeteoSwiss 
+    Title: Climate normals
     url: https://opendata.swiss/en/dataset/klimanormwerte, 
     identifier: cf90489e-7a02-4490-a6ca-1b3d25d28e06@bundesamt-fur-meteorologie-und-klimatologie-meteoschweiz
+    Accessed: 2025-05-01
     """
 
     # Test if the data_path exists
@@ -116,13 +122,49 @@ def read_climate_data(data_path, station_string="Zuerich-Fluntern"):
 
 # region visualization
 
-def plot_climate_data(df, station_string="Fluntern"):
+def plot_climate_data(df, station_string="Fluntern", custom_title=None):
     """
     Plots cliamte data read with read_climate_data function.
     
     Args: 
         df (pandas.DataFrame): DataFrame containing the climate data.
-        station_string (str, optional): String to search for in the station name. Defaults to "Fluntern".
+        station_string (str, optional): String to search for in the station name. 
+            Defaults to "Fluntern".
+        custom_title (str, optional): Custom title for the plot which is 
+            concatenated with the annual precipitation and mean temperature.
+            Defaults to None, in which case a default title is used.
+
+    Returns:
+        tuple: A tuple containing the matplotlib.pyplot object and the figure object.
+    
+    Usage:
+    plt, fig = plot_climate_data(df, station_string="Fluntern")
+    
+    Details:
+    This function plots the climate data for a specific station, showing monthly precipitation 
+    and temperature data. The y-axis for precipitation is inverted to show higher values at the top.
+    The plot includes a bar chart for precipitation and a line chart for temperature, with shaded areas 
+    representing the range between minimum and maximum temperatures.
+    
+    Note: 
+    The function assumes that the DataFrame has been filtered to contain only the relevant station data.
+    If no data is found for the specified station, it returns None.
+    
+    The function uses the following shortnames for the data:
+    - 'rre150m0' for precipitation
+    - 'tre200m0' for temperature
+    - 'tre2dymn' for minimum temperature
+    - 'tre2dymx' for maximum temperature
+    
+    The DataFrame should have the following structure:
+    - 'station': Name of the station
+    - 'shortname': Short name for the variable (e.g., 'rre150m0', 'tre200m0', etc.)
+    - Monthly columns: 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    
+    Example:
+    df = read_climate_data(data_path, station_string="Fluntern")
+    plt, fig = plot_climate_data(df, station_string="Fluntern")
+    If custom_title is provided, it will be used as the title of the plot.
     """
 
     # Filter DataFrame for the specified station
@@ -185,7 +227,15 @@ def plot_climate_data(df, station_string="Fluntern"):
     ax2.legend(loc='upper right')
 
     # Set title and legend
-    plt.title(f'Climate Data for Fluntern\nPrecipitation: {annual_precipitation.sum().round().astype(int)} mm/year\nMean temperature: {annual_mean_temp.mean().round(1)} °C')
+    precip_val = int(annual_precipitation.sum().round())
+    mean_temp_val = round(annual_mean_temp.mean(), 1)
+    if custom_title:
+        base_title = custom_title.strip()
+    else:
+        base_title = f"Climate data for {station_string}"
+    title = f"{base_title} Annual precipitation {precip_val} mm; mean temperature {mean_temp_val} °C"
+    plt.title(title)
+
     fig.tight_layout()  # Adjust layout to prevent labels from overlapping
 
     return plt, fig

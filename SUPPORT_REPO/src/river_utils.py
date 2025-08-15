@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Tuple, Optional, Dict, Any, Union
 
 import matplotlib.pyplot as plt
-from ipywidgets import interactive, FloatSlider
+from ipywidgets import interactive, FloatSlider, HBox, VBox, HTML
 
 
 
@@ -114,7 +114,8 @@ def calculate_yearly_statistics(df: pd.DataFrame,
 def plot_yearly_river_levels(data_path: str, 
                             start_year: Optional[int] = None,
                             end_year: Optional[int] = None,
-                            figsize: Tuple[int, int] = (12, 8)) -> Tuple[Any, Any]:
+                            figsize: Tuple[int, int] = (12, 8), 
+                            figure_number: Optional[int] = None) -> Tuple[Any, Any]:
     """
     Plot typical yearly evolution of river water levels for Sihl and Limmat rivers.
     
@@ -128,7 +129,9 @@ def plot_yearly_river_levels(data_path: str,
         End year for analysis (default: 2020)
     figsize : tuple
         Figure size (width, height) in inches
-    
+    figure_number : int, optional
+        Figure number for the plot (default: None)
+
     Returns
     -------
     tuple
@@ -162,10 +165,14 @@ def plot_yearly_river_levels(data_path: str,
                      color=sihl_color, alpha=0.3, label='25th-75th percentile')
     ax1.fill_between(sihl_stats.index, sihl_stats['min'], sihl_stats['max'], 
                      color=sihl_color, alpha=0.1, label='Min-Max range')
-    
+    title1 = f'Typical yearly evolution: River Sihl - Zurich, Sihlhölzli (Station 2176) {start_year}-{end_year}.'
+    if figure_number is not None:
+        title1 = (f"Figure {figure_number}: Typical yearly evolution of river water levels – "
+                  f"Sihl River (Zurich, Sihlhölzli; Station 2176), {start_year}-{end_year}")
+    else:
+        title1 = (f"Typical yearly evolution – Sihl River (Station 2176), {start_year}-{end_year}")
+    ax1.set_title(title1, fontsize=12, fontweight='bold')
     ax1.set_ylabel('Water level (m a.s.l.)', fontsize=12)
-    ax1.set_title(f'River Sihl - Zurich, Sihlhölzli (Station 2176)\n'
-                  f'Typical yearly evolution ({start_year}-{end_year})', fontsize=14, fontweight='bold')
     ax1.grid(True, alpha=0.3)
     ax1.legend(loc='upper right')
     
@@ -179,8 +186,12 @@ def plot_yearly_river_levels(data_path: str,
     
     ax2.set_ylabel('Water level (m a.s.l.)', fontsize=12)
     ax2.set_xlabel('Day of year', fontsize=12)
-    ax2.set_title(f'River Limmat - Zurich, Unterhard (Station 2099)\n'
-                  f'Typical yearly evolution ({start_year}-{end_year})', fontsize=14, fontweight='bold')
+    if figure_number is not None:
+        title2 = (f"Figure {figure_number + 1}: Typical yearly evolution of river water levels – "
+                  f"Limmat River (Zurich, Unterhard; Station 2099), {start_year}-{end_year}")
+    else:
+        title2 = (f"Typical yearly evolution – Limmat River (Station 2099), {start_year}-{end_year}")
+    ax2.set_title(title2, fontsize=12, fontweight='bold')
     ax2.grid(True, alpha=0.3)
     ax2.legend(loc='upper right')
     
@@ -340,11 +351,28 @@ def plot_combined_river_levels(data_path: str,
     return fig, ax
 
 
-def plot_river_aquifer_interaction():
+def plot_river_aquifer_interaction(custom_title: None):
     """
     Generates an interactive plot to illustrate river-aquifer interaction
     and the corresponding flux vs. head relationship.
+
+    Parameters
+    ----------
+    custom_title : str, optional
+        Custom title for the plot. If None, no title is displayed.
+
+    
     """
+    # Sliders
+    h_aq_slider = FloatSlider(
+        min=7.0, max=16.0, step=0.2, value=11,
+        description='Aquifer Head (H_aq)'
+    )
+    h_riv_slider = FloatSlider(
+        min=10.0, max=15.0, step=0.2, value=12,
+        description='River Stage (H_riv)'
+    )
+
     def create_plot(h_aq, h_riv):
         # Create a figure with two subplots, sharing the y-axis
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7), 
@@ -443,13 +471,19 @@ def plot_river_aquifer_interaction():
         ax2.text(ax2.get_xlim()[0]*0.9, h_riv + 0.1, 'H_riv', color='darkblue', va='bottom')
         
         plt.show()
-
+    
     # Create interactive sliders
     interactive_plot = interactive(create_plot,
-                                   h_aq=FloatSlider(min=7.0, max=16.0, step=0.2, value=11, description='Aquifer Head (H_aq)'),
-                                   h_riv=FloatSlider(min=10.0, max=15.0, step=0.2, value=12, description='River Stage (H_riv)'))
-    
-    return interactive_plot
+                                   h_aq=h_aq_slider,
+                                   h_riv=h_riv_slider)
+
+    widgets = []
+    if custom_title:
+        widgets.append(HTML(f"<div style='text-align:center; font-weight:bold; font-size:15px;'>{custom_title}</div>"))
+    sliders = HBox([h_aq_slider, h_riv_slider])
+    widgets.extend([interactive_plot, sliders])
+
+    return VBox(widgets)
 
 
 def plot_cross_section(ax, title, gw_mean, gw_high, river_mean, river_high, typical_depth):

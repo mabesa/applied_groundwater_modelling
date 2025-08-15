@@ -6,7 +6,8 @@ from typing import Tuple, Any
 from matplotlib.lines import Line2D
 from matplotlib.legend import Legend
 
-def display_groundwater_resources_map(gw_map_path, zoom_level=10, map_center=None):
+def display_groundwater_resources_map(gw_map_path, zoom_level=10, 
+                                      map_center=None, map_title=None):
     """
     Display an interactive zoomable map of groundwater types.
     
@@ -18,6 +19,8 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10, map_center=Non
         Initial zoom level for the map
     map_center : tuple, default=None
         Center coordinates (lat, lon) for the map. If None, uses data bounds
+    map_title : str, optional
+        Optional title displayed at the top of the map
     
     Returns:
     --------
@@ -127,7 +130,7 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10, map_center=Non
     # Add a legend
     legend_html = '''
     <div style="position: fixed; 
-                top: 10px; right: 10px; width: 300px; height: auto; 
+                bottom: 10px; right: 10px; width: 300px; height: auto; 
                 background-color: white; border:2px solid grey; z-index:9999; 
                 font-size:10px; padding: 10px">
     <h4>Groundwater Types</h4>
@@ -148,6 +151,16 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10, map_center=Non
     legend_html += '</div>'
     m.get_root().html.add_child(folium.Element(legend_html))
     
+    if map_title:
+        title_html = f"""
+        <h3 style="text-align:center; font-family:Arial, sans-serif;
+                   font-size:16px; font-weight:bold; margin:8px 0 6px 0;">
+            {map_title}
+        </h3>
+        """
+        # Insert before map container in notebook display
+        m.get_root().html.add_child(folium.Element(title_html))
+
     return m
 
 def plot_model_area_map(
@@ -155,7 +168,8 @@ def plot_model_area_map(
     rivers_path: str, 
     gauges_path: str,
     model_boundary_path: str = None,
-    figsize: Tuple[int, int] = (12, 12)
+    figsize: Tuple[int, int] = (12, 12), 
+    custom_title: str = None
 ) -> Tuple[Any, Any]:
     """
     Displays a map with groundwater depth, rivers, gauges, and an optional model boundary.
@@ -177,6 +191,8 @@ def plot_model_area_map(
         File path to the model boundary GeoPackage (.gpkg), by default None.
     figsize : tuple, optional
         Figure size (width, height) in inches, by default (12, 12).
+    custom_title : str, optional
+        Custom title for the plot, by default None.
 
     Returns
     -------
@@ -270,7 +286,10 @@ def plot_model_area_map(
     ax.add_artist(legend2)
 
     # --- 5. Formatting ---
-    ax.set_title('Model Area Delineation', fontsize=16, weight='bold')
+    if custom_title:
+        ax.set_title(custom_title, fontsize=16, weight='bold')
+    else:
+        ax.set_title('Model Area Delineation', fontsize=16, weight='bold')
     ax.set_xlabel('Easting (m, CH1903+ / LV95)')
     ax.set_ylabel('Northing (m, CH1903+ / LV95)')
     ax.grid(True, linestyle=':', alpha=0.6)
