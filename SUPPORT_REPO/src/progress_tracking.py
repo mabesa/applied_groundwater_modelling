@@ -214,9 +214,29 @@ class PerceptualModelProgressTracker(ProgressTracker):
         super().__init__("Perceptual Model", "perceptual_model_progress.json")
 
 
+class ModelImplementationProgressTracker(ProgressTracker):
+    """
+    Progress tracker for Notebook 4: Model Implementation.
+    
+    Covers the main workflow steps converting the perceptual model to a MODFLOW model.
+    """
+    def __init__(self):
+        self.steps = [
+            ('step1', 'Step 1: Workspace Setup'),
+            ('step2', 'Step 2: Grid Creation'),
+            ('step3', 'Step 3: Model Top (DEM Resampling)'),
+            ('step4', 'Step 4: Aquifer Thickness & Bottom'),
+            ('step5', 'Step 5: Active Domain & Properties (IBOUND, LPF)'),
+            ('step6', 'Step 6: Solver & Output Control'),
+            ('step7', 'Step 7: River Package (RIV) & Stage Checks')
+        ]
+        super().__init__("Model Implementation", "model_implementation_progress.json")
+
+
 # Global tracker instances
 _global_introduction_tracker = None
 _global_perceptual_model_tracker = None
+_global_model_implementation_tracker = None
 
 def get_introduction_tracker():
     """Get or create the global introduction tracker instance."""
@@ -231,6 +251,14 @@ def get_perceptual_model_tracker():
     if _global_perceptual_model_tracker is None:
         _global_perceptual_model_tracker = PerceptualModelProgressTracker()
     return _global_perceptual_model_tracker
+
+def get_model_implementation_tracker():
+    """Get or create the global model implementation tracker instance."""
+    global _global_model_implementation_tracker
+    if _global_model_implementation_tracker is None:
+        _global_model_implementation_tracker = ModelImplementationProgressTracker()
+    return _global_model_implementation_tracker
+
 
 def create_perceptual_model_progress_tracker():
     """
@@ -383,14 +411,80 @@ def create_step_completion_marker(step_number):
     except Exception as e:
         print(f"⚠️ Could not create step completion marker: {e}")
 
+
+
+def create_model_implementation_step_completion_marker(step_number):
+    """
+    Create a step completion marker for the model implementation tracker (Notebook 4).
+    
+    Args:
+        step_number (int): Step number (1-8)
+    """
+    try:
+        tracker = get_model_implementation_tracker()
+        step_id = f'step{step_number}'
+        step_name = next((title for sid, title in tracker.steps if sid == step_id), f"Step {step_number}")
+        already_completed = tracker.progress_data.get(step_id, False)
+        completion_checkbox = widgets.Checkbox(
+            value=already_completed,
+            description=f"✅ Yes, I have completed {step_name}",
+            style={'description_width': 'initial'},
+            layout=widgets.Layout(width='100%', margin='10px 0px'),
+            indent=False
+        )
+        feedback_output = widgets.Output()
+        def on_completion_change(change):
+            with feedback_output:
+                feedback_output.clear_output()
+                if change['new']:
+                    tracker.mark_step_complete_directly(step_number)
+                else:
+                    tracker.progress_data[step_id] = False
+                    if step_id in tracker.widgets:
+                        tracker.widgets[step_id].value = False
+                        tracker._save_progress()
+        completion_checkbox.observe(on_completion_change, names='value')
+        display(completion_checkbox)
+        display(feedback_output)
+    except Exception as e:
+        print(f"⚠️ Could not create model implementation step marker: {e}")
+
+
+def create_perceptual_model_progress_tracker():
+    """
+    Create and display the perceptual model progress tracker.
+    
+    This is the main function to call in the perceptual model notebook.
+    """
+    try:
+        tracker = get_perceptual_model_tracker()
+        tracker.create_interactive_tracker()
+        # Don't return anything to avoid printing widget details
+    except Exception as e:
+        print(f"⚠️ Interactive tracker failed: {e}")
+        return None
+
+def create_model_implementation_progress_tracker():
+    """
+    Create and display the model implementation progress tracker (Notebook 4).
+    """
+    try:
+        tracker = get_model_implementation_tracker()
+        tracker.create_interactive_tracker()
+    except Exception as e:
+        print(f"⚠️ Interactive tracker failed: {e}")
+        return None
+
 def reset_course_progress():
-    """Reset all course progress for both trackers."""
+    """Reset all course progress for all trackers."""
     try:
         introduction_tracker = get_introduction_tracker()
         perceptual_model_tracker = get_perceptual_model_tracker()
+        model_implementation_tracker = get_model_implementation_tracker()
         
         introduction_tracker.reset_progress()
         perceptual_model_tracker.reset_progress()
+        model_implementation_tracker.reset_progress()
         
     except Exception as e:
         print(f"⚠️ Could not reset progress: {e}")
@@ -410,6 +504,14 @@ def reset_perceptual_model_progress():
         tracker.reset_progress()
     except Exception as e:
         print(f"⚠️ Could not reset perceptual model progress: {e}")
+
+def reset_model_implementation_progress():
+    """Reset only the model implementation (Notebook 4) progress."""
+    try:
+        tracker = get_model_implementation_tracker()
+        tracker.reset_progress()
+    except Exception as e:
+        print(f"⚠️ Could not reset model implementation progress: {e}")
 
 # Backward compatibility
 create_chapter_completion_marker = create_step_completion_marker
