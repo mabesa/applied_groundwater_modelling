@@ -13,57 +13,52 @@ import print_images as du
 #------ Dictionary to store the markdown to diplay the question asked
 questions_markdown = {
 "task01_1":  r"""
-## Task 1:
 We can assume the system to be at a steady state.
  - **Estimate $A$ the area of the Tsalet catchment in $\text{km}^2$**
 """,
 
 "task01_2":  r"""
-## Task additionnal 1:
 The mean residence time of water $\tau$ was estimated to be 1 year.  
 - **Estimate the total volume of the aquifer $V_{aq}$**
 """,
 
 "task01_3": r"""
-## Task 2:
 Based on the previous results :
 - **Estimate $M_{aq}$ the mean thickness of the aquifer**" 
 """,
 
 "task01_4": r"""
-## Task 3:
 Given the uncertainty intervals for $P$ and $Q$ :
 - **Estimate the lower bound of *A* uncertainty interval**
 """,
 
 "task03_1": r"""
-## Task 4:
 With Tsalet's mixed deposits in the setup column, you now observe that $\Delta h=0.4$ m.
-- What is your estimate of the specific discharge $q$ in mm/s?
+- **What is your estimate of the specific discharge $q$ in mm/s?**
 """,
 
 "task03_2": r"""
-- What is the discharge $Q$ in the soil column in mm/s?
+- **What is the discharge $Q$ in the soil column in mm/s?**
 """,
 
 "task03_3": r"""
-- What is the mean velocity of water $u$ in the soil column in mm/s?
+- **What is the mean velocity of water $u$ in the soil column in mm/s?**
 """,
 
 "task03_4": r"""
-## Task 3:
-Based on the experiment's graph, what is your estimate for the hydraulic conductivity $K$ in mm/s?
+## Task 1.3
+Based on the experiment's graph:
+- **What is your estimate for the hydraulic conductivity $K$ in mm/s?**
 """,
 
 "task04_1": r"""
-## Task 2:
-Estimate the water table level (in meter) at the interface $x$ = 100m for the following confined aquifer :
+- **Estimate the water table level $h(x)$ (in meter) at the interface $x$ = 100m** :
 """,
 
 "task04_2": r"""
-## Task 2:
-Based on given data, estimate the water table level at $x$ = 400m :
+Based on given data, **estimate the water table level at $x$ = 400m** :
 """
+
 }
 
 
@@ -224,9 +219,9 @@ $K$ can be derived from the slope of the linear fit ( Darcy's law : $q$ = $K \cd
 "task04_1": r"""
 
 The Darcy law is : q = $K \cdot I$. Let's apply it separately to each layer of the aquifer. <br> <br>
-To the left, $q$ = $K1 \cdot \frac{h(100)-h(0)}{100}$. To the right, $q$ = $K2 \cdot \frac{h(200)-h(100)}{100}$ <br><br>
+To the left, $q$ = $K_A \cdot \frac{h(100)-h(0)}{100}$. To the right, $q$ = $K_B \cdot \frac{h(200)-h(100)}{100}$ <br><br>
 Both sides being equal to $q$, we can isolate $h(100)$ and reexpress it as a function of known parameters : 
-$h(100) = \frac{K1 \cdot h(0) + K2 \cdot h(200)}{K1 + K2} = 43.3$ m.
+$h(100) = \frac{K_A \cdot h(0) + K_B \cdot h(200)}{K_A + K_B} = 43.3$ m.
 <br>
 """,
 
