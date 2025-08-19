@@ -19,7 +19,7 @@ def darcy_experiment_simulation():
     - Adds an "End Experiment" button to finalize the experiment.
     """
 
-    display(Markdown("<br><h2> Task 2:"))
+    display(Markdown("<br><h2> Task 1.2:"))
     display(Markdown("<br>You can now perform the Darcy experiment simulation. <br><br> Start by adding (I, q) points for at least 5 different hydraulic head differences. <br>Once at least 5 points are added, you will be able to plot the linear fit. <br><br><br>"))
 
     # Initialize variables
@@ -167,7 +167,7 @@ def darcy_experiment_simulation_global():
 
     # Display the question and widgets
     with question_output:
-        display(Markdown("<br><h2> Task 1:"))
+        display(Markdown("<br><h2> Task 1.1:"))
         display(Markdown(f"What behavior do you expect for the curve of $q$ versus $I$?<br>"))
     display(VBox([question_output, radio_buttons, submit_button, answer_output]))
 
