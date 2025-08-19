@@ -209,8 +209,8 @@ def transport_matching():
 
 def transport_observation_matching():
     possibilities_solution = {
-        'Advection term' : "Translation of the peak location in time",
-        'Diffusion and dispersion term' : "Change in the peak width with time",
+        'Advection term' : "Translation of the peak location in time :",
+        'Diffusion and dispersion term' : "Change in the peak width with time :",
         }
     dictionnary_matching(possibilities_solution)
     return

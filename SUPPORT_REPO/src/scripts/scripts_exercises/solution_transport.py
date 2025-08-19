@@ -135,11 +135,11 @@ def plot_curve_and_question_estimation():
     # Widgets for answers
     conc_box = widgets.FloatText(
         description="Maximum concentration [μg/L]:",
-        layout=widgets.Layout(width='400px'), style={'description_width': '200px'}
+        layout=widgets.Layout(width='500px'), style={'description_width': '300px'}
     )
     span_box = widgets.FloatText(
         description="Time span above reference [days]:",
-        layout=widgets.Layout(width='400px'), style={'description_width': '200px'}
+        layout=widgets.Layout(width='500px'), style={'description_width': '300px'}
     )
     submit_btn = widgets.Button(description="Submit")
     feedback = widgets.Output()
