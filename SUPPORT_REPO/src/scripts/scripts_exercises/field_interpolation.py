@@ -42,7 +42,7 @@ def enable_hover_coordinates(ax):
     ax.format_coord = format_coord
 
 def plot_initial_wells():
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
     x_all = np.concatenate((x_river, x_wells))
     y_all = np.concatenate((y_river, y_wells))
     head_all = np.concatenate((head_river, head_wells))
@@ -62,7 +62,7 @@ def plot_initial_wells():
     ax.set_ylabel('$y$ [m]')
     ax.set_xlim(-3, 103)
     ax.set_ylim(-3, 103)
-    ax.set_title(f"Field data : only known hydraulic heads are shown (observation wells and river).")
+    ax.set_title(f"Field data")
     ax.grid(True)
     enable_hover_coordinates(ax)
     plt.show()
@@ -106,7 +106,7 @@ def attribution_observation_well_student(resolution_interpolation):
     submit_button.on_click(on_submit_clicked)
     
     # Display the interactive matching tool
-    display(Markdown(f"Match the correct interpolated head values to each observation well.:<br>"))
+    display(Markdown(f"- **Match the correct interpolated head values to each observation well:**"))
     display(widgets.HBox([dropdowns['A'], dropdowns['B'], dropdowns['C']]))
     display(submit_button, output)
 
@@ -120,10 +120,9 @@ def estimation_hydraulic_head(method_passed = 'linear', resolution_interpolation
     method = method_passed
     global resolution_interpolation
     resolution_interpolation = resolution_interpolation_passed
-    # 1. Show initial plot
-    plot_initial_wells()
-    # 2. Ask the student to guess the heads and then show the interpolatde field
+    # Ask the student to guess the heads and then show the interpolatde field
     attribution_observation_well_student(resolution_interpolation)
+    plot_initial_wells()
 
 
 
@@ -179,7 +178,6 @@ def interactive_interpolation():
     ]
     method_buttons = widgets.ToggleButtons(
         options=methods,
-        description='Click on the interpolation method to display the field:',
         button_style='info',
         value=None  # No button selected at start
     )
@@ -194,6 +192,7 @@ def interactive_interpolation():
         with output:
             plot_head_full_field_interactive(change['new'])
 
+    display(Markdown("<br>**Click on the interpolation method to display the field :** <br>"))
     method_buttons.observe(on_method_change, names='value')
     display(method_buttons)
     display(output)

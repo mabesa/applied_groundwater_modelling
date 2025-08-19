@@ -215,6 +215,7 @@ def transport_observation_matching():
     dictionnary_matching(possibilities_solution)
     return
 
+
 def transport_gaussian_plot():
 
 
@@ -303,4 +304,13 @@ def transport_gaussian_plot():
         display(ui, out)
 
     interactive_cx_t()
+    return
+
+def transport_boundary_condition_matching():
+    possibilities_solution = {
+        '1st type : prescribed concentration' : "$c(x,t) = c_1(x,t)$",
+        '2nd type : Impermeable boundary' : "$\\frac{\\partial c(x,t)}{\\partial n} = 0$",
+        '3rd type : prescribed mass flux' : "$j_n=q_nc(x,t)-\\phi_e D_h \\frac{\\partial c(x,t)}{\\partial n}$",
+        }
+    dictionnary_matching(possibilities_solution)
     return

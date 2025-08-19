@@ -18,7 +18,7 @@ def plot_tracer_propagation():
     c1=1.0
     t_front = np.linspace(0.01, 80, 200)
     arg = (x - u * t_front / R) / np.sqrt(4 * D * t_front / R)
-    c_xt_front = c0 + (c1 - c0) * 0.5 * scipy.special.erfc(arg)
+    c_xt_front = (c0 + (c1 - c0) * 0.5 * scipy.special.erfc(arg))
 
 
     """
@@ -103,8 +103,8 @@ def question_tracer_propagation_plot():
                 display(Markdown(f"**Incorrect.** The correct answer is **{correct_answer}**."))
                 display(Markdown("**Solution:**"))
                 display(Markdown("Plot (a) is not for an instantaneous source but for a tracer front propagation. "))
-                display(Markdown("Plot (c) is for an instantaneous source but the peak reaches the well too earls ( 20 days) whereas our mean flow velocity is 10 m/day."))
-                display(Markdown("Plot (b) is the correct one as it shows the concentration at the well for an instantaneous source with a mean flow velocity of 10 m/day, and has the expected gaussian shape"))
+                display(Markdown("Plot (c) is for an instantaneous source but the peak reaches the well too early ( 20 days) whereas our mean flow velocity is 10 m/day."))
+                display(Markdown("Plot (b) is the correct one : it shows the concentration at the well for an instantaneous source with a mean flow velocity of 10 m/day, and has the expected gaussian shape"))
             
             
     submit_btn.on_click(on_submit)
@@ -134,12 +134,12 @@ def plot_curve_and_question_estimation():
 
     # Widgets for answers
     conc_box = widgets.FloatText(
-        description="Max conc. [μg/L]:",
-        layout=widgets.Layout(width='500px')
+        description="Maximum concentration [μg/L]:",
+        layout=widgets.Layout(width='400px'), style={'description_width': '200px'}
     )
     span_box = widgets.FloatText(
-        description="Δt time span above ref [days]:",
-        layout=widgets.Layout(width='500px')
+        description="Time span above reference [days]:",
+        layout=widgets.Layout(width='400px'), style={'description_width': '200px'}
     )
     submit_btn = widgets.Button(description="Submit")
     feedback = widgets.Output()
