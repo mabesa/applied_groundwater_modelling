@@ -1,4 +1,5 @@
 import folium
+from folium.plugins import BeautifyIcon
 import geopandas as gpd
 from matplotlib.colors import ListedColormap
 import json
@@ -304,7 +305,7 @@ def plot_model_area_map(
     
     return fig, ax
 
-
+'''
 def display_concessions_map(
     concessions,
     boundary_gdf=None,
@@ -315,7 +316,8 @@ def display_concessions_map(
     map_center=None,
     zoom_start: int = 14,
     map_title: str = None,
-    max_description_chars: int = 180
+    max_description_chars: int = 180,
+    simple_shapes: bool = True
 ):
     """
     Create an interactive folium map of groundwater concessions.
@@ -432,7 +434,7 @@ def display_concessions_map(
         <b>{id_col}:</b> {cid_val}<br>
         <b>{use_col}:</b> {use_val}<br>
         <b>Description:</b><br>{desc_disp}
-        <b>Type of Well:</b> {fass_val}
+        <b>Type of Well:</b><br>{fass_val}
         """
         folium.CircleMarker(
             location=(row.geometry.y, row.geometry.x),
@@ -474,6 +476,230 @@ def display_concessions_map(
 
     folium.LayerControl(collapsed=True).add_to(m)
     return m
+'''
+
+
+def display_concessions_map(
+    concessions,
+    boundary_gdf=None,
+    id_col: str = "concession_id",
+    use_col: str = "NUTZART",
+    description_col: str = "BESCHREIBUNG",
+    fassart_col: str = "FASSART",
+    map_center=None,
+    zoom_start: int = 14,
+    map_title: str = None,
+    max_description_chars: int = 180,
+    marker_size: int = 14
+):
+    if isinstance(concessions, str):
+        concessions_gdf = gpd.read_file(concessions)
+    else:
+        concessions_gdf = concessions.copy()
+
+    if concessions_gdf.crs is None:
+        raise ValueError("Concessions GeoDataFrame must have a CRS defined.")
+    if not all(concessions_gdf.geometry.geom_type.isin(["Point"])):
+        raise ValueError("Concessions layer must contain only Point geometries.")
+    if concessions_gdf.crs.to_string() != "EPSG:4326":
+        concessions_gdf = concessions_gdf.to_crs("EPSG:4326")
+
+    if boundary_gdf is not None:
+        b_gdf = boundary_gdf.copy()
+        if b_gdf.crs is None:
+            raise ValueError("Boundary GeoDataFrame must have a CRS defined.")
+        if b_gdf.crs.to_string() != "EPSG:4326":
+            b_gdf = b_gdf.to_crs("EPSG:4326")
+    else:
+        b_gdf = None
+
+    if map_center is None:
+        bounds = concessions_gdf.total_bounds
+        map_center = [(bounds[1] + bounds[3]) / 2, (bounds[0] + bounds[2]) / 2]
+
+    # --- Colors per concession (unique id) ---
+    unique_ids = list(concessions_gdf[id_col].astype(str).unique())
+    def generate_colors(n):
+        return [f"hsl({int(360*i/n)},70%,45%)" for i in range(n or 1)]
+    id_color_map = dict(zip(unique_ids, generate_colors(len(unique_ids))))
+
+    # --- Shapes per use category (simple SVG set) ---
+    use_categories = list(concessions_gdf[use_col].fillna("Unspecified").astype(str).unique())
+    shape_cycle = ['circle', 'square', 'triangle', 'diamond', 'star']
+    shape_map = {u: shape_cycle[i % len(shape_cycle)] for i, u in enumerate(use_categories)}
+
+    m = folium.Map(location=map_center, zoom_start=zoom_start, tiles="OpenStreetMap")
+
+    if map_title:
+        title_html = f"""
+        <div style="position: relative; width:100%; text-align:center; padding:6px 0 4px 0;
+                    font-size:16px; font-weight:600; font-family:Arial;">
+            {map_title}
+        </div>
+        """
+        m.get_root().html.add_child(folium.Element(title_html))
+
+    if b_gdf is not None and not b_gdf.empty:
+        folium.GeoJson(
+            b_gdf.to_json(),
+            name="Model Boundary",
+            style_function=lambda _:
+                {"color": "black", "weight": 2, "fill": False, "dashArray": "5,5"}
+        ).add_to(m)
+
+    # --- Helper: build simple SVG for a given shape/color ---
+    # Smaller marker size (reduced further per request)
+    def _marker_svg(shape: str, fill: str, size: int = None, stroke: str = '#111') -> str:
+        s = size or marker_size
+        half = s / 2
+        if shape == 'circle':
+            body = f'<circle cx="{half}" cy="{half}" r="{half - 1.5}" fill="{fill}" stroke="{stroke}" stroke-width="1.2" />'
+        elif shape == 'square':
+            pad = 2
+            body = f'<rect x="{pad}" y="{pad}" width="{s-2*pad}" height="{s-2*pad}" rx="3" ry="3" fill="{fill}" stroke="{stroke}" stroke-width="1.2" />'
+        elif shape == 'triangle':
+            body = f'<path d="M {half} 2 L {s-2} {s-2} L 2 {s-2} Z" fill="{fill}" stroke="{stroke}" stroke-width="1.2" />'
+        elif shape == 'diamond':
+            body = f'<path d="M {half} 1.5 L {s-1.5} {half} L {half} {s-1.5} L 1.5 {half} Z" fill="{fill}" stroke="{stroke}" stroke-width="1.2" />'
+        elif shape == 'star':
+            # Use original 24x24 coordinate system and scale down via width/height
+            return (
+                f'<svg width="{s}" height="{s}" viewBox="0 0 24 24">'
+                '<path d="M12 2.5l2.6 5.5 6 .55-4.6 3.95 1.4 5.8L12 15.9 6.6 18.3l1.4-5.8L3.4 8.55l6-.55z" '
+                f'fill="{fill}" stroke="{stroke}" stroke-width="1.0" stroke-linejoin="round" />'
+                '</svg>'
+            )
+        else:
+            body = f'<circle cx="{half}" cy="{half}" r="{half - 1.5}" fill="{fill}" stroke="{stroke}" stroke-width="1.2" />'
+        return f'<svg width="{s}" height="{s}" viewBox="0 0 {s} {s}">{body}</svg>'
+
+    # --- Add markers using DivIcon with inline SVG ---
+    for _, row in concessions_gdf.iterrows():
+        use_val = str(row.get(use_col, 'Unspecified'))
+        cid_val = str(row.get(id_col, 'N/A'))
+        desc_val = row.get(description_col, '')
+        if isinstance(desc_val, str) and len(desc_val) > max_description_chars:
+            desc_disp = desc_val[:max_description_chars] + '...'
+        else:
+            desc_disp = desc_val
+        fass_val = row.get(fassart_col, 'N/A')
+
+        color = id_color_map.get(cid_val, '#666666')
+        shape = shape_map.get(use_val, 'circle')
+
+        svg_html = _marker_svg(shape, color)
+        # center offset half of size
+        offset = marker_size / 2
+        html = f'<div style="transform: translate(-{offset}px,-{offset}px);">{svg_html}</div>'
+
+        tooltip_txt = f"{id_col}: {cid_val} | {fassart_col}: {fass_val}"
+        popup_html = (
+            f"<div style='font-size:12px;'><b>{id_col}:</b> {cid_val}<br>"
+            f"<b>{use_col}:</b> {use_val}<br>"
+            f"<b>{fassart_col}:</b> {fass_val}<br>"
+            f"<b>Description:</b><br>{desc_disp}</div>"
+        )
+
+        folium.Marker(
+            location=(row.geometry.y, row.geometry.x),
+            icon=folium.DivIcon(html=html),
+            tooltip=tooltip_txt,
+            popup=folium.Popup(popup_html, max_width=320)
+        ).add_to(m)
+
+    # --- Legend for use (shape) categories with SVG icons mirroring BeautifyIcon shapes ---
+    # Legend SVG uses neutral grey so color is reserved for ID differentiation on map
+    def _legend_svg(shape: str, size: int = 12, fill: str = '#9a9a9a', stroke: str = '#222') -> str:
+        half = size / 2
+        if shape == 'circle':
+            body = f'<circle cx="{half}" cy="{half}" r="{half - 1.2}" fill="{fill}" stroke="{stroke}" stroke-width="1.0" />'
+        elif shape == 'square':
+            pad = 1.5
+            body = f'<rect x="{pad}" y="{pad}" width="{size-2*pad}" height="{size-2*pad}" rx="3" ry="3" fill="{fill}" stroke="{stroke}" stroke-width="1.0" />'
+        elif shape == 'triangle':
+            body = f'<path d="M {half} 1 L {size-1} {size-1} L 1 {size-1} Z" fill="{fill}" stroke="{stroke}" stroke-width="1.0" />'
+        elif shape == 'diamond':
+            body = f'<path d="M {half} 1 L {size-1} {half} L {half} {size-1} L 1 {half} Z" fill="{fill}" stroke="{stroke}" stroke-width="1.0" />'
+        elif shape == 'star':
+            return (
+                f'<svg width="{size}" height="{size}" viewBox="0 0 24 24">'
+                '<path d="M12 2.5l2.6 5.5 6 .55-4.6 3.95 1.4 5.8L12 15.9 6.6 18.3l1.4-5.8L3.4 8.55l6-.55z" '
+                f'fill="{fill}" stroke="{stroke}" stroke-width="0.9" stroke-linejoin="round" />'
+                '</svg>'
+            )
+        else:
+            body = f'<circle cx="{half}" cy="{half}" r="{half - 1.2}" fill="{fill}" stroke="{stroke}" stroke-width="1.0" />'
+        return f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}">{body}</svg>'
+
+    shape_legend_items = "".join(
+        f"""
+        <div style=\"display:flex;align-items:center;margin-bottom:4px;gap:6px;\">
+            <div>{_legend_svg(shape_map[u])}</div>
+            <div style=\"font-size:12px;line-height:1.1;\">
+                <span style=\"font-weight:500;\">{u}</span>
+            </div>
+        </div>
+        """
+        for u in use_categories
+    )
+    shape_legend_html = f"""
+    <div style=\"
+        position: fixed;
+        bottom: 12px; left: 12px; z-index:9999;
+        background: white; padding:10px 12px;
+        border:1px solid #888; border-radius:4px;
+        box-shadow:0 0 4px rgba(0,0,0,0.3);\">
+        <div style=\"font-weight:600; margin-bottom:6px; font-size:13px;\">
+            Use (Marker Shape)
+        </div>
+        {shape_legend_items}
+    </div>
+    """
+    m.get_root().html.add_child(folium.Element(shape_legend_html))
+
+    # Optional ID legend if not too many
+    if len(unique_ids) <= 20:
+        # Build HTML for legend items
+        id_items = "".join(
+            f"<div style='display:flex;align-items:center;margin-bottom:3px;'>"
+            f"<div style='width:14px;height:14px;background:{id_color_map[cid]};border:1px solid #222;margin-right:6px;'></div>"
+            f"<div style='font-size:11px;'>{cid}</div>"
+            f"</div>" for cid in unique_ids
+        )
+
+        # Inject a Leaflet control via a script tag (simpler than Jinja macro to avoid render issues)
+        legend_container_html = (
+            f"<div style=\"background:white;padding:10px 12px;border:1px solid #888;"+
+            "border-radius:4px;max-height:300px;overflow-y:auto;"+
+            "box-shadow:0 0 4px rgba(0,0,0,0.3);\">"+
+            "<div style='font-weight:600;margin-bottom:6px;font-size:13px;'>Concession IDs (Color)</div>"+
+            f"{id_items}"+
+            "</div>"
+        )
+        legend_script = f"""
+<script>
+(function() {{
+    var existing = document.querySelector('.concession-id-legend');
+    if(existing) return; // avoid duplicates when re-rendered
+    var idLegend = L.control({{position:'topright'}});
+    idLegend.onAdd = function(map) {{
+        var div = L.DomUtil.create('div','concession-id-legend');
+        div.innerHTML = `{legend_container_html}`;
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+    }});
+    idLegend.addTo({m.get_name()});
+}})();
+</script>
+"""
+        m.get_root().html.add_child(folium.Element(legend_script))
+
+    folium.LayerControl(collapsed=True).add_to(m)
+    return m
+
+
+
+
 
 
 
