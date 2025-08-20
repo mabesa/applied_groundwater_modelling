@@ -5,6 +5,9 @@ import json
 from typing import Tuple, Any
 from matplotlib.lines import Line2D
 from matplotlib.legend import Legend
+from branca.element import MacroElement
+from jinja2 import Template
+
 
 def display_groundwater_resources_map(gw_map_path, zoom_level=10, 
                                       map_center=None, map_title=None):
@@ -300,5 +303,177 @@ def plot_model_area_map(
     plt.tight_layout()
     
     return fig, ax
+
+
+def display_concessions_map(
+    concessions,
+    boundary_gdf=None,
+    id_col: str = "concession_id",
+    use_col: str = "NUTZART",
+    description_col: str = "BESCHREIBUNG",
+    fassart_col: str = "FASSART",
+    map_center=None,
+    zoom_start: int = 14,
+    map_title: str = None,
+    max_description_chars: int = 180
+):
+    """
+    Create an interactive folium map of groundwater concessions.
+
+    Parameters
+    ----------
+    concessions : (str | geopandas.GeoDataFrame)
+        Path to a vector file (gpkg/shp) OR a GeoDataFrame containing point geometries.
+    boundary_gdf : geopandas.GeoDataFrame, optional
+        GeoDataFrame with a (multi)polygon model boundary to overlay.
+    id_col : str
+        Column with (unique) concession/group id.
+    use_col : str
+        Column with usage / category (controls point coloring).
+    description_col : str
+        Column with textual description (shown in popup).
+    fassart_col : str
+        Column with type of well (shown in popup).
+    map_center : (lat, lon) tuple, optional
+        Center of map. If None it is derived from data bounds.
+    zoom_start : int
+        Initial zoom level.
+    map_title : str, optional
+        Title shown above the map.
+    max_description_chars : int
+        Truncate very long descriptions for the popup.
+
+    Returns
+    -------
+    folium.Map
+    """
+    
+    # --- Load / validate concessions GeoDataFrame ---
+    if isinstance(concessions, str):
+        concessions_gdf = gpd.read_file(concessions)
+    else:
+        concessions_gdf = concessions.copy()
+
+    if concessions_gdf.crs is None:
+        raise ValueError("Concessions GeoDataFrame must have a CRS defined.")
+
+    # Ensure geometry is point-type
+    if not all(concessions_gdf.geometry.geom_type.isin(["Point"])):
+        raise ValueError("Concessions layer must contain only Point geometries.")
+
+    # Reproject to WGS84 for folium
+    if concessions_gdf.crs.to_string() != "EPSG:4326":
+        concessions_gdf = concessions_gdf.to_crs("EPSG:4326")
+
+    # Boundary (optional)
+    if boundary_gdf is not None:
+        b_gdf = boundary_gdf.copy()
+        if b_gdf.crs is None:
+            raise ValueError("Boundary GeoDataFrame must have a CRS defined.")
+        if b_gdf.crs.to_string() != "EPSG:4326":
+            b_gdf = b_gdf.to_crs("EPSG:4326")
+    else:
+        b_gdf = None
+
+    # --- Determine map center ---
+    if map_center is None:
+        bounds = concessions_gdf.total_bounds  # [minx, miny, maxx, maxy]
+        map_center = [(bounds[1] + bounds[3]) / 2, (bounds[0] + bounds[2]) / 2]
+
+    # --- Build color mapping for use_col categories ---
+    categories = concessions_gdf[use_col].fillna("Unspecified").astype(str)
+    unique_cats = list(categories.unique())
+
+    palette = [
+        "#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd",
+        "#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf",
+        "#393b79","#637939","#8c6d31","#843c39","#7b4173"
+    ]
+    # Extend palette if needed
+    if len(unique_cats) > len(palette):
+        extra = len(unique_cats) - len(palette)
+        palette.extend([f"#555{hex(i%16)[2:]}{hex((i*5)%16)[2:]}"] * extra)
+    color_map = {cat: palette[i] for i, cat in enumerate(unique_cats)}
+
+    # --- Create folium map ---
+    m = folium.Map(location=map_center, zoom_start=zoom_start, tiles="OpenStreetMap")
+
+    # Optional title
+    if map_title:
+        title_html = f"""
+        <div style="position: relative; width: 100%; text-align:center; padding:6px 0 4px 0;
+                    font-size:16px; font-weight:600; font-family:Arial;">
+            {map_title}
+        </div>
+        """
+        m.get_root().html.add_child(folium.Element(title_html))
+
+    # --- Add boundary polygon(s) ---
+    if b_gdf is not None and not b_gdf.empty:
+        folium.GeoJson(
+            b_gdf.to_json(),
+            name="Model Boundary",
+            style_function=lambda _:
+                {"color": "black", "weight": 2, "fill": False, "dashArray": "5,5"}
+        ).add_to(m)
+
+    # --- Add concession points ---
+    for _, row in concessions_gdf.iterrows():
+        use_val = str(row.get(use_col, "Unspecified"))
+        cid_val = row.get(id_col, "N/A")
+        desc_val = row.get(description_col, "")
+        if isinstance(desc_val, str) and len(desc_val) > max_description_chars:
+            desc_disp = desc_val[:max_description_chars] + "..."
+        else:
+            desc_disp = desc_val
+        fass_val = row.get(fassart_col, "N/A")
+        tooltip_txt = f"{id_col}: {cid_val} | {use_col}: {use_val}"
+        popup_html = f"""
+        <b>{id_col}:</b> {cid_val}<br>
+        <b>{use_col}:</b> {use_val}<br>
+        <b>Description:</b><br>{desc_disp}
+        <b>Type of Well:</b> {fass_val}
+        """
+        folium.CircleMarker(
+            location=(row.geometry.y, row.geometry.x),
+            radius=6,
+            color=color_map[use_val],
+            fill=True,
+            fill_color=color_map[use_val],
+            fill_opacity=0.85,
+            weight=1,
+            tooltip=tooltip_txt,
+            popup=folium.Popup(popup_html, max_width=300)
+        ).add_to(m)
+
+    # --- Legend ---
+    legend_items = "".join(
+        f"""
+        <div style="display:flex; align-items:center; margin-bottom:3px;">
+            <div style="width:14px; height:14px; background:{color_map[c]};
+                        border:1px solid #222; margin-right:6px;"></div>
+            <div style="font-size:12px;">{c}</div>
+        </div>
+        """
+        for c in unique_cats
+    )
+    legend_html = f"""
+    <div style="
+        position: fixed;
+        bottom: 12px; left: 12px; z-index:9999;
+        background: white; padding:10px 12px;
+        border:1px solid #888; border-radius:4px;
+        box-shadow: 0 0 4px rgba(0,0,0,0.3);">
+        <div style="font-weight:600; margin-bottom:6px; font-size:13px;">
+            Concession Use
+        </div>
+        {legend_items}
+    </div>
+    """
+    m.get_root().html.add_child(folium.Element(legend_html))
+
+    folium.LayerControl(collapsed=True).add_to(m)
+    return m
+
 
 
