@@ -40,13 +40,33 @@ DATA_URLS = {
                 "layer": "AVZH_GEWAESSER_F",  # Layer name for rivers
                 "readme_url": "https://www.dropbox.com/scl/fi/4w76qtxe8w3i6eztyh3p8/Produktblatt_AV_Gewasser_-OGD.pdf?rlkey=o8dt6qkrvxuqf0jagau5rz1yr&dl=1", 
             },  
-            # Add other public limmat data URLs
+            "wells": {
+                "url": "https://www.dropbox.com/scl/fi/ka40fw4te7dbb5sygrtdj/Wasserfassungen_-OGD.gpkg?rlkey=aoskogf8eg1hswswwncpnbpzk&dl=1", 
+                "filename": "Wasserfassungen_-OGD.gpkg",
+                "layer": "GS_GRUNDWASSERFASSUNGEN_OGD_P",  # Layer name for wells
+                "readme_url": "https://www.dropbox.com/scl/fi/n9m4wihx012lus1h11750/Produktblatt_Wasserfassungen_-OGD.pdf?rlkey=c42kikrdl3fmo2bssjynxx9hp&dl=1",
+            },
             "model_boundary": {
                 "url": "https://www.dropbox.com/scl/fi/0q5z2n343ne9g4kttrecs/model_boundary.gpkg?rlkey=epwc8zjxn6u2tvnvqwu0gx70g&dl=1", 
                 "filename": "limmat_model_boundary.gpkg",
                 "layer": "id",  # Layer name for model boundary
                 "readme_url": "https://www.dropbox.com/scl/fi/8aiw2dnfly2i1stetsdjq/readme.md?rlkey=xbi96i69wki4la5y6gflvydk2&dl=1",
-            }
+            }, 
+            "chd_cells": {
+                "url": "https://www.dropbox.com/scl/fi/gurjv5q4zwtgzoe2amgoh/chd_boundary_cells.gpkg?rlkey=v1ryll6u8d3xbtoz9nqdt7ozy&dl=1", 
+                "filename": "chd_boundary_cells.gpkg",
+                "readme_url": "https://www.dropbox.com/scl/fi/ivp5ngb46mzrvhhp59g0u/readme.md?rlkey=x33astkfk74jp3cd9w3v12xo1&dl=1"
+            }, 
+            "wells_north": {
+                "url": "https://www.dropbox.com/scl/fi/asbo1aez3uhn41an1rfif/lateral_north_boundary_cells.gpkg?rlkey=kwmmp3npl0iciqcx4vlxxk06w&dl=1", 
+                "filename": "lateral_north_boundary_cells.gpkg",
+                "readme_url": "https://www.dropbox.com/scl/fi/w797isz5zcipyvyhc9tyd/readme.md?rlkey=p6ka92kzgc461v0e4s7gcpulj&dl=1",
+            }, 
+            "wells_south": {
+                "url": "https://www.dropbox.com/scl/fi/zh3fekwdqwv7f7xni3bzc/lateral_south_boundary_cells.gpkg?rlkey=q1e86panedhpwkagsmssv8r93&dl=1", 
+                "filename": "lateral_south_boundary_cells.gpkg",
+                "readme_url": "https://www.dropbox.com/scl/fi/xmtwi59jnwk63qfr5nws0/readme.md?rlkey=fjg31qrciwdslcvsocf8u00a7&dl=1",
+            }, 
         },
         "switch": {
             "groundwater_map_norm": "https://ethz-my.sharepoint.com/:u:/r/personal/XXXX/applied_gw_modelling_zurich_case_study_data/Grundwasservorkommen_-OGD/Grundwasservorkommen_-OGD.gpkg?csf=1&web=1&e=henbgz",

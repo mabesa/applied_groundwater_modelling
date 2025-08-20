@@ -226,9 +226,12 @@ class ModelImplementationProgressTracker(ProgressTracker):
             ('step2', 'Step 2: Grid Creation'),
             ('step3', 'Step 3: Model Top (DEM Resampling)'),
             ('step4', 'Step 4: Aquifer Thickness & Bottom'),
-            ('step5', 'Step 5: Active Domain & Properties (IBOUND, LPF)'),
-            ('step6', 'Step 6: Solver & Output Control'),
-            ('step7', 'Step 7: River Package (RIV) & Stage Checks')
+            ('step5', 'Step 5: Active Domain (IBOUND, BAS)'),
+            ('step6', 'Step 6: Layer-Property Flow (LPF) Package'),
+            ('step7', 'Step 7: Solver & Output Control'),
+            ('step8', 'Step 8: Areal Recharge (RECH)'), 
+            ('step9', 'Step 9: Lateral In- and Outflows'), 
+            ('step10', 'Step 10: River Package (RIV) & Stage Checks')
         ]
         super().__init__("Model Implementation", "model_implementation_progress.json")
 
