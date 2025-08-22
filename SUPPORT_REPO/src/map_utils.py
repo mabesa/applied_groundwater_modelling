@@ -2,12 +2,14 @@ import folium
 from folium.plugins import BeautifyIcon
 import geopandas as gpd
 from matplotlib.colors import ListedColormap
-import json
-from typing import Tuple, Any
 from matplotlib.lines import Line2D
 from matplotlib.legend import Legend
+import matplotlib.patheffects as path_effects
+import json
+from typing import Tuple, Any
 from branca.element import MacroElement
 from jinja2 import Template
+from shapely import union_all
 
 
 def display_groundwater_resources_map(gw_map_path, zoom_level=10, 
@@ -173,7 +175,8 @@ def plot_model_area_map(
     gauges_path: str,
     model_boundary_path: str = None,
     figsize: Tuple[int, int] = (12, 12), 
-    custom_title: str = None
+    custom_title: str = None,
+    show_river_labels: bool = True
 ) -> Tuple[Any, Any]:
     """
     Displays a map with groundwater depth, rivers, gauges, and an optional model boundary.
@@ -197,6 +200,8 @@ def plot_model_area_map(
         Figure size (width, height) in inches, by default (12, 12).
     custom_title : str, optional
         Custom title for the plot, by default None.
+    show_river_labels : bool, optional
+        If True, label the rivers “Sihl” and “Limmat” on the map, by default True.
 
     Returns
     -------
@@ -264,7 +269,86 @@ def plot_model_area_map(
     rivers.plot(ax=ax, color='blue', linewidth=1.5)
     gauges.plot(ax=ax, color='red', marker='^', markersize=50)
 
-    # --- 4. Create a second, manual legend (Legend 2) ---
+    # --- 4a. Optional river labels ---
+    # Pick the name column robustly
+    possible_name_cols = ['GEWAESSERNAME', 'NAME', 'name', 'GEW_NAME', 'GEWAESSER', 'WATERBODY', 'waterbody']
+    name_col = next((c for c in possible_name_cols if c in rivers.columns), None)
+
+    # Utility to offset in meters or degrees depending on CRS
+    def _offset_vals(dx_m=0.0, dy_m=0.0):
+        if getattr(rivers, "crs", None) is not None and getattr(rivers.crs, "is_geographic", False):
+            # ~1e-3 deg ≈ 100 m near Zurich
+            return dx_m / 100000.0, dy_m / 100000.0
+        return dx_m, dy_m
+
+    if show_river_labels and 'GEWAESSERNAME' in rivers.columns:
+
+        # Clip the surface water layer to the following limits: 
+        xlim = [2674000, 2684000]
+        ylim = [1246000, 1252000]
+        rivers = rivers.cx[xlim[0]:xlim[1], ylim[0]:ylim[1]]
+
+        def label_feature(label_text: str, query_value: str, color='blue', fontsize=13, dx=0.0, dy=0.0):
+            subset = rivers[rivers[name_col].astype(str).str.contains(rf'\b{query_value}\b', case=False, na=False)]
+            if subset.empty:
+                return
+            geom = union_all(list(subset.geometry))
+            rp = geom.representative_point()
+            dxv, dyv = _offset_vals(dx, dy)
+            txt = ax.annotate(
+                label_text,
+                xy=(rp.x + dxv, rp.y + dyv),
+                ha='center',
+                va='center',
+                fontsize=fontsize,
+                color=color,
+                fontweight='bold',
+                alpha=0.95,
+                zorder=10
+            )
+            txt.set_path_effects([
+                path_effects.Stroke(linewidth=3.0, foreground='white'),
+                path_effects.Normal()
+            ])
+
+        # Move "Sihl" label more to the south-west
+        label_feature("Sihl", "Sihl", dx=-700.0, dy=-600.0)
+
+        # Ensure "Limmat" label is visible 
+        label_feature("Limmat", "Limmat", dx=6000.0, dy=-1000.0)
+
+        # Normalize names to match Zürichsee with or without umlaut/accents
+        norm_names = rivers[name_col].astype(str).str.normalize('NFKD').str.encode('ascii', 'ignore').str.decode('ascii')
+        lake_mask = norm_names.str.contains(r'\bZürichsee\b', case=False, na=False) | norm_names.str.contains(r'\blake zurich\b', case=False, na=False)
+        lake_gdf = rivers[lake_mask]
+        
+        if not lake_gdf.empty:
+            lake_geom = union_all(list(lake_gdf.geometry))
+            minx, miny, maxx, maxy = lake_geom.bounds
+            # Place near the lake outlet
+            dx_in, dy_in = _offset_vals(0.0, 0.0)
+            lx = maxx - dx_in
+            ly = miny + dy_in
+            lake_txt = ax.annotate(
+                "Lake Zurich",
+                xy=(lx, ly),
+                ha='center',
+                va='center',
+                fontsize=12,
+                color='black',
+                fontweight='bold',
+                zorder=10
+            )
+            lake_txt.set_path_effects([
+                path_effects.Stroke(linewidth=2.5, foreground='black', alpha=0.4),
+                path_effects.Normal()
+            ])
+
+        # Ensure "Lake Zurich" label is visible 
+        label_feature("Lake Zurich", "Lake Zurich")
+
+
+    # --- 4b. Create a second, manual legend (Legend 2) ---
     # Create proxy artists for the legend handles
     legend_handles = [
         Line2D([0], [0], color='blue', lw=1.5, label='Rivers'),

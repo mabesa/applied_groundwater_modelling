@@ -5,7 +5,6 @@ This is an educational groundwater modeling course for Master-level students at 
 
 ## Technical Environment
 - Use library versions specified in environment_development.yml as context
-- Primary libraries: FloPy 3.9.2, NumPy 1.26.4, Matplotlib 3.10.1, Pandas 2.2.3, GeoPandas 1.0.1
 - Python 3.12 environment
 - Jupyter notebook-based content delivery
 
