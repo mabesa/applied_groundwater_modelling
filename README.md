@@ -467,6 +467,13 @@ conda env update --from-history -f environment_development.yml
 ```
 Please also keep the `environment_students.yml` file up to date. 
 
+### Setting up the JupyterHub
+You are strongly encouraged to modify your jupyter notebook scorlling setting as follows (due to a Jupyter issue which can be fixed by configuring it globally by the ETH support) :
+“Settings → Settings Editor → Notebook → Windowing mode → none” 
+See https://discourse.jupyter.org/t/scrolling-bug-makes-my-screen-shake-erratically/32421/2 
+
+
+
 ### Git Workflow to Contribute
 Here's how you can contribute if you are not yet a collaborator in this repository:  
 

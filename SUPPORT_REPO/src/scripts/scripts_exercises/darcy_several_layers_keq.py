@@ -251,22 +251,9 @@ The y-axis scale is now the same for all profiles to help you in comparing diffe
     Displays the exercise for K_eq attribution.
     """
     display(Markdown(r"""
-## <br> Task 1: <br>
-
-This exercise helps you to familiarize with Darcy law, for 1D and steady state conditions.
-
-Horizontal saturated groundwater flow are established in soil layers with following properties :
-- length $L$ : 100 $\text{m}$
-- specific discharge at in- and out- flow per unit area ($A = 1\text{m}^2$): $q = 3 \cdot 10^{-7}\text{m}^2\text{s}^{-1}$
-- negligible groundwater recharge
-
-Each soil is a combination of vertical or horizontal layers, each layer having a given hydraulic conductivities $K$. 
-Possible values in $\mu\text{m}\cdot\text{s}^{-1}$ are : **$K_0=5$, $K_1=10$, $K_2=20$, $K_3=50$**.
-
-
-**Your task is to fill the table below**, where you should enter for each of the 6 soils (schematic (a) to (f)): 
+**Your task is to fill the table below** For each of the 6 soils (schematic (a) to (f)), indicate: 
 - Line 1 : its equivalent hydraulic conductivity $K_{eq}$
-- Line 2 : the number of its $h(x)$ profile plot.
+- Line 2 : the number of its associated $h(x)$ profile plot.
     """))
 
 
@@ -385,13 +372,13 @@ def draw_schematic_interface():
 
     # Draw the two layers
     ax.add_patch(plt.Rectangle((0, 4), L, 2, edgecolor="black", facecolor="blue", alpha=0.3))
-    ax.text(L/2,5 , r"K1=50 $\mu$m/s", color="black", fontsize=10, ha="center", va="center")
+    ax.text(L/2,5 , r"$K_A$=50 $\mu$m/s", color="black", fontsize=10, ha="center", va="center")
     ax.add_patch(plt.Rectangle((L, 4), L, 2, edgecolor="black", facecolor="green", alpha=0.3))
 
     # Draw the wells as piezometers (tubes)
     # Well at x=0
     ax.add_patch(plt.Rectangle((-0.5, 4), 0.5, 3, edgecolor="black", facecolor="white"))
-    ax.text(2*L-L/2, 5 , r"K2=10 $\mu$m/s", color="black", fontsize=10, ha="center", va="center")
+    ax.text(2*L-L/2, 5 , r"$K_B$=10 $\mu$m/s", color="black", fontsize=10, ha="center", va="center")
     ax.hlines(6.8, -0.5, 0, colors="blue", linewidth=2)  # Water table level inside the well
     
     # Add the blue arrows (square + triangle)
