@@ -1,19 +1,52 @@
 import os
+import sys
 import requests
 from tqdm.notebook import tqdm
+from urllib.parse import urlparse
 
-# Find path to project root directory from both the src and the home folder
-try: 
-    # Try to add from src folder
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-except NameError:
-    # If __file__ is not defined, assume running from home folder
-    project_root = os.path.expanduser("~")
-# Add the project root to the system path
-if project_root not in os.sys.path:
-    os.sys.path.append(project_root)
+def find_project_root(marker_files=['config.py', 'config_template.py']):
+    """Find the project root by searching for a list of marker files."""
+    # Start from current working directory. In a locally run Jupyter notebook, 
+    # this will be the directory where the notebook is located.
+    # In a JupyterHub environment, it will be the user's home directory.
+    path = os.getcwd()
+    print(f"Starting search for project root from: {path}")
+    # Traverse up the directory tree until we find the marker file
+    # or reach the filesystem root.
+    while os.path.dirname(path) != path: # Stop at filesystem root
+        print(f"Checking path: {path}")
+        for marker in marker_files:
+            if os.path.exists(os.path.join(path, marker)):
+                print(f"Found project root: {path} (marker: {marker})")
+                return path
+        print(f"Marker file not found in {path}. Moving up...")
+        path = os.path.dirname(path)
+    
+    # Fallback 
+    # If running as a script, __file__ might be available
+    try:
+        print(f"Trying to find project root using __file__...")
+        path = os.path.dirname(os.path.abspath(__file__))
+        while os.path.dirname(path) != path:
+            for marker in marker_files:
+                if os.path.exists(os.path.join(path, marker)):
+                    return path
+            path = os.path.dirname(path)
+    except NameError:
+        pass # __file__ is not defined in interactive environments
+    raise FileNotFoundError(f"Project root with one of {marker_files} not found.")
 
-from config import CASE_STUDY, DATA_SOURCE, DATA_URLS
+project_root = find_project_root()
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+try:
+    from config import CASE_STUDY, DATA_SOURCE, DATA_URLS
+    print("Loaded configuration from 'config.py'")
+except ImportError:
+    print("Warning: 'config.py' not found. Falling back to 'config_template.py'.")
+    from config_template import CASE_STUDY, DATA_SOURCE, DATA_URLS
+
 
 def get_data_urls():
     """Get data URLs based on current case study and data source settings."""
@@ -58,42 +91,55 @@ def download_named_file(name, dest_folder=None, data_type=None):
         if data_type:
             dest_folder = os.path.join(dest_folder, data_type)
     
-    dest_path = os.path.join(dest_folder, filename)
     os.makedirs(dest_folder, exist_ok=True)
 
-    if os.path.exists(dest_path):
-        print(f"{filename} already exists in {dest_folder}.")
-        return dest_path
-
-    print(f"Downloading {filename} from {DATA_SOURCE} for case study '{CASE_STUDY}'...")
-    print(f"URL: {url[:50]}..." if len(url) > 50 else f"URL: {url}")
-    
-    try:
-        r = requests.get(url, stream=True)
-        if r.status_code != 200:
-            raise Exception(f"Download failed: {r.status_code}")
-
-        total = int(r.headers.get('content-length', 0))
-        with open(dest_path, 'wb') as f, tqdm(
-            desc=filename,
-            total=total,
-            unit='iB',
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as bar:
-            for chunk in r.iter_content(chunk_size=1024):
-                size = f.write(chunk)
-                bar.update(size)
-
-        print(f"Download complete: {dest_path}")
-        return dest_path
-        
-    except Exception as e:
-        print(f"Error downloading {filename}: {e}")
-        # Clean up partial file if it exists
+    # --- Helper function for downloading ---
+    def _download(url, filename, description):
+        dest_path = os.path.join(dest_folder, filename)
         if os.path.exists(dest_path):
-            os.remove(dest_path)
-        raise
+            print(f"{filename} already exists in {dest_folder}.")
+            return dest_path
+        
+        print(f"Downloading {description} ({filename})...")
+        try:
+            r = requests.get(url, stream=True)
+            r.raise_for_status()
+            total = int(r.headers.get('content-length', 0))
+            with open(dest_path, 'wb') as f, tqdm(
+                desc=filename, total=total, unit='iB', unit_scale=True, unit_divisor=1024
+            ) as bar:
+                for chunk in r.iter_content(chunk_size=1024):
+                    size = f.write(chunk)
+                    bar.update(size)
+            print(f"Download complete: {dest_path}")
+            return dest_path
+        except Exception as e:
+            print(f"Error downloading {filename}: {e}")
+            if os.path.exists(dest_path):
+                os.remove(dest_path)
+            raise
+
+    # --- Download data file ---
+    data_path = _download(file_info['url'], file_info['filename'], "data file")
+
+    # --- Download README if it exists ---
+    if 'readme_url' in file_info:
+        readme_url = file_info['readme_url']
+        
+        # Automatically determine the README filename
+        original_name, _ = os.path.splitext(file_info['filename'])
+        
+        # Extract file extension from the URL path
+        parsed_url = urlparse(readme_url)
+        _, readme_ext = os.path.splitext(parsed_url.path)
+        
+        if not readme_ext:
+            print(f"Warning: Could not determine file extension for README from URL: {readme_url}")
+        else:
+            readme_filename = f"{original_name}_readme{readme_ext}"
+            _download(readme_url, readme_filename, "README")
+
+    return data_path
 
 def get_data_path(data_type=None):
     """
