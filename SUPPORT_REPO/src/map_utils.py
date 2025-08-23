@@ -6,10 +6,11 @@ from matplotlib.lines import Line2D
 from matplotlib.legend import Legend
 import matplotlib.patheffects as path_effects
 import json
-from typing import Tuple, Any
+from typing import Tuple, Any, Optional, Literal
 from branca.element import MacroElement
 from jinja2 import Template
 from shapely import union_all
+import textwrap
 
 
 def display_groundwater_resources_map(gw_map_path, zoom_level=10, 
@@ -169,6 +170,7 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10,
 
     return m
 
+'''
 def plot_model_area_map(
     gw_depth_path: str, 
     rivers_path: str, 
@@ -388,179 +390,263 @@ def plot_model_area_map(
     plt.tight_layout()
     
     return fig, ax
-
 '''
-def display_concessions_map(
-    concessions,
-    boundary_gdf=None,
-    id_col: str = "concession_id",
-    use_col: str = "NUTZART",
-    description_col: str = "BESCHREIBUNG",
-    fassart_col: str = "FASSART",
-    map_center=None,
-    zoom_start: int = 14,
-    map_title: str = None,
-    max_description_chars: int = 180,
-    simple_shapes: bool = True
-):
+
+def plot_model_area_map(
+    gw_depth_path: str, 
+    rivers_path: str | None = None, 
+    gauges_path: str | None = None,
+    model_boundary_path: str | None = None,
+    figsize: Tuple[int, int] = (12, 12), 
+    custom_title: str | None = None,
+    show_river_labels: bool = True,
+    basemap: Optional[Literal[
+        "osm",
+        "carto-positron",
+        "carto-voyager",
+        "esri-imagery",
+        "opentopomap",]] = None,
+    basemap_alpha: float = 0.9,
+) -> Tuple[Any, Any]:
     """
-    Create an interactive folium map of groundwater concessions.
+    Displays a map with groundwater depth, and optionally rivers, gauges, and a model boundary.
 
     Parameters
     ----------
-    concessions : (str | geopandas.GeoDataFrame)
-        Path to a vector file (gpkg/shp) OR a GeoDataFrame containing point geometries.
-    boundary_gdf : geopandas.GeoDataFrame, optional
-        GeoDataFrame with a (multi)polygon model boundary to overlay.
-    id_col : str
-        Column with (unique) concession/group id.
-    use_col : str
-        Column with usage / category (controls point coloring).
-    description_col : str
-        Column with textual description (shown in popup).
-    fassart_col : str
-        Column with type of well (shown in popup).
-    map_center : (lat, lon) tuple, optional
-        Center of map. If None it is derived from data bounds.
-    zoom_start : int
-        Initial zoom level.
-    map_title : str, optional
-        Title shown above the map.
-    max_description_chars : int
-        Truncate very long descriptions for the popup.
+    gw_depth_path : str
+        File path to the groundwater depth GeoPackage (.gpkg), layer 'GS_GW_LEITER_F'.
+    rivers_path : str | None, optional
+        File path to the rivers GeoPackage (.gpkg), layer 'AVZH_GEWAESSER_F'. If None, rivers are omitted.
+    gauges_path : str | None, optional
+        File path to the gauges GeoPackage (.gpkg), layer 'GS_GRUNDWASSERPEGEL_P'. If None, gauges are omitted.
+    model_boundary_path : str | None, optional
+        File path to the model boundary GeoPackage (.gpkg). If None, boundary is omitted.
+    figsize : tuple, optional
+        Figure size (width, height) in inches, by default (12, 12).
+    custom_title : str | None, optional
+        Custom title for the plot.
+    show_river_labels : bool, optional
+        If True and rivers are provided, label “Sihl” and “Limmat” on the map.
+    basemap : {'osm','carto-positron','carto-voyager','esri-imagery','opentopomap'} | None, optional
+        If set, adds a web tile basemap under the layers (via contextily). Default None.
+    basemap_alpha : float, optional
+        Tile transparency for the basemap.
 
     Returns
     -------
-    folium.Map
+    tuple
+        (fig, ax) Matplotlib figure and axes.
     """
-    
-    # --- Load / validate concessions GeoDataFrame ---
-    if isinstance(concessions, str):
-        concessions_gdf = gpd.read_file(concessions)
-    else:
-        concessions_gdf = concessions.copy()
+    try:
+        import os
+        import geopandas as gpd
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("This function requires 'geopandas' and 'matplotlib'.")
+        print("Please install them using: pip install geopandas matplotlib")
+        return None, None
 
-    if concessions_gdf.crs is None:
-        raise ValueError("Concessions GeoDataFrame must have a CRS defined.")
+    # --- 1. Load Geospatial Data ---
+    gw_depth = gpd.read_file(gw_depth_path, layer='GS_GW_LEITER_F')
 
-    # Ensure geometry is point-type
-    if not all(concessions_gdf.geometry.geom_type.isin(["Point"])):
-        raise ValueError("Concessions layer must contain only Point geometries.")
+    rivers = None
+    if rivers_path:
+        try:
+            if os.path.exists(rivers_path):
+                rivers = gpd.read_file(rivers_path, layer='AVZH_GEWAESSER_F')
+            else:
+                print(f"Rivers path not found: {rivers_path}")
+        except Exception as e:
+            print(f"Could not load rivers from {rivers_path}: {e}")
+            rivers = None
 
-    # Reproject to WGS84 for folium
-    if concessions_gdf.crs.to_string() != "EPSG:4326":
-        concessions_gdf = concessions_gdf.to_crs("EPSG:4326")
+    gauges = None
+    if gauges_path:
+        try:
+            if os.path.exists(gauges_path):
+                gauges = gpd.read_file(gauges_path, layer='GS_GRUNDWASSERPEGEL_P')
+            else:
+                print(f"Gauges path not found: {gauges_path}")
+        except Exception as e:
+            print(f"Could not load gauges from {gauges_path}: {e}")
+            gauges = None
 
-    # Boundary (optional)
-    if boundary_gdf is not None:
-        b_gdf = boundary_gdf.copy()
-        if b_gdf.crs is None:
-            raise ValueError("Boundary GeoDataFrame must have a CRS defined.")
-        if b_gdf.crs.to_string() != "EPSG:4326":
-            b_gdf = b_gdf.to_crs("EPSG:4326")
-    else:
-        b_gdf = None
+    # --- 2. Define Color Scheme and Labels ---
+    custom_colors = {
+        1: '#eda53f',
+        2: '#cfe2f3',
+        3: '#cfe2f3',
+        4: '#9fc5e8',
+        6: '#6fa8dc',
+        8: '#ead1dc',
+        10: '#d5a6bd',
+    }
+    type_labels = {
+        1: 'Low thickness (<2m)',
+        2: 'Medium thickness (2-10m)',
+        3: 'Suspected occurrence',
+        4: 'High thickness (10-20m)',
+        6: 'Very high thickness (>20m)',
+        8: 'Gravel aquifer, low thickness',
+        10: 'Gravel aquifer, medium thickness',
+    }
 
-    # --- Determine map center ---
-    if map_center is None:
-        bounds = concessions_gdf.total_bounds  # [minx, miny, maxx, maxy]
-        map_center = [(bounds[1] + bounds[3]) / 2, (bounds[0] + bounds[2]) / 2]
+    gw_depth['GWL_DESC'] = gw_depth['GWLTYP'].map(type_labels).fillna('Other')
+    desc_to_type = {v: k for k, v in type_labels.items()}
+    sorted_descriptions = sorted(gw_depth['GWL_DESC'].unique())
+    colors_list = [custom_colors.get(desc_to_type.get(desc), '#999999') for desc in sorted_descriptions]
+    from matplotlib.colors import ListedColormap
+    custom_cmap = ListedColormap(colors_list)
 
-    # --- Build color mapping for use_col categories ---
-    categories = concessions_gdf[use_col].fillna("Unspecified").astype(str)
-    unique_cats = list(categories.unique())
+    # --- 3. Create the Plot ---
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
 
-    palette = [
-        "#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd",
-        "#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf",
-        "#393b79","#637939","#8c6d31","#843c39","#7b4173"
-    ]
-    # Extend palette if needed
-    if len(unique_cats) > len(palette):
-        extra = len(unique_cats) - len(palette)
-        palette.extend([f"#555{hex(i%16)[2:]}{hex((i*5)%16)[2:]}"] * extra)
-    color_map = {cat: palette[i] for i, cat in enumerate(unique_cats)}
-
-    # --- Create folium map ---
-    m = folium.Map(location=map_center, zoom_start=zoom_start, tiles="OpenStreetMap")
-
-    # Optional title
-    if map_title:
-        title_html = f"""
-        <div style="position: relative; width: 100%; text-align:center; padding:6px 0 4px 0;
-                    font-size:16px; font-weight:600; font-family:Arial;">
-            {map_title}
-        </div>
-        """
-        m.get_root().html.add_child(folium.Element(title_html))
-
-    # --- Add boundary polygon(s) ---
-    if b_gdf is not None and not b_gdf.empty:
-        folium.GeoJson(
-            b_gdf.to_json(),
-            name="Model Boundary",
-            style_function=lambda _:
-                {"color": "black", "weight": 2, "fill": False, "dashArray": "5,5"}
-        ).add_to(m)
-
-    # --- Add concession points ---
-    for _, row in concessions_gdf.iterrows():
-        use_val = str(row.get(use_col, "Unspecified"))
-        cid_val = row.get(id_col, "N/A")
-        desc_val = row.get(description_col, "")
-        if isinstance(desc_val, str) and len(desc_val) > max_description_chars:
-            desc_disp = desc_val[:max_description_chars] + "..."
-        else:
-            desc_disp = desc_val
-        fass_val = row.get(fassart_col, "N/A")
-        tooltip_txt = f"{id_col}: {cid_val} | {use_col}: {use_val}"
-        popup_html = f"""
-        <b>{id_col}:</b> {cid_val}<br>
-        <b>{use_col}:</b> {use_val}<br>
-        <b>Description:</b><br>{desc_disp}
-        <b>Type of Well:</b><br>{fass_val}
-        """
-        folium.CircleMarker(
-            location=(row.geometry.y, row.geometry.x),
-            radius=6,
-            color=color_map[use_val],
-            fill=True,
-            fill_color=color_map[use_val],
-            fill_opacity=0.85,
-            weight=1,
-            tooltip=tooltip_txt,
-            popup=folium.Popup(popup_html, max_width=300)
-        ).add_to(m)
-
-    # --- Legend ---
-    legend_items = "".join(
-        f"""
-        <div style="display:flex; align-items:center; margin-bottom:3px;">
-            <div style="width:14px; height:14px; background:{color_map[c]};
-                        border:1px solid #222; margin-right:6px;"></div>
-            <div style="font-size:12px;">{c}</div>
-        </div>
-        """
-        for c in unique_cats
+    # Base layer (creates its own legend)
+    gw_depth.plot(
+        ax=ax, column='GWL_DESC', categorical=True, legend=True,
+        legend_kwds={'title': "Groundwater Type", 'loc': 'upper right', 'bbox_to_anchor': (1.0, 1.0)},
+        cmap=custom_cmap, alpha=0.7
     )
-    legend_html = f"""
-    <div style="
-        position: fixed;
-        bottom: 12px; left: 12px; z-index:9999;
-        background: white; padding:10px 12px;
-        border:1px solid #888; border-radius:4px;
-        box-shadow: 0 0 4px rgba(0,0,0,0.3);">
-        <div style="font-weight:600; margin-bottom:6px; font-size:13px;">
-            Concession Use
-        </div>
-        {legend_items}
-    </div>
-    """
-    m.get_root().html.add_child(folium.Element(legend_html))
 
-    folium.LayerControl(collapsed=True).add_to(m)
-    return m
-'''
+    # Other layers (we make a manual legend for these)
+    legend_handles = []
+    legend_labels = []
+
+    if rivers is not None and not rivers.empty:
+        rivers.plot(ax=ax, color='blue', linewidth=1.5)
+        from matplotlib.lines import Line2D
+        legend_handles.append(Line2D([0], [0], color='blue', lw=1.5, label='Rivers'))
+        legend_labels.append('Rivers')
+
+    if gauges is not None and not gauges.empty:
+        gauges.plot(ax=ax, color='red', marker='^', markersize=50)
+        from matplotlib.lines import Line2D
+        legend_handles.append(Line2D([0], [0], marker='^', color='red', label='Gauges', linestyle='None', markersize=8))
+        legend_labels.append('Gauges')
+
+    # --- Optional river labels ---
+    if show_river_labels and (rivers is not None) and (not rivers.empty):
+        # Pick the name column robustly
+        possible_name_cols = ['GEWAESSERNAME', 'NAME', 'name', 'GEW_NAME', 'GEWAESSER', 'WATERBODY', 'waterbody']
+        name_col = next((c for c in possible_name_cols if c in rivers.columns), None)
+
+        # Utility to offset in meters or degrees depending on CRS
+        def _offset_vals(dx_m=0.0, dy_m=0.0):
+            if getattr(rivers, "crs", None) is not None and getattr(rivers.crs, "is_geographic", False):
+                return dx_m / 100000.0, dy_m / 100000.0
+            return dx_m, dy_m
+
+        # Clip surface water to focus window
+        xlim = [2674000, 2684000]
+        ylim = [1246000, 1252000]
+        try:
+            rivers_clip = rivers.cx[xlim[0]:xlim[1], ylim[0]:ylim[1]]
+        except Exception:
+            rivers_clip = rivers
+
+        def label_feature(label_text: str, query_value: str, color='blue', fontsize=13, dx=0.0, dy=0.0):
+            if name_col is None:
+                return
+            subset = rivers_clip[rivers_clip[name_col].astype(str).str.contains(rf'\b{query_value}\b', case=False, na=False)]
+            if subset.empty:
+                return
+            geom = union_all(list(subset.geometry))
+            rp = geom.representative_point()
+            dxv, dyv = _offset_vals(dx, dy)
+            import matplotlib.patheffects as path_effects
+            txt = ax.annotate(
+                label_text,
+                xy=(rp.x + dxv, rp.y + dyv),
+                ha='center', va='center',
+                fontsize=fontsize, color=color, fontweight='bold', alpha=0.95, zorder=10
+            )
+            txt.set_path_effects([
+                path_effects.Stroke(linewidth=3.0, foreground='white'),
+                path_effects.Normal()
+            ])
+
+        label_feature("Sihl", "Sihl", dx=-700.0, dy=-600.0)
+        label_feature("Limmat", "Limmat", dx=6000.0, dy=-1000.0)
+
+        # Lake Zurich label (robust to umlauts)
+        if name_col is not None:
+            norm_names = rivers_clip[name_col].astype(str).str.normalize('NFKD').str.encode('ascii', 'ignore').str.decode('ascii')
+            lake_mask = norm_names.str.contains(r'\bZurichsee\b', case=False, na=False) | norm_names.str.contains(r'\blake zurich\b', case=False, na=False)
+            lake_gdf = rivers_clip[lake_mask]
+            if not lake_gdf.empty:
+                lake_geom = union_all(list(lake_gdf.geometry))
+                minx, miny, maxx, maxy = lake_geom.bounds
+                lx, ly = maxx, miny
+                ax.annotate(
+                    "Lake Zurich", xy=(lx, ly), ha='center', va='center',
+                    fontsize=12, color='black', fontweight='bold', zorder=10
+                )
+
+    # Plot model boundary and add legend handle
+    if model_boundary_path:
+        try:
+            model_boundary = gpd.read_file(model_boundary_path)
+            model_boundary.plot(ax=ax, facecolor='none', edgecolor='black', linestyle='--', linewidth=2.5)
+            from matplotlib.lines import Line2D
+            legend_handles.append(Line2D([0], [0], color='black', lw=2.5, linestyle='--', label='Model Boundary'))
+            legend_labels.append('Model Boundary')
+        except Exception as e:
+            print(f"Could not load or plot model boundary from {model_boundary_path}: {e}")
+
+    # Manual legend for non-categorical layers if any present
+    if legend_handles:
+        from matplotlib.legend import Legend
+        legend2 = Legend(ax, legend_handles, legend_labels, loc='upper left')
+        ax.add_artist(legend2)
+
+    # --- 5. Formatting ---
+    title_text = custom_title or 'Model Area Delineation'
+    wrap_width = 90
+    title_text = textwrap.fill(title_text, width=wrap_width)
+    title_obj = ax.set_title(title_text, fontsize=16, weight='bold', loc='center')
+    # Ensure Matplotlib also wraps dynamically if space is tight
+    try:
+        title_obj.set_wrap(True)
+    except Exception:
+        pass
+
+    ax.set_xlabel('Easting (m, CH1903+ / LV95)')
+    ax.set_ylabel('Northing (m, CH1903+ / LV95)')
+    ax.grid(True, linestyle=':', alpha=0.6)
+
+    ax.set_xlim(2674000, 2684000)
+    ax.set_ylim(1246000, 1252000)
+
+    # Optional basemap (keeps axes in LV95 by passing crs)
+    if basemap:
+        try:
+            import contextily as cx
+            prov = cx.providers  # unified access to xyzservices via contextily
+            # Map requested key to provider object names
+            aliases = {
+                "osm": ("OpenStreetMap", "Mapnik"),
+                "carto-positron": ("CartoDB", "Positron"),
+                "carto-voyager": ("CartoDB", "Voyager"),
+                "esri-imagery": ("Esri", "WorldImagery"),
+                "opentopomap": ("OpenTopoMap", None),
+            }
+            ns, layer = aliases.get(basemap, ("OpenStreetMap", "Mapnik"))
+            try:
+                src = getattr(prov, ns)
+                if layer:
+                    src = getattr(src, layer)
+            except AttributeError:
+                # Fallback to OSM Mapnik if requested provider not present
+                src = prov.OpenStreetMap.Mapnik
+            cx.add_basemap(ax, source=src, crs=gw_depth.crs, alpha=basemap_alpha, attribution_size=6)
+        except Exception as e:
+            print(f"Basemap '{basemap}' skipped: {e}")
+
+
+    plt.tight_layout()
+    return fig, ax
+
+
 
 
 def display_concessions_map(
