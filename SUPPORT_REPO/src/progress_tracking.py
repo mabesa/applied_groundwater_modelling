@@ -227,6 +227,7 @@ class ModelImplementationProgressTracker(ProgressTracker):
             ('step2.1', 'Step 2.1: Discretization - Grid Creation'),
             ('step2.2', 'Step 2.2: Discretization - Model Top (DEM Resampling)'),
             ('step2.3', 'Step 2.3: Discretization - Aquifer Thickness & Bottom'),
+            ('step2.4', 'Step 2.4: Discretization - Writing DIS Package'),
             ('step3', 'Step 3: Paramterization - Layer-Property Flow (LPF) Package'),
             ('step4.1', 'Step 4.1: Boundary & Initial Conditions - Active Cells, Basic (BAS) Package'),
             ('step4.2', 'Step 4.2: Boundary & Initial Conditions - Lateral Outflow (CHD Package)'),
