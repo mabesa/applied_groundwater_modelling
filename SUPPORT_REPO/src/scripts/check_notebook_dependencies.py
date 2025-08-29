@@ -10,8 +10,23 @@ EXCLUDED_PACKAGES = {'tools'}  # {'flopy', 'porespy', 'tools'}
 
 def extract_imports_from_notebook(notebook_path):
     """Extract all import statements from a Jupyter notebook."""
-    with open(notebook_path, 'r', encoding='utf-8') as f:
-        nb = nbformat.read(f, as_version=4)
+    # Skip zero-byte files early
+    try:
+        if os.path.getsize(notebook_path) == 0:
+            print(f"📓 Skipping empty notebook: {notebook_path}")
+            return set()
+    except OSError:
+        # If the file can't be stat'ed for some reason, skip it gracefully
+        print(f"📓 Skipping unreadable notebook (stat failed): {notebook_path}")
+        return set()
+
+    # Attempt to read the notebook; skip invalid JSON notebooks
+    try:
+        with open(notebook_path, 'r', encoding='utf-8') as f:
+            nb = nbformat.read(f, as_version=4)
+    except Exception as e:
+        print(f"📓 Skipping notebook due to read error: {notebook_path} -> {e}")
+        return set()
 
     imports = set()
     for cell in nb.cells:
