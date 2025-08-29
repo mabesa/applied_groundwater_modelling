@@ -28,6 +28,13 @@ DATA_URLS = {
                 "layer": None,  # No specific layer for DEM
                 "readme_url": "https://www.dropbox.com/scl/fi/okvjstbm078v9nghbisjv/DHM25_Documentation.pdf?rlkey=j9crdkettepfe5k5eh60eoza4&dl=1", 
             },   
+            "dem_hres": {
+                "url": "https://www.dropbox.com/scl/fi/cbo2vescztrryn1s8z8lp/swissalti3d_merged_lv95.tif?rlkey=y97k2qhwyjd4gb20jw73ti7ri&dl=1", 
+                #"url": "https://www.dropbox.com/scl/fi/xwshpm2pz8e6o3wp2pcrc/swissalti3d_merged_lv03.tif?rlkey=fkxt22bhb64gs9ipj1cvg6xf6&dl=1", 
+                "filename": "swissalti3d_merged_lv95.tif",
+                "layer": None,  # No specific layer for high-resolution DEM
+                "readme_url": "https://www.dropbox.com/scl/fi/96lsuixlydxbnxg63jwx7/swissALTI3D_Dokumentation.pdf?rlkey=onmpfh3j6ambjtnr3sm97qxj5&dl=1", 
+            },   
             "gauges": {
                 "url": "https://www.dropbox.com/scl/fi/vvrdo3fotxy9ewebfqiw4/Wasserpegel_-OGD.gpkg?rlkey=74tg568yvn1lv2ouo6wcyl212&dl=1", 
                 "filename": "Wasserpegel_-OGD.gpkg",
