@@ -11,6 +11,8 @@ from branca.element import MacroElement
 from jinja2 import Template
 from shapely import union_all
 import textwrap
+import numpy as np
+import warnings
 
 
 def display_groundwater_resources_map(gw_map_path, zoom_level=10, 
@@ -866,6 +868,852 @@ def display_concessions_map(
 
     folium.LayerControl(collapsed=True).add_to(m)
     return m
+
+
+
+def plot_interactive_model_domain_3d(
+    mf,
+    bas=None,
+    chd=None,
+    riv=None,
+    layer=0,
+    exaggeration=1.0,
+    engine="plotly",
+    show_chd=True,
+    show_riv=True,
+    mask_inactive=True,
+    top_alpha=0.65,
+    bot_alpha=0.65,
+    draw_grid=True,
+    grid_line_color="#555555",
+    grid_line_width=1.0,
+    vertical_line_opacity=0.25,
+    show_verticals=True,
+    custom_title=None,
+    fill_chd_surface=True,
+    chd_surface_opacity=0.55,
+    chd_surface_color="royalblue",
+    chd_point_markers=False,
+    show_chd_label=True,  # now only affects legend entry; no text annotation drawn
+    chd_label_text="CHD boundary",
+    show_exaggeration_label=True,
+    exaggeration_label_format="Vertical exaggeration: {exag:g}x",
+):
+    """
+    Interactive 3‑D view of single‑layer model geometry (top, bottom) and optional CHD / RIV cells.
+
+    Now draws true grid surfaces (not just points) and (optionally) vertical
+    lines connecting top/bottom corner nodes.
+
+    Parameters
+    ----------
+    mf : flopy.modflow.Modflow
+    bas : ModflowBas
+    chd : ModflowChd
+    riv : ModflowRiv
+    layer : int
+    exaggeration : float
+        Vertical exaggeration factor.
+    engine : {'plotly','mpl'}
+    show_chd, show_riv : bool
+    mask_inactive : bool
+    top_alpha, bot_alpha : float
+        Opacity of top / bottom surfaces.
+    draw_grid : bool
+        Draw horizontal grid lines on top & bottom surfaces.
+    grid_line_color : str
+    grid_line_width : float
+    # --- New CHD surface options ---
+    fill_chd_surface : bool
+        Draw filled Mesh3d surface over CHD cells.
+    chd_surface_opacity : float
+        Opacity of CHD surface (0-1).
+    chd_surface_color : str
+        Color of CHD surface (solid fill).
+    chd_point_markers : bool
+        Still plot points for CHD (in addition to surface) when True.
+    show_chd_label : bool
+        Add a text label at centroid of CHD cells (Plotly engine only).
+    chd_label_text : str
+        Text for CHD boundary label.
+    show_exaggeration_label : bool
+        If True, adds a small annotation (lower-left) with the vertical exaggeration value.
+    exaggeration_label_format : str
+        Format string for exaggeration label; must contain '{exag}' placeholder.
+    fill_chd_surface=True,
+    chd_surface_opacity=0.55,
+    chd_surface_color="royalblue",
+    chd_point_markers=False,
+    show_verticals : bool
+        Draw vertical lines at each corner.
+    vertical_line_opacity : float
+    """
+    if not hasattr(mf, "dis"):
+        raise RuntimeError("Model missing DIS package.")
+    dis = mf.dis
+    top_centers = dis.top.array.copy()
+    bot_centers = dis.botm.array[layer].copy()
+    grid = mf.modelgrid
+    nrow, ncol = top_centers.shape
+
+    if bas is None:
+        bas = mf.get_package("BAS6")
+    if bas is None:
+        # No BAS: proceed without masking (treat all as active)
+        if mask_inactive:
+            warnings.warn("BAS package not found; inactive cell masking skipped.", RuntimeWarning)
+        ibound = np.ones((nrow, ncol), dtype=int)
+        mask_inactive_effective = False
+    else:
+        ibound = bas.ibound.array[layer]
+        mask_inactive_effective = mask_inactive
+
+    # Mask inactive center cells only if we have BAS
+    if mask_inactive_effective:
+        inactive_mask = (ibound == 0)
+        top_centers = np.where(inactive_mask, np.nan, top_centers)
+        bot_centers = np.where(inactive_mask, np.nan, bot_centers)
+
+    # Helper: derive corner elevations from surrounding active cell centers
+    def centers_to_corners(arr2d):
+        nr, nc = arr2d.shape
+        corners = np.full((nr + 1, nc + 1), np.nan, dtype=float)
+        for i in range(nr + 1):
+            r_idx = [i - 1, i]
+            r_idx = [r for r in r_idx if 0 <= r < nr]
+            for j in range(nc + 1):
+                c_idx = [j - 1, j]
+                c_idx = [c for c in c_idx if 0 <= c < nc]
+                vals = []
+                for rr in r_idx:
+                    for cc in c_idx:
+                        v = arr2d[rr, cc]
+                        if np.isfinite(v):
+                            vals.append(v)
+                if vals:
+                    corners[i, j] = float(np.mean(vals))
+        return corners
+
+    top_corners = centers_to_corners(top_centers)
+    bot_corners = centers_to_corners(bot_centers)
+
+    # Collect CHD / RIV points (cell centers)
+    # Collect CHD / RIV points & polys (for filled surface) AFTER ibound defined
+    chd_cells = []  # (xc, yc, shead)
+    chd_polys = []  # (row, col, shead)
+    if show_chd and chd is not None:
+        try:
+            spd0 = chd.stress_period_data[0]
+        except Exception:
+            spd0 = []
+        for rec in spd0:
+            k_, i_, j_ = rec["k"], rec["i"], rec["j"]
+            if k_ != layer:
+                continue
+            if mask_inactive and ibound[i_, j_] == 0:
+                continue
+            shead_val = float(rec["shead"])
+            chd_cells.append((grid.xcellcenters[i_, j_],
+                              grid.ycellcenters[i_, j_],
+                              shead_val))
+            chd_polys.append((i_, j_, shead_val))
+
+    riv_stage_pts = []
+    riv_rbot_pts = []
+    if show_riv and riv is not None:
+        r0 = riv.stress_period_data[0]
+        for rec in r0:
+            k, i, j = rec["k"], rec["i"], rec["j"]
+            if k != layer:
+                continue
+            if mask_inactive and ibound[i, j] == 0:
+                continue
+            xc = grid.xcellcenters[i, j]
+            yc = grid.ycellcenters[i, j]
+            riv_stage_pts.append((xc, yc, float(rec["stage"])))
+            riv_rbot_pts.append((xc, yc, float(rec["rbot"])))
+
+    # Try plotly
+    if engine == "plotly":
+        try:
+            import plotly.graph_objects as go
+        except ImportError:
+            warnings.warn("Plotly not installed. Falling back to Matplotlib.")
+            engine = "mpl"
+
+    if engine == "plotly":
+        import plotly.graph_objects as go
+
+        fig = go.Figure()
+
+        # Corner coordinate arrays from FloPy (nrow+1, ncol+1)
+        xv = grid.xvertices
+        yv = grid.yvertices
+
+        # Compute elevation range (true, un‑exaggerated)
+        elev_min = float(np.nanmin([np.nanmin(bot_corners), np.nanmin(top_corners)]))
+        elev_max = float(np.nanmax([np.nanmax(bot_corners), np.nanmax(top_corners)]))
+
+        # Prepare shared color scaling (use true elevations, not exaggerated)
+        cmin, cmax = elev_min, elev_max
+
+        # Build tick labels so z-axis shows true elevations (not exaggerated values)
+        if exaggeration != 1.0:
+            nticks = 6
+            real_ticks = np.linspace(elev_min, elev_max, nticks)
+            scaled_tickvals = real_ticks * exaggeration
+            ticktext = [f"{t:.1f}" for t in real_ticks]
+        else:
+            real_ticks = scaled_tickvals = ticktext = None
+
+        # Surfaces (top & bottom) using corner grids
+        fig.add_trace(go.Surface(
+            x=xv,
+            y=yv,
+            z=top_corners * exaggeration,
+            surfacecolor=top_corners,  # use true elevations for color
+            cmin=cmin, cmax=cmax,
+            colorscale="Viridis",
+            opacity=top_alpha,
+            showscale=True,          # single shared colorbar
+            name="Top",
+            colorbar=dict(title="Elevation (m)")
+        ))
+        fig.add_trace(go.Surface(
+            x=xv,
+            y=yv,
+            z=bot_corners * exaggeration,
+            surfacecolor=bot_corners,  # use true elevations for color
+            cmin=cmin, cmax=cmax,
+            colorscale="Viridis",
+            opacity=bot_alpha,
+            showscale=False,         # hide second (previously overlapping) colorbar
+            name="Bottom"
+        ))
+
+        # Optional horizontal grid lines (top & bottom)
+        if draw_grid:
+            # Row lines
+            for i in range(nrow + 1):
+                # Top
+                fig.add_trace(go.Scatter3d(
+                    x=xv[i, :],
+                    y=yv[i, :],
+                    z=(top_corners[i, :] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name="Top grid" if i == 0 else None,
+                    showlegend=(i == 0)
+                ))
+                # Bottom
+                fig.add_trace(go.Scatter3d(
+                    x=xv[i, :],
+                    y=yv[i, :],
+                    z=(bot_corners[i, :] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name="Bottom grid" if i == 0 else None,
+                    showlegend=(i == 0)
+                ))
+            # Column lines
+            for j in range(ncol + 1):
+                fig.add_trace(go.Scatter3d(
+                    x=xv[:, j],
+                    y=yv[:, j],
+                    z=(top_corners[:, j] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name=None,
+                    showlegend=False
+                ))
+                fig.add_trace(go.Scatter3d(
+                    x=xv[:, j],
+                    y=yv[:, j],
+                    z=(bot_corners[:, j] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name=None,
+                    showlegend=False
+                ))
+
+        # Vertical corner lines
+        if show_verticals:
+            vx = xv.ravel()
+            vy = yv.ravel()
+            zt = (top_corners * exaggeration).ravel()
+            zb = (bot_corners * exaggeration).ravel()
+            seg_x = []
+            seg_y = []
+            seg_z = []
+            for x0, y0, z0t, z0b in zip(vx, vy, zt, zb):
+                if np.isnan(z0t) or np.isnan(z0b):
+                    continue
+                seg_x.extend([x0, x0, None])
+                seg_y.extend([y0, y0, None])
+                seg_z.extend([z0b, z0t, None])
+            if seg_x:
+                fig.add_trace(go.Scatter3d(
+                    x=seg_x,
+                    y=seg_y,
+                    z=seg_z,
+                    mode="lines",
+                    line=dict(color="rgba(120,120,120,0.6)", width=1),
+                    opacity=vertical_line_opacity,
+                    hoverinfo="skip",
+                    name="Vertical grid"
+                ))
+
+        # Add a legend-only square marker for CHD boundary (no spatial text label)
+        if show_chd and show_chd_label and (chd_cells or fill_chd_surface):
+            fig.add_trace(go.Scatter3d(
+                x=[None], y=[None], z=[None],  # dummy for legend only
+                mode="markers",
+                marker=dict(size=8, color=chd_surface_color, symbol="square"),
+                name=chd_label_text,
+                hoverinfo="skip",
+                showlegend=True
+            ))
+
+        # CHD points
+        # CHD filled surface (Mesh3d of quads triangulated)
+        if show_chd and fill_chd_surface and chd_polys:
+            verts_x = []
+            verts_y = []
+            verts_z = []
+            tri_i = []
+            tri_j = []
+            tri_k = []
+            vcount = 0
+            for (ri, cj, shead_val) in chd_polys:
+                try:
+                    cell_verts = grid.get_cell_vertices(ri, cj)
+                except Exception:
+                    continue
+                if not cell_verts:
+                    continue
+                if len(cell_verts) >= 4 and cell_verts[0] == cell_verts[-1]:
+                    quad = cell_verts[:-1][:4]
+                else:
+                    quad = cell_verts[:4]
+                if len(quad) < 4:
+                    continue
+                for (vx0, vy0) in quad:
+                    verts_x.append(vx0)
+                    verts_y.append(vy0)
+                    verts_z.append(shead_val * exaggeration)
+                tri_i.append(vcount + 0)
+                tri_j.append(vcount + 1)
+                tri_k.append(vcount + 2)
+                tri_i.append(vcount + 0)
+                tri_j.append(vcount + 2)
+                tri_k.append(vcount + 3)
+                vcount += 4
+            if verts_x:
+                fig.add_trace(go.Mesh3d(
+                    x=verts_x,
+                    y=verts_y,
+                    z=verts_z,
+                    i=tri_i,
+                    j=tri_j,
+                    k=tri_k,
+                    color=chd_surface_color,
+                    opacity=chd_surface_opacity,
+                    name="CHD surface",
+                    hoverinfo="skip",
+                    flatshading=True,
+                ))
+
+        # CHD points (optional or fallback)
+        if chd_cells and (chd_point_markers or not fill_chd_surface):
+            cx, cy, cz = zip(*[(a, b, c * exaggeration) for a, b, c in chd_cells])
+            fig.add_trace(go.Scatter3d(
+                x=cx, y=cy, z=cz,
+                mode="markers",
+                marker=dict(size=5, color="blue", symbol="diamond"),
+                name="CHD shead (pts)"
+            ))
+
+
+        # RIV stage & rbot
+        if riv_stage_pts:
+            rx, ry, rz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_stage_pts])
+            fig.add_trace(go.Scatter3d(
+                x=rx, y=ry, z=rz,
+                mode="markers",
+                marker=dict(size=4, color="deepskyblue"),
+                name="RIV stage"
+            ))
+        if riv_rbot_pts:
+            rbx, rby, rbz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_rbot_pts])
+            fig.add_trace(go.Scatter3d(
+                x=rbx, y=rby, z=rbz,
+                mode="markers",
+                marker=dict(size=3, color="navy"),
+                name="RIV rbot"
+            ))
+
+        if custom_title:
+            fig.update_layout(title=custom_title)
+        else: 
+            fig.update_layout(title="Interactive 3D Model Domain (Plotly)")
+
+        scene_kwargs = dict(
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            zaxis_title="Elevation (m)",
+            aspectmode="data"
+        )
+        if exaggeration != 1.0 and scaled_tickvals is not None:
+            scene_kwargs["zaxis"] = dict(
+                title="Elevation (m)",
+                tickmode="array",
+                tickvals=scaled_tickvals,
+                ticktext=ticktext
+            )
+
+        fig.update_layout(
+            scene=scene_kwargs,
+            legend=dict(
+                itemsizing="constant",
+                x=0.01,          # left side
+                y=0.98,           # upper vertically
+                xanchor="left",
+                yanchor="top",
+                bgcolor="rgba(255,255,255,0.6)",
+                bordercolor="rgba(150,150,150,0.4)",
+                borderwidth=1
+            ),
+            margin=dict(l=0, r=0, b=0, t=40)
+        )
+        # Add vertical exaggeration annotation (lower-left corner)
+        if show_exaggeration_label:
+            try:
+                label_txt = exaggeration_label_format.format(exag=exaggeration)
+            except Exception:
+                label_txt = f"Vertical exaggeration: {exaggeration:g}x"
+            fig.add_annotation(dict(
+                x=0.01, y=0.02, xref='paper', yref='paper',
+                text=label_txt,
+                showarrow=False,
+                font=dict(size=11, color='black'),
+                bgcolor='rgba(255,255,255,0.65)',
+                bordercolor='rgba(120,120,120,0.5)',
+                borderwidth=1,
+                align='left'
+            ))
+        return fig
+
+    # Matplotlib fallback unchanged (still scatter at centers)
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection="3d")
+
+    xcc = grid.xcellcenters
+    ycc = grid.ycellcenters
+    ax.scatter(xcc[~np.isnan(bot_centers)],
+               ycc[~np.isnan(bot_centers)],
+               bot_centers[~np.isnan(bot_centers)] * exaggeration,
+               s=3, c=bot_centers[~np.isnan(bot_centers)], cmap="terrain", alpha=bot_alpha, label="Bottom")
+    ax.scatter(xcc[~np.isnan(top_centers)],
+               ycc[~np.isnan(top_centers)],
+               top_centers[~np.isnan(top_centers)] * exaggeration,
+               s=3, c=top_centers[~np.isnan(top_centers)], cmap="viridis", alpha=top_alpha, label="Top")
+
+    if chd_cells:
+        cx, cy, cz = zip(*[(a, b, c * exaggeration) for a, b, c in chd_cells])
+        ax.scatter(cx, cy, cz, c="blue", s=15, marker="D", label="CHD shead")
+
+    if riv_stage_pts:
+        rx, ry, rz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_stage_pts])
+        ax.scatter(rx, ry, rz, c="deepskyblue", s=12, marker="o", label="RIV stage")
+    if riv_rbot_pts:
+        rbx, rby, rbz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_rbot_pts])
+        ax.scatter(rbx, rby, rbz, c="navy", s=10, marker="x", label="RIV rbot")
+
+    ax.set_xlabel("X (m)")
+    ax.set_ylabel("Y (m)")
+    ax.set_zlabel("Elevation (m)")
+    if custom_title:
+        ax.set_title(custom_title)
+    else:
+        ax.set_title("3D Model Domain (Matplotlib fallback)")
+    ax.legend(loc="upper left")
+    plt.tight_layout()
+    return fig
+
+
+'''
+def plot_interactive_model_domain_3d(
+    mf,
+    bas=None,
+    chd=None,
+    riv=None,
+    layer=0,
+    exaggeration=1.0,
+    engine="plotly",
+    show_chd=True,
+    show_riv=True,
+    mask_inactive=True,
+    top_alpha=0.65,
+    bot_alpha=0.65,
+    draw_grid=True,
+    grid_line_color="#555555",
+    grid_line_width=1.0,
+    vertical_line_opacity=0.25,
+    show_verticals=True,
+    custom_title=None,
+):
+    """
+    Interactive 3‑D view of single‑layer model geometry (top, bottom) and optional CHD / RIV cells.
+
+    Now draws true grid surfaces (not just points) and (optionally) vertical
+    lines connecting top/bottom corner nodes.
+
+    Parameters
+    ----------
+    mf : flopy.modflow.Modflow
+    bas : ModflowBas
+    chd : ModflowChd
+    riv : ModflowRiv
+    layer : int
+    exaggeration : float
+        Vertical exaggeration factor.
+    engine : {'plotly','mpl'}
+    show_chd, show_riv : bool
+    mask_inactive : bool
+    top_alpha, bot_alpha : float
+        Opacity of top / bottom surfaces.
+    draw_grid : bool
+        Draw horizontal grid lines on top & bottom surfaces.
+    grid_line_color : str
+    grid_line_width : float
+    show_verticals : bool
+        Draw vertical lines at each corner.
+    vertical_line_opacity : float
+    """
+    if not hasattr(mf, "dis"):
+        raise RuntimeError("Model missing DIS package.")
+    dis = mf.dis
+    top_centers = dis.top.array.copy()
+    bot_centers = dis.botm.array[layer].copy()
+    grid = mf.modelgrid
+    nrow, ncol = top_centers.shape
+
+    if bas is None:
+        bas = mf.get_package("BAS6")
+    if bas is None:
+        # No BAS: proceed without masking (treat all as active)
+        if mask_inactive:
+            warnings.warn("BAS package not found; inactive cell masking skipped.", RuntimeWarning)
+        ibound = np.ones((nrow, ncol), dtype=int)
+        mask_inactive_effective = False
+    else:
+        ibound = bas.ibound.array[layer]
+        mask_inactive_effective = mask_inactive
+
+    # Mask inactive center cells only if we have BAS
+    if mask_inactive_effective:
+        inactive_mask = (ibound == 0)
+        top_centers = np.where(inactive_mask, np.nan, top_centers)
+        bot_centers = np.where(inactive_mask, np.nan, bot_centers)
+
+    # Helper: derive corner elevations from surrounding active cell centers
+    def centers_to_corners(arr2d):
+        nr, nc = arr2d.shape
+        corners = np.full((nr + 1, nc + 1), np.nan, dtype=float)
+        for i in range(nr + 1):
+            r_idx = [i - 1, i]
+            r_idx = [r for r in r_idx if 0 <= r < nr]
+            for j in range(nc + 1):
+                c_idx = [j - 1, j]
+                c_idx = [c for c in c_idx if 0 <= c < nc]
+                vals = []
+                for rr in r_idx:
+                    for cc in c_idx:
+                        v = arr2d[rr, cc]
+                        if np.isfinite(v):
+                            vals.append(v)
+                if vals:
+                    corners[i, j] = float(np.mean(vals))
+        return corners
+
+    top_corners = centers_to_corners(top_centers)
+    bot_corners = centers_to_corners(bot_centers)
+
+    # Collect CHD / RIV points (cell centers)
+    chd_cells = []
+    if show_chd and chd is not None:
+        spd0 = chd.stress_period_data[0]
+        for rec in spd0:
+            k, i, j = rec["k"], rec["i"], rec["j"]
+            if k != layer:
+                continue
+            if mask_inactive and ibound[i, j] == 0:
+                continue
+            chd_cells.append((
+                grid.xcellcenters[i, j],
+                grid.ycellcenters[i, j],
+                float(rec["shead"])
+            ))
+
+    riv_stage_pts = []
+    riv_rbot_pts = []
+    if show_riv and riv is not None:
+        r0 = riv.stress_period_data[0]
+        for rec in r0:
+            k, i, j = rec["k"], rec["i"], rec["j"]
+            if k != layer:
+                continue
+            if mask_inactive and ibound[i, j] == 0:
+                continue
+            xc = grid.xcellcenters[i, j]
+            yc = grid.ycellcenters[i, j]
+            riv_stage_pts.append((xc, yc, float(rec["stage"])))
+            riv_rbot_pts.append((xc, yc, float(rec["rbot"])))
+
+    # Try plotly
+    if engine == "plotly":
+        try:
+            import plotly.graph_objects as go
+        except ImportError:
+            warnings.warn("Plotly not installed. Falling back to Matplotlib.")
+            engine = "mpl"
+
+    if engine == "plotly":
+        import plotly.graph_objects as go
+
+        fig = go.Figure()
+
+        # Corner coordinate arrays from FloPy (nrow+1, ncol+1)
+        xv = grid.xvertices
+        yv = grid.yvertices
+
+        # Compute elevation range (true, un‑exaggerated)
+        elev_min = float(np.nanmin([np.nanmin(bot_corners), np.nanmin(top_corners)]))
+        elev_max = float(np.nanmax([np.nanmax(bot_corners), np.nanmax(top_corners)]))
+
+        # Prepare shared color scaling (use true elevations, not exaggerated)
+        cmin, cmax = elev_min, elev_max
+
+        # Build tick labels so z-axis shows true elevations (not exaggerated values)
+        if exaggeration != 1.0:
+            nticks = 6
+            real_ticks = np.linspace(elev_min, elev_max, nticks)
+            scaled_tickvals = real_ticks * exaggeration
+            ticktext = [f"{t:.1f}" for t in real_ticks]
+        else:
+            real_ticks = scaled_tickvals = ticktext = None
+
+        # Surfaces (top & bottom) using corner grids
+        fig.add_trace(go.Surface(
+            x=xv,
+            y=yv,
+            z=top_corners * exaggeration,
+            surfacecolor=top_corners,  # use true elevations for color
+            cmin=cmin, cmax=cmax,
+            colorscale="Viridis",
+            opacity=top_alpha,
+            showscale=True,          # single shared colorbar
+            name="Top",
+            colorbar=dict(title="Elevation (m)")
+        ))
+        fig.add_trace(go.Surface(
+            x=xv,
+            y=yv,
+            z=bot_corners * exaggeration,
+            surfacecolor=bot_corners,  # use true elevations for color
+            cmin=cmin, cmax=cmax,
+            colorscale="Viridis",
+            opacity=bot_alpha,
+            showscale=False,         # hide second (previously overlapping) colorbar
+            name="Bottom"
+        ))
+
+        # Optional horizontal grid lines (top & bottom)
+        if draw_grid:
+            # Row lines
+            for i in range(nrow + 1):
+                # Top
+                fig.add_trace(go.Scatter3d(
+                    x=xv[i, :],
+                    y=yv[i, :],
+                    z=(top_corners[i, :] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name="Top grid" if i == 0 else None,
+                    showlegend=(i == 0)
+                ))
+                # Bottom
+                fig.add_trace(go.Scatter3d(
+                    x=xv[i, :],
+                    y=yv[i, :],
+                    z=(bot_corners[i, :] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name="Bottom grid" if i == 0 else None,
+                    showlegend=(i == 0)
+                ))
+            # Column lines
+            for j in range(ncol + 1):
+                fig.add_trace(go.Scatter3d(
+                    x=xv[:, j],
+                    y=yv[:, j],
+                    z=(top_corners[:, j] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name=None,
+                    showlegend=False
+                ))
+                fig.add_trace(go.Scatter3d(
+                    x=xv[:, j],
+                    y=yv[:, j],
+                    z=(bot_corners[:, j] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name=None,
+                    showlegend=False
+                ))
+
+        # Vertical corner lines
+        if show_verticals:
+            vx = xv.ravel()
+            vy = yv.ravel()
+            zt = (top_corners * exaggeration).ravel()
+            zb = (bot_corners * exaggeration).ravel()
+            seg_x = []
+            seg_y = []
+            seg_z = []
+            for x0, y0, z0t, z0b in zip(vx, vy, zt, zb):
+                if np.isnan(z0t) or np.isnan(z0b):
+                    continue
+                seg_x.extend([x0, x0, None])
+                seg_y.extend([y0, y0, None])
+                seg_z.extend([z0b, z0t, None])
+            if seg_x:
+                fig.add_trace(go.Scatter3d(
+                    x=seg_x,
+                    y=seg_y,
+                    z=seg_z,
+                    mode="lines",
+                    line=dict(color="rgba(120,120,120,0.6)", width=1),
+                    opacity=vertical_line_opacity,
+                    hoverinfo="skip",
+                    name="Vertical grid"
+                ))
+
+        # CHD points
+        if chd_cells:
+            cx, cy, cz = zip(*[(a, b, c * exaggeration) for a, b, c in chd_cells])
+            fig.add_trace(go.Scatter3d(
+                x=cx, y=cy, z=cz,
+                mode="markers",
+                marker=dict(size=5, color="blue", symbol="diamond"),
+                name="CHD shead"
+            ))
+
+        # RIV stage & rbot
+        if riv_stage_pts:
+            rx, ry, rz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_stage_pts])
+            fig.add_trace(go.Scatter3d(
+                x=rx, y=ry, z=rz,
+                mode="markers",
+                marker=dict(size=4, color="deepskyblue"),
+                name="RIV stage"
+            ))
+        if riv_rbot_pts:
+            rbx, rby, rbz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_rbot_pts])
+            fig.add_trace(go.Scatter3d(
+                x=rbx, y=rby, z=rbz,
+                mode="markers",
+                marker=dict(size=3, color="navy"),
+                name="RIV rbot"
+            ))
+
+        if custom_title:
+            fig.update_layout(title=custom_title)
+        else: 
+            fig.update_layout(title="Interactive 3D Model Domain (Plotly)")
+
+        scene_kwargs = dict(
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            zaxis_title="Elevation (m)",
+            aspectmode="data"
+        )
+        if exaggeration != 1.0 and scaled_tickvals is not None:
+            scene_kwargs["zaxis"] = dict(
+                title="Elevation (m)",
+                tickmode="array",
+                tickvals=scaled_tickvals,
+                ticktext=ticktext
+            )
+
+        fig.update_layout(
+            scene=scene_kwargs,
+            legend=dict(
+                itemsizing="constant",
+                x=0.01,          # left side
+                y=0.98,           # upper vertically
+                xanchor="left",
+                yanchor="top",
+                bgcolor="rgba(255,255,255,0.6)",
+                bordercolor="rgba(150,150,150,0.4)",
+                borderwidth=1
+            ),
+            margin=dict(l=0, r=0, b=0, t=40)
+        )
+        return fig
+
+    # Matplotlib fallback unchanged (still scatter at centers)
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection="3d")
+
+    xcc = grid.xcellcenters
+    ycc = grid.ycellcenters
+    ax.scatter(xcc[~np.isnan(bot_centers)],
+               ycc[~np.isnan(bot_centers)],
+               bot_centers[~np.isnan(bot_centers)] * exaggeration,
+               s=3, c=bot_centers[~np.isnan(bot_centers)], cmap="terrain", alpha=bot_alpha, label="Bottom")
+    ax.scatter(xcc[~np.isnan(top_centers)],
+               ycc[~np.isnan(top_centers)],
+               top_centers[~np.isnan(top_centers)] * exaggeration,
+               s=3, c=top_centers[~np.isnan(top_centers)], cmap="viridis", alpha=top_alpha, label="Top")
+
+    if chd_cells:
+        cx, cy, cz = zip(*[(a, b, c * exaggeration) for a, b, c in chd_cells])
+        ax.scatter(cx, cy, cz, c="blue", s=15, marker="D", label="CHD shead")
+
+    if riv_stage_pts:
+        rx, ry, rz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_stage_pts])
+        ax.scatter(rx, ry, rz, c="deepskyblue", s=12, marker="o", label="RIV stage")
+    if riv_rbot_pts:
+        rbx, rby, rbz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_rbot_pts])
+        ax.scatter(rbx, rby, rbz, c="navy", s=10, marker="x", label="RIV rbot")
+
+    ax.set_xlabel("X (m)")
+    ax.set_ylabel("Y (m)")
+    ax.set_zlabel("Elevation (m)")
+    if custom_title:
+        ax.set_title(custom_title)
+    else:
+        ax.set_title("3D Model Domain (Matplotlib fallback)")
+    ax.legend(loc="upper left")
+    plt.tight_layout()
+    return fig
+'''
 
 
 
