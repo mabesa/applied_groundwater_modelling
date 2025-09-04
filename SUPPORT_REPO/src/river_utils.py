@@ -6,10 +6,15 @@ from the Sihl and Limmat rivers in the Zurich area.
 """
 
 import pandas as pd
+import geopandas as gpd
 import numpy as np
 import os
 from datetime import datetime
-from typing import Tuple, Optional, Dict, Any, Union
+from typing import Tuple, Optional, Dict, Any, Union, List, Iterable
+
+from shapely.geometry import Point, LineString, Polygon, MultiPolygon
+from shapely.ops import unary_union, linemerge, polygonize
+from scipy.spatial import Voronoi
 
 import matplotlib.pyplot as plt
 from ipywidgets import interactive, FloatSlider, HBox, VBox, HTML, Layout
@@ -669,6 +674,176 @@ def plot_cross_section(ax, title, gw_mean, gw_high, river_mean, river_high, typi
     all_levels = [gw_mean, gw_high, river_mean, river_high, river_bed_elevation]
     ax.set_ylim(min(all_levels) - 2, max(all_levels) + 3)
     ax.set_xlim(x.min(), x.max())
+
+
+
+
+def _flatten_lines(geom) -> List[LineString]:
+    if geom is None or geom.is_empty:
+        return []
+    gt = geom.geom_type
+    if gt == 'LineString':
+        return [geom]
+    if gt == 'MultiLineString':
+        return list(geom.geoms)
+    if gt == 'GeometryCollection':
+        out = []
+        for g in geom.geoms:
+            out.extend(_flatten_lines(g))
+        return out
+    return []
+
+
+def _flatten_polys(geom) -> List[Polygon]:
+    if geom is None or geom.is_empty:
+        return []
+    gt = geom.geom_type
+    if gt == 'Polygon':
+        return [geom]
+    if gt == 'MultiPolygon':
+        return list(geom.geoms)
+    if gt == 'GeometryCollection':
+        out = []
+        for g in geom.geoms:
+            out.extend(_flatten_polys(g))
+        return out
+    return []
+
+
+def densify_line(line: LineString, spacing: float) -> List[Point]:
+    L = line.length
+    if L == 0:
+        return [Point(*line.coords[0])]
+    n = max(2, int(L / spacing))
+    return [line.interpolate(t * L / n) for t in range(n + 1)]
+
+
+def sample_polygon_boundary(poly: Polygon | MultiPolygon, spacing: float = 10.0) -> np.ndarray:
+    pts = []
+    polys = list(poly.geoms) if isinstance(poly, MultiPolygon) else [poly]
+    for p in polys:
+        for pt in densify_line(LineString(p.exterior.coords), spacing):
+            pts.append((pt.x, pt.y))
+        # holes ignored intentionally
+    return np.array(pts)
+
+
+def voronoi_centerline(channel_poly: Polygon | MultiPolygon,
+                       spacing: float = 10.0,
+                       min_branch_len: float = 50.0):
+    """Medial-axis approximation inside channel_poly using Voronoi ridges."""
+    bpts = sample_polygon_boundary(channel_poly, spacing=spacing)
+    if len(bpts) < 10:
+        return None
+
+    vor = Voronoi(bpts)
+
+    segs = []
+    for v0, v1 in vor.ridge_vertices:
+        if v0 == -1 or v1 == -1:
+            continue
+        p0 = vor.vertices[v0]
+        p1 = vor.vertices[v1]
+        inter = LineString([p0, p1]).intersection(channel_poly)
+        if inter.is_empty:
+            continue
+        if inter.geom_type in ('LineString', 'MultiLineString'):
+            segs.extend(_flatten_lines(inter))
+
+    if not segs:
+        return None
+
+    merged = linemerge(unary_union(segs))
+    if merged.is_empty:
+        return None
+
+    lines = [merged] if merged.geom_type == 'LineString' else list(merged.geoms)
+    lines = [ln for ln in lines if ln.length >= min_branch_len]
+    if not lines:
+        return None
+
+    return max(lines, key=lambda ln: ln.length)
+
+
+def build_channel_polygon(river_parts_gdf: gpd.GeoDataFrame,
+                          boundary_gdf: gpd.GeoDataFrame,
+                          polygonize_buffer: float = 5.0):
+    """Return channel polygon from river features (prefer polygons; else polygonize lines)."""
+    polys, lines = [], []
+    for g in river_parts_gdf.geometry:
+        polys.extend(_flatten_polys(g))
+        lines.extend(_flatten_lines(g))
+
+    if polys:
+        return unary_union(polys)
+
+    # If we only have lines, help polygonize by adding boundary edges to close ribbons
+    boundary_edges = boundary_gdf.geometry.unary_union.boundary
+    all_lines = unary_union(lines + _flatten_lines(boundary_edges))
+    polys_from_lines = list(polygonize(all_lines))
+    if not polys_from_lines:
+        return unary_union(all_lines.buffer(polygonize_buffer)).buffer(0)
+
+    polys_from_lines = [p for p in polys_from_lines if p.intersects(all_lines)]
+    if not polys_from_lines:
+        return None
+    return max(polys_from_lines, key=lambda p: p.area)
+
+
+def compute_medial_centerlines(
+    river_gdf: gpd.GeoDataFrame,
+    boundary_gdf: gpd.GeoDataFrame,
+    names: Optional[Iterable[str]] = None,
+    name_field: str = "GEWAESSERNAME",
+    sample_spacing: float = 8.0,
+    min_branch_len: float = 80.0,
+    polygonize_buffer: float = 5.0,
+    clip_to_boundary: bool = True,
+) -> gpd.GeoDataFrame:
+    """
+    Compute medial-axis centerlines for one or more rivers.
+
+    Parameters
+    - river_gdf: GeoDataFrame with river geometries (banks or polygons).
+    - boundary_gdf: model boundary GeoDataFrame.
+    - names: iterable of river names to process; if None, all unique values in name_field are used.
+    - name_field: column in river_gdf with river names.
+    - sample_spacing: boundary sampling spacing for Voronoi (m).
+    - min_branch_len: minimum skeleton branch length to keep (m).
+    - polygonize_buffer: buffer (m) used when lines fail to polygonize cleanly.
+    - clip_to_boundary: clip channel polygons to model boundary before skeletonizing.
+
+    Returns
+    - GeoDataFrame with columns [name_field, geometry] for computed centerlines.
+    """
+    if names is None:
+        names = list(river_gdf[name_field].dropna().unique())
+
+    centerline_records = []
+    boundary_union = boundary_gdf.geometry.unary_union
+
+    for nm in names:
+        parts = river_gdf[river_gdf[name_field] == nm]
+        if parts.empty:
+            continue
+
+        chan = build_channel_polygon(parts, boundary_gdf, polygonize_buffer=polygonize_buffer)
+        if chan is None or chan.is_empty:
+            continue
+
+        if clip_to_boundary:
+            chan = chan.intersection(boundary_union)
+            if chan.is_empty:
+                continue
+
+        cl = voronoi_centerline(chan, spacing=sample_spacing, min_branch_len=min_branch_len)
+        if cl is None or cl.is_empty:
+            continue
+
+        centerline_records.append({name_field: nm, "geometry": cl})
+
+    return gpd.GeoDataFrame(centerline_records, crs=river_gdf.crs)
+
 
 
 
