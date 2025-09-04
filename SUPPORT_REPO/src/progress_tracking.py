@@ -224,15 +224,19 @@ class ModelImplementationProgressTracker(ProgressTracker):
     def __init__(self):
         self.steps = [
             ('step1', 'Step 1: Workspace Setup'),
-            ('step2', 'Step 2: Grid Creation'),
-            ('step3', 'Step 3: Model Top (DEM Resampling)'),
-            ('step4', 'Step 4: Aquifer Thickness & Bottom'),
-            ('step5', 'Step 5: Active Domain (IBOUND, BAS)'),
-            ('step6', 'Step 6: Layer-Property Flow (LPF) Package'),
-            ('step7', 'Step 7: Solver & Output Control'),
-            ('step8', 'Step 8: Areal Recharge (RECH)'), 
-            ('step9', 'Step 9: Lateral In- and Outflows'), 
-            ('step10', 'Step 10: River Package (RIV) & Stage Checks')
+            ('step2.1', 'Step 2.1: Discretization - Grid Creation'),
+            ('step2.2', 'Step 2.2: Discretization - Model Top (DEM Resampling)'),
+            ('step2.3', 'Step 2.3: Discretization - Aquifer Thickness & Bottom'),
+            ('step2.4', 'Step 2.4: Discretization - Writing DIS Package'),
+            ('step3', 'Step 3: Paramterization - Layer-Property Flow (LPF) Package'),
+            ('step4.1', 'Step 4.1: Boundary & Initial Conditions - Active Cells, Basic (BAS) Package'),
+            ('step4.2', 'Step 4.2: Boundary & Initial Conditions - Lateral Outflow (CHD Package)'),
+            ('step4.3', 'Step 4.3: Boundary & Initial Conditions - Areal Recharge (RECH Package)'), 
+            ('step4.4', 'Step 4.4: Boundary & Initial Conditions - Pumping and Lateral Inflow (WEL Package)'),
+            ('step4.5', 'Step 4.5: Boundary & Initial Conditions - River Package (RIV) & Stage Checks'), 
+            ('step5', 'Step 5: Solver & Output Control'),
+            ('step6', 'Step 6: Running the simulation'),  
+            ('step7', 'Step 7: Post Processing & Visualization')
         ]
         super().__init__("Model Implementation", "model_implementation_progress.json")
 
@@ -355,6 +359,82 @@ def create_introduction_progress_tracker():
     except Exception as e:
         print(f"⚠️ Interactive tracker failed: {e}")
         return None
+
+def create_nested_step_completion_marker(main_step, sub_step=None):
+    """
+    Create a step completion marker for nested steps (e.g. 2.1, 2.2, etc).
+    
+    Args:
+        main_step (int): Main step number (e.g., 2)
+        sub_step (int, optional): Sub-step number (e.g., 1 for step 2.1). 
+                                 If None, matches only the main step.
+    """
+    try:
+        tracker = get_model_implementation_tracker()
+        
+        # Find matching step based on pattern
+        if sub_step is not None:
+            # Find steps like "Step 2.1: Discretization..."
+            step_pattern = f"Step {main_step}.{sub_step}:"
+            step_id_fallback = f'step{main_step * 10 + sub_step}'
+            step_name_fallback = f"Step {main_step}.{sub_step}"
+        else:
+            # Find steps like "Step 2: Discretization..."
+            step_pattern = f"Step {main_step}:"
+            step_id_fallback = f'step{main_step}'
+            step_name_fallback = f"Step {main_step}"
+            
+        matching_steps = [(sid, title) for sid, title in tracker.steps if step_pattern in title]
+        
+        if matching_steps:
+            step_id, step_name = matching_steps[0]
+        else:
+            # Fallback if no exact match
+            step_id = step_id_fallback
+            step_name = step_name_fallback
+        
+        # Check if already completed
+        already_completed = tracker.progress_data.get(step_id, False)
+        
+        # Create confirmation checkbox
+        completion_checkbox = widgets.Checkbox(
+            value=already_completed,
+            description=f"✅ Yes, I have completed {step_name}",
+            style={'description_width': 'initial'},
+            layout=widgets.Layout(width='100%', margin='10px 0px'),
+            indent=False
+        )
+        
+        # Create feedback area
+        feedback_output = widgets.Output()
+        
+        def on_completion_change(change):
+            """Handle when user checks/unchecks the completion box."""
+            with feedback_output:
+                feedback_output.clear_output()
+                
+                if change['new']:  # User checked the box
+                    # Mark step complete in tracker
+                    tracker.progress_data[step_id] = True
+                    if step_id in tracker.widgets:
+                        tracker.widgets[step_id].value = True
+                        tracker._save_progress()
+                    
+                else:  # User unchecked the box
+                    # Remove completion from tracker
+                    tracker.progress_data[step_id] = False
+                    if step_id in tracker.widgets:
+                        tracker.widgets[step_id].value = False
+                        tracker._save_progress()
+        
+        completion_checkbox.observe(on_completion_change, names='value')
+        
+        # Display the checkbox and feedback area
+        display(completion_checkbox)
+        display(feedback_output)
+        
+    except Exception as e:
+        print(f"⚠️ Could not create nested step completion marker: {e}")
 
 def create_step_completion_marker(step_number):
     """
