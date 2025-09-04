@@ -11,64 +11,64 @@ def plot_tracer_propagation():
     c(x, t) = c0 + (c1 - c0) * 0.5 * erfc((x - u * t / R) / np.sqrt(4 * D * t / R))
     """
     u=10
-    D=10
+    D=10*u
     R=1.0
     x=400.0
     c0=0.0
-    c1=1.0
+    c1=50*10
     t_front = np.linspace(0.01, 80, 200)
     arg = (x - u * t_front / R) / np.sqrt(4 * D * t_front / R)
-    c_xt_front = (c0 + (c1 - c0) * 0.5 * scipy.special.erfc(arg))
+    c_xt_front = (c0 + (c1 - c0) * 0.5 * scipy.special.erfc(arg))*1e3 # in mg/L
 
 
     """
     Plots the concentration at an observation well at (x, y=0) for an instantaneous point source in 1D:
     c(x, t) = (M / (phi * m))/ ( 4*pi*t*sqrt(Dl * Dt)  * exp(-(x - u * t)^2 / (4 * Dl * t)), m=1, Dl=Dt=D
     """
-    M=10 
+    M=10 #kg
     phi=0.2 
-    u=10 
-    Dl=10 
-    Dt=0.1 
-    x=400
+    u=10 #m/day
+    Dl=10*u #m2/day
+    Dt=0.1*u #m2/day
+    x=400 #m
+    m=50 #m
     t_instant = np.linspace(0.01, 80, 200)
     # 1D solution for instantaneous source at x, y=0
-    c_xt_instant = (M / (phi))/ ( 4*3.14*t_instant*np.sqrt(Dl * Dt))  * np.exp(-(x - u * t_instant)**2 / (4 * Dl * t_instant))
-    
+    c_xt_instant = 1e3* (M / (phi*m))/ ( 4*3.14*t_instant*np.sqrt(Dl * Dt))  * np.exp(-(x - u * t_instant)**2 / (4 * Dl * t_instant))
+   
     """
     Plots the concentration at an observation well at (x, y=0) for an instantaneous point source in 1D BUT TOO SLOW:
     c(x, t) = (M / (phi * m))/ ( 4*pi*t*sqrt(Dl * Dt)  * exp(-(x - u * t)^2 / (4 * Dl * t)), m=1, Dl=Dt=D
     """
-    M=10 
+    M=10 #kg
     phi=0.2 
-    u=20 
-    Dl=10 
-    Dt=0.1 
-    x=400
+    u=20 #m/day
+    Dl=10*u #m2/day
+    Dt=0.1*u #m2/day
+    x=400 #m
+    m=50 #m
     t_instant_SLOW = np.linspace(0.01, 80, 200)
     # 1D solution for instantaneous source at x, y=0
-    c_xt_instant_SLOW   = (M / (phi))/ ( 4*3.14*t_instant_SLOW*np.sqrt(Dl * Dt))  * np.exp(-(x - u * t_instant)**2 / (4 * Dl * t_instant))
-    
+    c_xt_instant_SLOW = 1e3* (M / (phi*m))/ ( 4*3.14*t_instant_SLOW*np.sqrt(Dl * Dt))  * np.exp(-(x - u * t_instant_SLOW)**2 / (4 * Dl * t_instant_SLOW))
+   
 
     fig, axs = plt.subplots(1, 3, figsize=(12, 5))
     axs = axs.flatten()
 
     axs[0].plot(t_front, c_xt_front)
     axs[0].set_xlabel("$t$ [days]")
-    axs[0].set_ylabel("$c(x, t)$ [kg/m$^3$]")
+    axs[0].set_ylabel("$c(x, t)$ [mg/L]")
     axs[0].set_title("(a)")
     axs[0].grid(True)
 
     axs[1].plot(t_instant, c_xt_instant)
     axs[1].set_xlabel("$t$ [days]")
     axs[1].set_title("(b)")
-    axs[1].set_ylim(0, 0.2)
     axs[1].grid(True)
 
     axs[2].plot(t_instant_SLOW, c_xt_instant_SLOW)
     axs[2].set_xlabel("$t$ [days]")
     axs[2].set_title("(c)")
-    axs[2].set_ylim(0, 0.2)
     axs[2].grid(True)
 
     plt.show()
@@ -115,30 +115,31 @@ def question_tracer_propagation_plot():
 
 
 def plot_curve_and_question_estimation():
-    M=10 
+    M=10 #kg
     phi=0.2 
-    u=10 
-    Dl=10 
-    Dt=0.1 
-    x=400
-    t_instant = np.linspace(0.01, 80, 200)
-    # 1D solution for instantaneous source at x, y=0
-    c_xt_instant = (M / (phi))/ ( 4*3.14*t_instant*np.sqrt(Dl * Dt))  * np.exp(-(x - u * t_instant)**2 / (4 * Dl * t_instant))
+    u=10 #m/day
+    Dl=10*u #m2/day
+    Dt=0.1*u #m2/day
+    x=400 #m
+    t_instant = np.linspace(0.01, 80, 200) #day
+    m=50 #m
+    # 2D solution for instantaneous source at x, y=0, in mg/L and not kg/m3
+    c_xt_instant = 1e3* (M / (phi*m))/ ( 4*3.14*t_instant*np.sqrt(Dl * Dt))  * np.exp(-(x - u * t_instant)**2 / (4 * Dl * t_instant))
    
     fig, ax = plt.subplots(figsize=(5, 6))
     ax.plot(t_instant, c_xt_instant)
     ax.set_xlabel("Time [days]")
-    ax.set_ylabel("Concentration [μg/L]")
+    ax.set_ylabel("Concentration [mg/L]")
     ax.grid(True)
     plt.show()
 
     # Widgets for answers
     conc_box = widgets.FloatText(
-        description="Maximum concentration [μg/L]:",
+        description="Maximum concentration [mg/L]:",
         layout=widgets.Layout(width='500px'), style={'description_width': '300px'}
     )
     span_box = widgets.FloatText(
-        description="Time span above reference [days]:",
+        description="Time span above reference concentration [days]:",
         layout=widgets.Layout(width='500px'), style={'description_width': '300px'}
     )
     submit_btn = widgets.Button(description="Submit")
@@ -155,7 +156,7 @@ def plot_curve_and_question_estimation():
         with feedback:
             score = 0
             # Check max concentration
-            if abs(conc_box.value - correct_conc) < 0.01:
+            if abs(conc_box.value - correct_conc) < 0.1:
                 display(Markdown(f"✅ Max concentration in the correct range. Exact analytical solution : ({correct_conc:.3f} μg/L)"))
                 score += 1
             else:

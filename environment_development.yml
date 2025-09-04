@@ -29,7 +29,9 @@ dependencies:
   - python-graphviz=0.20.3
   - rasterio=1.4.3
   - rasterstats=0.20.0
+  - requests=2.32.3
   - scikit-image[version='<0.25.0']
   - scipy=1.15.2
+  - seaborn=0.13.2
   - shapely=2.1.0
   - statsmodels=0.14.4

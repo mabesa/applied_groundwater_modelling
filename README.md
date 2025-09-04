@@ -315,7 +315,7 @@ widget = widgets.WidgetType(
 
 ## Data Management
 
-This course uses external datasets that are automatically downloaded when needed. The data download system is configured through a `config.py` file that specifies data sources and repository links.
+This course uses external datasets that are automatically downloaded when needed and stored to the folder `appplied_groundwater_modelling_data` in your home directory. The data download system is configured through a `config.py` file that specifies data sources and repository links.
 
 Please look at `config_template.py` for a template of the configuration file, containing publicly available data for the Limmat valley aquifer model. You can copy this file to `config.py` and modify it according to your needs.
 
@@ -383,11 +383,11 @@ applied_groundwater_modelling/
 ├── README.md                    # This file
 └── LICENSE                      # License file
 
-applied_groundwater_modelling_data/
+applied_groundwater_modelling_data/ (will be created automatically)
 ├── limmat/
 │   ├── data/                    # Data files for the Limmat case study
 |   |   ├── climate/             # Climate data
-│   ├── model/                   # Model files for the Limmat case study
+│   ├── limmat_valley_model/     # Model files for the Limmat case study
 ```
 
 ## How to Use this Repository as a Student

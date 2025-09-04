@@ -19,8 +19,8 @@ def darcy_experiment_simulation():
     - Adds an "End Experiment" button to finalize the experiment.
     """
 
-    display(Markdown("<br><h2> Task 1.2:"))
-    display(Markdown("<br>You can now perform the Darcy experiment simulation. <br><br> Start by adding (I, q) points for at least 5 different hydraulic head differences. <br>Once at least 5 points are added, you will be able to plot the linear fit. <br><br><br>"))
+    display(Markdown("<h2> Task 1.2:"))
+    display(Markdown("You can now perform the Darcy experiment simulation. <br>Start by adding (I, q) points for at least 5 different hydraulic head differences. <br>Once at least 5 points are added, you will be able to plot the linear fit. <br>"))
 
     # Initialize variables
     delta_h_values = []  # Start with the point (0.4, 0.00012)
@@ -95,12 +95,13 @@ def darcy_experiment_simulation():
     def on_plot_fit(button):
         nonlocal fit_coefficients
         # Fit a line to the points
+        check_task_with_solution("task03_4")  # Call the function to launch a new task
         fit_coefficients = np.polyfit(delta_h_values, q_values, 1)
         update_plot(show_fit=True)
         # update_plot(highlight_first_point=True)  # Highlight the first point again
         plot_fit_button.disabled = True
         validate_button.disabled = True
-        check_task_with_solution("task03_4")  # Call the function to launch a new task
+        
 
 
         
@@ -167,7 +168,7 @@ def darcy_experiment_simulation_global():
 
     # Display the question and widgets
     with question_output:
-        display(Markdown("<br><h2> Task 1.1:"))
+        display(Markdown("<h2> Task 1.1:"))
         display(Markdown(f"What behavior do you expect for the curve of $q$ versus $I$?<br>"))
     display(VBox([question_output, radio_buttons, submit_button, answer_output]))
 

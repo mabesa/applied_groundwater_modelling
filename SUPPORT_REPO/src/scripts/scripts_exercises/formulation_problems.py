@@ -210,7 +210,7 @@ def transport_matching():
 def transport_observation_matching():
     possibilities_solution = {
         'Advection term' : "Translation of the peak location in time :",
-        'Diffusion and dispersion term' : "Change in the peak width with time :",
+        'Diffusion and dispersion term' : "Change in the peak width (spread) with time :",
         }
     dictionnary_matching(possibilities_solution)
     return
@@ -219,12 +219,12 @@ def transport_observation_matching():
 def transport_gaussian_plot():
 
 
-    def c_x_t_curve(v=1.0, D=0.05, alpha=1.0, t=1.0, M=1.0, phi_0=0.3, R=1.0, x_range=(0, 100), n_points=200):
+    def c_x_t_curve(v=1.0, D=1e-9, alpha=1.0, t=1.0, M=1.0, phi_0=0.3, R=1.0, x_range=(0, 100), n_points=200):
         """
         Returns x, c(x,t) arrays for given parameters for an instantaneous source solution.
         """
         x = np.linspace(*x_range, n_points)
-        D_L = D + alpha * v  # Effective dispersion
+        D_L = D + alpha * v  # Effective longitudinal dispersion
 
         if t == 0:
             c = np.zeros_like(x)
