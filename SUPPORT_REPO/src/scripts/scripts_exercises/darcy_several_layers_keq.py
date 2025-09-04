@@ -173,7 +173,7 @@ def exercise_aquifers_layered_keq_attribution():
             # Create styled K_eq values
             styled_K_eq = []
             for i, (user_val, correct_val) in enumerate(zip(user_K_eq, correction_K_equiv)):
-                if user_val is not None and np.isclose(user_val, correct_val, rtol=0.5):  # Adjust rtol as needed
+                if user_val is not None and np.isclose(user_val, correct_val, rtol=0.05):  # Adjust rtol as needed
                     nb_correct_cells += 1
                     styled_K_eq.append(f"<td style='background-color: green;'>{round(correct_val)}</td>")
                 else:
@@ -251,7 +251,7 @@ The y-axis scale is now the same for all profiles to help you in comparing diffe
     Displays the exercise for K_eq attribution.
     """
     display(Markdown(r"""
-**Your task is to fill the table below** For each of the 6 soils (schematic (a) to (f)), indicate: 
+**Your task is to fill the table below** <br>For each of the 6 soils (schematic (a) to (f)), indicate: 
 - Line 1 : its equivalent hydraulic conductivity $K_{eq}$
 - Line 2 : the number of its associated $h(x)$ profile plot.
     """))
