@@ -173,3 +173,6 @@ cython_debug/
 03_modflow/content/limmat_model_ws/*
 03_modflow/content/limmat_model_ws/**/*
 config.py
+SUPPORT_REPO/src/scripts/scripts_limmat_data_preprocessing/time_series_decomposition.png
+SUPPORT_REPO/src/scripts/scripts_limmat_data_preprocessing/seasonal_pattern.png
+SUPPORT_REPO/src/scripts/scripts_limmat_data_preprocessing/groundwater_visualization.png

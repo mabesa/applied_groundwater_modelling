@@ -315,7 +315,9 @@ widget = widgets.WidgetType(
 
 ## Data Management
 
-This course uses external datasets that are automatically downloaded when needed. The data download system is configured through a `config.py` file that specifies data sources and repository links.
+This course uses external datasets that are automatically downloaded when needed and stored to the folder `appplied_groundwater_modelling_data` in your home directory. The data download system is configured through a `config.py` file that specifies data sources and repository links.
+
+Please look at `config_template.py` for a template of the configuration file, containing publicly available data for the Limmat valley aquifer model. You can copy this file to `config.py` and modify it according to your needs.
 
 ### Default Public Data Access
 
@@ -381,11 +383,11 @@ applied_groundwater_modelling/
 ├── README.md                    # This file
 └── LICENSE                      # License file
 
-applied_groundwater_modelling_data/
+applied_groundwater_modelling_data/ (will be created automatically)
 ├── limmat/
 │   ├── data/                    # Data files for the Limmat case study
 |   |   ├── climate/             # Climate data
-│   ├── model/                   # Model files for the Limmat case study
+│   ├── limmat_valley_model/     # Model files for the Limmat case study
 ```
 
 ## How to Use this Repository as a Student
@@ -559,6 +561,22 @@ The course stretches over 13 weeks with 4 lectures per week. For each lecture we
 </details>
 
 ## Troubleshooting
+
+### Troubleshooting Git repo on JupyterHub
+It may happen, that your repository on JupyterHub is not up to date with the latest version of the course repository. In this case, you can update your repository by running the following commands in a terminal on JupyterHub:
+
+```bash
+# Navigate to the course repository
+cd ~/applied_groundwater_modelling
+# Fetch the latest changes from the remote repository
+git fetch origin
+# Check the status of your local repository
+git status
+# You cannot commit any changes. You need to reset your local repository to match the remote 'course_2025' branch
+# Reset your local repository to match the remote 'course_2025' branch
+git reset --hard origin/course_2025
+```
+
 ### Troubleshooting Data Downloads
 
 **"No URL configured" error:**
