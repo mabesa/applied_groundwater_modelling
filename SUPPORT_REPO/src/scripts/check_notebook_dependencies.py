@@ -4,14 +4,34 @@ import sys
 import glob
 import yaml
 import nbformat
+import string
 
 # Packages that are installed by other means (e.g., conda)
 EXCLUDED_PACKAGES = {'tools'}  # {'flopy', 'porespy', 'tools'}
 
+def normalize(name: str) -> str:
+    # Keep alnum + underscore only (drop commas, parentheses, etc.)
+    return re.sub(r'[^0-9a-zA-Z_]', '', name)
+
 def extract_imports_from_notebook(notebook_path):
     """Extract all import statements from a Jupyter notebook."""
-    with open(notebook_path, 'r', encoding='utf-8') as f:
-        nb = nbformat.read(f, as_version=4)
+    # Skip zero-byte files early
+    try:
+        if os.path.getsize(notebook_path) == 0:
+            print(f"📓 Skipping empty notebook: {notebook_path}")
+            return set()
+    except OSError:
+        # If the file can't be stat'ed for some reason, skip it gracefully
+        print(f"📓 Skipping unreadable notebook (stat failed): {notebook_path}")
+        return set()
+
+    # Attempt to read the notebook; skip invalid JSON notebooks
+    try:
+        with open(notebook_path, 'r', encoding='utf-8') as f:
+            nb = nbformat.read(f, as_version=4)
+    except Exception as e:
+        print(f"📓 Skipping notebook due to read error: {notebook_path} -> {e}")
+        return set()
 
     imports = set()
     for cell in nb.cells:
@@ -37,7 +57,7 @@ def is_stdlib_module(module_name):
         'os', 'sys', 're', 'math', 'datetime', 'time', 'random', 'json',
         'csv', 'argparse', 'collections', 'copy', 'functools', 'itertools',
         'glob', 'pathlib', 'typing', 'warnings', 'io', 'tempfile', 'inspect', 
-        'pickle', 'platform'
+        'pickle', 'platform', 'os,'
     }
     return module_name in stdlib_modules
 
@@ -133,13 +153,20 @@ def main():
         imports = extract_imports_from_notebook(notebook)
         all_imports.update(imports)
 
+    all_imports_cleaned = {normalize(m) for m in all_imports if normalize(m)}
+
+    # Print unique list of imports, alphabetically sorted
+    print("Unique imports found in notebooks:")
+    for imp in sorted(all_imports_cleaned):
+        print(f"  - {imp}")
+
     # Get requirements
     requirements = get_requirements()
 
     # Find missing requirements (case-insensitive)
     missing = set()
     requirements_lower = {req.lower() for req in requirements}
-    for imp in all_imports:
+    for imp in all_imports_cleaned:
         if imp.lower() not in requirements_lower:
             missing.add(imp)
 
