@@ -463,7 +463,7 @@ conda activate gw_course_development
 ```
 If, during development, you need to install additional packages, please add them to the `environment_development.yml` files and run the following command to update the environment:
 ```bash
-conda env update --from-history -f environment_development.yml
+conda env update -f environment_development.yml
 ```
 Please also keep the `environment_students.yml` file up to date. 
 
@@ -577,6 +577,9 @@ git status
 # Reset your local repository to match the remote 'course_2025' branch
 git reset --hard origin/course_2025
 ```
+
+### 405: Method Not Allowed on JupyterHub
+This error may occur if you try to access a resource or endpoint that is not allowed on the JupyterHub server. This error can happen when you store the link to your JupyterHub environment in a Bookmark. The url to your JupyterHub environment can change from time to time. 
 
 ### Troubleshooting Data Downloads
 
