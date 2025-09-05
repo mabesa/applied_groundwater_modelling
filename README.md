@@ -566,8 +566,9 @@ The course stretches over 13 weeks with 4 lectures per week. For each lecture we
 It may happen, that your repository on JupyterHub is not up to date with the latest version of the course repository. In this case, you can update your repository by running the following commands in a terminal on JupyterHub:
 
 ```bash
+# TODO: add this to the diagnostics script for Jupyter Hub
 # Navigate to the course repository
-cd ~/applied_groundwater_modelling
+cd ~/applied_groundwater_modelling.git
 # Fetch the latest changes from the remote repository
 git fetch origin
 # Check the status of your local repository
