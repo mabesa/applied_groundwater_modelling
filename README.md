@@ -463,7 +463,7 @@ conda activate gw_course_development
 ```
 If, during development, you need to install additional packages, please add them to the `environment_development.yml` files and run the following command to update the environment:
 ```bash
-conda env update --from-history -f environment_development.yml
+conda env update -f environment_development.yml
 ```
 Please also keep the `environment_students.yml` file up to date. 
 
@@ -566,8 +566,9 @@ The course stretches over 13 weeks with 4 lectures per week. For each lecture we
 It may happen, that your repository on JupyterHub is not up to date with the latest version of the course repository. In this case, you can update your repository by running the following commands in a terminal on JupyterHub:
 
 ```bash
+# TODO: add this to the diagnostics script for Jupyter Hub
 # Navigate to the course repository
-cd ~/applied_groundwater_modelling
+cd ~/applied_groundwater_modelling.git
 # Fetch the latest changes from the remote repository
 git fetch origin
 # Check the status of your local repository
@@ -576,6 +577,9 @@ git status
 # Reset your local repository to match the remote 'course_2025' branch
 git reset --hard origin/course_2025
 ```
+
+### 405: Method Not Allowed on JupyterHub
+This error may occur if you try to access a resource or endpoint that is not allowed on the JupyterHub server. This error can happen when you store the link to your JupyterHub environment in a Bookmark. The url to your JupyterHub environment can change from time to time. 
 
 ### Troubleshooting Data Downloads
 

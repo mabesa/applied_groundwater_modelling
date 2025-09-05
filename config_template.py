@@ -47,6 +47,12 @@ DATA_URLS = {
                 "layer": "AVZH_GEWAESSER_F",  # Layer name for rivers
                 "readme_url": "https://www.dropbox.com/scl/fi/4w76qtxe8w3i6eztyh3p8/Produktblatt_AV_Gewasser_-OGD.pdf?rlkey=o8dt6qkrvxuqf0jagau5rz1yr&dl=1", 
             },  
+            "river_cells": {
+                "url": "https://www.dropbox.com/scl/fi/qycx9qgeawpm1qsced5fu/river_cells.gpkg?rlkey=te5u031dturd8zgn6krsh5feg&dl=1", 
+                "filename": "river_cells.gpkg",
+                "layer": "river_cells",  # Layer name for river cells
+                "readme_url": "https://www.dropbox.com/scl/fi/9cswdxy7txst0z2dq4jaq/readme.md?rlkey=czk96vo2lxfx81axxycz4eajn&dl=1"
+            }, 
             "wells": {
                 "url": "https://www.dropbox.com/scl/fi/ka40fw4te7dbb5sygrtdj/Wasserfassungen_-OGD.gpkg?rlkey=aoskogf8eg1hswswwncpnbpzk&dl=1", 
                 "filename": "Wasserfassungen_-OGD.gpkg",
