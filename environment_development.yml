@@ -4,6 +4,7 @@ channels:
   - microsoft
   - conda-forge
 dependencies:
+  - python=3.12
   - statsmodels=0.14.4
   - scipy=1.15.2
   - porespy=2.4.1
@@ -31,6 +32,7 @@ dependencies:
   - psutil=7.0.0
   - python-graphviz=0.20.3
   - pykrige[version='1.7.2.*,1.7.2.*']
+  - pyproj=3.7.1
   - shapely=2.1.0
   - yaml=0.2.5
   - requests=2.32.3

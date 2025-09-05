@@ -9,6 +9,15 @@ import string
 # Packages that are installed by other means (e.g., conda)
 EXCLUDED_PACKAGES = {'tools'}  # {'flopy', 'porespy', 'tools'}
 
+import sys 
+
+STD_LIB = set(sys.stdlib_module_names)|{'future'}
+
+def is_stdlib_module(name: str) -> bool:
+    """Check if a module is part of the standard library."""
+    return name in STD_LIB
+
+
 def normalize(name: str) -> str:
     # Keep alnum + underscore only (drop commas, parentheses, etc.)
     return re.sub(r'[^0-9a-zA-Z_]', '', name)
@@ -35,31 +44,48 @@ def extract_imports_from_notebook(notebook_path):
 
     imports = set()
     for cell in nb.cells:
-        if cell.cell_type == 'code':
-            # Find imports in the form of "import package" or "from package import something"
-            import_lines = re.findall(r'^\s*import\s+(\S+)', cell.source, re.MULTILINE)
-            from_import_lines = re.findall(r'^\s*from\s+(\S+)\s+import', cell.source, re.MULTILINE)
+        if cell.cell_type != 'code':
+            continue
 
-            for imp in import_lines + from_import_lines:
-                # Get the base package name (before any dots)
-                base_package = imp.split('.')[0]
-                # Exclude standard library modules, excluded packages, and local modules
+        # Capture entire import lines to support multi-imports
+        raw_import_blocks = re.findall(r'^\s*import\s+(.+)$', cell.source, re.MULTILINE)
+        from_import_modules = re.findall(r'^\s*from\s+([^\s]+)\s+import', cell.source, re.MULTILINE)
+
+        # Process plain import lines (may contain commas and aliases)
+        for block in raw_import_blocks:
+            for part in block.split(','):
+                candidate = part.strip()
+                if not candidate:
+                    continue
+                # Remove alias portion
+                if ' as ' in candidate:
+                    candidate = candidate.split(' as ', 1)[0].strip()
+                candidate = re.split(r'\s+as\s+', candidate, 1)[0]
+                candidate = candidate.rstrip(',;')
+                base_package = candidate.split('.')[0]
+                if not base_package or base_package == 'as':
+                    continue
                 if (not is_stdlib_module(base_package)
-                    and not base_package in EXCLUDED_PACKAGES
+                    and base_package not in EXCLUDED_PACKAGES
                     and not is_local_module(base_package)):
                     imports.add(base_package)
 
-    return imports
+        # Process from-import style
+        for mod in from_import_modules:
+            candidate = mod.strip()
+            if ' as ' in candidate:
+                candidate = candidate.split(' as ', 1)[0].strip()
+            candidate = re.split(r'\s+as\s+', candidate, 1)[0]
+            candidate = candidate.rstrip(',;')
+            base_package = candidate.split('.')[0]
+            if not base_package or base_package == 'as':
+                continue
+            if (not is_stdlib_module(base_package)
+                and base_package not in EXCLUDED_PACKAGES
+                and not is_local_module(base_package)):
+                imports.add(base_package)
 
-def is_stdlib_module(module_name):
-    """Check if a module is part of the standard library."""
-    stdlib_modules = {
-        'os', 'sys', 're', 'math', 'datetime', 'time', 'random', 'json',
-        'csv', 'argparse', 'collections', 'copy', 'functools', 'itertools',
-        'glob', 'pathlib', 'typing', 'warnings', 'io', 'tempfile', 'inspect', 
-        'pickle', 'platform', 'os,'
-    }
-    return module_name in stdlib_modules
+    return imports
 
 def is_local_module(module_name):
     """Check if a module is a local module in the repository."""
