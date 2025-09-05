@@ -1,5 +1,7 @@
 ## New municipal well (drawdown & capture)
 
+Problem: Assess the impact of a new municipal well on the surrounding groundwater system.
+
 Change: Add 1 well at (x₁,y₁) with rate Q.
 
 Outputs: drawdown map, heads at 3 obs points, % of inflow from each boundary.
@@ -7,6 +9,8 @@ Outputs: drawdown map, heads at 3 obs points, % of inflow from each boundary.
 Check: Thiem (confined) or Dupuit (unconfined) radial drawdown at an observation radius.
 
 ## Well interference (simple wellfield)
+
+Problem: Assess the impact of two nearby wells on each other's performance.
 
 Change: Two wells at (x₁,y₁) and (x₂,y₂), split total Q.
 
@@ -16,6 +20,8 @@ Check: Sum of two Thiem solutions vs model.
 
 ## Stream depletion at equilibrium (RIV)
 
+Problem: Assess the impact of a new pumping well on river flow.
+
 Change: Add a pumping well near river.
 
 Outputs: Δ in “RIVER LEAKAGE” (CBC) vs baseline; fraction of Q coming from river.
@@ -23,6 +29,8 @@ Outputs: Δ in “RIVER LEAKAGE” (CBC) vs baseline; fraction of Q coming from 
 Check: Compare fraction with expectation from distance/leakance; discuss sensitivity to conductance.
 
 ## Boundary condition uncertainty (RIV vs GHB)
+
+Problem: TODO
 
 Change: Replace river reach (or a segment) with GHB calibrated to same stage.
 
