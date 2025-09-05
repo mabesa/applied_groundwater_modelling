@@ -146,25 +146,6 @@ def get_requirements():
     
     return packages
 
-'''def get_requirements():
-    """Parse requirements.txt and return a set of package names."""
-    if not os.path.exists('requirements.txt'):
-        return set()
-
-    with open('requirements.txt', 'r') as f:
-        requirements = set()
-        for line in f:
-            # Clean up the line and extract package name
-            line = line.strip()
-            # Skip empty lines and comments
-            if not line or line.startswith('#'):
-                continue
-            # Handle package specifiers like package==1.0 or package>=1.0
-            package = re.split(r'[=<>]', line)[0].strip()
-            requirements.add(package)
-
-    return requirements'''
-
 def main():
     """Check if all packages imported in notebooks are in environment"""
     # Get all notebooks
