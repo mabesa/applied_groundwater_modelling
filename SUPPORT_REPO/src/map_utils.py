@@ -1128,6 +1128,320 @@ def plot_interactive_model_domain_3d(
     return fig
 
 
+def create_dem_overlay_map(
+    dem_path: str,
+    colormap: str = "viridis",
+    opacity: float = 0.55,
+    clip_percentiles: tuple[float, float] = (1, 99),
+    tiles: str = "OpenStreetMap",
+    zoom_start: int | None = None,
+    add_layer_control: bool = True,
+):
+    """Return a folium.Map with a semi‑transparent DEM overlay on a tile background.
+
+    Parameters
+    ----------
+    dem_path : str
+        Path to a raster readable by rasterio.
+    colormap : str, default 'viridis'
+        Matplotlib colormap name.
+    opacity : float, default 0.55
+        Overall DEM layer opacity (alpha embedded per pixel). 0..1.
+    clip_percentiles : (float, float), default (1, 99)
+        Lower/upper percentiles for robust elevation stretch.
+    tiles : str, default 'OpenStreetMap'
+        Base tiles name accepted by folium (e.g., 'OpenStreetMap','CartoDB.Positron').
+    zoom_start : int | None
+        If provided, overrides automatic zoom. If None a heuristic is used.
+    add_layer_control : bool, default True
+        If True adds a layer control widget.
+
+    Returns
+    -------
+    folium.Map
+        Interactive map with DEM overlay.
+    """
+    try:
+        import rasterio
+        import matplotlib.cm as cm
+        import matplotlib.colors as mcolors
+        from pyproj import Transformer
+    except ImportError as e:
+        raise ImportError("create_dem_overlay_map requires rasterio, matplotlib, pyproj") from e
+
+    with rasterio.open(dem_path) as src:
+        data = src.read(1).astype(float)
+        bounds = src.bounds
+        src_crs = src.crs
+
+    # Handle invalids
+    data[~np.isfinite(data)] = np.nan
+    if np.isnan(data).all():
+        vmin, vmax = 0, 1
+    else:
+        valid = data[np.isfinite(data)]
+        if valid.size:
+            p_lo, p_hi = clip_percentiles
+            vmin, vmax = np.percentile(valid, [p_lo, p_hi])
+        else:
+            vmin, vmax = float(np.nanmin(data)), float(np.nanmax(data))
+
+    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+    cmap = cm.get_cmap(colormap)
+    rgba = cmap(norm(data))  # 0..1 floats
+    rgba[..., 3] = opacity
+    rgba[~np.isfinite(data), 3] = 0.0
+    img = (rgba * 255).astype(np.uint8)
+
+    # Project bounds to WGS84
+    transformer = Transformer.from_crs(src_crs, "EPSG:4326", always_xy=True)
+    lon_min, lat_min = transformer.transform(bounds.left, bounds.bottom)
+    lon_max, lat_max = transformer.transform(bounds.right, bounds.top)
+    center_lat = (lat_min + lat_max) / 2
+    center_lon = (lon_min + lon_max) / 2
+
+    # Heuristic zoom: rough guess by latitude span
+    if zoom_start is None:
+        lat_span = abs(lat_max - lat_min)
+        if lat_span > 2:
+            zoom_start = 7
+        elif lat_span > 0.5:
+            zoom_start = 9
+        elif lat_span > 0.1:
+            zoom_start = 11
+        else:
+            zoom_start = 13
+
+    fmap = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start, tiles=tiles, control_scale=True)
+
+    folium.raster_layers.ImageOverlay(
+        image=img,
+        bounds=[[lat_min, lon_min], [lat_max, lon_max]],
+        opacity=1.0,  # internal alpha used
+        name="DEM overlay",
+        interactive=False,
+        cross_origin=False,
+        zindex=2,
+    ).add_to(fmap)
+
+    if add_layer_control:
+        folium.LayerControl().add_to(fmap)
+
+    return fmap
+
+
+def create_interactive_dem_map(
+    dem_path: str,
+    colormaps: tuple[str, ...] = ("viridis", "plasma", "cividis", "terrain"),
+    default_colormap: str = "viridis",
+    opacity: float = 0.55,
+    clip_percentiles: tuple[float, float] = (1, 99),
+    tiles: str = "OpenStreetMap",
+    zoom_start: int | None = None,
+    container_title: str = "DEM Controls",
+    custom_title: str | None = None
+):
+    """Create an interactive folium map with a DEM overlay and UI controls.
+
+    Features (client-side JS):
+      * Opacity slider (updates overlay opacity)
+      * Colormap dropdown (switches pre-rendered colorized PNGs)
+      * Reverse checkbox (toggles between normal & reversed LUT)
+
+    Implementation notes:
+      * All (colormap, reversed) variants are pre-rendered once and embedded
+        as base64 data URIs. Switching is instant without round trips.
+      * PNGs generated via matplotlib (plt.imsave) to avoid adding Pillow.
+
+    Parameters
+    ----------
+    dem_path : str
+        Raster path readable by rasterio.
+    colormaps : tuple[str,...]
+        List of matplotlib colormap names to provide.
+    default_colormap : str
+        Initially selected colormap (must be in colormaps).
+    opacity : float
+        Initial opacity (0..1).
+    clip_percentiles : (float,float)
+        Robust stretch percentiles.
+    tiles : str
+        Base tiles provider name.
+    zoom_start : int | None
+        Optional manual zoom; else derived from raster extent.
+    container_title : str
+        Title shown atop control box.
+    custom_title : str | None
+        Title shown atop the map.
+
+    Returns
+    -------
+    folium.Map
+        Interactive map object.
+    """
+    try:
+        import rasterio
+        import matplotlib.cm as cm
+        import matplotlib.colors as mcolors
+        from pyproj import Transformer
+        import matplotlib.pyplot as plt
+        from io import BytesIO
+        import base64
+    except ImportError as e:
+        raise ImportError("create_interactive_dem_map requires rasterio, matplotlib, pyproj") from e
+
+    if default_colormap not in colormaps:
+        raise ValueError(f"default_colormap '{default_colormap}' not in provided colormaps {colormaps}")
+
+    # -- Load raster --
+    with rasterio.open(dem_path) as src:
+        data = src.read(1).astype(float)
+        bounds = src.bounds
+        src_crs = src.crs
+
+    data[~np.isfinite(data)] = np.nan
+    if np.isnan(data).all():
+        vmin, vmax = 0, 1
+    else:
+        valid = data[np.isfinite(data)]
+        if valid.size:
+            vmin, vmax = np.percentile(valid, list(clip_percentiles))
+        else:
+            vmin, vmax = float(np.nanmin(data)), float(np.nanmax(data))
+
+    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+
+    def render_png(cmap_name: str, reverse: bool) -> str:
+        cmap_obj = cm.get_cmap(cmap_name)
+        if reverse:
+            cmap_obj = cmap_obj.reversed()
+        rgba = cmap_obj(norm(data))  # float 0..1
+        # Uniform alpha handled client side so keep full alpha then adjust by opacity in JS
+        rgba[..., 3] = 1.0
+        rgba[~np.isfinite(data), 3] = 0.0
+        buf = BytesIO()
+        plt.imsave(buf, rgba, format="png")
+        buf.seek(0)
+        b64 = base64.b64encode(buf.read()).decode("ascii")
+        return f"data:image/png;base64,{b64}"
+
+    # Precompute images
+    image_registry: dict[str, dict[str, str]] = {}
+    for cmap_name in colormaps:
+        image_registry[cmap_name] = {
+            "normal": render_png(cmap_name, False),
+            "reversed": render_png(cmap_name, True),
+        }
+
+    # Project bounds to WGS84
+    transformer = Transformer.from_crs(src_crs, "EPSG:4326", always_xy=True)
+    lon_min, lat_min = transformer.transform(bounds.left, bounds.bottom)
+    lon_max, lat_max = transformer.transform(bounds.right, bounds.top)
+    center_lat = (lat_min + lat_max) / 2
+    center_lon = (lon_min + lon_max) / 2
+
+    # Zoom heuristic
+    if zoom_start is None:
+        lat_span = abs(lat_max - lat_min)
+        if lat_span > 2:
+            zoom_start = 7
+        elif lat_span > 0.5:
+            zoom_start = 9
+        elif lat_span > 0.1:
+            zoom_start = 11
+        else:
+            zoom_start = 13
+
+    # Base map
+    fmap = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start, tiles=tiles, control_scale=True)
+
+    if custom_title:
+        map_title = custom_title
+    else:
+        map_title = "Digital Elevation Model"
+    if map_title:
+        title_html = f"""
+        <div style="position: relative; width:100%; text-align:center; padding:6px 0 4px 0;
+                    font-size:16px; font-weight:600; font-family:Arial;">
+            {map_title}
+        </div>
+        """
+        fmap.get_root().html.add_child(folium.Element(title_html))
+
+    # Add initial overlay as standard Folium layer (data URI works as image source)
+    initial_src = image_registry[default_colormap]["normal"]
+    overlay = folium.raster_layers.ImageOverlay(
+        image=initial_src,
+        bounds=[[lat_min, lon_min], [lat_max, lon_max]],
+        opacity=opacity,
+        name="DEM overlay",
+        interactive=False,
+        cross_origin=False,
+        zindex=2,
+    )
+    overlay.add_to(fmap)
+
+    # Build control panel HTML & JS logic
+    # JSON registry for images
+    import json as _json
+    registry_json = _json.dumps(image_registry)
+    # Escape braces used by JS object/blocks with double braces in f-string
+    options_html = ''.join(
+        f"<option value='{c}' {'selected' if c==default_colormap else ''}>{c}</option>" for c in colormaps
+    )
+    controls_html = f"""
+        <div id='dem-control-box' style='position: fixed; bottom: 12px; right: 12px; z-index:9999; background: rgba(255,255,255,0.9); padding:10px 12px; border:1px solid #777; border-radius:6px; width: 220px; font-family: Arial, sans-serif; font-size:12px;'>
+            <div style='font-weight:bold; font-size:13px; margin-bottom:4px;'>{container_title}</div>
+            <label style='display:block; margin-top:4px;'>Colormap
+                <select id='dem-colormap-select' style='width:100%; margin-top:2px;'>
+                    {options_html}
+                </select>
+            </label>
+            <label style='display:block; margin-top:6px;'>Opacity: <span id='dem-opacity-val'>{int(opacity*100)}</span>%
+                <input id='dem-opacity-slider' type='range' min='0' max='100' value='{int(opacity*100)}' step='1' style='width:100%;'>
+            </label>
+            <label style='display:block; margin-top:6px;'>
+                <input id='dem-reverse-checkbox' type='checkbox' style='vertical-align:middle;'> Reverse
+            </label>
+        </div>
+        <script>
+            (function() {{
+                var registry = {registry_json};
+                var selectEl = document.getElementById('dem-colormap-select');
+                var sliderEl = document.getElementById('dem-opacity-slider');
+                var reverseEl = document.getElementById('dem-reverse-checkbox');
+                var opacityVal = document.getElementById('dem-opacity-val');
+                function getOverlayImg() {{
+                    var imgs = document.querySelectorAll('img.leaflet-image-layer');
+                    for (var i=0; i<imgs.length; i++) {{
+                        if (imgs[i].src && imgs[i].src.indexOf('data:image/png;base64') === 0) return imgs[i];
+                    }}
+                    return null;
+                }}
+                function updateImage() {{
+                    var img = getOverlayImg();
+                    if (!img) return;
+                    var cmap = selectEl.value;
+                    var mode = reverseEl.checked ? 'reversed' : 'normal';
+                    img.src = registry[cmap][mode];
+                }}
+                function updateOpacity() {{
+                    var img = getOverlayImg();
+                    var op = parseInt(sliderEl.value, 10)/100.0;
+                    opacityVal.textContent = parseInt(sliderEl.value,10);
+                    if (img) img.style.opacity = op;
+                }}
+                selectEl.addEventListener('change', updateImage);
+                reverseEl.addEventListener('change', updateImage);
+                sliderEl.addEventListener('input', updateOpacity);
+            }})();
+        </script>
+        """
+    fmap.get_root().html.add_child(folium.Element(controls_html))
+
+    return fmap
+
+
 
 
 
