@@ -9,9 +9,42 @@ import string
 # Packages that are installed by other means (e.g., conda)
 EXCLUDED_PACKAGES = {'tools'}  # {'flopy', 'porespy', 'tools'}
 
+import sys 
+
+STD_LIB = set(sys.stdlib_module_names)|{'future'}
+
+def is_stdlib_module(name: str) -> bool:
+    """Check if a module is part of the standard library."""
+    return name in STD_LIB
+
+
 def normalize(name: str) -> str:
-    # Keep alnum + underscore only (drop commas, parentheses, etc.)
-    return re.sub(r'[^0-9a-zA-Z_]', '', name)
+    """Return a clean importable top-level module name or '' if invalid.
+
+    This avoids previous behaviour where inline comments were concatenated
+    to module names (e.g. 'diagnostics  # already imported' ->
+    'diagnosticsalreadyimported'). We now:
+      * strip inline comments
+      * drop alias portions
+      * keep only the top-level package (segment before first dot)
+      * validate against a module name regex
+    """
+    if not name:
+        return ''
+    # Strip any inline comment
+    name = name.split('#', 1)[0].strip()
+    if not name:
+        return ''
+    # Remove alias if still present
+    name = re.split(r'\s+as\s+', name, 1)[0].strip()
+    # Remove trailing punctuation
+    name = name.rstrip(',;')
+    # Keep only first dotted segment
+    name = name.split('.', 1)[0].strip()
+    # Validate
+    if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', name):
+        return ''
+    return name
 
 def extract_imports_from_notebook(notebook_path):
     """Extract all import statements from a Jupyter notebook."""
@@ -35,31 +68,35 @@ def extract_imports_from_notebook(notebook_path):
 
     imports = set()
     for cell in nb.cells:
-        if cell.cell_type == 'code':
-            # Find imports in the form of "import package" or "from package import something"
-            import_lines = re.findall(r'^\s*import\s+(\S+)', cell.source, re.MULTILINE)
-            from_import_lines = re.findall(r'^\s*from\s+(\S+)\s+import', cell.source, re.MULTILINE)
+        if cell.cell_type != 'code':
+            continue
 
-            for imp in import_lines + from_import_lines:
-                # Get the base package name (before any dots)
-                base_package = imp.split('.')[0]
-                # Exclude standard library modules, excluded packages, and local modules
+        # Capture entire import lines to support multi-imports
+        raw_import_blocks = re.findall(r'^\s*import\s+(.+)$', cell.source, re.MULTILINE)
+        from_import_modules = re.findall(r'^\s*from\s+([^\s]+)\s+import', cell.source, re.MULTILINE)
+
+        # Process plain import lines (may contain commas and aliases)
+        for block in raw_import_blocks:
+            for part in block.split(','):
+                base_package = normalize(part)
+                if not base_package or base_package == 'as':
+                    continue
                 if (not is_stdlib_module(base_package)
-                    and not base_package in EXCLUDED_PACKAGES
+                    and base_package not in EXCLUDED_PACKAGES
                     and not is_local_module(base_package)):
                     imports.add(base_package)
 
-    return imports
+        # Process from-import style
+        for mod in from_import_modules:
+            base_package = normalize(mod)
+            if not base_package or base_package == 'as':
+                continue
+            if (not is_stdlib_module(base_package)
+                and base_package not in EXCLUDED_PACKAGES
+                and not is_local_module(base_package)):
+                imports.add(base_package)
 
-def is_stdlib_module(module_name):
-    """Check if a module is part of the standard library."""
-    stdlib_modules = {
-        'os', 'sys', 're', 'math', 'datetime', 'time', 'random', 'json',
-        'csv', 'argparse', 'collections', 'copy', 'functools', 'itertools',
-        'glob', 'pathlib', 'typing', 'warnings', 'io', 'tempfile', 'inspect', 
-        'pickle', 'platform', 'os,'
-    }
-    return module_name in stdlib_modules
+    return imports
 
 def is_local_module(module_name):
     """Check if a module is a local module in the repository."""
@@ -120,25 +157,6 @@ def get_requirements():
     
     return packages
 
-'''def get_requirements():
-    """Parse requirements.txt and return a set of package names."""
-    if not os.path.exists('requirements.txt'):
-        return set()
-
-    with open('requirements.txt', 'r') as f:
-        requirements = set()
-        for line in f:
-            # Clean up the line and extract package name
-            line = line.strip()
-            # Skip empty lines and comments
-            if not line or line.startswith('#'):
-                continue
-            # Handle package specifiers like package==1.0 or package>=1.0
-            package = re.split(r'[=<>]', line)[0].strip()
-            requirements.add(package)
-
-    return requirements'''
-
 def main():
     """Check if all packages imported in notebooks are in environment"""
     # Get all notebooks
@@ -153,7 +171,8 @@ def main():
         imports = extract_imports_from_notebook(notebook)
         all_imports.update(imports)
 
-    all_imports_cleaned = {normalize(m) for m in all_imports if normalize(m)}
+    # Names are already normalized during extraction; just filter empties
+    all_imports_cleaned = {m for m in all_imports if m}
 
     # Print unique list of imports, alphabetically sorted
     print("Unique imports found in notebooks:")

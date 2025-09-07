@@ -4,10 +4,10 @@
 
 ![Groundwater Model Visualization](SUPPORT_REPO/static/figures/0_readme/Groundwater_course.jpg)
 
-## Overview
+## 1 Overview
 Project-based course materials for Master-level groundwater modeling (4 ECTS) at ETH Zurich. Focuses on practical modeling skills using MODFLOW and FloPy through a real-world case study of the Limmat valley aquifer.
 
-## Learning Objectives
+## 2 Learning Objectives
 - Deepen your understanding of basic hydrogeological concepts and principles
 - Apply numerical methods to solve groundwater flow and transport problems
 - Apply groundwater flow and transport principles to practical modeling scenarios
@@ -15,19 +15,19 @@ Project-based course materials for Master-level groundwater modeling (4 ECTS) at
 - Implement and analyze numerical solutions using MODFLOW, MT3D and FloPy
 - Critically evaluate modeling results and their implications
 
-## Prerequisites
+## 3 Prerequisites
 - Basic understanding of hydrogeology (Darcy's Law, hydraulic conductivity, aquifer properties)
 - Groundwater flow concepts and boundary conditions
 - Basic Python programming skills
 
-## 🔧 Accessibility Features
+## 4 Accessibility Features
 
 This course includes comprehensive accessibility features designed to support diverse learning needs and preferences. Over time, all materials will be designed to work well both with and without accessibility enhancements.
 
 <details>
 <summary><strong>🎓 For Students: Current accessibility features</strong></summary>
 
-### Current Accessibility Features
+### 4.1 Current Accessibility Features
 
 ✅ **Screen Reader Compatibility**
 - All content boxes use standard Markdown blockquotes that screen readers can process naturally
@@ -48,14 +48,14 @@ This course includes comprehensive accessibility features designed to support di
 - Descriptive section titles and clear content organization
 - Logical flow from concept to application
 
-### Platform Compatibility
+### 4.2 Platform Compatibility
 
 The course materials are designed to work across multiple environments:
 - **JupyterLab/JupyterHub**: Full interactive experience with widgets
 - **VS Code**: Markdown content displays properly, with fallback options for interactive elements
 - **Screen Readers**: Content structure and labels designed for accessibility
 
-### Ongoing Accessibility Improvements
+### 4.3 Ongoing Accessibility Improvements
 
 🔄 **We continuously work to improve accessibility by:**
 - Simplifying complex visualizations and providing text alternatives
@@ -64,14 +64,14 @@ The course materials are designed to work across multiple environments:
 - Maintaining clean, logical document structure
 - Seeking feedback from users with accessibility needs
 
-### Current Limitations
+### 4.4 Current Limitations
 
 ⚠️ **Areas we're still working on:**
 - Some complex diagrams may not have comprehensive text alternatives
 - Interactive visualizations may have limited screen reader support
 - Color-dependent information (we're working to add text/pattern alternatives)
 
-### Reporting Accessibility Issues
+### 4.5 Reporting Accessibility Issues
 
 If you encounter accessibility barriers while using this course:
 
@@ -81,7 +81,7 @@ If you encounter accessibility barriers while using this course:
 
 We welcome feedback and contributions to improve accessibility for all learners.
 
-### Alternative Formats
+### 4.6 Alternative Formats
 
 If you need course materials in alternative formats:
 - The Markdown source files can be converted to various formats using tools like Pandoc
@@ -97,20 +97,20 @@ If you need course materials in alternative formats:
 <details>
 <summary><strong>👩‍💻 For Developers: Implementing Accessibility</strong></summary>
 
-### 🎯 Core Design Principles
+### 4.7 🎯 Core Design Principles
 
-#### 1. Keep It Simple
+#### 4.7.1 Keep It Simple
 - **Minimal layouts**: Avoid complex HTML structures or custom CSS
 - **Standard Markdown**: Use native Markdown features whenever possible
 - **Portable design**: Ensure content works across VS Code, JupyterLab, and JupyterHub
 - **Screen reader first**: Design with screen readers in mind, not as an afterthought
 
-#### 2. Accessibility-First Development
+#### 4.7.2 Accessibility-First Development
 Every contribution should consider accessibility from the start, not as a retrofit.
 
-### 📝 Content Guidelines
+### 4.8 📝 Content Guidelines
 
-#### Markdown Content Boxes
+#### 4.8.1 Markdown Content Boxes
 **✅ DO:**
 ```markdown
 > 💡 **Example: Clear Title**
@@ -127,7 +127,7 @@ Every contribution should consider accessibility from the start, not as a retrof
 </div>
 ```
 
-#### Headings and Structure
+#### 4.8.2 Headings and Structure
 **✅ DO:**
 - Use logical heading hierarchy (H1 → H2 → H3)
 - Make headings descriptive and meaningful
@@ -144,16 +144,16 @@ Every contribution should consider accessibility from the start, not as a retrof
 - Use headings for styling only
 - Make vague headings like "More Info"
 
-### 🖼️ Images and Visual Content
+### 4.9 🖼️ Images and Visual Content
 
-#### Alt Text Requirements
+#### 4.9.1 Alt Text Requirements
 **All images MUST include descriptive alt text:**
 
 ```markdown
 ![Graph showing groundwater head decline over time from 2010 to 2020, starting at 15m and declining to 8m with steepest decline between 2015-2017](path/to/image.png)
 ```
 
-#### Alt Text Guidelines
+#### 4.9.2 Alt Text Guidelines
 **✅ Good alt text:**
 - Describes the content and purpose of the image
 - Includes key data points for graphs/charts
@@ -165,7 +165,7 @@ Every contribution should consider accessibility from the start, not as a retrof
 - "See image above" (not descriptive)
 - Overly long descriptions (keep under 125 characters for simple images)
 
-#### Complex Figures
+#### 4.9.3 Complex Figures
 For complex diagrams or multi-panel figures:
 
 ```markdown
@@ -175,9 +175,9 @@ For complex diagrams or multi-panel figures:
 [Provide detailed text description in following paragraph]
 ```
 
-### 🧩 Interactive Elements
+### 4.10 🧩 Interactive Elements
 
-#### Progress Trackers and Widgets
+#### 4.10.1 Progress Trackers and Widgets
 **✅ DO:**
 - Use standard `ipywidgets` with proper labels
 - Include descriptive text for all interactive elements
@@ -197,14 +197,14 @@ checkbox = widgets.Checkbox(
 - Use unlabeled interactive elements
 - Rely solely on color to convey information
 
-#### Forms and Input
+#### 4.10.2 Forms and Input
 - Always provide clear labels for input fields
 - Include help text or examples when needed
 - Use logical tab order for keyboard navigation
 
-### 🎨 Visual Design
+### 4.11 🎨 Visual Design
 
-#### Color and Contrast
+#### 4.11.1 Color and Contrast
 **✅ DO:**
 - Ensure sufficient color contrast (4.5:1 minimum for normal text)
 - Use color plus another indicator (icons, patterns, text) to convey information
@@ -215,7 +215,7 @@ checkbox = widgets.Checkbox(
 - Use low-contrast color combinations
 - Assume all users can perceive color differences
 
-#### Layout and Spacing
+#### 4.11.2 Layout and Spacing
 **✅ DO:**
 - Use consistent spacing and alignment
 - Keep line lengths readable (45-75 characters)
@@ -231,9 +231,9 @@ checkbox = widgets.Checkbox(
 > Where K is hydraulic conductivity, h is hydraulic head, S is specific storage, and Q represents sources/sinks.
 ```
 
-### 💻 Code and Technical Content
+### 4.12 💻 Code and Technical Content
 
-#### Code Blocks
+#### 4.12.1 Code Blocks
 **✅ DO:**
 - Use syntax highlighting with language specification
 - Include comments explaining complex sections
@@ -258,7 +258,7 @@ def theis_analysis(time, drawdown, pumping_rate, distance):
     # Implementation here...
 ```
 
-#### Mathematical Content
+#### 4.12.2 Mathematical Content
 **✅ DO:**
 - Provide text explanations alongside equations
 - Define all variables and symbols
@@ -275,9 +275,9 @@ Where:
 - i = hydraulic gradient (dimensionless)
 ```
 
-### 🚀 Quick Reference
+### 4.13 🚀 Quick Reference
 
-#### Standard Content Box Format
+#### 4.13.1 Standard Content Box Format
 ```markdown
 > [EMOJI] **[TYPE]: [TITLE]**
 > 
@@ -286,12 +286,12 @@ Where:
 > For complex content, break into multiple paragraphs.
 ```
 
-#### Image with Alt Text
+#### 4.13.2 Image with Alt Text
 ```markdown
 ![Descriptive alt text explaining what the image shows, including key data points and relationships](path/to/image.png)
 ```
 
-#### Interactive Widget Template
+#### 4.13.3 Interactive Widget Template
 ```python
 widget = widgets.WidgetType(
     value=default_value,
@@ -301,7 +301,7 @@ widget = widgets.WidgetType(
 )
 ```
 
-### 🤝 Getting Help
+### 4.14 🤝 Getting Help
 
 - **Accessibility questions**: Open an issue with the `accessibility` label
 - **Design consistency**: Check existing notebooks for patterns
@@ -313,23 +313,23 @@ widget = widgets.WidgetType(
 
 </details>
 
-## Data Management
+## 5 Data Management
 
 This course uses external datasets that are automatically downloaded when needed and stored to the folder `appplied_groundwater_modelling_data` in your home directory. The data download system is configured through a `config.py` file that specifies data sources and repository links.
 
 Please look at `config_template.py` for a template of the configuration file, containing publicly available data for the Limmat valley aquifer model. You can copy this file to `config.py` and modify it according to your needs.
 
-### Default Public Data Access
+### 5.1 Default Public Data Access
 
 By default, the course uses publicly available data for the Limmat valley aquifer case study. No additional configuration is required for most users.
 
-### Private Data Access (Workshop Participants)
+### 5.2 Private Data Access (Workshop Participants)
 
 Workshop participants will receive a `config.py` file with links to additional private datasets and repositories. Place this file in the root directory of the repository (same level as `README.md`).
 
 **Important:** The `config.py` file contains links to private repositories and should not be shared or committed to version control. It is automatically ignored by git.
 
-### Data Configuration
+### 5.3 Data Configuration
 
 The data system supports multiple case studies and data sources:
 
@@ -346,7 +346,7 @@ CASE_STUDY = "limmat"  # or "zarafshan"
 DATA_SOURCE = "dropbox"  # or "switch"
 ```
 
-### Data Download
+### 5.4 Data Download
 
 Data is automatically downloaded when needed using functions like:
 
@@ -362,13 +362,13 @@ file_path = download_named_file(
 
 Downloaded data is stored in `~/applied_groundwater_modelling_data/[case_study]/` and organized by data type (climate, rivers, gis, etc.).
 
-## Repository Structure
+## 6 Repository Structure
 (to be refined)
 
 The applied groundwater modelling course uses data downloaded from sources configured in the file config.py (see config_template.py for a template). The downloaded data is stored in the `applied_groundwater_modelling_data` folder on the same hierarchical level as the course repository. 
 
 ``` 
-applied_groundwater_modelling/
+applied_groundwater_modelling/   # Your local copy of the git repository
 ├── ADDITIONAL_MATERIAL/         # Additional optional materials for the course 
 ├── CASE_STUDY/                  # Case study materials
 ├── EXERCISES/                   # Exercises for the course
@@ -377,23 +377,46 @@ applied_groundwater_modelling/
 ├── SUPPORT_REPO/                # Support files for the course
 │   ├── src/                     # Support code for the course
 │   ├── static/                  # Static files (images, figures, etc.)
+├── 0_diagnostics.ipynb          # Diagnostics notebook to check environment
+├── config_template.py           # Template for configuration file
 ├── environment_development.yml  # Conda environment for development
 ├── environment_students.yml     # Conda environment for students
-├── .gitignore                   # Git ignore file
 ├── README.md                    # This file
 └── LICENSE                      # License file
 
 applied_groundwater_modelling_data/ (will be created automatically)
 ├── limmat/
-│   ├── data/                    # Data files for the Limmat case study
-|   |   ├── climate/             # Climate data
+│   ├── gis/                     # GIS data files for the Limmat case study
 │   ├── limmat_valley_model/     # Model files for the Limmat case study
+│   ├── time_series/             # Time series data files for the Limmat case study
 ```
 
-## How to Use this Repository as a Student
+## 7 How to Use this Repository as a Student
 
-### JupyterHub (ETH Students)
-ETH students can access these materials through the course JupyterHub environment linked in Moodle.
+### 7.1 JupyterHub (ETH Students)
+ETH students can access these materials through the course JupyterHub environment linked in Moodle. The JupyterHub provides a pre-configured environment with all necessary dependencies installed. 
+
+#### 7.1.1 First time run
+
+1. Open 0_diagnostics.ipynb.  
+2. (Optional) Run sync cell with default flags to inspect status.  
+3. Run all cells.  
+4. Confirm final summary → overall_ready = True.  
+5. If not ready: copy summary + failing section output and contact support.  
+
+**Access your JupyterHub instance**
+Please access your JupyterHub instance via the link on Moodle. Do not save a Bookmark as the url may change.
+
+**Change your scrolling settings**
+You are strongly encouraged to modify your jupyter notebook scrolling setting as follows (due to a Jupyter issue which can be fixed by configuring it globally by the ETH support) :
+“Settings → Settings Editor → Notebook → Windowing mode → none” 
+See https://discourse.jupyter.org/t/scrolling-bug-makes-my-screen-shake-erratically/32421/2 
+
+#### 7.1.2 Daily use
+- Only re-run full diagnostics if environment changed or something breaks.  
+- Avoid resetting unless instructed.
+
+### 7.2 Local Installation
 
 <details>
 <summary><strong>💻 Local Installation Setup</strong></summary>
@@ -441,9 +464,10 @@ To run these materials locally, follow these steps:
 6. **Install LaTeX support for notebooks** (optional):
    In Visual Studio Code, install the `Markdown+Math` and `Markdown All in One` extensions or the `LaTeX Workshop` extension.
 
-### Repository Branches
+### 7.3 Repository Branches
 - `main`: Contains the latest stable version of the course materials
 - `course_2025`: Contains the latest version for the 2025 course (displayed on course JupyterHub)
+- Other branches are used for development. Stale branches may be removed.
 
 </details>
 
@@ -452,7 +476,7 @@ To run these materials locally, follow these steps:
 
 We welcome contributions to improve the course materials! 
 
-### Setting up Your Environment
+### 7.4 Setting up Your Environment
 Install the project dependencies using the following command:
 ```bash
 conda env create -f environment_development.yml
@@ -463,19 +487,12 @@ conda activate gw_course_development
 ```
 If, during development, you need to install additional packages, please add them to the `environment_development.yml` files and run the following command to update the environment:
 ```bash
-conda env update --from-history -f environment_development.yml
+conda env update -f environment_development.yml
 ```
 Please also keep the `environment_students.yml` file up to date. 
 
-### Setting up the JupyterHub
-You are strongly encouraged to modify your jupyter notebook scorlling setting as follows (due to a Jupyter issue which can be fixed by configuring it globally by the ETH support) :
-“Settings → Settings Editor → Notebook → Windowing mode → none” 
-See https://discourse.jupyter.org/t/scrolling-bug-makes-my-screen-shake-erratically/32421/2 
-
-
-
-### Git Workflow to Contribute
-Here's how you can contribute if you are not yet a collaborator in this repository:  
+### 7.5 Git Workflow to Contribute
+Here's how you can contribute if you are not yet a collaborator in this repository:
 
 - **Fork the repository**: Create your own fork of this repository (skip this step if you are a collaborator in this repository).
 - **Create a feature branch**: Base your work on the develop branch.  
@@ -488,7 +505,7 @@ Here's how you can contribute if you are not yet a collaborator in this reposito
 - **Document your work**: Add clear comments and documentation to any code or notebooks.
 - **Submit a Pull Request**: Create a pull request to the develop branch with a clear description of what your changes accomplish. We will review your contribution and provide feedback.
 
-### Notebook Output Management (Required)
+### 7.6 Notebook Output Management (Required)
 To keep the repository clean and free of unnecessary output, notebook outputs should be cleared before committing. Contributors have two options:
 
 #### Option 1: Manual Output Clearing (Simple)
@@ -528,16 +545,16 @@ Set up `nbstripout` to automatically strip outputs during commits:
 </details>
 
 
-## The Limmat Valley Aquifer Case Study
+## 8 The Limmat Valley Aquifer Case Study
 This course uses a numerical groundwater flow and transport model of the Limmat valley aquifer as its central case study. Students will:
 - Understand the hydrogeological setting
 - Develop and refine the numerical model
 - Apply the model to explore various scenarios including climate change impacts and water management challenges
 
-## Course Timeline
+## 9 Course Timeline
 (To be refined)
 - **Weeks 1-7**: Core concepts, model setup, and calibration
-- **Weeks 8-13**: Student-led case studies investigating specific problems using the Limmat valley model
+- **Weeks 8-13**: Transport, Student-led case studies investigating specific problems using the Limmat valley model
 
 <details>
 <summary>Detailed sylabus (under development)</summary>
@@ -560,14 +577,15 @@ The course stretches over 13 weeks with 4 lectures per week. For each lecture we
 - Final exam
 </details>
 
-## Troubleshooting
+## 10 Troubleshooting
 
 ### Troubleshooting Git repo on JupyterHub
 It may happen, that your repository on JupyterHub is not up to date with the latest version of the course repository. In this case, you can update your repository by running the following commands in a terminal on JupyterHub:
 
 ```bash
+# TODO: add this to the diagnostics script for Jupyter Hub
 # Navigate to the course repository
-cd ~/applied_groundwater_modelling
+cd ~/applied_groundwater_modelling.git
 # Fetch the latest changes from the remote repository
 git fetch origin
 # Check the status of your local repository
@@ -576,6 +594,9 @@ git status
 # Reset your local repository to match the remote 'course_2025' branch
 git reset --hard origin/course_2025
 ```
+
+### 405: Method Not Allowed on JupyterHub
+This error may occur if you try to access a resource or endpoint that is not allowed on the JupyterHub server. This error can happen when you store the link to your JupyterHub environment in a Bookmark. The url to your JupyterHub environment can change from time to time. 
 
 ### Troubleshooting Data Downloads
 
@@ -598,5 +619,5 @@ git reset --hard origin/course_2025
 - If you lose your `config.py`, contact the instructors for a replacement
 - The `config.py` file should be placed in the root directory of the repository
 
-## Acknowledgments
+## 11 Acknowledgments
 Funded by the ETH Zurich Department of Earth and Planetary Sciences and the Rectors Innovendum Fund ([project link](https://ww2.lehrbetrieb.ethz.ch/id-workflows/faces/instances/Innovedum/ProzessInnovedum$1/197A35DA732E83F5/innovedumPublic.Details/Details.xhtml)).
