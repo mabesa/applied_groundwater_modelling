@@ -3,6 +3,11 @@ import pandas as pd
 import glob
 
 import matplotlib.pyplot as plt
+try:  # unified caption styling
+    from style_utils import apply_caption_style, FIGURE_CAPTION_STYLE
+except Exception:  # fallback if style_utils not available
+    apply_caption_style = None
+    FIGURE_CAPTION_STYLE = {}
 
 # region data processing
 def read_climate_data(data_path, station_string="Zuerich-Fluntern"):
@@ -234,7 +239,14 @@ def plot_climate_data(df, station_string="Fluntern", custom_title=None):
     else:
         base_title = f"Climate data for {station_string}"
     title = f"{base_title} Annual precipitation {precip_val} mm; mean temperature {mean_temp_val} °C"
-    plt.title(title)
+    # Apply unified caption style (project-wide)
+    if apply_caption_style:
+        # Wrap at ~100 chars for readability
+        apply_caption_style(ax1, title, pad=14, wrap=100)
+    else:  # graceful fallback
+        fs = FIGURE_CAPTION_STYLE.get('fontsize', 12)
+        fw = FIGURE_CAPTION_STYLE.get('fontweight', 'bold')
+        ax1.set_title(title, fontsize=fs, fontweight=fw)
 
     fig.tight_layout()  # Adjust layout to prevent labels from overlapping
 
