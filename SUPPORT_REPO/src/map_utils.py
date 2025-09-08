@@ -1,6 +1,7 @@
 import folium
 from folium.plugins import BeautifyIcon
 import geopandas as gpd
+import os, shutil, tempfile, time
 from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
 from matplotlib.legend import Legend
@@ -13,6 +14,19 @@ from shapely import union_all
 import textwrap
 import numpy as np
 import warnings
+try:  # Access shared caption style
+    from style_utils import FIGURE_CAPTION_STYLE
+except Exception:  # Fallback defaults if import fails
+    FIGURE_CAPTION_STYLE = {"fontsize": 10, "fontweight": "bold", "fontfamily": "Arial, sans-serif"}
+
+def _caption_css(extra: str = "") -> str:
+    """Return inline CSS string based on FIGURE_CAPTION_STYLE (points -> px)."""
+    fs_pt = FIGURE_CAPTION_STYLE.get("fontsize", 10)
+    # Approximate px conversion (96 dpi assumption)
+    fs_px = round(fs_pt * 96 / 72)
+    weight = FIGURE_CAPTION_STYLE.get("fontweight", "bold")
+    family = FIGURE_CAPTION_STYLE.get("fontfamily", "Arial, sans-serif")
+    return f"font-size:{fs_px}px;font-weight:{weight};font-family:{family};{extra}".replace(";;", ";")
 
 
 def display_groundwater_resources_map(gw_map_path, zoom_level=10, 
@@ -37,8 +51,34 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10,
         Interactive map object
     """
     
-    # Load the groundwater data
-    gw_map_gdf = gpd.read_file(gw_map_path, layer='GS_GW_LEITER_F')
+    # --- Robust read to avoid intermittent "database is locked" on shared JupyterHub storage ---
+    def _safe_read_gpkg(path: str, layer: str, attempts: int = 5, delay: float = 0.6):
+        last_err = None
+        # If WAL sidecar files linger, copy to a local temp file each attempt
+        for i in range(attempts):
+            try:
+                # Always copy to a unique temp file (sidesteps file-level locks on NFS)
+                with tempfile.NamedTemporaryFile(suffix='.gpkg', delete=False) as tmp:
+                    tmp_path = tmp.name
+                shutil.copy2(path, tmp_path)
+                try:
+                    return gpd.read_file(tmp_path, layer=layer)
+                finally:
+                    # Best-effort cleanup
+                    for ext in ('', '-wal', '-shm'):
+                        try:
+                            os.remove(tmp_path + ext)
+                        except OSError:
+                            pass
+            except Exception as e:  # noqa: BLE001
+                last_err = e
+                # If not a lock related issue, break early
+                if 'lock' not in str(e).lower():
+                    break
+                time.sleep(delay)
+        raise last_err if last_err else RuntimeError('Unknown failure reading GeoPackage')
+
+    gw_map_gdf = _safe_read_gpkg(gw_map_path, layer='GS_GW_LEITER_F')
     
     # Keep only essential columns to avoid JSON serialization issues
     # Only keep GWLTYP (groundwater type) and geometry
@@ -101,12 +141,45 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10,
         bounds = gw_map_gdf.total_bounds
         map_center = [(bounds[1] + bounds[3]) / 2, (bounds[0] + bounds[2]) / 2]
     
-    # Create the map
+    # Create the map with tiles=None then add multiple base layers explicitly.
+    # Rationale: Some JupyterHub deployments or corporate proxies intermittently block
+    # the default OpenStreetMap layer requested via the folium.Map(tiles=...) shortcut,
+    # leading to a blank (grey) background. By adding explicit TileLayer objects we:
+    #  (1) provide multiple fallback providers, and
+    #  (2) ensure a visible base layer even if one provider fails.
     m = folium.Map(
         location=map_center,
         zoom_start=zoom_level,
-        tiles='OpenStreetMap'
+        tiles=None,
+        control_scale=True
     )
+    try:
+        # OpenStreetMap (provider name is safe)
+        folium.TileLayer(
+            tiles='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            name='OpenStreetMap',
+            overlay=False,
+            control=True
+        ).add_to(m)
+        # Carto Positron (explicit URL + attribution to avoid provider name mismatch across folium versions)
+        folium.TileLayer(
+            tiles='https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            name='CartoDB Positron',
+            overlay=False,
+            control=True
+        ).add_to(m)
+        # Stamen Terrain (explicit URL + attribution)
+        folium.TileLayer(
+            tiles='https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png',
+            attr='Map tiles by <a href="http://stamen.com">Stamen Design</a>, CC BY 3.0 — Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            name='Stamen Terrain',
+            overlay=False,
+            control=True
+        ).add_to(m)
+    except Exception as _tile_err:
+        warnings.warn(f"Could not add one or more base tile layers: {_tile_err}")
     
     # Add each groundwater type as a separate layer
     for gw_type in gw_types:
@@ -161,13 +234,8 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10,
     m.get_root().html.add_child(folium.Element(legend_html))
     
     if map_title:
-        title_html = f"""
-        <h3 style="text-align:center; font-family:Arial, sans-serif;
-                   font-size:16px; font-weight:bold; margin:8px 0 6px 0;">
-            {map_title}
-        </h3>
-        """
-        # Insert before map container in notebook display
+        title_style = _caption_css("margin:8px 0 6px 0;text-align:center;")
+        title_html = f"<h3 style=\"{title_style}\">{map_title}</h3>"
         m.get_root().html.add_child(folium.Element(title_html))
 
     return m
@@ -385,7 +453,15 @@ def plot_model_area_map(
     title_text = custom_title or 'Model Area Delineation'
     wrap_width = 90
     title_text = textwrap.fill(title_text, width=wrap_width)
-    title_obj = ax.set_title(title_text, fontsize=16, weight='bold', loc='center')
+    try:
+        from style_utils import apply_caption_style, FIGURE_CAPTION_STYLE
+        title_obj = apply_caption_style(ax, title_text, pad=10)
+        title_obj.set_ha('center')
+    except Exception:
+        # Fallback uses same style dict if available (already imported earlier globally)
+        fs = FIGURE_CAPTION_STYLE.get('fontsize', 12) if 'FIGURE_CAPTION_STYLE' in globals() else 10
+        fw = FIGURE_CAPTION_STYLE.get('fontweight', 'bold') if 'FIGURE_CAPTION_STYLE' in globals() else 'bold'
+        title_obj = ax.set_title(title_text, fontsize=fs, fontweight=fw, loc='center')
     # Ensure Matplotlib also wraps dynamically if space is tight
     try:
         title_obj.set_wrap(True)
@@ -483,12 +559,10 @@ def display_concessions_map(
     m = folium.Map(location=map_center, zoom_start=zoom_start, tiles="OpenStreetMap")
 
     if map_title:
-        title_html = f"""
-        <div style="position: relative; width:100%; text-align:center; padding:6px 0 4px 0;
-                    font-size:16px; font-weight:600; font-family:Arial;">
-            {map_title}
-        </div>
-        """
+        title_style = _caption_css("position:relative;width:100%;display:block;padding:6px 0 4px 0;text-align:center;")
+        # Maintain slightly lighter weight if original style requested 600 vs bold
+        # (We already mapped weight from style dict; user can adjust there.)
+        title_html = f"<div style=\"{title_style}\">{map_title}</div>"
         m.get_root().html.add_child(folium.Element(title_html))
 
     if b_gdf is not None and not b_gdf.empty:
@@ -1352,20 +1426,64 @@ def create_interactive_dem_map(
         else:
             zoom_start = 13
 
-    # Base map
-    fmap = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start, tiles=tiles, control_scale=True)
+    # Base map with explicit multi-provider support. We set tiles=None first and add providers.
+    fmap = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start, tiles=None, control_scale=True)
+
+    # Add a suite of base layers; ensure requested 'tiles' provider is added last so it is active.
+    # Mapping from generic parameter values to folium provider specs or (custom URL, attr, name)
+    provider_order = [
+        ('openstreetmap', ('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                           'OpenStreetMap')),
+        ('carto-positron', ('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                            'CartoDB Positron')),
+        ('carto-voyager', ('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                           '&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                           'CartoDB Voyager')),
+        ('esri-imagery', ('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                          'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                          'Esri WorldImagery')),
+        ('opentopomap', ('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                         'Map data: &copy; OpenStreetMap contributors, SRTM | Style: &copy; OpenTopoMap (CC-BY-SA)',
+                         'OpenTopoMap')),
+    ]
+
+    # Normalize tiles param for matching
+    norm_tiles = (tiles or 'OpenStreetMap').lower()
+    added = set()
+    for key, (prov, attr, name) in provider_order:
+        try:
+            if attr is not None:
+                folium.TileLayer(tiles=prov, attr=attr, name=name, overlay=False, control=True).add_to(fmap)
+            else:
+                folium.TileLayer(prov, name=name, control=True).add_to(fmap)
+            added.add(key)
+        except Exception as _tile_err:
+            warnings.warn(f"Failed to add base layer {key}: {_tile_err}")
+    # If requested provider exists, add it again last (activates it) unless already last via ordering
+    try:
+        if norm_tiles not in added:
+            pass  # already handled via default OSM fallback
+        elif norm_tiles not in ('opentopomap', 'esri-imagery') and norm_tiles != 'openstreetmap':
+            # Add its folium name again to ensure activation (only for some carto variants)
+            mapping = {
+                'carto-positron': 'CartoDB Positron',
+                'carto-voyager': 'CartoDB Voyager',
+            }
+            if norm_tiles in mapping:
+                folium.TileLayer(mapping[norm_tiles], name=mapping[norm_tiles], control=True).add_to(fmap)
+    except Exception as _reactivate_err:
+        warnings.warn(f"Could not set requested base layer active: {_reactivate_err}")
 
     if custom_title:
         map_title = custom_title
     else:
         map_title = "Digital Elevation Model"
     if map_title:
-        title_html = f"""
-        <div style="position: relative; width:100%; text-align:center; padding:6px 0 4px 0;
-                    font-size:16px; font-weight:600; font-family:Arial;">
-            {map_title}
-        </div>
-        """
+        # Reuse unified caption CSS (function defined near top)
+        title_style = _caption_css("position:relative;width:100%;text-align:center;padding:6px 0 4px 0;")
+        title_html = f"<div style=\"{title_style}\">{map_title}</div>"
         fmap.get_root().html.add_child(folium.Element(title_html))
 
     # Add initial overlay as standard Folium layer (data URI works as image source)
