@@ -85,6 +85,11 @@ DATA_URLS = {
                 "filename": "all_wells_long_format.csv",
                 "readme_url": "https://www.dropbox.com/scl/fi/nk2tdlgv3g93lpgfakd61/readme.md?rlkey=ub0wm2d0ggt3ex72lnhmxdhn4&dl=1",
             },
+            "parameter_zones": {
+                "url": "https://www.dropbox.com/scl/fi/142iyp1mwappzek2be5bq/parameterization_zones.gpkg?rlkey=mqeybl7q78qe46cm9l70pea79&dl=1", 
+                "filename": "parameterization_zones.gpkg", 
+                "readme_url": "https://www.dropbox.com/scl/fi/6fa7vuff9muqjsk55evpn/readme.md?rlkey=lxowf94vw9ispzylnl3bxagxo&dl=1", 
+            }
         },
         "switch": {
             "groundwater_map_norm": "https://ethz-my.sharepoint.com/:u:/r/personal/XXXX/applied_gw_modelling_zurich_case_study_data/Grundwasservorkommen_-OGD/Grundwasservorkommen_-OGD.gpkg?csf=1&web=1&e=henbgz",
