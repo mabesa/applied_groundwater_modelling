@@ -398,8 +398,20 @@ ETH students can access these materials through the course JupyterHub environmen
 
 #### 7.1.1 First time run
 
+There are now two separate maintenance notebooks:
+
+1. `0_sync_repo.ipynb` – run this when instructors announce an update or you suspect your local copy is out of date. It performs git fetch/reset (optionally destructive) and can deep-clean untracked & ignored files. Adjust flags before forcing a reset; copy personal work elsewhere first.
+2. `0_diagnostics.ipynb` – run this once at course start (after an initial sync) to validate your Python environment (packages, geospatial stack, MODFLOW executable, visualization). Re-run only if you change the environment or after a sync that adds new dependencies.
+
+Quick decision guide:
+- Want latest teaching materials? → Run `0_sync_repo.ipynb` (dry run first).
+- Installed / removed packages or something breaks? → Re-run `0_diagnostics.ipynb`.
+- Just working on exercises/case study normally? → No need to run either.
+
+If a sync introduces new packages, re-run diagnostics to confirm readiness (final summary should report `overall_ready = True`).
+
 1. Open 0_diagnostics.ipynb.  
-2. (Optional) Run sync cell with default flags to inspect status.  
+2. (Optional) Open and run `0_sync_repo.ipynb` (dry run first) if instructors announced an update.  
 3. Run all cells.  
 4. Confirm final summary → overall_ready = True.  
 5. If not ready: copy summary + failing section output and contact support.  
