@@ -3,13 +3,11 @@
 # CHOOSE CASE STUDY:
 # Options:
 # "limmat" -> Use the Limmat valley aquifer in Zurich, Switzerland (publicly available, default)
-# "zarafshan" -> Use the Zarafshan aquifer in Uzbekistan (not publicly available)
 CASE_STUDY = "limmat"
 
 # CHOOSE WHERE TO GET YOUR DATA:
 # Options:
 # "dropbox" -> Use Dropbox links
-# "switch"  -> Use SWITCHdrive links
 DATA_SOURCE = "dropbox"
 
 # DATA_URLS for different case studies and sources
@@ -103,11 +101,4 @@ DATA_URLS = {
             # Add other private limmat data URLs
         }
     },
-    "zarafshan": {
-        "dropbox": {
-            # Add private zarafshan data URLs
-            "groundwater_map": "", 
-            "dem": "", 
-        }
-    }
 }

@@ -1,77 +1,118 @@
-# =======================
-# Case Study Scenario (Student)
-# =======================
-# Fill in the fields marked with TODO. Keep units consistent (meters, days, m3/day).
-name: "csXX_student_name"      # TODO: replace with your short case id
-author: "First Last"           # TODO: your name
-title: "Impact of a new municipal well near the river"  # TODO: tailor the title
+###############################################################
+# Case Study Scenario (Student Group Template)
+###############################################################
+# Fill ALL TODO fields. Keep units consistent (meters, days, m3/day).
+# Groups of 2–3 students. One YAML per group.
+
+# A short identifier for this group case (auto pattern recommended)
+name: "group0"                           # TODO: replace XX with your group number (e.g. group03)
+
+group:
+  number: 0                               # TODO: integer group number (e.g. 3)
+  authors:                                # TODO: list all group members (2–3 persons)
+    - "First Last"
+    - "Second Last"                      # remove if only 2 members / add third if needed
+  concession_number: 0                    # TODO: provided concession id number
+  chosen_scenario: "SC10"          # TODO: pick one from scenarios.options.id below
+  pumping_rate_mode: "both"               # options: concession | half | both (run full concession + 50%)
+
+title: "Impact of a well group on the groundwater flow field."  # TODO: tailor the title (you may refine but keep core meaning)
+
 description: >
-  # TODO: 2–4 sentences. What problem are you solving and why does it matter?
-  We evaluate the steady-state drawdown and stream depletion from adding a new pumping
-  well near the main river boundary. We compare an analytical estimate to the
-  distributed model and discuss sensitivity to K and riverbed conductance.
+  TODO: Provide 2–5 sentences describing the specific groundwater flow problem for your
+  concession: state the location context, purpose of the well group, and why assessing
+  its impact matters (e.g. potential interference, river depletion, drawdown near
+  sensitive receptors). You will implement the concessioned pumping rates and a
+  50% pumping variant, then evaluate changes in heads, gradients, and river leakage.
 
 model:
-  # Path to baseline model that was provided to you. Do not edit the baseline files.
-  workspace: "./model_ws"        # TODO: set to where the baseline model lives
-  namefile: "base.nam"           # TODO: baseline .nam file
+  # Baseline (do NOT modify baseline input files in place).
+  workspace: "~/applied_groundwater_modelling_data/limmat/limmat_valley_model"
+  namefile: "limmat_valley_model.nam"      # Assumed namefile; TODO: adjust if different
+  baseline_model_name: "limmat_valley_model"
 
 output:
-  workspace: "./runs/<your_case_id>"   # TODO: pick your output folder
-  modelname_suffix: "<your_case_id>"   # optional suffix to base model name
+  # All group results should go into a dedicated folder using the group number.
+  workspace: "~/applied_groundwater_modelling_data/limmat/case_study_0"  # auto-expand: replace <group_number>
+  modelname_suffix: "0"       # MUST be exactly the integer group number (no text)
 
-settings:
-  steady: true
-  solver:
-    type: "PCG"
-    mxiter: 200
-    iter1: 100
-    hclose: 1.0e-3
-    rclose: 1.0e-1
-    damp: 0.7
+pumping:
+  # Concession wells: implement provided locations & rates (m3/day; negative for extraction).
+  # Provide a small table (inline or external file) listing wells you add/modify.
+  wells_source: "concession"               # keep fixed
+  data_file: "./concession_wells_group<number>.csv"  # TODO: optional helper file you create
+  apply_half_rate_variant: true             # Run an additional model with all concession rates * 0.5
+  notes: >
+    Briefly describe any assumptions in mapping concession data to model cells (e.g. snapping to nearest active cell).
 
-observations:
-  # Choose 3–5 observation points (k,i,j) for head sampling.
-  heads_lrc:
-    - [0, 60, 60]   # TODO
-    - [0, 70, 55]   # TODO
-    - [0, 80, 50]   # TODO
-  # Budget terms to summarize (keep as-is or add from list file)
-  budget_terms: ["WELLS", "RIVER LEAKAGE", "CONSTANT HEAD", "RECHARGE"]
+scenarios:
+  # Exactly ONE scenario id must be selected in group.chosen_scenario above.
+  selection_instructions: >
+    Choose one scenario that your group will implement in addition to the base concession pumping.
+    Document any parameter multipliers you apply. Keep changes moderate to avoid solver instability.
+  options:
+    - id: SC1
+      label: Increase Limmat river leakage +20% (removal of clogging)
+      type: river_conductance
+      target: Limmat
+      conductance_factor: 1.2
+    - id: SC2
+      label: Decrease Limmat river leakage -50% (clogging)
+      type: river_conductance
+      target: Limmat
+      conductance_factor: 0.5
+    - id: SC3
+      label: New weir raises Sihl stage +2 m
+      type: river_stage_shift
+      target: Sihl
+      stage_offset_m: 2.0
+    - id: SC4
+      label: Decrease Sihl river leakage -50% (clogging)
+      type: river_conductance
+      target: Sihl
+      conductance_factor: 0.5
+    - id: SC5
+      label: Urban greening increases recharge +20%
+      type: recharge_scale
+      recharge_factor: 1.2
+    - id: SC6
+      label: Vertical conductivity reduced (vk * 0.5)
+      type: vertical_conductivity_scale
+      vk_factor: 0.5
+    - id: SC7
+      label: Vertical conductivity increased (vk * 2.0)
+      type: vertical_conductivity_scale
+      vk_factor: 2.0
+    - id: SC8
+      label: K Zone 1 increased *1.5
+      type: horizontal_conductivity_scale
+      zone: 1
+      hk_factor: 1.5
+    - id: SC9
+      label: K Zone 2 decreased *0.5
+      type: horizontal_conductivity_scale
+      zone: 2
+      hk_factor: 0.5
+    - id: SC10
+      label: Both rivers leakage decreased -30%
+      type: river_conductance_dual
+      targets: [Limmat, Sihl]
+      conductance_factor: 0.7
 
-stresses:
-  wells:
-    # Use "replace" to override baseline wells with your own; "append" to add to existing.
-    mode: "append"             # TODO: choose "replace" or "append"
-    entries:
-      - layer: 0
-        row: 72                # TODO: choose location
-        col: 58                # TODO: choose location
-        rate: -2000.0          # TODO: pumping m3/day (negative)
-  recharge:
-    scale: 1.0                 # keep 1.0 unless your case changes recharge
-    patches: []                # optional local recharge multipliers
-  rivers:
-    stage_offset: 0.0          # optional uniform stage shift (m)
-    conductance_factor: 1.0    # optional multiplier of RIV conductance
+implementation_plan: >
+  TODO: Bullet the concrete steps you will perform (baseline load, add wells, run
+  concession rates, run 50% rates, apply scenario parameter/stress change, produce maps
+  of head difference, river leakage comparison, drawdown profiles, budget summaries).
 
-parameters:
-  # Optionally scale hydraulic properties for sensitivity analysis
-  hk_factor: 1.0
-  vk_factor: 1.0
-  anisotropy:
-    kx_over_ky: 1.0
+evaluation_metrics: >
+  TODO: Define 3–5 metrics (e.g. max drawdown at key location, total river leakage change (m3/day),
+  area where drawdown > 0.5 m, change in gradient toward river, % change in discharge components).
 
-analysis_plan:
-  # Which analytic formula will you compare against? Choose one and fill parameters below.
-  method: "Thiem_confined"     # options: Thiem_confined, Dupuit_unconfined
-  # Provide values for the analytic check. If unknown, estimate and state assumptions.
-  Q_abs_m3d: 2000.0            # absolute pumping rate magnitude (m3/day)
-  T_m2d:  1000.0               # transmissivity (m2/day) for confined Thiem
-  K_mpd:  10.0                 # K (m/day) for Dupuit if used
-  b_m:    50.0                 # saturated thickness (m) for Dupuit if used
-  r_obs_m: 500.0               # observation radius (m) for analytic comparison
-  r_ref_m: 50.0                # reference radius (m) (e.g., well radius or near-well distance)
+deliverables: >
+  TODO: List expected artifacts (plots, tables) & short narrative explaining impacts of the well group
+  under concession vs 50% pumping and under the selected scenario.
 
-notes: >
-  Any special notes, assumptions, or caveats you want the grader to know.
+quality_checks: >
+  TODO: Briefly state how you will verify model stability (mass balance error, convergence, sensitivity bounds).
+
+

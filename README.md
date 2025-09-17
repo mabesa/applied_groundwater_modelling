@@ -331,19 +331,19 @@ Workshop participants will receive a `config.py` file with links to additional p
 
 ### 5.3 Data Configuration
 
-The data system supports multiple case studies and data sources:
+The data system supports multiple case studies and data sources. Currently, only one of each is supported:
 
-- **Case Studies**: `limmat` (default), `zarafshan`
-- **Data Sources**: `dropbox`, `switch`
+- **Case Studies**: `limmat` 
+- **Data Sources**: `dropbox`
 
 To modify data sources, edit your `config.py` file:
 
 ```python
 # Choose case study
-CASE_STUDY = "limmat"  # or "zarafshan"
+CASE_STUDY = "limmat"  
 
 # Choose data source
-DATA_SOURCE = "dropbox"  # or "switch"
+DATA_SOURCE = "dropbox"  
 ```
 
 ### 5.4 Data Download
