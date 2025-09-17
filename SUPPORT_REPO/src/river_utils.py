@@ -175,7 +175,11 @@ def plot_yearly_river_levels(data_path: str,
                   f"Sihl River (Zurich, Sihlhölzli; Station 2176), {start_year}-{end_year}")
     else:
         title1 = (f"Typical yearly evolution – Sihl River (Station 2176), {start_year}-{end_year}")
-    ax1.set_title(title1, fontsize=12, fontweight='bold')
+    try:
+        from style_utils import apply_caption_style
+        apply_caption_style(ax1, title1, pad=10)
+    except Exception:
+        ax1.set_title(title1, fontsize=12, fontweight='bold')
     ax1.set_ylabel('Water level (m a.s.l.)', fontsize=12)
     ax1.grid(True, alpha=0.3)
     ax1.legend(loc='upper right')
@@ -195,7 +199,11 @@ def plot_yearly_river_levels(data_path: str,
                   f"Limmat River (Zurich, Unterhard; Station 2099), {start_year}-{end_year}")
     else:
         title2 = (f"Typical yearly evolution – Limmat River (Station 2099), {start_year}-{end_year}")
-    ax2.set_title(title2, fontsize=12, fontweight='bold')
+    try:
+        from style_utils import apply_caption_style
+        apply_caption_style(ax2, title2, pad=10)
+    except Exception:
+        ax2.set_title(title2, fontsize=12, fontweight='bold')
     ax2.grid(True, alpha=0.3)
     ax2.legend(loc='upper right')
     
@@ -426,7 +434,11 @@ def plot_river_aquifer_interaction(custom_title=None):
             # Vadose zone
             ax1.fill_between([0, 100], h_aq, r_bot, color='ivory', alpha=0.8, label='Vadose Zone')
 
-        ax1.set_title(f"{condition_title}\n{equation}", fontsize=14)
+        try:
+            from style_utils import apply_caption_style
+            apply_caption_style(ax1, f"{condition_title}\n{equation}", pad=10)
+        except Exception:
+            ax1.set_title(f"{condition_title}\n{equation}", fontsize=12, fontweight='bold')
         ax1.legend(loc='upper left')
         ax1.grid(True, linestyle=':', alpha=0.6)
 
@@ -521,7 +533,11 @@ def plot_cross_section(ax, title, gw_mean, gw_high, river_mean, river_high, typi
     ax.plot(river_x, np.full_like(river_x, river_high), color='cyan', linestyle='--', lw=2, label=f'River High: {river_high} m')
 
     # --- Formatting ---
-    ax.set_title(title, fontsize=14, weight='bold')
+    try:
+        from style_utils import apply_caption_style
+        apply_caption_style(ax, title, pad=10)
+    except Exception:
+        ax.set_title(title, fontsize=12, fontweight='bold')
     ax.set_xlabel("Horizontal Distance (m)")
     ax.set_ylabel("Elevation (m a.s.l.)")
     ax.grid(True, linestyle=':', alpha=0.7)
