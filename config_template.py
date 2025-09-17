@@ -16,6 +16,12 @@ DATA_SOURCE = "dropbox"
 DATA_URLS = {
     "limmat": {
         "dropbox": {
+            "climate_data": {
+                "url": "https://www.dropbox.com/scl/fi/ktg6rsvrojfl6j7jvtkxq/climate_reports_normtables_1991-2020.zip?rlkey=o1nkpj96t4z2q3rv6zc4pnnca&dl=1", 
+                "filename": "climate_reports_normtables_1991-2020.zip",
+                "layer": None,  # No specific layer for climate data
+                "readme_url": "https://www.dropbox.com/scl/fi/9ilga7t0whaf0olznsuyi/readme.md?rlkey=s353x5y7ffmkgac7x9c4innhk&dl=1", 
+            }, 
             "groundwater_map_norm": {
                 "url": "https://www.dropbox.com/scl/fi/0tzhzcbmj64ii9faq0jp9/Grundwasservorkommen_-OGD.gpkg?rlkey=8zwfw4nv8nskmrm1h7urgsz9y&st=wz2o6bsu&dl=1",
                 "filename": "Grundwasservorkommen_-OGD.gpkg",
