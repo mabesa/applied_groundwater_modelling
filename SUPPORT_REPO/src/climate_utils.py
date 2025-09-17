@@ -10,7 +10,7 @@ except Exception:  # fallback if style_utils not available
     FIGURE_CAPTION_STYLE = {}
 
 # region data processing
-def read_climate_data(data_path, station_string="Zuerich-Fluntern"):
+def read_climate_data(data_path, station_string="Fluntern"):
     """
     Reads climate data for a specific station from a directory of MeteoSwiss 
     text files.

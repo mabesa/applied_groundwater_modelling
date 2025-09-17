@@ -331,19 +331,19 @@ Workshop participants will receive a `config.py` file with links to additional p
 
 ### 5.3 Data Configuration
 
-The data system supports multiple case studies and data sources:
+The data system supports multiple case studies and data sources. Currently, only one of each is supported:
 
-- **Case Studies**: `limmat` (default), `zarafshan`
-- **Data Sources**: `dropbox`, `switch`
+- **Case Studies**: `limmat` 
+- **Data Sources**: `dropbox`
 
 To modify data sources, edit your `config.py` file:
 
 ```python
 # Choose case study
-CASE_STUDY = "limmat"  # or "zarafshan"
+CASE_STUDY = "limmat"  
 
 # Choose data source
-DATA_SOURCE = "dropbox"  # or "switch"
+DATA_SOURCE = "dropbox"  
 ```
 
 ### 5.4 Data Download
@@ -371,6 +371,12 @@ The applied groundwater modelling course uses data downloaded from sources confi
 applied_groundwater_modelling/   # Your local copy of the git repository
 ├── ADDITIONAL_MATERIAL/         # Additional optional materials for the course 
 ├── CASE_STUDY/                  # Case study materials
+│   ├── student_work/            # Student work area for case study
+│   │   ├── case_template.yaml   # Configuration template for student work 
+│   │   ├── case_study_template.ipynb # Template notebook for student work
+│   ├── 0_introduction.ipynb     # Introduction to the case study
+│   ├── 1_perceptual_model.ipynb  # Perceptual model development
+│   ├── 2_modflow_fundamentals.ipynb # Introduction to MODFLOW & FloPy
 ├── EXERCISES/                   # Exercises for the course
 │   ├── exercise01.ipynb         # Exercise 1: Groundwater balance
 │   ├── ...
@@ -398,8 +404,20 @@ ETH students can access these materials through the course JupyterHub environmen
 
 #### 7.1.1 First time run
 
+There are now two separate maintenance notebooks:
+
+1. `0_sync_repo.ipynb` – run this when instructors announce an update or you suspect your local copy is out of date. It performs git fetch/reset (optionally destructive) and can deep-clean untracked & ignored files. Adjust flags before forcing a reset; copy personal work elsewhere first.
+2. `0_diagnostics.ipynb` – run this once at course start (after an initial sync) to validate your Python environment (packages, geospatial stack, MODFLOW executable, visualization). Re-run only if you change the environment or after a sync that adds new dependencies.
+
+Quick decision guide:
+- Want latest teaching materials? → Run `0_sync_repo.ipynb` (dry run first).
+- Installed / removed packages or something breaks? → Re-run `0_diagnostics.ipynb`.
+- Just working on exercises/case study normally? → No need to run either.
+
+If a sync introduces new packages, re-run diagnostics to confirm readiness (final summary should report `overall_ready = True`).
+
 1. Open 0_diagnostics.ipynb.  
-2. (Optional) Run sync cell with default flags to inspect status.  
+2. (Optional) Open and run `0_sync_repo.ipynb` (dry run first) if instructors announced an update.  
 3. Run all cells.  
 4. Confirm final summary → overall_ready = True.  
 5. If not ready: copy summary + failing section output and contact support.  
@@ -546,36 +564,12 @@ Set up `nbstripout` to automatically strip outputs during commits:
 
 
 ## 8 The Limmat Valley Aquifer Case Study
-This course uses a numerical groundwater flow and transport model of the Limmat valley aquifer as its central case study. Students will:
-- Understand the hydrogeological setting
-- Develop and refine the numerical model
-- Apply the model to explore various scenarios including climate change impacts and water management challenges
+Based on the real-world Limmat valley aquifer in Switzerland, this case study provides a practical context for applying groundwater modeling concepts. The case study follows a structured approach from problem definition to model implementation and analysis. After following a series of introductory notebooks, students will work on the case study using a provided template notebook and configuration file.
+
 
 ## 9 Course Timeline
 (To be refined)
-- **Weeks 1-7**: Core concepts, model setup, and calibration
-- **Weeks 8-13**: Transport, Student-led case studies investigating specific problems using the Limmat valley model
 
-<details>
-<summary>Detailed sylabus (under development)</summary>
-The course stretches over 13 weeks with 4 lectures per week. For each lecture we expect 25-30 hours of work for the student. You will have a mid-term exam in week 7 and a final exam in week 13. The course is structured as follows:
-
-- Lesson 1: Introduction to the course, group formation
-- Lesson 2: Introduction to Groundwater Flow Modeling
-- Lesson 2: Numerical Methods for Groundwater Flow Modeling
-- Lesson 3: Introduction to Groundwater Transport Modeling
-- Lesson 4: Numerical Methods for Groundwater Transport Modeling
-- Lesson 5: Calibration and Validation of Groundwater Models
-- Mid-term exam
-- Lesson 6: Uncertainty Analysis in Groundwater Modeling
-- Lesson 7: Groundwater Modeling in Practice
-- Project work
-- Project work
-- Project work
-- Project presentation & discussion
-- Project work
-- Final exam
-</details>
 
 ## 10 Troubleshooting
 

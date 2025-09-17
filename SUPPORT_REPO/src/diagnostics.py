@@ -407,6 +407,7 @@ def modflow_minimal_model(
                 found_exe = find_exe()
                 diag["executable_found_after_attempt"] = bool(found_exe)
                 diag["executable_path"] = found_exe
+                diag["executable_found"] = bool(found_exe)
         except FileNotFoundError:  # pragma: no cover
             diag["download_error"] = (
                 "get-modflow command not found in PATH (install pymake)\n"

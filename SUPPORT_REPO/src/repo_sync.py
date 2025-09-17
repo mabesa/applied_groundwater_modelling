@@ -22,11 +22,13 @@ indicating whether a destructive action occurred or was blocked.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 import os
 import subprocess
 import textwrap
+import shutil
+import glob
 from typing import Iterable, List, Optional
 
 __all__ = [
@@ -45,6 +47,10 @@ class RepoSyncResult:
     blocked: bool
     message: str
     error: Optional[str] = None
+    ran_git_clean: bool = False
+    git_clean_removed: List[str] = field(default_factory=list)
+    ran_extra_clean: bool = False
+    extra_removed: List[str] = field(default_factory=list)
 
     def as_dict(self):  # convenience
         return asdict(self)
@@ -107,6 +113,41 @@ def discover_repo(
     return None
 
 
+def _safe_remove(root: Path, p: Path, removed: List[str]):
+    """Remove file or directory under root if it's inside the repo (safety check)."""
+    try:
+        p = p.resolve()
+        root = root.resolve()
+        if not str(p).startswith(str(root)):
+            return
+        if (root / '.git') in [p, *p.parents]:
+            # never touch .git
+            return
+        if p.is_dir():
+            shutil.rmtree(p, ignore_errors=True)
+        else:
+            try:
+                p.unlink()
+            except IsADirectoryError:
+                shutil.rmtree(p, ignore_errors=True)
+        removed.append(str(p.relative_to(root)))
+    except Exception:
+        # swallow individual errors to continue
+        pass
+
+
+def _glob_find(root: Path, pattern: str) -> List[Path]:
+    # Glob relative to root; support **
+    pattern = pattern.strip()
+    if not pattern:
+        return []
+    # Deny path traversal patterns proactively
+    if '..' in pattern.split('/'):
+        return []
+    # Use glob with recursive
+    return [Path(p) for p in glob.glob(str(root / pattern), recursive=True)]
+
+
 def sync_repository(
     force_reset: bool = False,
     allow_local_reset: bool = False,
@@ -116,6 +157,10 @@ def sync_repository(
     target_branch: str = "course_2025",
     clean: bool = True,
     verbose: bool = True,
+    # New options expected by 0_sync_repo.ipynb
+    deep_clean: bool = False,
+    deep_clean_include_ignored: bool = False,
+    deep_clean_extra: Optional[List[str]] = None,
 ) -> RepoSyncResult:
     """Synchronize repository with remote target.
 
@@ -134,10 +179,17 @@ def sync_repository(
     target_branch : str
         Branch to align with (default 'course_2025').
     clean : bool
-        Whether to run `git clean -fd` after successful reset.
+        Whether to run `git clean` after successful reset (legacy alias).
     verbose : bool
         Print progress messages.
-
+    deep_clean : bool
+        If True, run a deeper clean step after reset. Equivalent to `git clean -fd`,
+        or `-fdx` when deep_clean_include_ignored is True.
+    deep_clean_include_ignored : bool
+        If True and deep_clean is enabled, include git-ignored files (`-x`).
+    deep_clean_extra : list[str] | None
+        Additional glob patterns (relative to repo root) to remove after git clean,
+        e.g., ['outputs/**', 'data/tmp/*'].
     Returns
     -------
     RepoSyncResult
@@ -209,15 +261,65 @@ Then re-run with appropriate flags (force_reset / allow_local_reset) if you inte
     if verbose and reset_res.stdout.strip():
         print(reset_res.stdout.strip())
 
-    if clean:
+    # Determine cleaning mode
+    result = RepoSyncResult(str(repo_path), is_jupyterhub, changed, True, False, "Reset completed successfully")
+
+    # Legacy clean behaviour
+    if clean and not deep_clean:
         clean_res = _run(["git", "clean", "-fd"], repo_path)
+        result.ran_git_clean = (clean_res.returncode == 0)
         if verbose and clean_res.returncode == 0:
             print("[STEP] Removed untracked files (if any).")
+
+    # New deep clean behaviour
+    if deep_clean:
+        flags = ["git", "clean", "-f", "-d"]
+        if deep_clean_include_ignored:
+            flags.append("-x")
+        if verbose:
+            print(f"[STEP] Deep clean via: {' '.join(flags)}")
+        # First do a preview to capture what will be removed
+        preview_flags = flags + ["-n"]
+        preview = _run(preview_flags, repo_path)
+        removed_preview = []
+        for line in preview.stdout.splitlines():
+            line = line.strip()
+            # git clean -n prints "Would remove path"
+            m = re.match(r"Would remove (.+)", line)
+            if m:
+                removed_preview.append(m.group(1).strip())
+        # Now perform the actual clean
+        clean_exec = _run(flags, repo_path)
+        result.ran_git_clean = (clean_exec.returncode == 0)
+        if result.ran_git_clean:
+            # Try to capture actual removed lines too
+            actual_removed = []
+            for line in clean_exec.stdout.splitlines():
+                line = line.strip()
+                m = re.match(r"Removing (.+)", line)
+                if m:
+                    actual_removed.append(m.group(1).strip())
+            result.git_clean_removed = actual_removed or removed_preview
+        if verbose:
+            print(f"[STEP] Deep clean completed. Items: {len(result.git_clean_removed)}")
+
+        # Extra pattern removal
+        if deep_clean_extra:
+            if verbose:
+                print("[STEP] Removing extra patterns: ", ", ".join(deep_clean_extra))
+            removed_extra: List[str] = []
+            for pat in deep_clean_extra:
+                for match in _glob_find(repo_path, pat):
+                    _safe_remove(repo_path, match, removed_extra)
+            result.ran_extra_clean = True
+            result.extra_removed = removed_extra
+            if verbose:
+                print(f"[STEP] Extra patterns removed: {len(removed_extra)}")
 
     if verbose:
         print("\n[OK] Repository now matches remote branch.")
 
-    return RepoSyncResult(str(repo_path), is_jupyterhub, changed, True, False, "Reset completed successfully")
+    return result
 
 
 def print_sync_summary(result: RepoSyncResult):
@@ -228,5 +330,11 @@ def print_sync_summary(result: RepoSyncResult):
             print(f"{k}:")
             for cf in v:
                 print("   ", cf)
+        elif k in ("git_clean_removed", "extra_removed") and v:
+            print(f"{k} ({len(v)}):")
+            for item in v[:50]:  # cap verbosity
+                print("   ", item)
+            if len(v) > 50:
+                print(f"   ... (+{len(v)-50} more)")
         else:
             print(f"{k}: {v}")
