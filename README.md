@@ -371,6 +371,12 @@ The applied groundwater modelling course uses data downloaded from sources confi
 applied_groundwater_modelling/   # Your local copy of the git repository
 ├── ADDITIONAL_MATERIAL/         # Additional optional materials for the course 
 ├── CASE_STUDY/                  # Case study materials
+│   ├── student_work/            # Student work area for case study
+│   │   ├── case_template.yaml   # Configuration template for student work 
+│   │   ├── case_study_template.ipynb # Template notebook for student work
+│   ├── 0_introduction.ipynb     # Introduction to the case study
+│   ├── 1_perceptual_model.ipynb  # Perceptual model development
+│   ├── 2_modflow_fundamentals.ipynb # Introduction to MODFLOW & FloPy
 ├── EXERCISES/                   # Exercises for the course
 │   ├── exercise01.ipynb         # Exercise 1: Groundwater balance
 │   ├── ...
@@ -558,36 +564,12 @@ Set up `nbstripout` to automatically strip outputs during commits:
 
 
 ## 8 The Limmat Valley Aquifer Case Study
-This course uses a numerical groundwater flow and transport model of the Limmat valley aquifer as its central case study. Students will:
-- Understand the hydrogeological setting
-- Develop and refine the numerical model
-- Apply the model to explore various scenarios including climate change impacts and water management challenges
+Based on the real-world Limmat valley aquifer in Switzerland, this case study provides a practical context for applying groundwater modeling concepts. The case study follows a structured approach from problem definition to model implementation and analysis. After following a series of introductory notebooks, students will work on the case study using a provided template notebook and configuration file.
+
 
 ## 9 Course Timeline
 (To be refined)
-- **Weeks 1-7**: Core concepts, model setup, and calibration
-- **Weeks 8-13**: Transport, Student-led case studies investigating specific problems using the Limmat valley model
 
-<details>
-<summary>Detailed sylabus (under development)</summary>
-The course stretches over 13 weeks with 4 lectures per week. For each lecture we expect 25-30 hours of work for the student. You will have a mid-term exam in week 7 and a final exam in week 13. The course is structured as follows:
-
-- Lesson 1: Introduction to the course, group formation
-- Lesson 2: Introduction to Groundwater Flow Modeling
-- Lesson 2: Numerical Methods for Groundwater Flow Modeling
-- Lesson 3: Introduction to Groundwater Transport Modeling
-- Lesson 4: Numerical Methods for Groundwater Transport Modeling
-- Lesson 5: Calibration and Validation of Groundwater Models
-- Mid-term exam
-- Lesson 6: Uncertainty Analysis in Groundwater Modeling
-- Lesson 7: Groundwater Modeling in Practice
-- Project work
-- Project work
-- Project work
-- Project presentation & discussion
-- Project work
-- Final exam
-</details>
 
 ## 10 Troubleshooting
 
