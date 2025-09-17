@@ -60,10 +60,49 @@ def grid_to_gdf(modelgrid, crs=None) -> gpd.GeoDataFrame:
     return g
 
 
-def _unary_union(gdf: gpd.GeoDataFrame) -> BaseGeometry:
+def _unary_union(gdf: gpd.GeoDataFrame, repair: bool = False) -> BaseGeometry:
+    """Return a single (multi)polygon geometry from a GeoDataFrame.
+
+    Uses Shapely 2.0's union_all when available (faster, non-deprecated).
+    Falls back to shapely.ops.unary_union for older Shapely versions.
+
+    Parameters
+    ----------
+    gdf : GeoDataFrame
+        Input geometries.
+    repair : bool, optional
+        If True, attempt to make invalid geometries valid before union
+        (buffer(0) fallback if make_valid unavailable).
+
+    Returns
+    -------
+    BaseGeometry
+        Unified geometry.
+    """
     if gdf is None or gdf.empty:
         raise ValueError("boundary_gdf is empty or None")
-    return gdf.geometry.unary_union
+
+    geoms = gdf.geometry
+    if repair:
+        # Attempt validity repair (Shapely 2 has make_valid)
+        try:
+            from shapely import make_valid  # type: ignore
+            geoms = geoms.apply(make_valid)
+        except Exception:
+            geoms = geoms.apply(lambda g: g if g.is_valid else g.buffer(0))
+
+    # Prefer Shapely 2 union_all
+    try:
+        from shapely import union_all  # Shapely >= 2.0
+        unified = union_all(list(geoms.values))
+    except Exception:  # pragma: no cover - fallback path
+        from shapely.ops import unary_union
+        unified = unary_union(geoms)
+
+    if callable(unified):  # Safety check
+        raise TypeError("Unified geometry is callable; incorrect Shapely interaction.")
+
+    return unified
 
 
 def compute_active_mask(
