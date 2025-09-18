@@ -93,6 +93,12 @@ DATA_URLS = {
                 "url": "https://www.dropbox.com/scl/fi/142iyp1mwappzek2be5bq/parameterization_zones.gpkg?rlkey=mqeybl7q78qe46cm9l70pea79&dl=1", 
                 "filename": "parameterization_zones.gpkg", 
                 "readme_url": "https://www.dropbox.com/scl/fi/6fa7vuff9muqjsk55evpn/readme.md?rlkey=lxowf94vw9ispzylnl3bxagxo&dl=1", 
+            },
+            "river_data": {
+                "url": "https://www.dropbox.com/scl/fi/q8x027ahe5cpqcbs52tei/Pegel_Tagesmittel.zip?rlkey=ewwzx25nn35ra8dfe5lui2hge&dl=1", 
+                "filename": "Pegel_Tagesmittel.zip",
+                "layer": None,  # No specific layer for river data
+                "readme_url": "https://www.dropbox.com/scl/fi/k3gsvlo1smsmum7mb3epa/readme.md?rlkey=4ahplwgp50jnhcqpckpxwqnaj&dl=1", 
             }
         },
         "switch": {
@@ -102,3 +108,4 @@ DATA_URLS = {
         }
     },
 }
+
