@@ -19,8 +19,14 @@ import warnings
 
 import numpy as np
 import geopandas as gpd
+
+from scipy.interpolate import griddata
+
 from shapely.geometry import Polygon
 from shapely.geometry.base import BaseGeometry
+
+import rasterio
+from rasterio.features import rasterize
 
 
 def grid_to_gdf(modelgrid, crs=None) -> gpd.GeoDataFrame:
@@ -221,10 +227,207 @@ def build_grid_gdf_and_ibound(
     ibound = ibound_from_active(grid_gdf, nlay=nlay)
     return grid_gdf, ibound
 
+def interpolate_isohypses_to_grid(gdf_isohypses, modelgrid, buffer_distance=500):
+    """
+    Interpolate groundwater isohypses to a MODFLOW structured grid.
+    
+    Parameters:
+    -----------
+    gdf_isohypses : geopandas.GeoDataFrame
+        Geodataframe containing isohypse lines with elevation values
+    modelgrid : flopy.discretization.StructuredGrid
+        MODFLOW structured grid object
+    buffer_distance : float
+        Buffer distance (in model units) to extend clipping beyond model grid extent
+    
+    Returns:
+    --------
+    numpy.ndarray
+        2D array of interpolated groundwater elevations matching the model grid
+    """
+    
+    # Create model grid boundary polygon for clipping
+    from shapely.geometry import Polygon
+    
+    # Get model grid extent
+    xmin, xmax, ymin, ymax = modelgrid.extent
+    
+    # Create buffered boundary polygon
+    boundary = Polygon([
+        (xmin - buffer_distance, ymin - buffer_distance),
+        (xmax + buffer_distance, ymin - buffer_distance),
+        (xmax + buffer_distance, ymax + buffer_distance),
+        (xmin - buffer_distance, ymax + buffer_distance)
+    ])
+    
+    # Create boundary geodataframe with same CRS as isohypses
+    boundary_gdf = gpd.GeoDataFrame([1], geometry=[boundary], crs=gdf_isohypses.crs)
+    
+    # Clip isohypses to the buffered model grid extent
+    print(f"Original isohypses: {len(gdf_isohypses)} features")
+    gdf_clipped = gpd.clip(gdf_isohypses, boundary_gdf)
+    print(f"Clipped isohypses: {len(gdf_clipped)} features")
+    
+    if len(gdf_clipped) == 0:
+        raise ValueError("No isohypses found within the model grid extent (including buffer). Check CRS alignment.")
+    
+    # Use clipped data for interpolation
+    gdf_isohypses = gdf_clipped
+    
+    # Get model grid coordinates
+    x_centers = modelgrid.xcellcenters
+    y_centers = modelgrid.ycellcenters
+    
+    # Create arrays of point coordinates for interpolation
+    x_flat = x_centers.flatten()
+    y_flat = y_centers.flatten()
+    
+    # Extract points and values from isohypse lines
+    points_x = []
+    points_y = []
+    values = []
+    
+    # Assuming the elevation values are in a column (adjust column name as needed)
+    # Common column names: 'ELEVATION', 'VALUE', 'Z', 'GW_ELEV', etc.
+    elevation_column = None
+    
+    # Try to identify the elevation column
+    possible_columns = ['ELEVATION', 'ELEV', 'VALUE', 'Z', 'GW_ELEV', 'HEIGHT', 'H']
+    for col in possible_columns:
+        if col in gdf_isohypses.columns:
+            elevation_column = col
+            break
+    
+    if elevation_column is None:
+        # If no standard column found, use the first numeric column
+        numeric_columns = gdf_isohypses.select_dtypes(include=[np.number]).columns
+        if len(numeric_columns) > 0:
+            elevation_column = numeric_columns[0]
+            print(f"Using column '{elevation_column}' for elevation values")
+        else:
+            raise ValueError("No elevation column found in the geodataframe")
+    
+    # Extract points along each isohypse line
+    for idx, row in gdf_isohypses.iterrows():
+        geom = row.geometry
+        elevation = row[elevation_column]
+        
+        if geom.geom_type == 'LineString':
+            # Sample points along the line
+            coords = list(geom.coords)
+            for coord in coords:
+                points_x.append(coord[0])
+                points_y.append(coord[1])
+                values.append(elevation)
+        
+        elif geom.geom_type == 'MultiLineString':
+            # Handle multipart lines
+            for line in geom.geoms:
+                coords = list(line.coords)
+                for coord in coords:
+                    points_x.append(coord[0])
+                    points_y.append(coord[1])
+                    values.append(elevation)
+    
+    # Convert to numpy arrays
+    points_x = np.array(points_x)
+    points_y = np.array(points_y)
+    values = np.array(values)
+    
+    # Create points array for scipy interpolation
+    points = np.column_stack((points_x, points_y))
+    grid_points = np.column_stack((x_flat, y_flat))
+    
+    # Interpolate using different methods (you can choose the best one)
+    print("Interpolating groundwater elevations...")
+    
+    # Method 1: Linear interpolation (recommended for most cases)
+    try:
+        interpolated_values = griddata(points, values, grid_points, method='linear')
+        
+        # Fill any NaN values with nearest neighbor interpolation
+        nan_mask = np.isnan(interpolated_values)
+        if np.any(nan_mask):
+            print("Filling NaN values with nearest neighbor interpolation...")
+            interpolated_nearest = griddata(points, values, grid_points, method='nearest')
+            interpolated_values[nan_mask] = interpolated_nearest[nan_mask]
+    
+    except Exception as e:
+        print(f"Linear interpolation failed: {e}")
+        print("Using nearest neighbor interpolation...")
+        interpolated_values = griddata(points, values, grid_points, method='nearest')
+    
+    # Reshape back to grid dimensions
+    gw_elevations = interpolated_values.reshape(x_centers.shape)
+    
+    return gw_elevations
 
-__all__ = [
-    "grid_to_gdf",
-    "compute_active_mask",
-    "ibound_from_active",
-    "build_grid_gdf_and_ibound",
-]
+def alternative_raster_interpolation(gdf_isohypses, modelgrid, cell_size=10):
+    """
+    Alternative method using rasterization and resampling.
+    Useful if the line-based interpolation doesn't work well.
+    
+    Parameters:
+    -----------
+    gdf_isohypses : geopandas.GeoDataFrame
+        Geodataframe containing isohypse lines
+    modelgrid : flopy.discretization.StructuredGrid
+        MODFLOW structured grid object
+    cell_size : float
+        Resolution for intermediate raster (meters)
+    
+    Returns:
+    --------
+    numpy.ndarray
+        2D array of interpolated groundwater elevations
+    """
+    
+    # Get model bounds
+    xmin, xmax, ymin, ymax = modelgrid.extent
+    
+    # Create high-resolution grid for rasterization
+    width = int((xmax - xmin) / cell_size)
+    height = int((ymax - ymin) / cell_size)
+    
+    # Create transform for the raster
+    from rasterio.transform import from_bounds
+    transform = from_bounds(xmin, ymin, xmax, ymax, width, height)
+    
+    # Identify elevation column (same logic as above)
+    elevation_column = None
+    possible_columns = ['ELEVATION', 'ELEV', 'VALUE', 'Z', 'GW_ELEV', 'HEIGHT', 'H']
+    for col in possible_columns:
+        if col in gdf_isohypses.columns:
+            elevation_column = col
+            break
+    
+    if elevation_column is None:
+        numeric_columns = gdf_isohypses.select_dtypes(include=[np.number]).columns
+        elevation_column = numeric_columns[0] if len(numeric_columns) > 0 else 'value'
+    
+    # Create shapes for rasterization
+    shapes = [(geom, value) for geom, value in zip(gdf_isohypses.geometry, gdf_isohypses[elevation_column])]
+    
+    # Rasterize the lines
+    raster = rasterize(shapes, out_shape=(height, width), transform=transform, dtype=np.float32)
+    
+    # Get model grid coordinates
+    x_centers = modelgrid.xcellcenters.flatten()
+    y_centers = modelgrid.ycellcenters.flatten()
+    
+    # Sample the raster at model grid points
+    from rasterio.transform import rowcol
+    interpolated_values = []
+    
+    for x, y in zip(x_centers, y_centers):
+        row, col = rowcol(transform, x, y)
+        if 0 <= row < height and 0 <= col < width:
+            interpolated_values.append(raster[row, col])
+        else:
+            interpolated_values.append(np.nan)
+    
+    # Convert to numpy array and reshape
+    interpolated_values = np.array(interpolated_values)
+    gw_elevations = interpolated_values.reshape(modelgrid.xcellcenters.shape)
+    
+    return gw_elevations
