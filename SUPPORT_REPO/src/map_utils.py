@@ -2,6 +2,8 @@ import folium
 from folium.plugins import BeautifyIcon
 import geopandas as gpd
 import os, shutil, tempfile, time
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
 from matplotlib.legend import Legend
@@ -2120,7 +2122,142 @@ def create_interactive_dem_map(
 
     return fmap
 
+def visualize_boundary_segments(boundary_segments_gdf):
+    """
+    Visualize boundary segments on OpenStreetMap with coloring and labels by 'desc' column
+    
+    Parameters:
+    boundary_segments_gdf: GeoDataFrame with boundary segments in Swiss coordinate system
+    """
+    
+    # Step 1: Convert from Swiss coordinate system to WGS84 (EPSG:4326) for web mapping
+    # Swiss coordinate system is typically EPSG:2056 (CH1903+ / LV95)
+    if boundary_segments_gdf.crs.to_epsg() != 4326:
+        boundary_segments_web = boundary_segments_gdf.to_crs(epsg=4326)
+    else:
+        boundary_segments_web = boundary_segments_gdf.copy()
+    
+    # Step 2: Calculate map center from the bounds of the data
+    bounds = boundary_segments_web.total_bounds
+    center_lat = (bounds[1] + bounds[3]) / 2
+    center_lon = (bounds[0] + bounds[2]) / 2
+    
+    # Step 3: Create base map
+    m = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=12,
+        tiles='OpenStreetMap'
+    )
+    
+    # Filter out None values and get unique descriptions
+    boundary_segments_filtered = boundary_segments_web[boundary_segments_web['desc'].notna()]
+    unique_descriptions = boundary_segments_filtered['desc'].unique()
 
+    # Step 4: Get unique descriptions and create color mapping
+    unique_descriptions = boundary_segments_filtered['desc'].unique()
+    
+    # Create a colorblind-friendly palette with intensive colors
+    # Using Paul Tol's colorblind-safe palette with high contrast colors
+    colorblind_palette = [
+        '#004488',  # Dark blue
+        '#DD3377',  # Magenta/Pink
+        '#117733',  # Dark green
+        '#332288',  # Purple
+        '#CC6677',  # Rose
+        '#88CCEE',  # Light blue
+        '#44AA99',  # Teal
+        '#999933',  # Olive
+        '#AA4499',  # Violet
+        '#DDCC77',  # Yellow
+        '#661100',  # Dark red
+        '#6699CC',  # Blue
+        '#AA4466',  # Red
+        '#882255',  # Wine
+        '#77AADD'   # Sky blue
+    ]
+    
+    color_map = {}
+    for i, desc in enumerate(unique_descriptions):
+        # Cycle through colors if we have more descriptions than colors
+        color_idx = i % len(colorblind_palette)
+        color_map[desc] = colorblind_palette[color_idx]
+    
+    # Step 5: Add boundary segments to map
+    for idx, row in boundary_segments_filtered.iterrows():
+        desc = row['desc']
+        color = color_map[desc]
+        
+        # Convert geometry to list of coordinates for folium
+        if row.geometry.geom_type == 'LineString':
+            coordinates = [[point[1], point[0]] for point in row.geometry.coords]
+            
+            # Add the line to the map
+            folium.PolyLine(
+                locations=coordinates,
+                color=color,
+                weight=12,
+                opacity=0.8,
+                popup=f"Description: {desc}",
+                tooltip=desc
+            ).add_to(m)
+            
+            # Add label at the midpoint of the line
+            if len(coordinates) > 1:
+                mid_idx = len(coordinates) // 2
+                mid_point = coordinates[mid_idx]
+                
+                folium.Marker(
+                    location=mid_point,
+                    icon=folium.DivIcon(
+                        html=f'<div style="font-size: 10pt; font-weight: bold; '
+                             f'color: {color}; text-shadow: 1px 1px 1px white, '
+                             f'-1px -1px 1px white, 1px -1px 1px white, '
+                             f'-1px 1px 1px white;">{desc}</div>',
+                        class_name="custom-div-icon"
+                    )
+                ).add_to(m)
+        
+        elif row.geometry.geom_type == 'MultiLineString':
+            # Handle MultiLineString geometries
+            for line in row.geometry.geoms:
+                coordinates = [[point[1], point[0]] for point in line.coords]
+                
+                folium.PolyLine(
+                    locations=coordinates,
+                    color=color,
+                    weight=3,
+                    opacity=0.8,
+                    popup=f"Description: {desc}",
+                    tooltip=desc
+                ).add_to(m)
+    
+    # Step 6: Add a legend
+    legend_html = '''
+    <div style="position: fixed; 
+                bottom: 50px; left: 50px; width: 200px; height: auto; 
+                background-color: white; border: 2px solid grey; z-index:9999; 
+                font-size:14px; padding: 10px">
+    <h4>Boundary Segments</h4>
+    '''
+    
+    for desc, color in color_map.items():
+        legend_html += f'''
+        <div style="margin: 5px 0;">
+            <span style="background-color: {color}; width: 20px; height: 3px; 
+                         display: inline-block; margin-right: 10px;"></span>
+            {desc}
+        </div>
+        '''
+    
+    legend_html += '</div>'
+    m.get_root().html.add_child(folium.Element(legend_html))
+    
+    # Step 7: Fit map bounds to data
+    southwest = [bounds[1], bounds[0]]  # [min_lat, min_lon]
+    northeast = [bounds[3], bounds[2]]  # [max_lat, max_lon]
+    m.fit_bounds([southwest, northeast], padding=(20, 20))
+    
+    return m
 
 
 

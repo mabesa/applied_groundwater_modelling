@@ -75,6 +75,7 @@ def convert_modflow2005_to_nwt(mf2005, new_model_name="limmat_valley_nwt"):
         vka=lpf_old.vka.array if lpf_old.vka is not None else lpf_old.hk.array,  # Vertical K
         ss=lpf_old.ss.array if lpf_old.ss is not None else 1e-5,  # Specific storage
         sy=lpf_old.sy.array if lpf_old.sy is not None else 0.2,   # Specific yield
+        ipakcb=53,            # Cell-by-cell budget output
         # Remove wetdry - NWT doesn't use it
     )
     
@@ -90,7 +91,7 @@ def convert_modflow2005_to_nwt(mf2005, new_model_name="limmat_valley_nwt"):
         iprnwt=0,              # Print flag
         ibotav=0,              # Bottom averaging
         options='COMPLEX',     # Use complex option for better convergence
-        Continue=False         # Don't continue on non-convergence
+        Continue=False,        # Don't continue on non-convergence
     )
     
     # 5. Copy boundary condition packages (unchanged)
@@ -109,7 +110,8 @@ def convert_modflow2005_to_nwt(mf2005, new_model_name="limmat_valley_nwt"):
     if wel_old is not None:
         wel_new = flopy.modflow.ModflowWel(
             mf_nwt,
-            stress_period_data=wel_old.stress_period_data
+            stress_period_data=wel_old.stress_period_data, 
+            ipakcb=wel_old.ipakcb
         )
     
     # RIV package
@@ -117,7 +119,8 @@ def convert_modflow2005_to_nwt(mf2005, new_model_name="limmat_valley_nwt"):
     if riv_old is not None:
         riv_new = flopy.modflow.ModflowRiv(
             mf_nwt,
-            stress_period_data=riv_old.stress_period_data
+            stress_period_data=riv_old.stress_period_data, 
+            ipakcb=riv_old.ipakcb
         )
     
     # RCH package
@@ -132,7 +135,8 @@ def convert_modflow2005_to_nwt(mf2005, new_model_name="limmat_valley_nwt"):
         rch_new = flopy.modflow.ModflowRch(
             mf_nwt,
             rech=rech_array,
-            nrchop=rch_old.nrchop
+            nrchop=rch_old.nrchop, 
+            ipakcb=rch_old.ipakcb
     )
     
     # 6. Copy output control
@@ -204,6 +208,7 @@ def create_nwt_from_scratch(existing_model):
         vka=lpf.vka.array if lpf.vka is not None else lpf.hk.array * 0.1,
         ss=1e-5,   # Specific storage
         sy=0.2,    # Specific yield
+        ipakcb=53  # Cell-by-cell budget output
     )
     
     # NWT solver - optimized for thin layers
@@ -244,13 +249,8 @@ def optimize_nwt_for_thin_layers(mf_nwt):
     nwt_pkg.headtol = 0.1        # Very relaxed head tolerance
     nwt_pkg.fluxtol = 1000       # Relaxed flux tolerance
     nwt_pkg.thickfact = 1e-4     # Slightly larger minimum thickness
-    nwt_pkg.options = 'COMPLEX'  # Use complex option for difficult problems
+    nwt_pkg.options = ['COMPLEX']  # Use complex option for difficult problems
     nwt_pkg.linmeth = 2          # Try XMD solver instead of GMRES
     nwt_pkg.Continue = True      # Continue even if not fully converged
     
-    # Consider reducing pumping rates initially
-    wel_pkg = mf_nwt.get_package('WEL')
-    if wel_pkg is not None:
-        print("Consider reducing well pumping rates by 50% initially...")
-        # wel_pkg.stress_period_data[0]['flux'] *= 0.5  # Uncomment to reduce pumping
-
+    
