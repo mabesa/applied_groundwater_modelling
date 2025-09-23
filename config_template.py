@@ -100,7 +100,12 @@ DATA_URLS = {
                 "url": "https://www.dropbox.com/scl/fi/knhe7w2wfsosruf2ryiyn/parameterization_3zones.gpkg?rlkey=j7e2zn6tr73m5q955h75li9yt&dl=1", 
                 "filename": "parameterization_zones.gpkg", 
                 "readme_url": "https://www.dropbox.com/scl/fi/6fa7vuff9muqjsk55evpn/readme.md?rlkey=lxowf94vw9ispzylnl3bxagxo&dl=1", 
-            }
+            }, 
+            "baseline_model": {
+                "url": "https://www.dropbox.com/scl/fi/arl24crs8hethsls2c8wk/limmat_valley_model_nwt.zip?rlkey=dqjn7gwuef8k0hhq09bbo4t2m&dl=1", 
+                "filename": "limmat_valley_base_model_nwt.zip",
+                "readme_url": "https://www.dropbox.com/scl/fi/d75bbhtt75hj7mjjbm9g4/readme.md?rlkey=mke9qqfruozxx5b5lg0fr40z9&dl=1",
+            }, 
         },
         "switch": {
             "groundwater_map_norm": "https://ethz-my.sharepoint.com/:u:/r/personal/XXXX/applied_gw_modelling_zurich_case_study_data/Grundwasservorkommen_-OGD/Grundwasservorkommen_-OGD.gpkg?csf=1&web=1&e=henbgz",

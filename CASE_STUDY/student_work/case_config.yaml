@@ -26,10 +26,11 @@ description: >
   50% pumping variant, then evaluate changes in heads, gradients, and river leakage.
 
 model:
+  data_name: baseline_model   # keep fixed
   # Baseline (do NOT modify baseline input files in place).
-  workspace: "~/applied_groundwater_modelling_data/limmat/limmat_valley_model"
-  namefile: "limmat_valley_model.nam"      # Assumed namefile; TODO: adjust if different
-  baseline_model_name: "limmat_valley_model"
+  workspace: "~/applied_groundwater_modelling_data/limmat/baseline_model"
+  namefile: "limmat_valley_model_nwt.nam"      
+  baseline_model_name: "limmat_valley_model_nwt"
 
 output:
   # All group results should go into a dedicated folder using the group number.
