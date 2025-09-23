@@ -106,6 +106,12 @@ DATA_URLS = {
                 "filename": "limmat_valley_base_model_nwt.zip",
                 "readme_url": "https://www.dropbox.com/scl/fi/d75bbhtt75hj7mjjbm9g4/readme.md?rlkey=mke9qqfruozxx5b5lg0fr40z9&dl=1",
             }, 
+            "river_data": {
+                "url": "https://www.dropbox.com/scl/fi/q8x027ahe5cpqcbs52tei/Pegel_Tagesmittel.zip?rlkey=ewwzx25nn35ra8dfe5lui2hge&dl=1", 
+                "filename": "Pegel_Tagesmittel.zip",
+                "layer": None,  # No specific layer for river data
+                "readme_url": "https://www.dropbox.com/scl/fi/k3gsvlo1smsmum7mb3epa/readme.md?rlkey=4ahplwgp50jnhcqpckpxwqnaj&dl=1", 
+            }
         },
         "switch": {
             "groundwater_map_norm": "https://ethz-my.sharepoint.com/:u:/r/personal/XXXX/applied_gw_modelling_zurich_case_study_data/Grundwasservorkommen_-OGD/Grundwasservorkommen_-OGD.gpkg?csf=1&web=1&e=henbgz",
@@ -114,3 +120,4 @@ DATA_URLS = {
         }
     },
 }
+
