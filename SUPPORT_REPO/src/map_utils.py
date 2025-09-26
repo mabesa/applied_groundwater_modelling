@@ -1,6 +1,9 @@
 import folium
 from folium.plugins import BeautifyIcon
 import geopandas as gpd
+import os, shutil, tempfile, time
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
 from matplotlib.legend import Legend
@@ -13,6 +16,19 @@ from shapely import union_all
 import textwrap
 import numpy as np
 import warnings
+try:  # Access shared caption style
+    from style_utils import FIGURE_CAPTION_STYLE
+except Exception:  # Fallback defaults if import fails
+    FIGURE_CAPTION_STYLE = {"fontsize": 10, "fontweight": "bold", "fontfamily": "Arial, sans-serif"}
+
+def _caption_css(extra: str = "") -> str:
+    """Return inline CSS string based on FIGURE_CAPTION_STYLE (points -> px)."""
+    fs_pt = FIGURE_CAPTION_STYLE.get("fontsize", 10)
+    # Approximate px conversion (96 dpi assumption)
+    fs_px = round(fs_pt * 96 / 72)
+    weight = FIGURE_CAPTION_STYLE.get("fontweight", "bold")
+    family = FIGURE_CAPTION_STYLE.get("fontfamily", "Arial, sans-serif")
+    return f"font-size:{fs_px}px;font-weight:{weight};font-family:{family};{extra}".replace(";;", ";")
 
 
 def display_groundwater_resources_map(gw_map_path, zoom_level=10, 
@@ -37,8 +53,34 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10,
         Interactive map object
     """
     
-    # Load the groundwater data
-    gw_map_gdf = gpd.read_file(gw_map_path, layer='GS_GW_LEITER_F')
+    # --- Robust read to avoid intermittent "database is locked" on shared JupyterHub storage ---
+    def _safe_read_gpkg(path: str, layer: str, attempts: int = 5, delay: float = 0.6):
+        last_err = None
+        # If WAL sidecar files linger, copy to a local temp file each attempt
+        for i in range(attempts):
+            try:
+                # Always copy to a unique temp file (sidesteps file-level locks on NFS)
+                with tempfile.NamedTemporaryFile(suffix='.gpkg', delete=False) as tmp:
+                    tmp_path = tmp.name
+                shutil.copy2(path, tmp_path)
+                try:
+                    return gpd.read_file(tmp_path, layer=layer)
+                finally:
+                    # Best-effort cleanup
+                    for ext in ('', '-wal', '-shm'):
+                        try:
+                            os.remove(tmp_path + ext)
+                        except OSError:
+                            pass
+            except Exception as e:  # noqa: BLE001
+                last_err = e
+                # If not a lock related issue, break early
+                if 'lock' not in str(e).lower():
+                    break
+                time.sleep(delay)
+        raise last_err if last_err else RuntimeError('Unknown failure reading GeoPackage')
+
+    gw_map_gdf = _safe_read_gpkg(gw_map_path, layer='GS_GW_LEITER_F')
     
     # Keep only essential columns to avoid JSON serialization issues
     # Only keep GWLTYP (groundwater type) and geometry
@@ -101,12 +143,45 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10,
         bounds = gw_map_gdf.total_bounds
         map_center = [(bounds[1] + bounds[3]) / 2, (bounds[0] + bounds[2]) / 2]
     
-    # Create the map
+    # Create the map with tiles=None then add multiple base layers explicitly.
+    # Rationale: Some JupyterHub deployments or corporate proxies intermittently block
+    # the default OpenStreetMap layer requested via the folium.Map(tiles=...) shortcut,
+    # leading to a blank (grey) background. By adding explicit TileLayer objects we:
+    #  (1) provide multiple fallback providers, and
+    #  (2) ensure a visible base layer even if one provider fails.
     m = folium.Map(
         location=map_center,
         zoom_start=zoom_level,
-        tiles='OpenStreetMap'
+        tiles=None,
+        control_scale=True
     )
+    try:
+        # OpenStreetMap (provider name is safe)
+        folium.TileLayer(
+            tiles='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            name='OpenStreetMap',
+            overlay=False,
+            control=True
+        ).add_to(m)
+        # Carto Positron (explicit URL + attribution to avoid provider name mismatch across folium versions)
+        folium.TileLayer(
+            tiles='https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            name='CartoDB Positron',
+            overlay=False,
+            control=True
+        ).add_to(m)
+        # Stamen Terrain (explicit URL + attribution)
+        folium.TileLayer(
+            tiles='https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png',
+            attr='Map tiles by <a href="http://stamen.com">Stamen Design</a>, CC BY 3.0 — Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            name='Stamen Terrain',
+            overlay=False,
+            control=True
+        ).add_to(m)
+    except Exception as _tile_err:
+        warnings.warn(f"Could not add one or more base tile layers: {_tile_err}")
     
     # Add each groundwater type as a separate layer
     for gw_type in gw_types:
@@ -161,13 +236,8 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10,
     m.get_root().html.add_child(folium.Element(legend_html))
     
     if map_title:
-        title_html = f"""
-        <h3 style="text-align:center; font-family:Arial, sans-serif;
-                   font-size:16px; font-weight:bold; margin:8px 0 6px 0;">
-            {map_title}
-        </h3>
-        """
-        # Insert before map container in notebook display
+        title_style = _caption_css("margin:8px 0 6px 0;text-align:center;")
+        title_html = f"<h3 style=\"{title_style}\">{map_title}</h3>"
         m.get_root().html.add_child(folium.Element(title_html))
 
     return m
@@ -385,7 +455,15 @@ def plot_model_area_map(
     title_text = custom_title or 'Model Area Delineation'
     wrap_width = 90
     title_text = textwrap.fill(title_text, width=wrap_width)
-    title_obj = ax.set_title(title_text, fontsize=16, weight='bold', loc='center')
+    try:
+        from style_utils import apply_caption_style, FIGURE_CAPTION_STYLE
+        title_obj = apply_caption_style(ax, title_text, pad=10)
+        title_obj.set_ha('center')
+    except Exception:
+        # Fallback uses same style dict if available (already imported earlier globally)
+        fs = FIGURE_CAPTION_STYLE.get('fontsize', 12) if 'FIGURE_CAPTION_STYLE' in globals() else 10
+        fw = FIGURE_CAPTION_STYLE.get('fontweight', 'bold') if 'FIGURE_CAPTION_STYLE' in globals() else 'bold'
+        title_obj = ax.set_title(title_text, fontsize=fs, fontweight=fw, loc='center')
     # Ensure Matplotlib also wraps dynamically if space is tight
     try:
         title_obj.set_wrap(True)
@@ -483,12 +561,10 @@ def display_concessions_map(
     m = folium.Map(location=map_center, zoom_start=zoom_start, tiles="OpenStreetMap")
 
     if map_title:
-        title_html = f"""
-        <div style="position: relative; width:100%; text-align:center; padding:6px 0 4px 0;
-                    font-size:16px; font-weight:600; font-family:Arial;">
-            {map_title}
-        </div>
-        """
+        title_style = _caption_css("position:relative;width:100%;display:block;padding:6px 0 4px 0;text-align:center;")
+        # Maintain slightly lighter weight if original style requested 600 vs bold
+        # (We already mapped weight from style dict; user can adjust there.)
+        title_html = f"<div style=\"{title_style}\">{map_title}</div>"
         m.get_root().html.add_child(folium.Element(title_html))
 
     if b_gdf is not None and not b_gdf.empty:
@@ -650,7 +726,7 @@ def display_concessions_map(
     return m
 
 
-
+'''
 def plot_interactive_model_domain_3d(
     mf,
     bas=None,
@@ -1126,8 +1202,1062 @@ def plot_interactive_model_domain_3d(
     ax.legend(loc="upper left")
     plt.tight_layout()
     return fig
+'''
+
+def plot_interactive_model_domain_3d(
+    mf,
+    bas=None,
+    chd=None,
+    riv=None,
+    layer=0,
+    exaggeration=1.0,
+    engine="plotly",
+    show_chd=True,
+    show_riv=True,
+    mask_inactive=True,
+    top_alpha=0.65,
+    bot_alpha=0.65,
+    draw_grid=True,
+    grid_line_color="#555555",
+    grid_line_width=1.0,
+    vertical_line_opacity=0.25,
+    show_verticals=True,
+    custom_title=None,
+    # CHD options
+    fill_chd_surface=True,
+    chd_surface_opacity=0.55,
+    chd_surface_color="royalblue",
+    chd_point_markers=False,
+    show_chd_label=True,
+    chd_label_text="CHD boundary",
+    # River options (new)
+    fill_riv_stage_surface=True,
+    riv_stage_surface_opacity=0.6,
+    riv_stage_surface_color="deepskyblue",
+    fill_riv_rbot_surface=True,
+    riv_rbot_surface_opacity=0.5,
+    riv_rbot_surface_color="navy",
+    riv_point_markers=False,
+    show_riv_stage_label=True,
+    show_riv_rbot_label=True,
+    riv_stage_label_text="RIV stage",
+    riv_rbot_label_text="RIV bottom",
+    # General options
+    show_exaggeration_label=True,
+    exaggeration_label_format="Vertical exaggeration: {exag:g}x",
+):
+    """
+    Interactive 3‑D view of single‑layer model geometry (top, bottom) and optional CHD / RIV cells.
+
+    Now draws true grid surfaces (not just points) and (optionally) vertical
+    lines connecting top/bottom corner nodes. River parameters displayed as filled surfaces
+    similar to CHD cells.
+
+    Parameters
+    ----------
+    mf : flopy.modflow.Modflow
+    bas : ModflowBas
+    chd : ModflowChd
+    riv : ModflowRiv
+    layer : int
+    exaggeration : float
+        Vertical exaggeration factor.
+    engine : {'plotly','mpl'}
+    show_chd, show_riv : bool
+    mask_inactive : bool
+    top_alpha, bot_alpha : float
+        Opacity of top / bottom surfaces.
+    draw_grid : bool
+        Draw horizontal grid lines on top & bottom surfaces.
+    grid_line_color : str
+    grid_line_width : float
+    
+    # CHD surface options
+    fill_chd_surface : bool
+        Draw filled Mesh3d surface over CHD cells.
+    chd_surface_opacity : float
+        Opacity of CHD surface (0-1).
+    chd_surface_color : str
+        Color of CHD surface (solid fill).
+    chd_point_markers : bool
+        Still plot points for CHD (in addition to surface) when True.
+    show_chd_label : bool
+        Add CHD entry to legend.
+    chd_label_text : str
+        Text for CHD boundary label.
+    
+    # River surface options (new)
+    fill_riv_stage_surface : bool
+        Draw filled Mesh3d surface over RIV stage cells.
+    riv_stage_surface_opacity : float
+        Opacity of RIV stage surface (0-1).
+    riv_stage_surface_color : str
+        Color of RIV stage surface.
+    fill_riv_rbot_surface : bool
+        Draw filled Mesh3d surface over RIV bottom cells.
+    riv_rbot_surface_opacity : float
+        Opacity of RIV bottom surface (0-1).
+    riv_rbot_surface_color : str
+        Color of RIV bottom surface.
+    riv_point_markers : bool
+        Still plot points for RIV (in addition to surfaces) when True.
+    show_riv_stage_label : bool
+        Add RIV stage entry to legend.
+    show_riv_rbot_label : bool
+        Add RIV bottom entry to legend.
+    riv_stage_label_text : str
+        Text for RIV stage label.
+    riv_rbot_label_text : str
+        Text for RIV bottom label.
+        
+    # General options
+    show_verticals : bool
+        Draw vertical lines at each corner.
+    vertical_line_opacity : float
+    show_exaggeration_label : bool
+        If True, adds a small annotation (lower-left) with the vertical exaggeration value.
+    exaggeration_label_format : str
+        Format string for exaggeration label; must contain '{exag}' placeholder.
+    """
+    import numpy as np
+    if not hasattr(mf, "dis"):
+        raise RuntimeError("Model missing DIS package.")
+    dis = mf.dis
+    top_centers = dis.top.array.copy()
+    bot_centers = dis.botm.array[layer].copy()
+    grid = mf.modelgrid
+    nrow, ncol = top_centers.shape
+
+    if bas is None:
+        bas = mf.get_package("BAS6")
+    if bas is None:
+        # No BAS: proceed without masking (treat all as active)
+        if mask_inactive:
+            import warnings
+            warnings.warn("BAS package not found; inactive cell masking skipped.", RuntimeWarning)
+        ibound = np.ones((nrow, ncol), dtype=int)
+        mask_inactive_effective = False
+    else:
+        ibound = bas.ibound.array[layer]
+        mask_inactive_effective = mask_inactive
+
+    # Mask inactive center cells only if we have BAS
+    if mask_inactive_effective:
+        inactive_mask = (ibound == 0)
+        top_centers = np.where(inactive_mask, np.nan, top_centers)
+        bot_centers = np.where(inactive_mask, np.nan, bot_centers)
+
+    # Helper: derive corner elevations from surrounding active cell centers
+    def centers_to_corners(arr2d):
+        nr, nc = arr2d.shape
+        corners = np.full((nr + 1, nc + 1), np.nan, dtype=float)
+        for i in range(nr + 1):
+            r_idx = [i - 1, i]
+            r_idx = [r for r in r_idx if 0 <= r < nr]
+            for j in range(nc + 1):
+                c_idx = [j - 1, j]
+                c_idx = [c for c in c_idx if 0 <= c < nc]
+                vals = []
+                for rr in r_idx:
+                    for cc in c_idx:
+                        v = arr2d[rr, cc]
+                        if np.isfinite(v):
+                            vals.append(v)
+                if vals:
+                    corners[i, j] = float(np.mean(vals))
+        return corners
+
+    top_corners = centers_to_corners(top_centers)
+    bot_corners = centers_to_corners(bot_centers)
+
+    # Collect CHD points & polys (for filled surface) AFTER ibound defined
+    chd_cells = []  # (xc, yc, shead)
+    chd_polys = []  # (row, col, shead)
+    if show_chd and chd is not None:
+        try:
+            spd0 = chd.stress_period_data[0]
+        except Exception:
+            spd0 = []
+        for rec in spd0:
+            k_, i_, j_ = rec["k"], rec["i"], rec["j"]
+            if k_ != layer:
+                continue
+            if mask_inactive and ibound[i_, j_] == 0:
+                continue
+            shead_val = float(rec["shead"])
+            chd_cells.append((grid.xcellcenters[i_, j_],
+                              grid.ycellcenters[i_, j_],
+                              shead_val))
+            chd_polys.append((i_, j_, shead_val))
+
+    # Collect RIV points & polys (for filled surfaces) - similar to CHD
+    riv_stage_cells = []
+    riv_rbot_cells = []
+    riv_stage_polys = []  # (row, col, stage)
+    riv_rbot_polys = []   # (row, col, rbot)
+    if show_riv and riv is not None:
+        try:
+            r0 = riv.stress_period_data[0]
+        except Exception:
+            r0 = []
+        for rec in r0:
+            k, i, j = rec["k"], rec["i"], rec["j"]
+            if k != layer:
+                continue
+            if mask_inactive and ibound[i, j] == 0:
+                continue
+            xc = grid.xcellcenters[i, j]
+            yc = grid.ycellcenters[i, j]
+            stage_val = float(rec["stage"])
+            rbot_val = float(rec["rbot"])
+            
+            riv_stage_cells.append((xc, yc, stage_val))
+            riv_rbot_cells.append((xc, yc, rbot_val))
+            riv_stage_polys.append((i, j, stage_val))
+            riv_rbot_polys.append((i, j, rbot_val))
+
+    # Try plotly
+    if engine == "plotly":
+        try:
+            import plotly.graph_objects as go
+        except ImportError:
+            import warnings
+            warnings.warn("Plotly not installed. Falling back to Matplotlib.")
+            engine = "mpl"
+
+    if engine == "plotly":
+        import plotly.graph_objects as go
+        import numpy as np
+
+        fig = go.Figure()
+
+        # Corner coordinate arrays from FloPy (nrow+1, ncol+1)
+        xv = grid.xvertices
+        yv = grid.yvertices
+
+        # Compute elevation range (true, un‑exaggerated)
+        elev_min = float(np.nanmin([np.nanmin(bot_corners), np.nanmin(top_corners)]))
+        elev_max = float(np.nanmax([np.nanmax(bot_corners), np.nanmax(top_corners)]))
+
+        # Prepare shared color scaling (use true elevations, not exaggerated)
+        cmin, cmax = elev_min, elev_max
+
+        # Build tick labels so z-axis shows true elevations (not exaggerated values)
+        if exaggeration != 1.0:
+            nticks = 6
+            real_ticks = np.linspace(elev_min, elev_max, nticks)
+            scaled_tickvals = real_ticks * exaggeration
+            ticktext = [f"{t:.1f}" for t in real_ticks]
+        else:
+            real_ticks = scaled_tickvals = ticktext = None
+
+        # Surfaces (top & bottom) using corner grids
+        fig.add_trace(go.Surface(
+            x=xv,
+            y=yv,
+            z=top_corners * exaggeration,
+            surfacecolor=top_corners,  # use true elevations for color
+            cmin=cmin, cmax=cmax,
+            colorscale="Viridis",
+            opacity=top_alpha,
+            showscale=True,          # single shared colorbar
+            name="Top",
+            colorbar=dict(title="Elevation (m)")
+        ))
+        fig.add_trace(go.Surface(
+            x=xv,
+            y=yv,
+            z=bot_corners * exaggeration,
+            surfacecolor=bot_corners,  # use true elevations for color
+            cmin=cmin, cmax=cmax,
+            colorscale="Viridis",
+            opacity=bot_alpha,
+            showscale=False,         # hide second (previously overlapping) colorbar
+            name="Bottom"
+        ))
+
+        # Optional horizontal grid lines (top & bottom)
+        if draw_grid:
+            # Row lines
+            for i in range(nrow + 1):
+                # Top
+                fig.add_trace(go.Scatter3d(
+                    x=xv[i, :],
+                    y=yv[i, :],
+                    z=(top_corners[i, :] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name="Top grid" if i == 0 else None,
+                    showlegend=(i == 0)
+                ))
+                # Bottom
+                fig.add_trace(go.Scatter3d(
+                    x=xv[i, :],
+                    y=yv[i, :],
+                    z=(bot_corners[i, :] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name="Bottom grid" if i == 0 else None,
+                    showlegend=(i == 0)
+                ))
+            # Column lines
+            for j in range(ncol + 1):
+                fig.add_trace(go.Scatter3d(
+                    x=xv[:, j],
+                    y=yv[:, j],
+                    z=(top_corners[:, j] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name=None,
+                    showlegend=False
+                ))
+                fig.add_trace(go.Scatter3d(
+                    x=xv[:, j],
+                    y=yv[:, j],
+                    z=(bot_corners[:, j] * exaggeration),
+                    mode="lines",
+                    line=dict(color=grid_line_color, width=grid_line_width),
+                    hoverinfo="skip",
+                    name=None,
+                    showlegend=False
+                ))
+
+        # Vertical corner lines
+        if show_verticals:
+            vx = xv.ravel()
+            vy = yv.ravel()
+            zt = (top_corners * exaggeration).ravel()
+            zb = (bot_corners * exaggeration).ravel()
+            seg_x = []
+            seg_y = []
+            seg_z = []
+            for x0, y0, z0t, z0b in zip(vx, vy, zt, zb):
+                if np.isnan(z0t) or np.isnan(z0b):
+                    continue
+                seg_x.extend([x0, x0, None])
+                seg_y.extend([y0, y0, None])
+                seg_z.extend([z0b, z0t, None])
+            if seg_x:
+                fig.add_trace(go.Scatter3d(
+                    x=seg_x,
+                    y=seg_y,
+                    z=seg_z,
+                    mode="lines",
+                    line=dict(color="rgba(120,120,120,0.6)", width=1),
+                    opacity=vertical_line_opacity,
+                    hoverinfo="skip",
+                    name="Vertical grid"
+                ))
+
+        # Helper function to create filled surface for boundary conditions
+        def create_bc_surface(polys, elevation_key, surface_color, opacity, name):
+            if not polys:
+                return
+            verts_x = []
+            verts_y = []
+            verts_z = []
+            tri_i = []
+            tri_j = []
+            tri_k = []
+            vcount = 0
+            for (ri, cj, elev_val) in polys:
+                try:
+                    cell_verts = grid.get_cell_vertices(ri, cj)
+                except Exception:
+                    continue
+                if not cell_verts:
+                    continue
+                if len(cell_verts) >= 4 and cell_verts[0] == cell_verts[-1]:
+                    quad = cell_verts[:-1][:4]
+                else:
+                    quad = cell_verts[:4]
+                if len(quad) < 4:
+                    continue
+                for (vx0, vy0) in quad:
+                    verts_x.append(vx0)
+                    verts_y.append(vy0)
+                    verts_z.append(elev_val * exaggeration)
+                tri_i.append(vcount + 0)
+                tri_j.append(vcount + 1)
+                tri_k.append(vcount + 2)
+                tri_i.append(vcount + 0)
+                tri_j.append(vcount + 2)
+                tri_k.append(vcount + 3)
+                vcount += 4
+            if verts_x:
+                fig.add_trace(go.Mesh3d(
+                    x=verts_x,
+                    y=verts_y,
+                    z=verts_z,
+                    i=tri_i,
+                    j=tri_j,
+                    k=tri_k,
+                    color=surface_color,
+                    opacity=opacity,
+                    name=name,
+                    hoverinfo="skip",
+                    flatshading=True,
+                ))
+
+        # Add legend-only markers for boundary conditions
+        if show_chd and show_chd_label and (chd_cells or fill_chd_surface):
+            fig.add_trace(go.Scatter3d(
+                x=[None], y=[None], z=[None],  # dummy for legend only
+                mode="markers",
+                marker=dict(size=8, color=chd_surface_color, symbol="square"),
+                name=chd_label_text,
+                hoverinfo="skip",
+                showlegend=True
+            ))
+
+        if show_riv and show_riv_stage_label and (riv_stage_cells or fill_riv_stage_surface):
+            fig.add_trace(go.Scatter3d(
+                x=[None], y=[None], z=[None],  # dummy for legend only
+                mode="markers",
+                marker=dict(size=8, color=riv_stage_surface_color, symbol="square"),
+                name=riv_stage_label_text,
+                hoverinfo="skip",
+                showlegend=True
+            ))
+
+        if show_riv and show_riv_rbot_label and (riv_rbot_cells or fill_riv_rbot_surface):
+            fig.add_trace(go.Scatter3d(
+                x=[None], y=[None], z=[None],  # dummy for legend only
+                mode="markers",
+                marker=dict(size=8, color=riv_rbot_surface_color, symbol="square"),
+                name=riv_rbot_label_text,
+                hoverinfo="skip",
+                showlegend=True
+            ))
+
+        # CHD filled surface
+        if show_chd and fill_chd_surface:
+            create_bc_surface(chd_polys, 'shead', chd_surface_color, chd_surface_opacity, "CHD surface")
+
+        # River filled surfaces
+        if show_riv and fill_riv_stage_surface:
+            create_bc_surface(riv_stage_polys, 'stage', riv_stage_surface_color, riv_stage_surface_opacity, "RIV stage surface")
+
+        if show_riv and fill_riv_rbot_surface:
+            create_bc_surface(riv_rbot_polys, 'rbot', riv_rbot_surface_color, riv_rbot_surface_opacity, "RIV bottom surface")
+
+        # Optional point markers for boundary conditions
+        if chd_cells and (chd_point_markers or not fill_chd_surface):
+            cx, cy, cz = zip(*[(a, b, c * exaggeration) for a, b, c in chd_cells])
+            fig.add_trace(go.Scatter3d(
+                x=cx, y=cy, z=cz,
+                mode="markers",
+                marker=dict(size=5, color="blue", symbol="diamond"),
+                name="CHD shead (pts)"
+            ))
+
+        if riv_stage_cells and (riv_point_markers or (not fill_riv_stage_surface and not fill_riv_rbot_surface)):
+            rx, ry, rz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_stage_cells])
+            fig.add_trace(go.Scatter3d(
+                x=rx, y=ry, z=rz,
+                mode="markers",
+                marker=dict(size=4, color=riv_stage_surface_color),
+                name="RIV stage (pts)"
+            ))
+
+        if riv_rbot_cells and (riv_point_markers or (not fill_riv_stage_surface and not fill_riv_rbot_surface)):
+            rbx, rby, rbz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_rbot_cells])
+            fig.add_trace(go.Scatter3d(
+                x=rbx, y=rby, z=rbz,
+                mode="markers",
+                marker=dict(size=3, color=riv_rbot_surface_color),
+                name="RIV rbot (pts)"
+            ))
+
+        if custom_title:
+            fig.update_layout(title=custom_title)
+        else: 
+            fig.update_layout(title="Interactive 3D Model Domain (Plotly)")
+
+        scene_kwargs = dict(
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            zaxis_title="Elevation (m)",
+            aspectmode="data"
+        )
+        if exaggeration != 1.0 and scaled_tickvals is not None:
+            scene_kwargs["zaxis"] = dict(
+                title="Elevation (m)",
+                tickmode="array",
+                tickvals=scaled_tickvals,
+                ticktext=ticktext
+            )
+
+        fig.update_layout(
+            scene=scene_kwargs,
+            legend=dict(
+                itemsizing="constant",
+                x=0.01,          # left side
+                y=0.98,           # upper vertically
+                xanchor="left",
+                yanchor="top",
+                bgcolor="rgba(255,255,255,0.6)",
+                bordercolor="rgba(150,150,150,0.4)",
+                borderwidth=1
+            ),
+            margin=dict(l=0, r=0, b=0, t=40)
+        )
+        
+        # Add vertical exaggeration annotation (lower-left corner)
+        if show_exaggeration_label:
+            try:
+                label_txt = exaggeration_label_format.format(exag=exaggeration)
+            except Exception:
+                label_txt = f"Vertical exaggeration: {exaggeration:g}x"
+            fig.add_annotation(dict(
+                x=0.01, y=0.02, xref='paper', yref='paper',
+                text=label_txt,
+                showarrow=False,
+                font=dict(size=11, color='black'),
+                bgcolor='rgba(255,255,255,0.65)',
+                bordercolor='rgba(120,120,120,0.5)',
+                borderwidth=1,
+                align='left'
+            ))
+        return fig
+
+    # Matplotlib fallback with improved river display
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection="3d")
+
+    xcc = grid.xcellcenters
+    ycc = grid.ycellcenters
+    ax.scatter(xcc[~np.isnan(bot_centers)],
+               ycc[~np.isnan(bot_centers)],
+               bot_centers[~np.isnan(bot_centers)] * exaggeration,
+               s=3, c=bot_centers[~np.isnan(bot_centers)], cmap="terrain", alpha=bot_alpha, label="Bottom")
+    ax.scatter(xcc[~np.isnan(top_centers)],
+               ycc[~np.isnan(top_centers)],
+               top_centers[~np.isnan(top_centers)] * exaggeration,
+               s=3, c=top_centers[~np.isnan(top_centers)], cmap="viridis", alpha=top_alpha, label="Top")
+
+    if chd_cells:
+        cx, cy, cz = zip(*[(a, b, c * exaggeration) for a, b, c in chd_cells])
+        ax.scatter(cx, cy, cz, c="blue", s=15, marker="D", label="CHD shead")
+
+    if riv_stage_cells:
+        rx, ry, rz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_stage_cells])
+        ax.scatter(rx, ry, rz, c=riv_stage_surface_color, s=12, marker="s", label=riv_stage_label_text)
+        
+    if riv_rbot_cells:
+        rbx, rby, rbz = zip(*[(a, b, c * exaggeration) for a, b, c in riv_rbot_cells])
+        ax.scatter(rbx, rby, rbz, c=riv_rbot_surface_color, s=10, marker="^", label=riv_rbot_label_text)
+
+    ax.set_xlabel("X (m)")
+    ax.set_ylabel("Y (m)")
+    ax.set_zlabel("Elevation (m)")
+    if custom_title:
+        ax.set_title(custom_title)
+    else:
+        ax.set_title("3D Model Domain (Matplotlib fallback)")
+    ax.legend(loc="upper left")
+    plt.tight_layout()
+    return fig
+
+def create_dem_overlay_map(
+    dem_path: str,
+    colormap: str = "viridis",
+    opacity: float = 0.55,
+    clip_percentiles: tuple[float, float] = (1, 99),
+    tiles: str = "OpenStreetMap",
+    zoom_start: int | None = None,
+    add_layer_control: bool = True,
+):
+    """Return a folium.Map with a semi‑transparent DEM overlay on a tile background.
+
+    Parameters
+    ----------
+    dem_path : str
+        Path to a raster readable by rasterio.
+    colormap : str, default 'viridis'
+        Matplotlib colormap name.
+    opacity : float, default 0.55
+        Overall DEM layer opacity (alpha embedded per pixel). 0..1.
+    clip_percentiles : (float, float), default (1, 99)
+        Lower/upper percentiles for robust elevation stretch.
+    tiles : str, default 'OpenStreetMap'
+        Base tiles name accepted by folium (e.g., 'OpenStreetMap','CartoDB.Positron').
+    zoom_start : int | None
+        If provided, overrides automatic zoom. If None a heuristic is used.
+    add_layer_control : bool, default True
+        If True adds a layer control widget.
+
+    Returns
+    -------
+    folium.Map
+        Interactive map with DEM overlay.
+    """
+    try:
+        import rasterio
+        import matplotlib.cm as cm
+        import matplotlib.colors as mcolors
+        from pyproj import Transformer
+    except ImportError as e:
+        raise ImportError("create_dem_overlay_map requires rasterio, matplotlib, pyproj") from e
+
+    with rasterio.open(dem_path) as src:
+        data = src.read(1).astype(float)
+        bounds = src.bounds
+        src_crs = src.crs
+
+    # Handle invalids
+    data[~np.isfinite(data)] = np.nan
+    if np.isnan(data).all():
+        vmin, vmax = 0, 1
+    else:
+        valid = data[np.isfinite(data)]
+        if valid.size:
+            p_lo, p_hi = clip_percentiles
+            vmin, vmax = np.percentile(valid, [p_lo, p_hi])
+        else:
+            vmin, vmax = float(np.nanmin(data)), float(np.nanmax(data))
+
+    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+    cmap = cm.get_cmap(colormap)
+    rgba = cmap(norm(data))  # 0..1 floats
+    rgba[..., 3] = opacity
+    rgba[~np.isfinite(data), 3] = 0.0
+    img = (rgba * 255).astype(np.uint8)
+
+    # Project bounds to WGS84
+    transformer = Transformer.from_crs(src_crs, "EPSG:4326", always_xy=True)
+    lon_min, lat_min = transformer.transform(bounds.left, bounds.bottom)
+    lon_max, lat_max = transformer.transform(bounds.right, bounds.top)
+    center_lat = (lat_min + lat_max) / 2
+    center_lon = (lon_min + lon_max) / 2
+
+    # Heuristic zoom: rough guess by latitude span
+    if zoom_start is None:
+        lat_span = abs(lat_max - lat_min)
+        if lat_span > 2:
+            zoom_start = 7
+        elif lat_span > 0.5:
+            zoom_start = 9
+        elif lat_span > 0.1:
+            zoom_start = 11
+        else:
+            zoom_start = 13
+
+    fmap = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start, tiles=tiles, control_scale=True)
+
+    folium.raster_layers.ImageOverlay(
+        image=img,
+        bounds=[[lat_min, lon_min], [lat_max, lon_max]],
+        opacity=1.0,  # internal alpha used
+        name="DEM overlay",
+        interactive=False,
+        cross_origin=False,
+        zindex=2,
+    ).add_to(fmap)
+
+    if add_layer_control:
+        folium.LayerControl().add_to(fmap)
+
+    return fmap
 
 
+def create_interactive_dem_map(
+    dem_path: str,
+    colormaps: tuple[str, ...] = ("viridis", "plasma", "cividis", "terrain"),
+    default_colormap: str = "viridis",
+    opacity: float = 0.55,
+    clip_percentiles: tuple[float, float] = (1, 99),
+    tiles: str = "OpenStreetMap",
+    zoom_start: int | None = None,
+    container_title: str = "DEM Controls",
+    custom_title: str | None = None
+):
+    """Create an interactive folium map with a DEM overlay and UI controls.
+
+    Features (client-side JS):
+      * Opacity slider (updates overlay opacity)
+      * Colormap dropdown (switches pre-rendered colorized PNGs)
+      * Reverse checkbox (toggles between normal & reversed LUT)
+
+    Implementation notes:
+      * All (colormap, reversed) variants are pre-rendered once and embedded
+        as base64 data URIs. Switching is instant without round trips.
+      * PNGs generated via matplotlib (plt.imsave) to avoid adding Pillow.
+
+    Parameters
+    ----------
+    dem_path : str
+        Raster path readable by rasterio.
+    colormaps : tuple[str,...]
+        List of matplotlib colormap names to provide.
+    default_colormap : str
+        Initially selected colormap (must be in colormaps).
+    opacity : float
+        Initial opacity (0..1).
+    clip_percentiles : (float,float)
+        Robust stretch percentiles.
+    tiles : str
+        Base tiles provider name.
+    zoom_start : int | None
+        Optional manual zoom; else derived from raster extent.
+    container_title : str
+        Title shown atop control box.
+    custom_title : str | None
+        Title shown atop the map.
+
+    Returns
+    -------
+    folium.Map
+        Interactive map object.
+    """
+    try:
+        import rasterio
+        import matplotlib.cm as cm
+        import matplotlib.colors as mcolors
+        from pyproj import Transformer
+        import matplotlib.pyplot as plt
+        from io import BytesIO
+        import base64
+    except ImportError as e:
+        raise ImportError("create_interactive_dem_map requires rasterio, matplotlib, pyproj") from e
+
+    if default_colormap not in colormaps:
+        raise ValueError(f"default_colormap '{default_colormap}' not in provided colormaps {colormaps}")
+
+    # -- Load raster --
+    with rasterio.open(dem_path) as src:
+        data = src.read(1).astype(float)
+        bounds = src.bounds
+        src_crs = src.crs
+
+    data[~np.isfinite(data)] = np.nan
+    if np.isnan(data).all():
+        vmin, vmax = 0, 1
+    else:
+        valid = data[np.isfinite(data)]
+        if valid.size:
+            vmin, vmax = np.percentile(valid, list(clip_percentiles))
+        else:
+            vmin, vmax = float(np.nanmin(data)), float(np.nanmax(data))
+
+    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+
+    def render_png(cmap_name: str, reverse: bool) -> str:
+        cmap_obj = cm.get_cmap(cmap_name)
+        if reverse:
+            cmap_obj = cmap_obj.reversed()
+        rgba = cmap_obj(norm(data))  # float 0..1
+        # Uniform alpha handled client side so keep full alpha then adjust by opacity in JS
+        rgba[..., 3] = 1.0
+        rgba[~np.isfinite(data), 3] = 0.0
+        buf = BytesIO()
+        plt.imsave(buf, rgba, format="png")
+        buf.seek(0)
+        b64 = base64.b64encode(buf.read()).decode("ascii")
+        return f"data:image/png;base64,{b64}"
+
+    # Precompute images
+    image_registry: dict[str, dict[str, str]] = {}
+    for cmap_name in colormaps:
+        image_registry[cmap_name] = {
+            "normal": render_png(cmap_name, False),
+            "reversed": render_png(cmap_name, True),
+        }
+
+    # Project bounds to WGS84
+    transformer = Transformer.from_crs(src_crs, "EPSG:4326", always_xy=True)
+    lon_min, lat_min = transformer.transform(bounds.left, bounds.bottom)
+    lon_max, lat_max = transformer.transform(bounds.right, bounds.top)
+    center_lat = (lat_min + lat_max) / 2
+    center_lon = (lon_min + lon_max) / 2
+
+    # Zoom heuristic
+    if zoom_start is None:
+        lat_span = abs(lat_max - lat_min)
+        if lat_span > 2:
+            zoom_start = 7
+        elif lat_span > 0.5:
+            zoom_start = 9
+        elif lat_span > 0.1:
+            zoom_start = 11
+        else:
+            zoom_start = 13
+
+    # Base map with explicit multi-provider support. We set tiles=None first and add providers.
+    fmap = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start, tiles=None, control_scale=True)
+
+    # Add a suite of base layers; ensure requested 'tiles' provider is added last so it is active.
+    # Mapping from generic parameter values to folium provider specs or (custom URL, attr, name)
+    provider_order = [
+        ('openstreetmap', ('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                           'OpenStreetMap')),
+        ('carto-positron', ('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                            'CartoDB Positron')),
+        ('carto-voyager', ('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                           '&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                           'CartoDB Voyager')),
+        ('esri-imagery', ('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                          'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                          'Esri WorldImagery')),
+        ('opentopomap', ('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                         'Map data: &copy; OpenStreetMap contributors, SRTM | Style: &copy; OpenTopoMap (CC-BY-SA)',
+                         'OpenTopoMap')),
+    ]
+
+    # Normalize tiles param for matching
+    norm_tiles = (tiles or 'OpenStreetMap').lower()
+    added = set()
+    for key, (prov, attr, name) in provider_order:
+        try:
+            if attr is not None:
+                folium.TileLayer(tiles=prov, attr=attr, name=name, overlay=False, control=True).add_to(fmap)
+            else:
+                folium.TileLayer(prov, name=name, control=True).add_to(fmap)
+            added.add(key)
+        except Exception as _tile_err:
+            warnings.warn(f"Failed to add base layer {key}: {_tile_err}")
+    # If requested provider exists, add it again last (activates it) unless already last via ordering
+    try:
+        if norm_tiles not in added:
+            pass  # already handled via default OSM fallback
+        elif norm_tiles not in ('opentopomap', 'esri-imagery') and norm_tiles != 'openstreetmap':
+            # Add its folium name again to ensure activation (only for some carto variants)
+            mapping = {
+                'carto-positron': 'CartoDB Positron',
+                'carto-voyager': 'CartoDB Voyager',
+            }
+            if norm_tiles in mapping:
+                folium.TileLayer(mapping[norm_tiles], name=mapping[norm_tiles], control=True).add_to(fmap)
+    except Exception as _reactivate_err:
+        warnings.warn(f"Could not set requested base layer active: {_reactivate_err}")
+
+    if custom_title:
+        map_title = custom_title
+    else:
+        map_title = "Digital Elevation Model"
+    if map_title:
+        # Reuse unified caption CSS (function defined near top)
+        title_style = _caption_css("position:relative;width:100%;text-align:center;padding:6px 0 4px 0;")
+        title_html = f"<div style=\"{title_style}\">{map_title}</div>"
+        fmap.get_root().html.add_child(folium.Element(title_html))
+
+    # Add initial overlay as standard Folium layer (data URI works as image source)
+    initial_src = image_registry[default_colormap]["normal"]
+    overlay = folium.raster_layers.ImageOverlay(
+        image=initial_src,
+        bounds=[[lat_min, lon_min], [lat_max, lon_max]],
+        opacity=opacity,
+        name="DEM overlay",
+        interactive=False,
+        cross_origin=False,
+        zindex=2,
+    )
+    overlay.add_to(fmap)
+
+    # Build control panel HTML & JS logic
+    # JSON registry for images
+    import json as _json
+    registry_json = _json.dumps(image_registry)
+    # Escape braces used by JS object/blocks with double braces in f-string
+    options_html = ''.join(
+        f"<option value='{c}' {'selected' if c==default_colormap else ''}>{c}</option>" for c in colormaps
+    )
+    controls_html = f"""
+        <div id='dem-control-box' style='position: fixed; bottom: 12px; right: 12px; z-index:9999; background: rgba(255,255,255,0.9); padding:10px 12px; border:1px solid #777; border-radius:6px; width: 220px; font-family: Arial, sans-serif; font-size:12px;'>
+            <div style='font-weight:bold; font-size:13px; margin-bottom:4px;'>{container_title}</div>
+            <label style='display:block; margin-top:4px;'>Colormap
+                <select id='dem-colormap-select' style='width:100%; margin-top:2px;'>
+                    {options_html}
+                </select>
+            </label>
+            <label style='display:block; margin-top:6px;'>Opacity: <span id='dem-opacity-val'>{int(opacity*100)}</span>%
+                <input id='dem-opacity-slider' type='range' min='0' max='100' value='{int(opacity*100)}' step='1' style='width:100%;'>
+            </label>
+            <label style='display:block; margin-top:6px;'>
+                <input id='dem-reverse-checkbox' type='checkbox' style='vertical-align:middle;'> Reverse
+            </label>
+        </div>
+        <script>
+            (function() {{
+                var registry = {registry_json};
+                var selectEl = document.getElementById('dem-colormap-select');
+                var sliderEl = document.getElementById('dem-opacity-slider');
+                var reverseEl = document.getElementById('dem-reverse-checkbox');
+                var opacityVal = document.getElementById('dem-opacity-val');
+                function getOverlayImg() {{
+                    var imgs = document.querySelectorAll('img.leaflet-image-layer');
+                    for (var i=0; i<imgs.length; i++) {{
+                        if (imgs[i].src && imgs[i].src.indexOf('data:image/png;base64') === 0) return imgs[i];
+                    }}
+                    return null;
+                }}
+                function updateImage() {{
+                    var img = getOverlayImg();
+                    if (!img) return;
+                    var cmap = selectEl.value;
+                    var mode = reverseEl.checked ? 'reversed' : 'normal';
+                    img.src = registry[cmap][mode];
+                }}
+                function updateOpacity() {{
+                    var img = getOverlayImg();
+                    var op = parseInt(sliderEl.value, 10)/100.0;
+                    opacityVal.textContent = parseInt(sliderEl.value,10);
+                    if (img) img.style.opacity = op;
+                }}
+                selectEl.addEventListener('change', updateImage);
+                reverseEl.addEventListener('change', updateImage);
+                sliderEl.addEventListener('input', updateOpacity);
+            }})();
+        </script>
+        """
+    fmap.get_root().html.add_child(folium.Element(controls_html))
+
+    return fmap
+
+def visualize_boundary_segments(boundary_segments_gdf):
+    """
+    Visualize boundary segments on OpenStreetMap with coloring and labels by 'desc' column
+    
+    Parameters:
+    boundary_segments_gdf: GeoDataFrame with boundary segments in Swiss coordinate system
+    """
+    
+    # Step 1: Convert from Swiss coordinate system to WGS84 (EPSG:4326) for web mapping
+    # Swiss coordinate system is typically EPSG:2056 (CH1903+ / LV95)
+    if boundary_segments_gdf.crs.to_epsg() != 4326:
+        boundary_segments_web = boundary_segments_gdf.to_crs(epsg=4326)
+    else:
+        boundary_segments_web = boundary_segments_gdf.copy()
+    
+    # Step 2: Calculate map center from the bounds of the data
+    bounds = boundary_segments_web.total_bounds
+    center_lat = (bounds[1] + bounds[3]) / 2
+    center_lon = (bounds[0] + bounds[2]) / 2
+    
+    # Step 3: Create base map
+    m = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=12,
+        tiles='OpenStreetMap'
+    )
+    
+    # Filter out None values and get unique descriptions
+    boundary_segments_filtered = boundary_segments_web[boundary_segments_web['desc'].notna()]
+    unique_descriptions = boundary_segments_filtered['desc'].unique()
+
+    # Step 4: Get unique descriptions and create color mapping
+    unique_descriptions = boundary_segments_filtered['desc'].unique()
+    
+    # Create a colorblind-friendly palette with intensive colors
+    # Using Paul Tol's colorblind-safe palette with high contrast colors
+    colorblind_palette = [
+        '#004488',  # Dark blue
+        '#DD3377',  # Magenta/Pink
+        '#117733',  # Dark green
+        '#332288',  # Purple
+        '#CC6677',  # Rose
+        '#88CCEE',  # Light blue
+        '#44AA99',  # Teal
+        '#999933',  # Olive
+        '#AA4499',  # Violet
+        '#DDCC77',  # Yellow
+        '#661100',  # Dark red
+        '#6699CC',  # Blue
+        '#AA4466',  # Red
+        '#882255',  # Wine
+        '#77AADD'   # Sky blue
+    ]
+    
+    color_map = {}
+    for i, desc in enumerate(unique_descriptions):
+        # Cycle through colors if we have more descriptions than colors
+        color_idx = i % len(colorblind_palette)
+        color_map[desc] = colorblind_palette[color_idx]
+    
+    # Step 5: Add boundary segments to map
+    for idx, row in boundary_segments_filtered.iterrows():
+        desc = row['desc']
+        color = color_map[desc]
+        
+        # Convert geometry to list of coordinates for folium
+        if row.geometry.geom_type == 'LineString':
+            coordinates = [[point[1], point[0]] for point in row.geometry.coords]
+            
+            # Add the line to the map
+            folium.PolyLine(
+                locations=coordinates,
+                color=color,
+                weight=12,
+                opacity=0.8,
+                popup=f"Description: {desc}",
+                tooltip=desc
+            ).add_to(m)
+            
+            # Add label at the midpoint of the line
+            if len(coordinates) > 1:
+                mid_idx = len(coordinates) // 2
+                mid_point = coordinates[mid_idx]
+                
+                folium.Marker(
+                    location=mid_point,
+                    icon=folium.DivIcon(
+                        html=f'<div style="font-size: 10pt; font-weight: bold; '
+                             f'color: {color}; text-shadow: 1px 1px 1px white, '
+                             f'-1px -1px 1px white, 1px -1px 1px white, '
+                             f'-1px 1px 1px white;">{desc}</div>',
+                        class_name="custom-div-icon"
+                    )
+                ).add_to(m)
+        
+        elif row.geometry.geom_type == 'MultiLineString':
+            # Handle MultiLineString geometries
+            for line in row.geometry.geoms:
+                coordinates = [[point[1], point[0]] for point in line.coords]
+                
+                folium.PolyLine(
+                    locations=coordinates,
+                    color=color,
+                    weight=3,
+                    opacity=0.8,
+                    popup=f"Description: {desc}",
+                    tooltip=desc
+                ).add_to(m)
+    
+    # Step 6: Add a legend
+    legend_html = '''
+    <div style="position: fixed; 
+                bottom: 50px; left: 50px; width: 200px; height: auto; 
+                background-color: white; border: 2px solid grey; z-index:9999; 
+                font-size:14px; padding: 10px">
+    <h4>Boundary Segments</h4>
+    '''
+    
+    for desc, color in color_map.items():
+        legend_html += f'''
+        <div style="margin: 5px 0;">
+            <span style="background-color: {color}; width: 20px; height: 3px; 
+                         display: inline-block; margin-right: 10px;"></span>
+            {desc}
+        </div>
+        '''
+    
+    legend_html += '</div>'
+    m.get_root().html.add_child(folium.Element(legend_html))
+    
+    # Step 7: Fit map bounds to data
+    southwest = [bounds[1], bounds[0]]  # [min_lat, min_lon]
+    northeast = [bounds[3], bounds[2]]  # [max_lat, max_lon]
+    m.fit_bounds([southwest, northeast], padding=(20, 20))
+    
+    return m
 
 
 

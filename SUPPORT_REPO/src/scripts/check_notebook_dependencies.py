@@ -19,8 +19,32 @@ def is_stdlib_module(name: str) -> bool:
 
 
 def normalize(name: str) -> str:
-    # Keep alnum + underscore only (drop commas, parentheses, etc.)
-    return re.sub(r'[^0-9a-zA-Z_]', '', name)
+    """Return a clean importable top-level module name or '' if invalid.
+
+    This avoids previous behaviour where inline comments were concatenated
+    to module names (e.g. 'diagnostics  # already imported' ->
+    'diagnosticsalreadyimported'). We now:
+      * strip inline comments
+      * drop alias portions
+      * keep only the top-level package (segment before first dot)
+      * validate against a module name regex
+    """
+    if not name:
+        return ''
+    # Strip any inline comment
+    name = name.split('#', 1)[0].strip()
+    if not name:
+        return ''
+    # Remove alias if still present
+    name = re.split(r'\s+as\s+', name, 1)[0].strip()
+    # Remove trailing punctuation
+    name = name.rstrip(',;')
+    # Keep only first dotted segment
+    name = name.split('.', 1)[0].strip()
+    # Validate
+    if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', name):
+        return ''
+    return name
 
 def extract_imports_from_notebook(notebook_path):
     """Extract all import statements from a Jupyter notebook."""
@@ -54,15 +78,7 @@ def extract_imports_from_notebook(notebook_path):
         # Process plain import lines (may contain commas and aliases)
         for block in raw_import_blocks:
             for part in block.split(','):
-                candidate = part.strip()
-                if not candidate:
-                    continue
-                # Remove alias portion
-                if ' as ' in candidate:
-                    candidate = candidate.split(' as ', 1)[0].strip()
-                candidate = re.split(r'\s+as\s+', candidate, 1)[0]
-                candidate = candidate.rstrip(',;')
-                base_package = candidate.split('.')[0]
+                base_package = normalize(part)
                 if not base_package or base_package == 'as':
                     continue
                 if (not is_stdlib_module(base_package)
@@ -72,12 +88,7 @@ def extract_imports_from_notebook(notebook_path):
 
         # Process from-import style
         for mod in from_import_modules:
-            candidate = mod.strip()
-            if ' as ' in candidate:
-                candidate = candidate.split(' as ', 1)[0].strip()
-            candidate = re.split(r'\s+as\s+', candidate, 1)[0]
-            candidate = candidate.rstrip(',;')
-            base_package = candidate.split('.')[0]
+            base_package = normalize(mod)
             if not base_package or base_package == 'as':
                 continue
             if (not is_stdlib_module(base_package)
@@ -146,25 +157,6 @@ def get_requirements():
     
     return packages
 
-'''def get_requirements():
-    """Parse requirements.txt and return a set of package names."""
-    if not os.path.exists('requirements.txt'):
-        return set()
-
-    with open('requirements.txt', 'r') as f:
-        requirements = set()
-        for line in f:
-            # Clean up the line and extract package name
-            line = line.strip()
-            # Skip empty lines and comments
-            if not line or line.startswith('#'):
-                continue
-            # Handle package specifiers like package==1.0 or package>=1.0
-            package = re.split(r'[=<>]', line)[0].strip()
-            requirements.add(package)
-
-    return requirements'''
-
 def main():
     """Check if all packages imported in notebooks are in environment"""
     # Get all notebooks
@@ -179,7 +171,8 @@ def main():
         imports = extract_imports_from_notebook(notebook)
         all_imports.update(imports)
 
-    all_imports_cleaned = {normalize(m) for m in all_imports if normalize(m)}
+    # Names are already normalized during extraction; just filter empties
+    all_imports_cleaned = {m for m in all_imports if m}
 
     # Print unique list of imports, alphabetically sorted
     print("Unique imports found in notebooks:")
