@@ -52,6 +52,144 @@ def unzip_file(zip_path, extract_to=None):
             print(f"As text: {header}")
             
         raise e   
+    
+def get_scenario_for_group(config_path, group_number):
+    """
+    Load the YAML config and return the scenario parameters for the given group number.
+    
+    Parameters:
+    -----------
+    config_path : str
+        Path to the case_config.yaml file
+    group_number : int
+        Group number (0-8)
+        
+    Returns:
+    --------
+    dict
+        Scenario parameters for the group, or None if not found
+    """
+    with open(config_path, 'r') as f:
+        cfg = yaml.safe_load(f)
+    
+    # Find the scenario with id matching the group number
+    scenarios = cfg.get('scenarios', {}).get('options', [])
+    
+    for scenario in scenarios:
+        if scenario.get('id') == group_number:
+            return scenario
+    
+    return None
+
+def filter_wells_by_concession(wells_gdf, concession_id):
+    """Filter wells by concession ID."""
+    # Work on a copy to avoid SettingWithCopyWarning
+    wells_filtered = wells_gdf.copy()
+    
+    # Normalize / helper columns
+    wells_filtered.loc[:, 'GWR_PREFIX'] = (
+        wells_filtered['GWR_ID']
+        .astype(str)
+        .str.split('_', n=1).str[0]
+        .str.strip()
+        .str.lower()
+    )
+    
+    # Only keep wells where GWR_PREFIX values start with 'b010' (code for Limmat valley aquifer)
+    limmat_mask = wells_filtered['GWR_PREFIX'].str.startswith('b010')
+    wells_filtered = wells_filtered[limmat_mask].copy()
+    
+    # Replace 'b010' with '' in GWR_PREFIX
+    wells_filtered.loc[:, 'GWR_PREFIX'] = wells_filtered['GWR_PREFIX'].str.replace('b010', '', regex=False)
+    
+    # Now we get the wells for our concession
+    concession_mask = wells_filtered['GWR_PREFIX'] == str(concession_id).lower()
+    return wells_filtered[concession_mask].copy()
+
+def plot_wells_on_model(m, wells_gdf, concession_id, modelgrid=None):
+    """
+    Plot wells on the model grid with proper rotation handling.
+    
+    Parameters:
+    -----------
+    m : flopy.modflow.Modflow
+        The MODFLOW model object
+    wells_gdf : geopandas.GeoDataFrame
+        GeoDataFrame containing well locations and attributes
+    concession_id : int or str
+        The concession ID for labeling
+    modelgrid : flopy.discretization.StructuredGrid, optional
+        Override modelgrid (if None, uses m.modelgrid)
+    """
+    fig, ax = plt.subplots(figsize=(14, 12))
+
+    # Use the model's own modelgrid if not provided
+    grid_to_use = modelgrid if modelgrid is not None else m.modelgrid
+    
+    # Create PlotMapView object with the model (this handles rotation automatically)
+    pmv = flopy.plot.PlotMapView(model=m, modelgrid=grid_to_use, ax=ax)
+
+    # Plot the model grid
+    pmv.plot_grid(alpha=0.4, color='white', linewidth=0.3)
+
+    # Plot ibound - this should work with rotation
+    if hasattr(m, 'bas6') and hasattr(m.bas6, 'ibound'):
+        ibound_array = m.bas6.ibound.array
+    if len(ibound_array.shape) > 2:
+        ibound_layer = ibound_array[0]  # Use first layer
+    else:
+        ibound_layer = ibound_array
+    # Plot with RdYlBu colormap and no masking to show all values
+    pmv.plot_array(ibound_layer, alpha=0.4, cmap='RdYlBu', vmin=-1, vmax=1)
+
+    # For wells, we need to ensure they're in the right coordinate system
+    # Transform wells to model coordinates if needed
+    wells_transformed = wells_gdf.copy()
+    
+    # If the modelgrid has rotation/offset, we might need coordinate transformation
+    '''if hasattr(grid_to_use, 'get_local_coords'):
+        # Convert real-world coords to local model coords
+        local_coords = grid_to_use.get_local_coords(
+            wells_gdf.geometry.x.values, 
+            wells_gdf.geometry.y.values
+        )
+        wells_transformed.geometry = gpd.points_from_xy(local_coords[0], local_coords[1])
+        wells_transformed.crs = None  # Local coordinates'''
+    
+    # Plot wells with different colors for different types
+    well_types = wells_gdf['FASSART'].unique() if 'FASSART' in wells_gdf.columns else ['Unknown']
+    colors = ['red', 'blue', 'green', 'orange']
+
+    for i, well_type in enumerate(well_types):
+        if 'FASSART' in wells_gdf.columns:
+            wells_subset = wells_transformed[wells_gdf['FASSART'] == well_type]
+        else:
+            wells_subset = wells_transformed
+    
+        wells_subset.plot(ax=ax, color=colors[i % len(colors)], 
+                         markersize=150, marker='o', 
+                         label=f'{well_type}', alpha=0.9, edgecolor='black')
+
+    # Add well ID labels using transformed coordinates
+    for idx, (orig_row, trans_row) in enumerate(zip(wells_gdf.itertuples(), wells_transformed.itertuples())):
+        ax.annotate(orig_row.GWR_ID.split('_')[-1],
+                    xy=(trans_row.geometry.x, trans_row.geometry.y),
+                    xytext=(8, 8), textcoords='offset points',
+                    fontsize=9, ha='left', va='bottom',
+                    bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.7))
+
+    # Formatting
+    ax.legend(loc='upper right')
+    ax.set_xlabel('X coordinate (m)')
+    ax.set_ylabel('Y coordinate (m)')
+    ax.set_title(f'Concession {concession_id} Wells on MODFLOW Grid\n'
+                 f'Model: {m.name} | Grid: {m.dis.nrow}×{m.dis.ncol} cells')
+    ax.set_aspect('equal')
+
+    plt.tight_layout()
+    return fig, ax
+
+
 
 def recarray_from_wells(wells):
     dtype = [('k', int), ('i', int), ('j', int), ('flux', float)]
@@ -88,7 +226,7 @@ class BoundaryHeadExtractor:
     Extract boundary heads from a parent MODFLOW model for submodel creation.
     """
     
-    def __init__(self, parent_model: flopy.modflow.Modflow, head_file_path: str):
+    def __init__(self, parent_model: flopy.modflow.Modflow, head_file_path: str, modelgrid=None):
         """
         Initialize the boundary head extractor.
         
@@ -98,15 +236,19 @@ class BoundaryHeadExtractor:
             The parent MODFLOW model object
         head_file_path : str
             Path to the parent model head file (.hds)
+        modelgrid : flopy.discretization.StructuredGrid, optional
+            Rotated/transformed modelgrid object. If None, uses parent_model.modelgrid
         """
         self.parent_model = parent_model
         self.head_file_path = head_file_path
         self.heads = None
+        # Use the provided modelgrid if available, otherwise fall back to model's grid
+        self.modelgrid = modelgrid if modelgrid is not None else parent_model.modelgrid
         self.grid_info = self._get_grid_info()
         
     def _get_grid_info(self) -> Dict:
-        """Extract grid information from parent model."""
-        mg = self.parent_model.modelgrid
+        """Extract grid information from modelgrid."""
+        mg = self.modelgrid
         
         return {
             'delr': mg.delr,
@@ -118,6 +260,81 @@ class BoundaryHeadExtractor:
             'ncol': mg.ncol,
             'nlay': mg.nlay
         }
+    
+    def get_submodel_bounds_cells(self, 
+                                 xmin: float, 
+                                 xmax: float, 
+                                 ymin: float, 
+                                 ymax: float,
+                                 buffer_cells: int = 2) -> Tuple[int, int, int, int]:
+        """
+        Convert submodel coordinate bounds to parent model cell indices.
+        Uses the rotated modelgrid for proper coordinate transformation.
+        
+        Parameters:
+        -----------
+        xmin, xmax, ymin, ymax : float
+            Submodel bounds in real-world coordinate system
+        buffer_cells : int, default 2
+            Additional buffer cells around the specified bounds
+            
+        Returns:
+        --------
+        Tuple[int, int, int, int]
+            (row_min, row_max, col_min, col_max) in parent model indices
+        """
+        mg = self.modelgrid
+        
+        # Define corner points of the bounding box
+        corner_points = [
+            (xmin, ymin),  # bottom-left
+            (xmax, ymin),  # bottom-right
+            (xmin, ymax),  # top-left
+            (xmax, ymax)   # top-right
+        ]
+        
+        # Find cell indices for all corner points
+        rows = []
+        cols = []
+        
+        for x, y in corner_points:
+            try:
+                # Try intersect method first (newer FloPy versions)
+                if hasattr(mg, 'intersect'):
+                    row, col = mg.intersect(x, y)
+                    rows.append(row)
+                    cols.append(col)
+                else:
+                    # Fallback: use coordinate arrays
+                    # Find closest cell center
+                    x_diffs = np.abs(mg.xcellcenters - x)
+                    y_diffs = np.abs(mg.ycellcenters - y)
+                    
+                    # Find minimum distance cell
+                    total_diff = x_diffs + y_diffs
+                    min_idx = np.unravel_index(np.argmin(total_diff), total_diff.shape)
+                    row, col = min_idx
+                    rows.append(row)
+                    cols.append(col)
+                    
+            except Exception as e:
+                print(f"Warning: Could not intersect point ({x}, {y}): {e}")
+                # Use approximate calculation as last resort
+                row = int((mg.yoffset - y) / np.mean(mg.delc))
+                col = int((x - mg.xoffset) / np.mean(mg.delr))
+                rows.append(max(0, min(mg.nrow-1, row)))
+                cols.append(max(0, min(mg.ncol-1, col)))
+        
+        # Get bounding box in cell indices
+        row_min = max(0, min(rows) - buffer_cells)
+        row_max = min(mg.nrow - 1, max(rows) + buffer_cells)
+        col_min = max(0, min(cols) - buffer_cells)
+        col_max = min(mg.ncol - 1, max(cols) + buffer_cells)
+        
+        print(f"Submodel cell bounds: rows {row_min}-{row_max}, cols {col_min}-{col_max}")
+        
+        return row_min, row_max, col_min, col_max
+
     
     def load_heads(self, stress_period: int = -1, time_step: int = -1) -> np.ndarray:
         """
@@ -163,37 +380,6 @@ class BoundaryHeadExtractor:
             
         except Exception as e:
             raise ValueError(f"Error loading head file: {e}")
-    
-    def get_submodel_bounds_cells(self, 
-                                 xmin: float, 
-                                 xmax: float, 
-                                 ymin: float, 
-                                 ymax: float,
-                                 buffer_cells: int = 2) -> Tuple[int, int, int, int]:
-        """
-        Convert submodel coordinate bounds to parent model cell indices.
-        
-        Parameters:
-        -----------
-        xmin, xmax, ymin, ymax : float
-            Submodel bounds in model coordinate system
-        buffer_cells : int, default 2
-            Additional buffer cells around the specified bounds
-            
-        Returns:
-        --------
-        Tuple[int, int, int, int]
-            (row_min, row_max, col_min, col_max) in parent model indices
-        """
-        mg = self.parent_model.modelgrid
-        
-        # Convert coordinates to cell indices
-        col_min = max(0, mg.get_col(xmin)[0] - buffer_cells)
-        col_max = min(mg.ncol - 1, mg.get_col(xmax)[0] + buffer_cells)
-        row_max = max(0, mg.get_row(ymin)[0] - buffer_cells)  # Note: row increases downward
-        row_min = min(mg.nrow - 1, mg.get_row(ymax)[0] + buffer_cells)
-        
-        return row_min, row_max, col_min, col_max
     
     def extract_boundary_heads(self,
                               submodel_bounds: Tuple[float, float, float, float],
@@ -370,3 +556,161 @@ class BoundaryHeadExtractor:
         ax.set_title('Submodel Boundary Cells (Layer 1)')
         plt.colorbar(ax.collections[0], label='Head (m)')
         plt.show()
+
+
+
+
+
+def plot_submodel_extent_on_parent_model(m, modelgrid, wells_gdf, concession_id, submodel_bounds, submodel_grid):
+    """
+    Plot the submodel extent on the parent model grid to verify positioning.
+    
+    Parameters:
+    -----------
+    m : flopy.modflow.Modflow
+        The parent MODFLOW model object
+    modelgrid : flopy.discretization.StructuredGrid
+        The rotated/transformed modelgrid object
+    wells_gdf : geopandas.GeoDataFrame
+        GeoDataFrame containing well locations
+    concession_id : int or str
+        The concession ID for labeling
+    submodel_bounds : tuple
+        (xmin, xmax, ymin, ymax) in real-world coordinates
+    submodel_grid : dict
+        Dictionary containing submodel grid information
+    """
+    fig, ax = plt.subplots(figsize=(14, 12))
+
+    # Use the provided modelgrid for proper coordinate handling
+    pmv = flopy.plot.PlotMapView(model=m, modelgrid=modelgrid, ax=ax)
+
+    # Plot the parent model grid (light)
+    pmv.plot_grid(alpha=0.2, color='lightgray', linewidth=0.2)
+
+    # Plot ibound to show active/inactive cells
+    if hasattr(m, 'bas6') and hasattr(m.bas6, 'ibound'):
+        ibound_array = m.bas6.ibound.array
+        if len(ibound_array.shape) > 2:
+            ibound_layer = ibound_array[0]  # Use first layer
+        else:
+            ibound_layer = ibound_array
+        pmv.plot_array(ibound_layer, alpha=0.3, cmap='RdYlBu', vmin=-1, vmax=1)
+
+    # Create submodel boundary rectangle
+    xmin, xmax, ymin, ymax = submodel_bounds
+    
+    # Create a rectangle for the submodel bounds
+    from matplotlib.patches import Rectangle
+    rect = Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+                     linewidth=3, edgecolor='red', facecolor='red', alpha=0.2,
+                     label=f'Submodel Domain\n{submodel_grid["nrow"]}×{submodel_grid["ncol"]} cells')
+    ax.add_patch(rect)
+    
+    # Add corner coordinates as text
+    ax.text(xmin, ymax + 20, f'({xmin:.0f}, {ymax:.0f})', 
+            ha='left', va='bottom', fontsize=9, 
+            bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.8))
+    ax.text(xmax, ymin - 20, f'({xmax:.0f}, {ymin:.0f})', 
+            ha='right', va='top', fontsize=9,
+            bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.8))
+
+    # Plot wells with different colors for different types
+    well_types = wells_gdf['FASSART'].unique() if 'FASSART' in wells_gdf.columns else ['Unknown']
+    colors = ['darkred', 'darkblue', 'darkgreen', 'orange']
+
+    for i, well_type in enumerate(well_types):
+        if 'FASSART' in wells_gdf.columns:
+            wells_subset = wells_gdf[wells_gdf['FASSART'] == well_type]
+        else:
+            wells_subset = wells_gdf
+    
+        wells_subset.plot(ax=ax, color=colors[i % len(colors)], 
+                         markersize=200, marker='o', 
+                         label=f'Wells: {well_type}', alpha=1.0, 
+                         edgecolor='white', linewidth=2, zorder=10)
+
+    # Add well ID labels
+    for idx, row in wells_gdf.iterrows():
+        ax.annotate(row.GWR_ID.split('_')[-1],
+                    xy=(row.geometry.x, row.geometry.y),
+                    xytext=(10, 10), textcoords='offset points',
+                    fontsize=10, ha='left', va='bottom', fontweight='bold',
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.8),
+                    zorder=11)
+
+    # Add buffer distance annotations
+    lateral_dist = (xmax - xmin - (wells_gdf.geometry.x.max() - wells_gdf.geometry.x.min())) / 2
+    upstream_dist = wells_gdf.geometry.y.min() - ymin
+    downstream_dist = ymax - wells_gdf.geometry.y.max()
+    
+    # Add dimension annotations
+    ax.annotate(f'Lateral buffer: {lateral_dist:.0f}m', 
+                xy=(xmin - 50, (ymin + ymax) / 2), rotation=90,
+                ha='center', va='bottom', fontsize=9,
+                bbox=dict(boxstyle='round,pad=0.2', facecolor='lightblue', alpha=0.7))
+    
+    ax.annotate(f'Upstream: {upstream_dist:.0f}m', 
+                xy=((xmin + xmax) / 2, ymin - 30),
+                ha='center', va='top', fontsize=9,
+                bbox=dict(boxstyle='round,pad=0.2', facecolor='lightblue', alpha=0.7))
+    
+    ax.annotate(f'Downstream: {downstream_dist:.0f}m', 
+                xy=((xmin + xmax) / 2, ymax + 30),
+                ha='center', va='bottom', fontsize=9,
+                bbox=dict(boxstyle='round,pad=0.2', facecolor='lightblue', alpha=0.7))
+
+    # Add grid lines for the submodel (if desired)
+    # This shows the refined grid resolution
+    n_grid_lines = 10  # Show every nth grid line to avoid clutter
+    if submodel_grid['ncol'] > n_grid_lines:
+        step_col = submodel_grid['ncol'] // n_grid_lines
+        cell_width = (xmax - xmin) / submodel_grid['ncol']
+        for i in range(0, submodel_grid['ncol'], step_col):
+            x_line = xmin + i * cell_width
+            ax.axvline(x_line, ymin=(ymin - ax.get_ylim()[0]) / (ax.get_ylim()[1] - ax.get_ylim()[0]),
+                      ymax=(ymax - ax.get_ylim()[0]) / (ax.get_ylim()[1] - ax.get_ylim()[0]),
+                      color='red', alpha=0.4, linewidth=0.5)
+    
+    if submodel_grid['nrow'] > n_grid_lines:
+        step_row = submodel_grid['nrow'] // n_grid_lines
+        cell_height = (ymax - ymin) / submodel_grid['nrow']
+        for i in range(0, submodel_grid['nrow'], step_row):
+            y_line = ymin + i * cell_height
+            ax.axhline(y_line, xmin=(xmin - ax.get_xlim()[0]) / (ax.get_xlim()[1] - ax.get_xlim()[0]),
+                      xmax=(xmax - ax.get_xlim()[0]) / (ax.get_xlim()[1] - ax.get_xlim()[0]),
+                      color='red', alpha=0.4, linewidth=0.5)
+
+    # Formatting
+    ax.legend(loc='upper right', fontsize=10)
+    ax.set_xlabel('X coordinate (m)', fontsize=12)
+    ax.set_ylabel('Y coordinate (m)', fontsize=12)
+    
+    # Calculate resolution info
+    parent_res = np.mean(modelgrid.delr)  # Assuming uniform parent grid
+    sub_res = (xmax - xmin) / submodel_grid['ncol']
+    refinement_ratio = parent_res / sub_res
+    
+    ax.set_title(f'Submodel Domain for Concession {concession_id}\n'
+                 f'Parent Grid: {parent_res:.0f}m → Submodel: {sub_res:.0f}m '
+                 f'(Refinement: {refinement_ratio:.1f}×)', fontsize=14)
+    ax.set_aspect('equal')
+
+    # Set reasonable axis limits (zoom in around the submodel area)
+    margin = max((xmax - xmin), (ymax - ymin)) * 0.2
+    ax.set_xlim(xmin - margin, xmax + margin)
+    ax.set_ylim(ymin - margin, ymax + margin)
+
+    plt.tight_layout()
+    plt.show()
+    
+    # Print summary information
+    print(f"\n=== Submodel Grid Summary ===")
+    print(f"Submodel bounds: ({xmin:.0f}, {ymin:.0f}) to ({xmax:.0f}, {ymax:.0f})")
+    print(f"Submodel size: {xmax-xmin:.0f}m × {ymax-ymin:.0f}m")
+    print(f"Grid resolution: {sub_res:.1f}m × {sub_res:.1f}m")
+    print(f"Grid dimensions: {submodel_grid['nrow']} rows × {submodel_grid['ncol']} columns")
+    print(f"Total cells: {submodel_grid['nrow'] * submodel_grid['ncol']:,}")
+    print(f"Refinement ratio: {refinement_ratio:.1f}× finer than parent grid")
+    
+    return fig, ax

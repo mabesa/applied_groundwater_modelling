@@ -30,10 +30,25 @@ def convert_modflow2005_to_nwt(mf2005, new_model_name="limmat_valley_nwt"):
     
     print("Creating new MODFLOW-NWT model...")
     
-    
-    # 1. Copy DIS package (usually unchanged)
     print("Copying DIS package...")
     dis_old = mf2005.get_package('DIS')
+    
+    # Get coordinate system information from original model
+    original_grid = mf2005.modelgrid
+    xul = getattr(dis_old, 'xul', original_grid.xoffset if hasattr(original_grid, 'xoffset') else 0.0)
+    yul = getattr(dis_old, 'yul', original_grid.yoffset if hasattr(original_grid, 'yoffset') else 0.0)
+    angrot = getattr(dis_old, 'angrot', original_grid.angrot if hasattr(original_grid, 'angrot') else 0.0)
+    proj4_str = getattr(dis_old, 'proj4_str', original_grid.crs if hasattr(original_grid, 'crs') else None)
+    
+    # If coordinates are still not available, try to get from original modelgrid
+    if xul == 0.0 and yul == 0.0 and hasattr(original_grid, 'extent'):
+        extent = original_grid.extent
+        xul = extent[0]  # xmin
+        yul = extent[3]  # ymax
+    
+    print(f"Preserving coordinate system: xul={xul}, yul={yul}, angrot={angrot}, crs={proj4_str}")
+    
+    # 1. Copy DIS package (usually unchanged)
     dis_new = flopy.modflow.ModflowDis(
         mf_nwt,
         nlay=dis_old.nlay,
@@ -46,8 +61,21 @@ def convert_modflow2005_to_nwt(mf2005, new_model_name="limmat_valley_nwt"):
         nper=dis_old.nper,
         perlen=dis_old.perlen,
         nstp=dis_old.nstp,
-        steady=dis_old.steady
+        steady=dis_old.steady,
+        xul=xul,
+        yul=yul,
+        angrot=angrot,
+        proj4_str=proj4_str
     )
+    
+    # IMPORTANT: Explicitly set the modelgrid with coordinate information
+    if hasattr(original_grid, 'crs') and original_grid.crs is not None:
+        mf_nwt.modelgrid.set_coord_info(
+            xoff=original_grid.xoffset,
+            yoff=original_grid.yoffset,
+            angrot=original_grid.angrot,
+            crs=original_grid.crs
+        )
     
     # 2. Convert BAS to BAS6 (usually unchanged)
     print("Copying BAS6 package...")
