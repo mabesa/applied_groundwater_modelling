@@ -2770,4 +2770,110 @@ def _apply_geological_constraints_improved(thickness_array, original_thickness_v
     
     return thickness_array
 
+def interpolate_parent_to_submodel(parent_array, parent_grid, sub_grid, method='linear', parent_ibound=None):
+    """
+    Interpolate a parent model array to submodel grid using scipy interpolation.
+    Only uses values from active cells in the parent model.
+    
+    Parameters
+    ----------
+    parent_array : np.ndarray
+        2D array of parameter values from parent model
+    parent_grid : flopy.discretization.StructuredGrid
+        Parent model grid
+    sub_grid : flopy.discretization.StructuredGrid
+        Submodel grid
+    method : str, optional
+        Interpolation method ('linear', 'nearest', 'cubic')
+    parent_ibound : np.ndarray, optional
+        Parent model IBOUND array. If provided, only active cells (ibound=1) are used
+    
+    Returns
+    -------
+    np.ndarray
+        Interpolated parameter array for submodel grid
+    """
+    from scipy.interpolate import griddata
+    import numpy as np
+    
+    # Get parent model cell centers
+    parent_x = parent_grid.xcellcenters
+    parent_y = parent_grid.ycellcenters
+    
+    # Create masks for valid data
+    valid_mask = np.isfinite(parent_array) & (parent_array > 0)  # Exclude zeros and NaNs
+    
+    # If IBOUND is provided, also exclude inactive cells
+    if parent_ibound is not None:
+        if parent_ibound.ndim == 3:
+            # Use first layer if 3D
+            active_mask = parent_ibound[0, :, :] == 1
+        else:
+            # Use 2D array directly
+            active_mask = parent_ibound == 1
+        
+        valid_mask = valid_mask & active_mask
+        print(f"    Using {valid_mask.sum()} active cells out of {parent_array.size} total cells")
+    else:
+        print(f"    Using {valid_mask.sum()} valid cells out of {parent_array.size} total cells")
+    
+    # If no valid cells found, return array filled with NaN
+    if valid_mask.sum() == 0:
+        print(f"    No valid cells found in parent array for interpolation - returning NaN array")
+        nan_array = np.full((sub_grid.nrow, sub_grid.ncol), np.nan)
+        return nan_array
+    
+    # Extract coordinates and values from valid cells only
+    valid_x = parent_x[valid_mask]
+    valid_y = parent_y[valid_mask]
+    valid_values = parent_array[valid_mask]
+    
+    print(f"    Parameter range from valid cells: {valid_values.min():.6f} to {valid_values.max():.6f}")
+    
+    # Get submodel cell center coordinates
+    sub_x = sub_grid.xcellcenters.ravel()
+    sub_y = sub_grid.ycellcenters.ravel()
+    
+    # Create point arrays for interpolation
+    parent_points = np.column_stack([valid_x, valid_y])
+    sub_points = np.column_stack([sub_x, sub_y])
+    
+    # Interpolate using griddata
+    try:
+        interpolated_flat = griddata(
+            parent_points, valid_values, sub_points,
+            method=method, fill_value=None
+        )
+
+        # Set all negative values to NaN
+        negative_mask = interpolated_flat < 0
+        if np.any(negative_mask):
+            print(f"    Setting {negative_mask.sum()} negative interpolated values to NaN")
+            interpolated_flat[negative_mask] = np.nan
+        
+        # Fill any NaN values with nearest neighbor interpolation
+        nan_mask = np.isnan(interpolated_flat)
+        if np.any(nan_mask):
+            print(f"    Filling {nan_mask.sum()} NaN values with nearest neighbor interpolation")
+            nearest_values = griddata(
+                parent_points, valid_values, sub_points[nan_mask],
+                method='nearest'
+            )
+            interpolated_flat[nan_mask] = nearest_values
+        
+    except Exception as e:
+        print(f"    {method} interpolation failed: {e}")
+        print(f"    Falling back to nearest neighbor interpolation")
+        interpolated_flat = griddata(
+            parent_points, valid_values, sub_points,
+            method='nearest'
+        )
+    
+    # Reshape to submodel grid dimensions
+    interpolated = interpolated_flat.reshape(sub_grid.nrow, sub_grid.ncol)
+    
+    print(f"    Interpolated range: {interpolated.min():.6f} to {interpolated.max():.6f}")
+    
+    return interpolated
+
 

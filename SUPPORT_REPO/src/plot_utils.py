@@ -1,4 +1,6 @@
+import os
 import matplotlib.pyplot as plt
+import pandas as pd
 import numpy as np
 import flopy
 import flopy.plot
@@ -309,3 +311,272 @@ def plot_cross_section(modelgrid, row=None, col=None, mf=None, ibound=None, rive
     print(f"Active cells in this section: {np.sum(active_mask)} out of {len(active_mask)}")
     
     return fig, axes
+
+def plot_model_results(model, workspace, model_name, show_heads=True, show_vectors=True, 
+                      show_grid=True, show_ibound=True, show_wells=True, contour_levels=None, 
+                      vector_scale=1e5, figsize=(12, 10), title=None, save_path=None):
+    """
+    Plot model results showing heads and/or flow vectors.
+    
+    Parameters:
+    -----------
+    model : flopy.modflow object
+        The MODFLOW model object
+    workspace : str
+        Path to model workspace
+    model_name : str
+        Name of the model (used for file names)
+    show_heads : bool, default True
+        Whether to show head contours
+    show_vectors : bool, default True
+        Whether to show flow vectors
+    show_grid : bool, default True
+        Whether to show model grid
+    show_ibound : bool, default True
+        Whether to show IBOUND boundaries
+    show_wells : bool, default True
+        Whether to show well locations from WEL package
+    contour_levels : array-like, optional
+        Specific contour levels for heads
+    vector_scale : float, default 1e5
+        Scale factor for flow vectors
+    figsize : tuple, default (12, 10)
+        Figure size
+    title : str, optional
+        Custom title for the plot
+    save_path : str, optional
+        Path to save the figure
+        
+    Returns:
+    --------
+    fig, ax : matplotlib figure and axes objects
+    """
+    import os
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import flopy.utils
+    
+    # Initialize data containers
+    head_data = None
+    frf_data = None
+    fff_data = None
+    times = None
+    
+    # Load budget data if showing vectors
+    if show_vectors:
+        try:
+            budgobj = flopy.utils.CellBudgetFile(os.path.join(workspace, f"{model_name}.cbc"))
+            times = budgobj.get_times()
+            kstpkper = budgobj.get_kstpkper()
+            
+            if len(kstpkper) > 0:
+                # Extract flow right face and flow front face
+                frf_data = budgobj.get_data(text="FLOW RIGHT FACE", totim=times[-1])[0]
+                fff_data = budgobj.get_data(text="FLOW FRONT FACE", totim=times[-1])[0]
+                print(f"Flow data loaded successfully for time {times[-1]}")
+            else:
+                print("No budget data found for flow vectors")
+                show_vectors = False
+        except Exception as e:
+            print(f"Error loading flow data: {e}")
+            show_vectors = False
+    
+    # Load head data if showing heads
+    if show_heads:
+        try:
+            headobj = flopy.utils.HeadFile(os.path.join(workspace, f"{model_name}.hds"))
+            if times is None:
+                times = headobj.get_times()
+            
+            head_data = headobj.get_data(totim=times[-1])
+            if head_data.ndim == 3:
+                head_data = head_data[0]  # Get first layer
+            
+            # Mask head array where ibound == 0 (inactive cells)
+            if hasattr(model, 'bas6') and model.bas6.ibound is not None:
+                ibound = model.bas6.ibound.array[0]  # First layer
+                head_data = np.where(ibound == 0, np.nan, head_data)
+            
+            print(f"Head data loaded successfully for time {times[-1]}")
+        except Exception as e:
+            print(f"Error loading head data: {e}")
+            show_heads = False
+    
+    # Check if we have any data to plot
+    if not show_heads and not show_vectors:
+        print("No data available to plot")
+        return None, None
+    
+    # Create the plot
+    fig, ax = plt.subplots(figsize=figsize)
+    pmv = flopy.plot.PlotMapView(modelgrid=model.modelgrid, ax=ax)
+    
+    # Track what was actually plotted for legend
+    legend_elements = []
+    
+    # Plot IBOUND boundaries
+    if show_ibound:
+        pmv.plot_ibound()
+    
+    # Plot model grid
+    if show_grid:
+        pmv.plot_grid(alpha=0.2, linewidth=0.4)
+    
+    # Plot head contours
+    if show_heads and head_data is not None:
+        if contour_levels is not None:
+            cont = pmv.contour_array(head_data, levels=contour_levels)
+        else:
+            cont = pmv.contour_array(head_data)
+        plt.clabel(cont, inline=1, fontsize=8, fmt="%1.1f")
+    
+    # Plot flow vectors
+    if show_vectors and frf_data is not None and fff_data is not None:
+        quiver = pmv.plot_vector(frf_data, fff_data, scale=vector_scale, 
+                                headwidth=3, headlength=5, headaxislength=4.5, 
+                                color='blue', alpha=0.7)
+        legend_elements.append('vectors')
+    
+    # Plot wells if requested
+    if show_wells:
+        try:
+            if hasattr(model, 'wel') and model.wel is not None:
+                # Use FloPy's built-in plot_bc method - much simpler!
+                pmv.plot_bc(package=model.wel, kper=0, alpha=0.8)
+                print(f"Wells plotted using FloPy's plot_bc method")
+                legend_elements.append('wells')
+            else:
+                print("No WEL package found in model")
+        except Exception as e:
+            print(f"Error plotting wells: {e}")
+    
+    # Set title
+    if title is None:
+        title_parts = []
+        if show_heads:
+            title_parts.append("Head contours")
+        if show_vectors:
+            title_parts.append("flow vectors")
+        if show_wells:
+            title_parts.append("wells")
+        title = f"{' and '.join(title_parts)} at time {times[-1] if times else 'final'}"
+    
+    ax.set_title(title)
+    ax.set_xlabel("X (m)")
+    ax.set_ylabel("Y (m)")
+    ax.set_aspect('equal')
+    
+    # Add legend only if there are actually legend entries
+    if len(legend_elements) > 0:
+        try:
+            ax.legend(loc='best', bbox_to_anchor=(1.05, 1), borderaxespad=0)
+            plt.tight_layout()
+        except UserWarning:
+            # If no legend entries exist, just continue without legend
+            plt.tight_layout()
+    else:
+        plt.tight_layout()
+    
+    # Save figure if path provided
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Figure saved to: {save_path}")
+    
+    plt.show()
+    return fig, ax
+
+def visualize_budget(workspace, model_name, threshold=100.0):
+    """
+    Visualize MODFLOW budget terms with improved formatting and conditional rounding.
+    
+    Parameters:
+    -----------
+    workspace : str
+        Path to the model workspace
+    model_name : str
+        Name of the model
+    threshold : float
+        Threshold above which values are rounded to integers (default: 100.0)
+    """
+    try:
+        # Read budget from list file
+        list_budget = flopy.utils.MfListBudget(
+            os.path.join(workspace, f'{model_name}.list'))
+        budget = list_budget.get_budget()[-1]  # Last time step
+        
+        df = pd.DataFrame(budget).T
+
+        # Identify _IN, _OUT, and summary rows
+        in_rows = df.index[df.index.str.endswith('_IN')]
+        out_rows = df.index[df.index.str.endswith('_OUT')]
+        summary_rows = df.index[~(df.index.str.endswith('_IN') | df.index.str.endswith('_OUT'))]
+
+        # Filter summary rows to IN-OUT and PERCENT_DISCREPANCY
+        summary_rows = summary_rows[summary_rows.str.contains('IN-OUT|PERCENT_DISCREPANCY')]
+
+        # Concatenate in desired order
+        df_reordered = pd.concat([df.loc[in_rows], df.loc[out_rows], df.loc[summary_rows]])
+        
+        # Check if most values are above threshold for conditional rounding
+        numeric_values = df_reordered.select_dtypes(include=[np.number]).values.flatten()
+        numeric_values = numeric_values[~np.isnan(numeric_values)]  # Remove NaN values
+        
+        if len(numeric_values) > 0:
+            above_threshold_count = np.sum(np.abs(numeric_values) >= threshold)
+            total_count = len(numeric_values)
+            
+            if above_threshold_count > total_count / 2:  # More than half are above threshold
+                # Round to integers for large values
+                df_reordered = df_reordered.round(0).astype(int, errors='ignore')
+                unit_label = "m³/day (rounded to integers)"
+            else:
+                # Keep decimal places for smaller values
+                df_reordered = df_reordered.round(2)
+                unit_label = "m³/day"
+        else:
+            df_reordered = df_reordered.round(2)
+            unit_label = "m³/day"
+
+        # Remove columns that are all zeros (if any exist)
+        df_clean = df_reordered.loc[:, (df_reordered != 0).any(axis=0)]
+        
+        print(f"Budget terms ({unit_label}) at end of first stress period:")
+        print("=" * 60)
+        
+        if len(in_rows) > 0:
+            print("\n📈 INFLOWS:")
+            print("-" * 30)
+            inflow_df = df_clean.loc[in_rows]
+            print(inflow_df.to_string())
+            
+        if len(out_rows) > 0:
+            print("\n📉 OUTFLOWS:")
+            print("-" * 30)
+            outflow_df = df_clean.loc[out_rows]
+            print(outflow_df.to_string())
+            
+        if len(summary_rows) > 0:
+            print("\n📊 SUMMARY:")
+            print("-" * 30)
+            summary_df = df_clean.loc[summary_rows]
+            print(summary_df.to_string())
+            
+        # Calculate and display totals
+        if len(in_rows) > 0 and len(out_rows) > 0:
+            total_in = df_clean.loc[in_rows].sum(axis=0, numeric_only=True)
+            total_out = df_clean.loc[out_rows].sum(axis=0, numeric_only=True)
+            
+            print("\n💰 TOTALS:")
+            print("-" * 30)
+            print(f"Total Inflow:  {total_in.iloc[0]:>10,.0f} m³/day")
+            print(f"Total Outflow: {total_out.iloc[0]:>10,.0f} m³/day")
+            print(f"Net Flow:      {(total_in.iloc[0] + total_out.iloc[0]):>10,.0f} m³/day")
+            
+        return df_clean
+        
+    except Exception as e:
+        print(f"Error reading budget: {e}")
+        return None
+    
+
+
