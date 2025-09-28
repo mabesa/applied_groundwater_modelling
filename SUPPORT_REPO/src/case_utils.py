@@ -714,3 +714,53 @@ def plot_submodel_extent_on_parent_model(m, modelgrid, wells_gdf, concession_id,
     print(f"Refinement ratio: {refinement_ratio:.1f}× finer than parent grid")
     
     return fig, ax
+
+def extract_boundary_heads_from_clipped_polygon(parent_model, parent_heads, clipped_boundary, 
+                                               submodel_grid, parent_modelgrid):
+    """
+    Extract boundary heads only along the clipped submodel boundary.
+    This ensures we only get CHD cells where the parent model is active.
+    """
+    
+    # Get boundary cells by finding submodel cells that intersect the clipped boundary
+    boundary_cells = []
+    
+    for i in range(submodel_grid.nrow):
+        for j in range(submodel_grid.ncol):
+            # Get submodel cell polygon
+            cell_vertices = submodel_grid.get_cell_vertices(i, j)
+            cell_polygon = Polygon(cell_vertices)
+            
+            # Check if cell is on the boundary (intersects but isn't fully contained)
+            if (clipped_boundary.boundary.intersects(cell_polygon) or 
+                clipped_boundary.boundary.touches(cell_polygon)):
+                
+                # Get cell center coordinates
+                cell_x = submodel_grid.xcellcenters[i, j]
+                cell_y = submodel_grid.ycellcenters[i, j]
+                
+                # Map to parent model and extract head
+                try:
+                    parent_row, parent_col = parent_modelgrid.intersect(cell_x, cell_y)
+                    if (0 <= parent_row < parent_model.nrow and 
+                        0 <= parent_col < parent_model.ncol):
+                        
+                        parent_head = parent_heads[0, parent_row, parent_col]
+                        
+                        # Only add if parent cell is active and head is valid
+                        parent_ibound = parent_model.bas6.ibound.array[0, parent_row, parent_col]
+                        if parent_ibound == 1 and np.isfinite(parent_head):
+                            boundary_cells.append({
+                                'submodel_row': i,
+                                'submodel_col': j, 
+                                'head': parent_head,
+                                'parent_row': parent_row,
+                                'parent_col': parent_col
+                            })
+                            
+                except Exception as e:
+                    print(f"Warning: Could not map cell ({i}, {j}) to parent: {e}")
+                    continue
+    
+    return boundary_cells
+
