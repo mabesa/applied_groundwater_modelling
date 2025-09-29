@@ -1,0 +1,3 @@
+# General inststructions for student case studies
+
+Please review the case study template in folder `group_0` (the demo group). Copy the notebook and configuration file therein to the folder with your group number and work on your own case study. Make sure your case study notebook runs in your groups folder without error messages. You will hand in your configuration file as well as the case study notebook via Moodle.
