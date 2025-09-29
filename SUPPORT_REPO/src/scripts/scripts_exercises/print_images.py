@@ -32,11 +32,25 @@ def display_image(image_filename: str,
     ...               alt_text="Topographic map showing the Tsalet catchment boundary",
     ...               caption="Figure 1: Tsalet catchment area from Swiss Federal Office")
     """
-    base_path = os.path.join("..", "SUPPORT_REPO/static/figures", image_folder)
-    image_path = os.path.join(base_path, image_filename)
+    # Try multiple possible paths based on your file structure
+    possible_paths = [
+        os.path.join("..", "..", "..", "SUPPORT_REPO", "static", "figures", image_folder, image_filename),
+        os.path.join("..", "SUPPORT_REPO", "static", "figures", image_folder, image_filename),
+        os.path.join("..", "..", "SUPPORT_REPO", "static", "figures", image_folder, image_filename),
+        # Add more paths if needed
+    ]
     
-    if not os.path.exists(image_path):
-        print(f"Error: Image '{image_filename}' not found at {os.path.abspath(image_path)}")
+    image_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            image_path = path
+            break
+    
+    if image_path is None:
+        print(f"Error: Image '{image_filename}' not found in folder '{image_folder}'")
+        print("Tried paths:")
+        for path in possible_paths:
+            print(f"  {os.path.abspath(path)}")
         return
     
     # Create and display figure

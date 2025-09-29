@@ -69,6 +69,12 @@ DATA_URLS = {
                 "layer": "id",  # Layer name for model boundary
                 "readme_url": "https://www.dropbox.com/scl/fi/8aiw2dnfly2i1stetsdjq/readme.md?rlkey=xbi96i69wki4la5y6gflvydk2&dl=1",
             }, 
+            "model_boundary_segments": {
+                "url": "https://www.dropbox.com/scl/fi/47z3i89g3mzjiymngjkaa/boundary_segments.gpkg?rlkey=ndostl3znv69uxz7ib9uw40dl&dl=1", 
+                "filename": "limmat_model_boundary_segments.gpkg",
+                "layer": "id",  # Layer name for model boundary segments
+                "readme_url": "https://www.dropbox.com/scl/fi/8aiw2dnfly2i1stetsdjq/readme.md?rlkey=xbi96i69wki4la5y6gflvydk2&dl=1", 
+            },
             "chd_cells": {
                 "url": "https://www.dropbox.com/scl/fi/gurjv5q4zwtgzoe2amgoh/chd_boundary_cells.gpkg?rlkey=v1ryll6u8d3xbtoz9nqdt7ozy&dl=1", 
                 "filename": "chd_boundary_cells.gpkg",
@@ -90,10 +96,16 @@ DATA_URLS = {
                 "readme_url": "https://www.dropbox.com/scl/fi/nk2tdlgv3g93lpgfakd61/readme.md?rlkey=ub0wm2d0ggt3ex72lnhmxdhn4&dl=1",
             },
             "parameter_zones": {
-                "url": "https://www.dropbox.com/scl/fi/142iyp1mwappzek2be5bq/parameterization_zones.gpkg?rlkey=mqeybl7q78qe46cm9l70pea79&dl=1", 
+                #"url": "https://www.dropbox.com/scl/fi/142iyp1mwappzek2be5bq/parameterization_zones.gpkg?rlkey=mqeybl7q78qe46cm9l70pea79&dl=1", 
+                "url": "https://www.dropbox.com/scl/fi/knhe7w2wfsosruf2ryiyn/parameterization_3zones.gpkg?rlkey=j7e2zn6tr73m5q955h75li9yt&dl=1", 
                 "filename": "parameterization_zones.gpkg", 
                 "readme_url": "https://www.dropbox.com/scl/fi/6fa7vuff9muqjsk55evpn/readme.md?rlkey=lxowf94vw9ispzylnl3bxagxo&dl=1", 
-            },
+            }, 
+            "baseline_model": {
+                "url": "https://www.dropbox.com/scl/fi/arl24crs8hethsls2c8wk/limmat_valley_model_nwt.zip?rlkey=dqjn7gwuef8k0hhq09bbo4t2m&dl=1", 
+                "filename": "limmat_valley_base_model_nwt.zip",
+                "readme_url": "https://www.dropbox.com/scl/fi/d75bbhtt75hj7mjjbm9g4/readme.md?rlkey=mke9qqfruozxx5b5lg0fr40z9&dl=1",
+            }, 
             "river_data": {
                 "url": "https://www.dropbox.com/scl/fi/q8x027ahe5cpqcbs52tei/Pegel_Tagesmittel.zip?rlkey=ewwzx25nn35ra8dfe5lui2hge&dl=1", 
                 "filename": "Pegel_Tagesmittel.zip",
