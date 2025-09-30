@@ -579,4 +579,499 @@ def visualize_budget(workspace, model_name, threshold=100.0):
         return None
     
 
+def plot_head_difference(model_base, model_scenario, ws_base, ws_scenario, model_name, 
+                        save_path=None, show_depth_plots=True, show_wells=True, 
+                        well_marker_size=100, scenario_name="Scenario", 
+                        min_contour_diff=0.01):
+    """
+    Plot the difference in groundwater heads between base model and scenario model.
+    
+    Parameters:
+    -----------
+    model_base : flopy.modflow.Modflow
+        Base model 
+    model_scenario : flopy.modflow.Modflow  
+        Scenario model to compare against base
+    ws_base : str
+        Workspace path for base model
+    ws_scenario : str
+        Workspace path for scenario model
+    model_name : str
+        Model name for file naming
+    save_path : str, optional
+        Path to save the figure
+    show_depth_plots : bool, optional
+        Whether to show the second row of plots (depth to water table analysis).
+        Default is True. If False, only shows head analysis plots.
+    show_wells : bool, optional
+        Whether to show well locations on the plots. Default is True.
+    well_marker_size : int, optional
+        Size of well markers. Use smaller values (e.g., 50-80) for regional models,
+        larger values (e.g., 100-150) for local models. Default is 100.
+    scenario_name : str, optional
+        Name for the scenario model in plot titles. Default is "Scenario".
+    min_contour_diff : float, optional
+        Minimum head difference (in meters) required to show contours. 
+        Differences smaller than this threshold will not display contours 
+        to avoid noisy patterns from numerical precision issues. Default is 0.01 m.
+    
+    Returns:
+    --------
+    fig, ax : matplotlib figure and axis objects
+    head_diff : numpy.ndarray
+        Array of head differences (base - scenario). Positive values indicate 
+        drawdown in scenario relative to base model.
+    """
+    
+    # Load head files
+    hds_base_path = os.path.join(ws_base, f"{model_name}.hds")
+    hds_scenario_path = os.path.join(ws_scenario, f"{model_name}.hds")
+    
+    if not os.path.exists(hds_base_path):
+        raise FileNotFoundError(f"Base model heads file not found: {hds_base_path}")
+    if not os.path.exists(hds_scenario_path):
+        raise FileNotFoundError(f"Scenario model heads file not found: {hds_scenario_path}")
+    
+    # Load heads
+    headobj_base = flopy.utils.HeadFile(hds_base_path)
+    headobj_scenario = flopy.utils.HeadFile(hds_scenario_path)
+    
+    heads_base = headobj_base.get_data()[0]  # Layer 0, stress period 0
+    heads_scenario = headobj_scenario.get_data()[0]  # Layer 0, stress period 0
+    
+    # Calculate head difference (base - scenario, so drawdown is positive)
+    head_diff = heads_base - heads_scenario
+    
+    # Mask inactive cells
+    ibound = model_base.bas6.ibound.array[0]
+    head_diff_masked = np.ma.masked_where(ibound <= 0, head_diff)
+    heads_base_masked = np.ma.masked_where(ibound <= 0, heads_base)
+    heads_scenario_masked = np.ma.masked_where(ibound <= 0, heads_scenario)
+    
+    # Extract well locations from both models if show_wells is True
+    wel_base = []
+    wel_scenario = []
+    wel_base_pumping = []
+    wel_base_injection = []
+    wel_scenario_pumping = []
+    wel_scenario_injection = []
+    
+    if show_wells:
+        # Extract wells from base model
+        if hasattr(model_base, 'wel') and model_base.wel is not None:
+            wel_data_base = model_base.wel.stress_period_data[0]  # First stress period
+            for wel_cell in wel_data_base:
+                layer, row, col, rate = wel_cell
+                x = model_base.modelgrid.xcellcenters[row, col]
+                y = model_base.modelgrid.ycellcenters[row, col]
+                
+                if rate < 0:  # Pumping (negative rate)
+                    wel_base_pumping.append((x, y, rate))
+                else:  # Injection (positive rate)
+                    wel_base_injection.append((x, y, rate))
+                
+                wel_base.append((x, y, rate, row, col))
+        
+        # Extract wells from scenario model
+        if hasattr(model_scenario, 'wel') and model_scenario.wel is not None:
+            wel_data_scenario = model_scenario.wel.stress_period_data[0]  # First stress period
+            for wel_cell in wel_data_scenario:
+                layer, row, col, rate = wel_cell
+                x = model_scenario.modelgrid.xcellcenters[row, col]
+                y = model_scenario.modelgrid.ycellcenters[row, col]
+                
+                if rate < 0:  # Pumping (negative rate)
+                    wel_scenario_pumping.append((x, y, rate))
+                else:  # Injection (positive rate)
+                    wel_scenario_injection.append((x, y, rate))
+                
+                wel_scenario.append((x, y, rate, row, col))
+    
+    # Create figure based on show_depth_plots parameter
+    if show_depth_plots:
+        # Create figure with 6 subplots (2 rows, 3 columns)
+        fig, axes = plt.subplots(2, 3, figsize=(21, 12))
+        row_title_prefix = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)']
+    else:
+        # Create figure with 3 subplots (1 row, 3 columns)
+        fig, axes = plt.subplots(1, 3, figsize=(21, 6))
+        # Ensure axes is 2D for consistent indexing
+        axes = axes.reshape(1, -1)
+        row_title_prefix = ['(a)', '(b)', '(c)']
+    
+    # Plot 1: Base model heads
+    ax1 = axes[0, 0]
+    pmv1 = flopy.plot.PlotMapView(model=model_base, ax=ax1)
+    im1 = pmv1.plot_array(heads_base_masked, alpha=0.7, cmap='Blues')
+    pmv1.plot_grid(color='gray', alpha=0.3, linewidth=0.5)
+    
+    # Add contours for base heads
+    contour_levels_base = np.linspace(np.nanmin(heads_base_masked), 
+                                     np.nanmax(heads_base_masked), 8)
+    cont1 = pmv1.contour_array(heads_base_masked, levels=contour_levels_base, 
+                              colors='darkblue', linewidths=1, linestyles='-')
+    ax1.clabel(cont1, inline=True, fontsize=8, fmt='%.1f')
+    
+    # Plot wells from base model if requested
+    if show_wells and wel_base_pumping:
+        pump_x, pump_y, pump_rates = zip(*wel_base_pumping)
+        ax1.scatter(pump_x, pump_y, c='red', s=well_marker_size, marker='o', 
+                   edgecolors='white', linewidth=2, label=f'Pumping ({len(wel_base_pumping)})', 
+                   zorder=5)
+    
+    if show_wells and wel_base_injection:
+        inj_x, inj_y, inj_rates = zip(*wel_base_injection)
+        ax1.scatter(inj_x, inj_y, c='green', s=well_marker_size, marker='s',
+                   edgecolors='white', linewidth=2, label=f'Injection ({len(wel_base_injection)})', 
+                   zorder=5)
+    
+    if show_wells and wel_base:
+        ax1.legend(loc='upper right', fontsize=9)
+    
+    cbar1 = plt.colorbar(im1, ax=ax1, shrink=0.3)
+    cbar1.set_label('Head (m a.s.l.)', fontsize=10)
+    ax1.set_title(f'{row_title_prefix[0]} Base Model Heads', fontweight='bold')
+    ax1.set_aspect('equal')
+    
+    # Plot 2: Scenario model heads
+    ax2 = axes[0, 1]
+    pmv2 = flopy.plot.PlotMapView(model=model_scenario, ax=ax2)
+    im2 = pmv2.plot_array(heads_scenario_masked, alpha=0.7, cmap='Blues')
+    pmv2.plot_grid(color='gray', alpha=0.3, linewidth=0.5)
+    
+    # Add contours for scenario heads
+    contour_levels_scenario = np.linspace(np.nanmin(heads_scenario_masked), 
+                                         np.nanmax(heads_scenario_masked), 8)
+    cont2 = pmv2.contour_array(heads_scenario_masked, levels=contour_levels_scenario, 
+                              colors='darkblue', linewidths=1, linestyles='-')
+    ax2.clabel(cont2, inline=True, fontsize=8, fmt='%.2f')
+    
+    # Plot wells from scenario model if requested
+    if show_wells and wel_scenario_pumping:
+        pump_x, pump_y, pump_rates = zip(*wel_scenario_pumping)
+        ax2.scatter(pump_x, pump_y, c='red', s=well_marker_size, marker='o', 
+                   edgecolors='white', linewidth=2, label=f'Pumping ({len(wel_scenario_pumping)})', 
+                   zorder=5)
+    
+    if show_wells and wel_scenario_injection:
+        inj_x, inj_y, inj_rates = zip(*wel_scenario_injection)
+        ax2.scatter(inj_x, inj_y, c='green', s=well_marker_size, marker='s',
+                   edgecolors='white', linewidth=2, label=f'Injection ({len(wel_scenario_injection)})', 
+                   zorder=5)
+    
+    if show_wells and wel_scenario:
+        ax2.legend(loc='upper right', fontsize=9)
+    
+    cbar2 = plt.colorbar(im2, ax=ax2, shrink=0.3)
+    cbar2.set_label('Head (m a.s.l.)', fontsize=10)
+    ax2.set_title(f'{row_title_prefix[1]} {scenario_name} Model Heads', fontweight='bold')
+    ax2.set_aspect('equal')
+    
+    # Plot 3: Head difference (base - scenario)
+    ax3 = axes[0, 2]
+    pmv3 = flopy.plot.PlotMapView(model=model_base, ax=ax3)
+    
+    # Use diverging colormap for differences
+    max_diff = np.nanmax(np.abs(head_diff_masked))
+    im3 = pmv3.plot_array(head_diff_masked, alpha=0.8, cmap='RdBu_r', 
+                         vmin=-max_diff, vmax=max_diff)
+    pmv3.plot_grid(color='gray', alpha=0.3, linewidth=0.5)
+    
+    # Add contours for head differences only if meaningful differences exist
+    if max_diff > min_contour_diff:
+        diff_levels = np.linspace(-max_diff, max_diff, 9)
+        cont3 = pmv3.contour_array(head_diff_masked, levels=diff_levels, 
+                                  colors='black', linewidths=1, linestyles='-')
+        ax3.clabel(cont3, inline=True, fontsize=8, fmt='%.2f')
+    else:
+        # Add text annotation when differences are too small for meaningful contours
+        ax3.text(0.5, 0.95, f'Max difference: {max_diff:.3f} m\n(Below {min_contour_diff} m threshold)', 
+                transform=ax3.transAxes, ha='center', va='top', 
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
+                fontsize=9)
+    
+    # Plot wells from scenario model if requested
+    if show_wells and wel_scenario_pumping:
+        pump_x, pump_y, pump_rates = zip(*wel_scenario_pumping)
+        ax3.scatter(pump_x, pump_y, c='red', s=well_marker_size, marker='o',
+                   edgecolors='white', linewidth=2, zorder=5)
+    
+    if show_wells and wel_scenario_injection:
+        inj_x, inj_y, inj_rates = zip(*wel_scenario_injection)
+        ax3.scatter(inj_x, inj_y, c='green', s=well_marker_size, marker='s',
+                   edgecolors='white', linewidth=2, zorder=5)
+    
+    cbar3 = plt.colorbar(im3, ax=ax3, shrink=0.3)
+    cbar3.set_label('Head difference (m)', fontsize=10)
+    ax3.set_title(f'{row_title_prefix[2]} Head Difference\n(Base - {scenario_name})', fontweight='bold')
+    ax3.set_aspect('equal')
+    
+    # Only create depth plots if requested
+    if show_depth_plots:
+        # Get model top for depth calculations
+        model_top = model_base.dis.top.array
+        
+        # Calculate depth to water table for both models
+        depth_base = model_top - heads_base
+        depth_scenario = model_top - heads_scenario
+        
+        # Calculate difference in depth to water table (depth_base - depth_scenario)
+        # Positive values mean shallower depth in scenario model (water table rise)
+        # Negative values mean greater depth in scenario model (drawdown effect)
+        # This is consistent with head_diff = heads_base - heads_scenario
+        depth_diff = depth_base - depth_scenario
+        
+        # Mask inactive cells for depth arrays
+        depth_base_masked = np.ma.masked_where(ibound <= 0, depth_base)
+        depth_scenario_masked = np.ma.masked_where(ibound <= 0, depth_scenario)
+        depth_diff_masked = np.ma.masked_where(ibound <= 0, depth_diff)
+        
+        # Plot 4: Depth to water table - Base model
+        ax4 = axes[1, 0]
+        pmv4 = flopy.plot.PlotMapView(model=model_base, ax=ax4)
+        im4 = pmv4.plot_array(depth_base_masked, alpha=0.7, cmap='YlOrRd')
+        pmv4.plot_grid(color='gray', alpha=0.3, linewidth=0.5)
+        
+        # Add contours for depth to water table
+        contour_levels_depth_base = np.linspace(np.nanmin(depth_base_masked), 
+                                               np.nanmax(depth_base_masked), 8)
+        cont4 = pmv4.contour_array(depth_base_masked, levels=contour_levels_depth_base, 
+                                  colors='darkred', linewidths=1, linestyles='-')
+        ax4.clabel(cont4, inline=True, fontsize=8, fmt='%.1f')
+        
+        cbar4 = plt.colorbar(im4, ax=ax4, shrink=0.3)
+        cbar4.set_label('Depth to WT (m)', fontsize=10)
+        ax4.set_title(f'{row_title_prefix[3]} Base Model\nDepth to Water Table', fontweight='bold')
+        ax4.set_aspect('equal')
+        
+        # Plot 5: Depth to water table - Scenario model
+        ax5 = axes[1, 1]
+        pmv5 = flopy.plot.PlotMapView(model=model_scenario, ax=ax5)
+        im5 = pmv5.plot_array(depth_scenario_masked, alpha=0.7, cmap='YlOrRd')
+        pmv5.plot_grid(color='gray', alpha=0.3, linewidth=0.5)
+        
+        # Add contours for depth to water table
+        contour_levels_depth_scenario = np.linspace(np.nanmin(depth_scenario_masked), 
+                                                   np.nanmax(depth_scenario_masked), 8)
+        cont5 = pmv5.contour_array(depth_scenario_masked, levels=contour_levels_depth_scenario, 
+                                  colors='darkred', linewidths=1, linestyles='-')
+        ax5.clabel(cont5, inline=True, fontsize=8, fmt='%.2f')
+        
+        # Plot wells from scenario model if requested
+        if show_wells and wel_scenario_pumping:
+            pump_x, pump_y, pump_rates = zip(*wel_scenario_pumping)
+            ax5.scatter(pump_x, pump_y, c='red', s=well_marker_size, marker='o', 
+                       edgecolors='white', linewidth=2, label=f'Pumping ({len(wel_scenario_pumping)})', 
+                       zorder=5)
+        
+        if show_wells and wel_scenario_injection:
+            inj_x, inj_y, inj_rates = zip(*wel_scenario_injection)
+            ax5.scatter(inj_x, inj_y, c='green', s=well_marker_size, marker='s',
+                       edgecolors='white', linewidth=2, label=f'Injection ({len(wel_scenario_injection)})', 
+                       zorder=5)
+        
+        if show_wells and wel_scenario:
+            ax5.legend(loc='upper right', fontsize=9)
+
+        cbar5 = plt.colorbar(im5, ax=ax5, shrink=0.3)
+        cbar5.set_label('Depth to WT (m)', fontsize=10)
+        ax5.set_title(f'{row_title_prefix[4]} {scenario_name} Model\nDepth to Water Table', fontweight='bold')
+        ax5.set_aspect('equal')
+        
+        # Plot 6: Difference in depth to water table
+        ax6 = axes[1, 2]
+        pmv6 = flopy.plot.PlotMapView(model=model_base, ax=ax6)
+        
+        # Use diverging colormap for depth differences
+        max_depth_diff = np.nanmax(np.abs(depth_diff_masked))
+        im6 = pmv6.plot_array(depth_diff_masked, alpha=0.8, cmap='RdBu', 
+                             vmin=-max_depth_diff, vmax=max_depth_diff)
+        pmv6.plot_grid(color='gray', alpha=0.3, linewidth=0.5)
+        
+        # Add contours for depth differences only if meaningful differences exist
+        if max_depth_diff > min_contour_diff:
+            depth_diff_levels = np.linspace(-max_depth_diff, max_depth_diff, 9)
+            cont6 = pmv6.contour_array(depth_diff_masked, levels=depth_diff_levels, 
+                                      colors='black', linewidths=1, linestyles='-')
+            ax6.clabel(cont6, inline=True, fontsize=8, fmt='%.2f')
+        else:
+            # Add text annotation when differences are too small for meaningful contours
+            ax6.text(0.5, 0.95, f'Max difference: {max_depth_diff:.3f} m\n(Below {min_contour_diff} m threshold)', 
+                    transform=ax6.transAxes, ha='center', va='top', 
+                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
+                    fontsize=9)
+        
+        # Plot wells from scenario model if requested
+        if show_wells and wel_scenario_pumping:
+            pump_x, pump_y, pump_rates = zip(*wel_scenario_pumping)
+            ax6.scatter(pump_x, pump_y, c='red', s=well_marker_size, marker='o',
+                       edgecolors='white', linewidth=2, zorder=5)
+        
+        if show_wells and wel_scenario_injection:
+            inj_x, inj_y, inj_rates = zip(*wel_scenario_injection)
+            ax6.scatter(inj_x, inj_y, c='green', s=well_marker_size, marker='s',
+                       edgecolors='white', linewidth=2, zorder=5)
+        
+        cbar6 = plt.colorbar(im6, ax=ax6, shrink=0.3)
+        cbar6.set_label('Change in Depth to WT (m)', fontsize=10)
+        ax6.set_title(f'{row_title_prefix[5]} Change in Depth to WT\n(Base - {scenario_name})', fontweight='bold')
+        ax6.set_aspect('equal')
+    
+    # Overall title
+    plot_type = "Head and Depth to Water Table Analysis" if show_depth_plots else "Head Analysis"
+    fig.suptitle(f'Groundwater {plot_type}\nModel: {model_name} (Base vs {scenario_name})', 
+                 fontsize=16, fontweight='bold')
+    
+    plt.tight_layout()
+    
+    # Save if path provided
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Head difference plot saved to: {save_path}")
+    
+    plt.show()
+
+    return fig, axes, head_diff_masked
+
+
+def plot_chd_comparison(model_base, model_scenario, figsize=(15, 6), buffer_cells=5):
+    """
+    Plot CHD boundary values for base and scenario models side by side.
+    
+    Parameters:
+    -----------
+    model_base : flopy.modflow.Modflow
+        Base model with original CHD conditions
+    model_scenario : flopy.modflow.Modflow  
+        Scenario model with modified CHD conditions
+    figsize : tuple, optional
+        Figure size (width, height) in inches
+    buffer_cells : int, optional
+        Number of cells to add as buffer around CHD extent for zooming
+        
+    Returns:
+    --------
+    fig, axes : matplotlib figure and axes objects
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import flopy
+    
+    # Check if both models have CHD packages
+    if model_base.chd is None:
+        print("Warning: Base model has no CHD package")
+        return None, None
+    if model_scenario.chd is None:
+        print("Warning: Scenario model has no CHD package")  
+        return None, None
+        
+    # Extract CHD data from both models
+    chd_base = model_base.chd.stress_period_data[0]
+    chd_scenario = model_scenario.chd.stress_period_data[0]
+    
+    print(f"Base model CHD cells: {len(chd_base)}")
+    print(f"Scenario model CHD cells: {len(chd_scenario)}")
+    
+    # Get ibound arrays for inactive cells
+    ibound_base = model_base.bas6.ibound.array[0]  # Top layer
+    ibound_scenario = model_scenario.bas6.ibound.array[0]  # Top layer
+    
+    # Create arrays to hold CHD head values
+    chd_array_base = np.full((model_base.nrow, model_base.ncol), np.nan)
+    chd_array_scenario = np.full((model_scenario.nrow, model_scenario.ncol), np.nan)
+    
+    # Fill arrays with head values (using end head values)
+    chd_rows, chd_cols = [], []
+    for chd_cell in chd_base:
+        layer, row, col, head_start, head_end = chd_cell
+        chd_array_base[row, col] = head_end
+        chd_rows.append(row)
+        chd_cols.append(col)
+        
+    for chd_cell in chd_scenario:
+        layer, row, col, head_start, head_end = chd_cell
+        chd_array_scenario[row, col] = head_end
+        
+    # Determine zoom extent based on CHD cell locations
+    min_row = max(0, min(chd_rows) - buffer_cells)
+    max_row = min(model_base.nrow, max(chd_rows) + buffer_cells + 1)
+    min_col = max(0, min(chd_cols) - buffer_cells)  
+    max_col = min(model_base.ncol, max(chd_cols) + buffer_cells + 1)
+    
+    # Extract zoomed arrays
+    chd_zoom_base = chd_array_base[min_row:max_row, min_col:max_col]
+    chd_zoom_scenario = chd_array_scenario[min_row:max_row, min_col:max_col]
+    ibound_zoom_base = ibound_base[min_row:max_row, min_col:max_col]
+    ibound_zoom_scenario = ibound_scenario[min_row:max_row, min_col:max_col]
+    
+    # Determine common color scale
+    all_values = np.concatenate([
+        chd_zoom_base[~np.isnan(chd_zoom_base)],
+        chd_zoom_scenario[~np.isnan(chd_zoom_scenario)]
+    ])
+    vmin, vmax = np.min(all_values), np.max(all_values)
+    
+    # Create figure with subplots - adjust width ratios to make room for colorbar
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+    
+    # Plot base model CHD
+    ax1 = axes[0]
+    im1 = ax1.imshow(chd_zoom_base, cmap='viridis', vmin=vmin, vmax=vmax, 
+                     aspect='equal', origin='upper')
+    
+    # Add inactive cells as grey semi-transparent overlay
+    inactive_mask_base = np.where(ibound_zoom_base == 0, 1, np.nan)
+    ax1.imshow(inactive_mask_base, cmap='gray', alpha=0.5, aspect='equal', origin='upper')
+    
+    ax1.set_title('Base Model CHD Head Values [m]', fontsize=12, fontweight='bold')
+    ax1.set_xlabel('Column Index')
+    ax1.set_ylabel('Row Index')
+    
+    # Add grid lines
+    ax1.set_xticks(np.arange(-0.5, chd_zoom_base.shape[1], 1), minor=True)
+    ax1.set_yticks(np.arange(-0.5, chd_zoom_base.shape[0], 1), minor=True)
+    ax1.grid(which='minor', color='white', linestyle='-', linewidth=0.5, alpha=0.3)
+    
+    # Adjust tick labels to show actual grid indices
+    tick_step_x = max(1, chd_zoom_base.shape[1]//10)
+    tick_step_y = max(1, chd_zoom_base.shape[0]//10)
+    ax1.set_xticks(range(0, chd_zoom_base.shape[1], tick_step_x))
+    ax1.set_xticklabels([str(min_col + i) for i in range(0, chd_zoom_base.shape[1], tick_step_x)])
+    ax1.set_yticks(range(0, chd_zoom_base.shape[0], tick_step_y))
+    ax1.set_yticklabels([str(min_row + i) for i in range(0, chd_zoom_base.shape[0], tick_step_y)])
+    
+    # Plot scenario model CHD  
+    ax2 = axes[1]
+    im2 = ax2.imshow(chd_zoom_scenario, cmap='viridis', vmin=vmin, vmax=vmax,
+                     aspect='equal', origin='upper')
+    
+    # Add inactive cells as grey semi-transparent overlay
+    inactive_mask_scenario = np.where(ibound_zoom_scenario <= 0, 1, np.nan)
+    ax2.imshow(inactive_mask_scenario, cmap='gray', alpha=0.5, aspect='equal', origin='upper')
+    
+    ax2.set_title('Scenario Model CHD Head Values [m]', fontsize=12, fontweight='bold')
+    ax2.set_xlabel('Column Index')
+    ax2.set_ylabel('Row Index')
+    
+    # Add grid lines
+    ax2.set_xticks(np.arange(-0.5, chd_zoom_scenario.shape[1], 1), minor=True)
+    ax2.set_yticks(np.arange(-0.5, chd_zoom_scenario.shape[0], 1), minor=True)
+    ax2.grid(which='minor', color='white', linestyle='-', linewidth=0.5, alpha=0.3)
+    
+    # Adjust tick labels to show actual grid indices
+    ax2.set_xticks(range(0, chd_zoom_scenario.shape[1], tick_step_x))
+    ax2.set_xticklabels([str(min_col + i) for i in range(0, chd_zoom_scenario.shape[1], tick_step_x)])
+    ax2.set_yticks(range(0, chd_zoom_scenario.shape[0], tick_step_y))
+    ax2.set_yticklabels([str(min_row + i) for i in range(0, chd_zoom_scenario.shape[0], tick_step_y)])
+    
+    # Add colorbar to the right of the right subplot
+    cbar = plt.colorbar(im2, ax=ax2, orientation='vertical', shrink=0.8, pad=0.05)
+    cbar.set_label('Head Value [m]', fontsize=12)
+    
+    fig.suptitle('CHD Boundary Conditions Comparison', fontsize=14, fontweight='bold')
+    
+    plt.tight_layout()
+    
+    return fig, axes
+
 

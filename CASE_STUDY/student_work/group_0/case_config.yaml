@@ -56,10 +56,9 @@ scenarios:
   options:
     - id: 0
       concession: 210
-      label: Demo - A new well group abstracts 3000 m3/day
-      type: new_well_group
-      well_count: 6
-      total_pumping_m3_per_day: 3000
+      label: Demo - Lower outflow boundary by 1 m
+      type: chd_head_change
+      chd_head_change_m: -1
     - id: 1
       concession: 219
       label: Increase all river leakage +20% (removal of clogging)
