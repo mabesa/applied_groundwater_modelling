@@ -934,6 +934,347 @@ def plot_head_difference(model_base, model_scenario, ws_base, ws_scenario, model
     return fig, axes, head_diff_masked
 
 
+def compare_budget(ws_base, ws_scenario, model_name, threshold=100.0, save_path=None, 
+                  scenario_name="Scenario", figsize=(16, 10)):
+    """
+    Compare groundwater budgets between base model and scenario model.
+    
+    Parameters:
+    -----------
+    ws_base : str
+        Workspace path for base model
+    ws_scenario : str
+        Workspace path for scenario model
+    model_name : str
+        Model name for file naming
+    threshold : float, optional
+        Threshold above which values are rounded to integers (default: 100.0)
+    save_path : str, optional
+        Path to save the figure
+    scenario_name : str, optional
+        Name for the scenario model in plot titles. Default is "Scenario".
+    figsize : tuple, optional
+        Figure size (width, height). Default is (16, 10).
+        
+    Returns:
+    --------
+    fig, axes : matplotlib figure and axes objects
+    budget_comparison_df : pandas.DataFrame
+        DataFrame containing budget comparison data
+    """
+    import os
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import flopy.utils
+    
+    # Load budget data for both models
+    try:
+        # Base model budget
+        list_budget_base = flopy.utils.MfListBudget(
+            os.path.join(ws_base, f'{model_name}.list'))
+        budget_base = list_budget_base.get_budget()[-1]  # Last time step
+        df_base = pd.DataFrame(budget_base).T
+        
+        # Scenario model budget
+        list_budget_scenario = flopy.utils.MfListBudget(
+            os.path.join(ws_scenario, f'{model_name}.list'))
+        budget_scenario = list_budget_scenario.get_budget()[-1]  # Last time step
+        df_scenario = pd.DataFrame(budget_scenario).T
+        
+        print(f"Budget data loaded successfully for both models")
+        
+    except Exception as e:
+        print(f"Error loading budget data: {e}")
+        return None, None, None
+    
+    # Process both dataframes using the same logic as visualize_budget
+    def process_budget_df(df, name):
+        # Identify _IN, _OUT, and summary rows
+        in_rows = df.index[df.index.str.endswith('_IN')]
+        out_rows = df.index[df.index.str.endswith('_OUT')]
+        summary_rows = df.index[~(df.index.str.endswith('_IN') | df.index.str.endswith('_OUT'))]
+        
+        # Filter summary rows to IN-OUT and PERCENT_DISCREPANCY
+        summary_rows = summary_rows[summary_rows.str.contains('IN-OUT|PERCENT_DISCREPANCY')]
+        
+        # Concatenate in desired order
+        df_reordered = pd.concat([df.loc[in_rows], df.loc[out_rows], df.loc[summary_rows]])
+        
+        # Check if most values are above threshold for conditional rounding
+        numeric_values = df_reordered.select_dtypes(include=[np.number]).values.flatten()
+        numeric_values = numeric_values[~np.isnan(numeric_values)]  # Remove NaN values
+        
+        if len(numeric_values) > 0:
+            above_threshold_count = np.sum(np.abs(numeric_values) >= threshold)
+            total_count = len(numeric_values)
+            
+            if above_threshold_count > total_count / 2:  # More than half are above threshold
+                # Round to integers for large values
+                df_reordered = df_reordered.round(0).astype(int, errors='ignore')
+                unit_label = "m³/day (rounded to integers)"
+            else:
+                # Keep decimal places for smaller values
+                df_reordered = df_reordered.round(2)
+                unit_label = "m³/day"
+        else:
+            df_reordered = df_reordered.round(2)
+            unit_label = "m³/day"
+        
+        # Remove columns that are all zeros (if any exist)
+        df_clean = df_reordered.loc[:, (df_reordered != 0).any(axis=0)]
+        
+        return df_clean, in_rows, out_rows, summary_rows, unit_label
+    
+    # Process both models
+    df_base_clean, in_rows_base, out_rows_base, summary_rows_base, unit_label_base = process_budget_df(df_base, "Base")
+    df_scenario_clean, in_rows_scenario, out_rows_scenario, summary_rows_scenario, unit_label_scenario = process_budget_df(df_scenario, scenario_name)
+    
+    # Create comparison dataframe
+    # Get all unique budget terms from both models
+    all_terms = sorted(set(df_base_clean.index.tolist() + df_scenario_clean.index.tolist()))
+    
+    comparison_data = []
+    for term in all_terms:
+        base_value = df_base_clean.loc[term].iloc[0] if term in df_base_clean.index else 0
+        scenario_value = df_scenario_clean.loc[term].iloc[0] if term in df_scenario_clean.index else 0
+        difference = scenario_value - base_value
+        
+        # Calculate percentage change (avoid division by zero)
+        if base_value != 0:
+            percent_change = (difference / abs(base_value)) * 100
+        else:
+            percent_change = np.inf if difference != 0 else 0
+            
+        comparison_data.append({
+            'Budget_Term': term,
+            'Base_Model': base_value,
+            f'{scenario_name}_Model': scenario_value,
+            'Difference': difference,
+            'Percent_Change': percent_change
+        })
+    
+    budget_comparison_df = pd.DataFrame(comparison_data)
+    
+    # Create visualization
+    fig, axes = plt.subplots(2, 2, figsize=figsize)
+    
+    # Separate inflows, outflows, and summary terms for plotting
+    inflow_terms = [term for term in all_terms if term.endswith('_IN')]
+    outflow_terms = [term for term in all_terms if term.endswith('_OUT')]
+    summary_terms = [term for term in all_terms if not (term.endswith('_IN') or term.endswith('_OUT'))]
+    
+    # Plot 1: Inflow comparison
+    ax1 = axes[0, 0]
+    if inflow_terms:
+        inflow_data = budget_comparison_df[budget_comparison_df['Budget_Term'].isin(inflow_terms)]
+        
+        x_pos = np.arange(len(inflow_terms))
+        width = 0.35
+        
+        bars1 = ax1.bar(x_pos - width/2, inflow_data['Base_Model'], width, 
+                       label='Base Model', alpha=0.8, color='skyblue')
+        bars2 = ax1.bar(x_pos + width/2, inflow_data[f'{scenario_name}_Model'], width,
+                       label=f'{scenario_name} Model', alpha=0.8, color='lightcoral')
+        
+        ax1.set_xlabel('Budget Terms')
+        ax1.set_ylabel('Flow Rate (m³/day)')
+        ax1.set_title('(a) Inflow Comparison', fontweight='bold')
+        ax1.set_xticks(x_pos)
+        ax1.set_xticklabels([term.replace('_IN', '') for term in inflow_terms], rotation=45, ha='right')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # Add value labels on bars
+        for bar in bars1:
+            height = bar.get_height()
+            if abs(height) >= threshold:
+                ax1.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                           xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8)
+            else:
+                ax1.annotate(f'{height:.1f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                           xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8)
+        
+        for bar in bars2:
+            height = bar.get_height()
+            if abs(height) >= threshold:
+                ax1.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                           xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8)
+            else:
+                ax1.annotate(f'{height:.1f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                           xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8)
+    else:
+        ax1.text(0.5, 0.5, 'No inflow terms found', ha='center', va='center', transform=ax1.transAxes)
+        ax1.set_title('(a) Inflow Comparison', fontweight='bold')
+    
+    # Plot 2: Outflow comparison
+    ax2 = axes[0, 1]
+    if outflow_terms:
+        outflow_data = budget_comparison_df[budget_comparison_df['Budget_Term'].isin(outflow_terms)]
+        
+        x_pos = np.arange(len(outflow_terms))
+        
+        bars1 = ax2.bar(x_pos - width/2, abs(outflow_data['Base_Model']), width,
+                       label='Base Model', alpha=0.8, color='lightgreen')
+        bars2 = ax2.bar(x_pos + width/2, abs(outflow_data[f'{scenario_name}_Model']), width,
+                       label=f'{scenario_name} Model', alpha=0.8, color='orange')
+        
+        ax2.set_xlabel('Budget Terms')
+        ax2.set_ylabel('Flow Rate (m³/day)')
+        ax2.set_title('(b) Outflow Comparison (Absolute Values)', fontweight='bold')
+        ax2.set_xticks(x_pos)
+        ax2.set_xticklabels([term.replace('_OUT', '') for term in outflow_terms], rotation=45, ha='right')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+        
+        # Add value labels on bars
+        for i, bar in enumerate(bars1):
+            height = bar.get_height()
+            if abs(height) >= threshold:
+                ax2.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                           xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8)
+            else:
+                ax2.annotate(f'{height:.1f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                           xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8)
+        
+        for i, bar in enumerate(bars2):
+            height = bar.get_height()
+            if abs(height) >= threshold:
+                ax2.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                           xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8)
+            else:
+                ax2.annotate(f'{height:.1f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                           xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8)
+    else:
+        ax2.text(0.5, 0.5, 'No outflow terms found', ha='center', va='center', transform=ax2.transAxes)
+        ax2.set_title('(b) Outflow Comparison (Absolute Values)', fontweight='bold')
+    
+    # Plot 3: Budget differences
+    ax3 = axes[1, 0]
+    
+    # Filter out summary terms for the difference plot and focus on flow terms
+    flow_terms = inflow_terms + outflow_terms
+    if flow_terms:
+        diff_data = budget_comparison_df[budget_comparison_df['Budget_Term'].isin(flow_terms)]
+        
+        # Create horizontal bar chart for differences
+        y_pos = np.arange(len(flow_terms))
+        differences = diff_data['Difference'].values
+        
+        # Color bars based on positive/negative difference
+        colors = ['green' if diff > 0 else 'red' for diff in differences]
+        
+        bars = ax3.barh(y_pos, differences, color=colors, alpha=0.7)
+        
+        ax3.set_xlabel('Difference (m³/day)')
+        ax3.set_ylabel('Budget Terms')
+        ax3.set_title(f'(c) Budget Differences\n({scenario_name} - Base)', fontweight='bold')
+        ax3.set_yticks(y_pos)
+        ax3.set_yticklabels([term.replace('_IN', '').replace('_OUT', '') for term in flow_terms])
+        ax3.grid(True, alpha=0.3, axis='x')
+        ax3.axvline(x=0, color='black', linewidth=1)
+        
+        # Add value labels on bars
+        for i, bar in enumerate(bars):
+            width = bar.get_width()
+            if abs(width) >= threshold:
+                ax3.annotate(f'{width:,.0f}', xy=(width, bar.get_y() + bar.get_height()/2),
+                           xytext=(5 if width > 0 else -5, 0), textcoords="offset points", 
+                           ha='left' if width > 0 else 'right', va='center', fontsize=8)
+            else:
+                ax3.annotate(f'{width:.1f}', xy=(width, bar.get_y() + bar.get_height()/2),
+                           xytext=(5 if width > 0 else -5, 0), textcoords="offset points", 
+                           ha='left' if width > 0 else 'right', va='center', fontsize=8)
+    else:
+        ax3.text(0.5, 0.5, 'No flow terms found', ha='center', va='center', transform=ax3.transAxes)
+        ax3.set_title(f'(c) Budget Differences\n({scenario_name} - Base)', fontweight='bold')
+    
+    # Plot 4: Summary table
+    ax4 = axes[1, 1]
+    ax4.axis('off')
+    
+    # Create summary statistics
+    if flow_terms:
+        total_inflow_base = budget_comparison_df[budget_comparison_df['Budget_Term'].isin(inflow_terms)]['Base_Model'].sum()
+        total_outflow_base = abs(budget_comparison_df[budget_comparison_df['Budget_Term'].isin(outflow_terms)]['Base_Model'].sum())
+        total_inflow_scenario = budget_comparison_df[budget_comparison_df['Budget_Term'].isin(inflow_terms)][f'{scenario_name}_Model'].sum()
+        total_outflow_scenario = abs(budget_comparison_df[budget_comparison_df['Budget_Term'].isin(outflow_terms)][f'{scenario_name}_Model'].sum())
+        
+        net_flow_base = total_inflow_base - total_outflow_base
+        net_flow_scenario = total_inflow_scenario - total_outflow_scenario
+        net_flow_change = net_flow_scenario - net_flow_base
+        
+        summary_text = f"""Budget Summary Comparison
+
+Base Model:
+  Total Inflow:   {total_inflow_base:>10,.0f} m³/day
+  Total Outflow:  {total_outflow_base:>10,.0f} m³/day
+  Net Flow:       {net_flow_base:>10,.0f} m³/day
+
+{scenario_name} Model:
+  Total Inflow:   {total_inflow_scenario:>10,.0f} m³/day
+  Total Outflow:  {total_outflow_scenario:>10,.0f} m³/day
+  Net Flow:       {net_flow_scenario:>10,.0f} m³/day
+
+Changes:
+  Inflow Change:  {total_inflow_scenario - total_inflow_base:>10,.0f} m³/day
+  Outflow Change: {total_outflow_scenario - total_outflow_base:>10,.0f} m³/day
+  Net Flow Change: {net_flow_change:>10,.0f} m³/day
+        """
+        
+        ax4.text(0.05, 0.95, summary_text, transform=ax4.transAxes, fontsize=10,
+                verticalalignment='top', fontfamily='monospace',
+                bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.8))
+        ax4.set_title('(d) Summary Statistics', fontweight='bold')
+    else:
+        ax4.text(0.5, 0.5, 'No flow terms available for summary', ha='center', va='center', 
+                transform=ax4.transAxes)
+        ax4.set_title('(d) Summary Statistics', fontweight='bold')
+    
+    # Overall title
+    fig.suptitle(f'Groundwater Budget Comparison\n{model_name}: Base vs {scenario_name}', 
+                 fontsize=16, fontweight='bold')
+    
+    plt.tight_layout()
+    
+    # Print comparison table
+    print(f"\nBudget Comparison Table ({unit_label_base}):")
+    print("=" * 80)
+    
+    # Filter and display in organized manner
+    if inflow_terms:
+        print("\n📈 INFLOWS:")
+        print("-" * 50)
+        inflow_comparison = budget_comparison_df[budget_comparison_df['Budget_Term'].isin(inflow_terms)]
+        for _, row in inflow_comparison.iterrows():
+            term_clean = row['Budget_Term'].replace('_IN', '')
+            print(f"{term_clean:20s} | Base: {row['Base_Model']:>10,.0f} | {scenario_name}: {row[f'{scenario_name}_Model']:>10,.0f} | Diff: {row['Difference']:>10,.0f}")
+    
+    if outflow_terms:
+        print("\n📉 OUTFLOWS:")
+        print("-" * 50)
+        outflow_comparison = budget_comparison_df[budget_comparison_df['Budget_Term'].isin(outflow_terms)]
+        for _, row in outflow_comparison.iterrows():
+            term_clean = row['Budget_Term'].replace('_OUT', '')
+            print(f"{term_clean:20s} | Base: {row['Base_Model']:>10,.0f} | {scenario_name}: {row[f'{scenario_name}_Model']:>10,.0f} | Diff: {row['Difference']:>10,.0f}")
+    
+    if summary_terms:
+        print("\n📊 SUMMARY TERMS:")
+        print("-" * 50)
+        summary_comparison = budget_comparison_df[budget_comparison_df['Budget_Term'].isin(summary_terms)]
+        for _, row in summary_comparison.iterrows():
+            print(f"{row['Budget_Term']:20s} | Base: {row['Base_Model']:>10,.2f} | {scenario_name}: {row[f'{scenario_name}_Model']:>10,.2f} | Diff: {row['Difference']:>10,.2f}")
+    
+    # Save figure if path provided
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"\nBudget comparison plot saved to: {save_path}")
+    
+    plt.show()
+    
+    return fig, axes, budget_comparison_df
+
+
 def plot_chd_comparison(model_base, model_scenario, figsize=(15, 6), buffer_cells=5):
     """
     Plot CHD boundary values for base and scenario models side by side.
