@@ -764,3 +764,6 @@ def extract_boundary_heads_from_clipped_polygon(parent_model, parent_heads, clip
     
     return boundary_cells
 
+
+
+
