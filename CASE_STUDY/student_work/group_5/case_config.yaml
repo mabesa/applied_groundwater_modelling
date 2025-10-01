@@ -1,0 +1,125 @@
+###############################################################
+# Case Study Scenario (Student Group Template)
+###############################################################
+# Fill ALL TODO fields. Keep units consistent (meters, days, m3/day).
+# Groups of 2–3 students. One YAML per group.
+# Concession numbers and scenarios are FIXED by group number.
+
+group:
+  number: 0                               # TODO: integer group number (0-8)
+  authors:                                # TODO: list all group members (2–3 persons)
+    - "First Last"
+    - "Second Last"                      # remove if only 2 members / add third if needed
+
+# Fixed assignments by group number:
+# Group 0: concession 210, scenario SC0 (demo)
+# Group 1: concession 219, scenario SC1
+# Group 2: concession 201, scenario SC2  
+# Group 3: concession 236, scenario SC3
+# Group 4: concession 190, scenario SC4
+# Group 5: concession 223, scenario SC5
+# Group 6: concession 227, scenario SC6
+# Group 7: concession 213, scenario SC7
+# Group 8: concession 207, scenario SC8
+
+title: "Impact of a well group on the groundwater flow field."  # TODO: tailor the title (you may refine but keep core meaning)
+
+description: >
+  TODO: Provide 2–5 sentences describing the specific groundwater flow problem for your
+  concession: state the location context, purpose of the well group, and why assessing
+  its impact matters (e.g. potential interference, river depletion, drawdown near
+  sensitive receptors). You will implement the concessioned pumping rates and a
+  50% pumping variant, then evaluate changes in heads, gradients, and river leakage.
+
+model:
+  data_name: baseline_model   # keep fixed
+  # Baseline (do NOT modify baseline input files in place).
+  workspace: "~/applied_groundwater_modelling_data/limmat/baseline_model"
+  namefile: "limmat_valley_model_nwt.nam"      
+  baseline_model_name: "limmat_valley_model_nwt"
+
+output:
+  # All group results should go into a dedicated folder using the group number.
+  workspace: "~/applied_groundwater_modelling_data/limmat/case_study_group_"  # auto-expand: replace <group_number>
+
+pumping:
+  # Concession wells: implement provided locations & rates (m3/day; negative for extraction).
+  # Provide a small table (inline or external file) listing wells you add/modify.
+  wells_source: "concession"               # keep fixed
+  data_file: "./concession_wells_group<number>.csv"  # TODO: optional helper file you create
+  apply_half_rate_variant: true             # Run an additional model with all concession rates * 0.5
+  notes: >
+    TODO: Briefly describe any assumptions in mapping concession data to model cells (e.g. snapping to nearest active cell).
+
+# Scenario assignments are FIXED by group number 
+scenarios:
+  options:
+    - id: 0
+      concession: 210
+      label: Demo - Lower outflow boundary by 1 m
+      type: chd_head_change
+      chd_head_change_m: -1
+    - id: 1
+      concession: 219
+      label: Increase all river leakage +20% (removal of clogging)
+      type: river_conductance
+      target: Limmat & Sihl
+      conductance_factor: 1.2
+    - id: 2
+      concession: 201
+      label: Decrease all river leakage -20% (increased clogging)
+      type: river_conductance
+      target: Limmat & Sihl
+      conductance_factor: 0.8
+    - id: 3
+      concession: 236
+      label: Urban greening increases recharge +20%
+      type: recharge_scale
+      recharge_factor: 1.2
+    - id: 4
+      concession: 190
+      label: Persistent dry periods and increased temperatures decrease recharge -20%
+      type: recharge_scale
+      recharge_factor: 0.8
+    - id: 5
+      concession: 223
+      label: A new weir raises the average water levels in zone 1 by +1.5 m
+      type: river_stage
+      target: Limmat & Sihl
+      stage_change_m: 1.5
+      stage_zone: 1
+    - id: 6
+      concession: 227
+      label: A river restoration project widens the rivers and lowers average water levels in zone 1
+      type: river_width_and_stage
+      target: Limmat & Sihl
+      width_factor: 1.5
+      stage_change_factor: -0.5
+      stage_zone: 1
+    - id: 7
+      concession: 213
+      label: New exploration data shows that aquifer transmissivity is 20% higher than previously thought
+      type: aquifer_transmissivity
+      transmissivity_factor: 1.2  
+    - id: 8
+      concession: 207
+      label: New exploration data shows that aquifer transmissivity is 20% lower than previously thought
+      type: aquifer_transmissivity
+      transmissivity_factor: 0.8
+
+implementation_plan: >
+  TODO: Bullet the concrete steps you will perform (baseline load, add wells, run
+  concession rates, run 50% rates, apply scenario parameter/stress change, produce maps
+  of head difference, river leakage comparison, drawdown profiles, budget summaries).
+
+evaluation_metrics: >
+  TODO: Define 3–5 metrics (e.g. max drawdown at key location, total river leakage change (m3/day),
+  area where drawdown > 0.5 m, change in gradient toward river, % change in discharge components).
+
+deliverables: >
+  TODO: List expected artifacts (plots, tables) & short narrative explaining impacts of the well group
+  under concession vs 50% pumping and under the selected scenario.
+
+quality_checks: >
+  TODO: Briefly state how you will verify model stability (mass balance error, convergence, sensitivity bounds).
+
