@@ -1,0 +1,295 @@
+###############################################################
+# Transport Case Study Configuration (Student Group Template)
+###############################################################
+# Fill ALL TODO fields. Keep units consistent (meters, days, m3/day, mg/L).
+# Groups of 2–3 students. One YAML per group.
+# Transport scenarios are FIXED by group number.
+# Wells are REUSED from flow case study (case_config.yaml).
+
+group:
+  number: 0                               # TODO: integer group number (0-8)
+  authors:                                # TODO: list all group members (2–3 persons)
+    - "First Last"
+    - "Second Last"                      # remove if only 2 members / add third if needed
+
+# Fixed transport scenario assignments by group number:
+# Group 0: TCE - Industrial spill (demo)
+# Group 1: Nitrate - Sports field fertilizer
+# Group 2: Chloride - Legacy landfill
+# Group 3: Benzene - Gas station leak
+# Group 4: Atrazine - Garden allotment pesticide
+# Group 5: PFOA - Industrial point source
+# Group 6: PCE - Dry cleaning facility leak
+# Group 7: Ammonium - Leaking sewer line
+# Group 8: Chromium - Metal plating facility
+
+title: "Contaminant transport with well field interactions: TCE industrial spill"  # TODO: tailor the title with your contaminant
+
+description: >
+  TODO: Provide 2–5 sentences describing your transport scenario. Include: contaminant type,
+  source location/type, duration (pulse vs continuous), and the key question you're addressing
+  regarding well-contaminant interactions (e.g., will pumping wells capture the plume? Does
+  injection spread contamination? What's the breakthrough time at monitoring locations?).
+
+# Base parent model (fresh download, independent from student flow results)
+model:
+  data_name: baseline_model               # Fixed - downloads known-good model
+  workspace: "~/applied_groundwater_modelling_data/limmat/baseline_model"
+  namefile: "limmat_valley_model_nwt.nam"
+  baseline_model_name: "limmat_valley_model_nwt"
+
+# Transport submodel output location
+output:
+  workspace: "~/applied_groundwater_modelling_data/limmat/transport_case_study_group_"  # auto-expand with group number
+
+# Wells from flow case study (REUSED, not reimplemented)
+wells:
+  source: "case_config"                   # Reuse wells from flow case study
+  config_file: "./case_config.yaml"       # Path to flow case configuration
+  notes: >
+    Wells are loaded from the flow case study configuration. Students will identify
+    which wells are pumping (extraction) vs injection wells/Sickergalerie based on
+    flow rates, then analyze how these wells affect contaminant transport.
+
+# Transport scenario definition (FIXED by group number)
+transport_scenario:
+  id: 0                                   # Scenario ID matches group number
+  concession: 210                         # Same concession as flow case
+  title: "Industrial solvent spill (TCE)"
+  contaminant: "Trichloroethylene (TCE)"
+  description: >
+    A 30-day TCE spill from an industrial facility. Assess plume migration
+    under natural gradient conditions and with well pumping/injection effects.
+    Determine if/when contamination reaches the Limmat River or monitoring points.
+
+  # Contaminant properties
+  properties:
+    cas_number: "79-01-6"
+    molecular_weight_g_mol: 131.39
+    solubility_mg_L: 1100
+    conservative: true                    # No sorption or decay
+
+  # Transport parameters
+  transport:
+    # Basic properties
+    porosity: 0.25                        # Effective porosity
+    bulk_density_kg_m3: 1800.0           # Aquifer bulk density
+
+    # Dispersivity (students should justify based on scale)
+    longitudinal_dispersivity_m: 10.0    # TODO: Justify based on transport distance
+    transverse_dispersivity_m: 1.0       # Typically 0.1 * alpha_L
+    vertical_dispersivity_m: 0.1         # Typically 0.01 * alpha_L
+
+    # Diffusion (often negligible compared to dispersion)
+    molecular_diffusion_m2_s: 1.0e-9     # Aqueous diffusion coefficient
+
+    # Sorption (if applicable)
+    sorption: false                       # true if contaminant sorbs
+    distribution_coefficient_mL_g: 0.0   # Kd; 0 for conservative tracer
+
+    # Decay/degradation (if applicable)
+    decay: false                          # true if contaminant degrades
+    first_order_decay_constant_1_per_day: 0.0  # 0 for conservative
+    half_life_days: null                  # Alternative: specify half-life (λ = ln(2)/t½)
+
+    notes: >
+      TODO: Justify parameter choices. Cite literature values for your contaminant
+      or explain assumptions. Discuss uncertainty ranges and sensitivity.
+
+  # Source term definition
+  source:
+    type: "point"                         # "point" or "area"
+    release_type: "pulse"                 # "pulse" or "continuous"
+
+    # Location (Swiss coordinates LV03 or LV95)
+    location:
+      easting: 2684500                    # TODO: Set relative to well locations
+      northing: 1249500                   # TODO: Set relative to well locations
+      layer: 1                            # Top active layer (1-indexed)
+      placement_strategy: >
+        TODO: Describe source placement relative to wells. Options:
+        - Upgradient of pumping wells (test capture efficiency)
+        - Near injection wells/Sickergalerie (test spreading from injection)
+        - Between pumping and injection wells (test complex interactions)
+        - Downgradient of all wells (test if wells provide protection)
+
+    # Timing
+    start_time_days: 0                    # Day 0 = simulation start
+    duration_days: 30                     # 30-day spill (pulse)
+
+    # Concentration
+    concentration_mg_L: 100.0             # TODO: Set realistic value for contaminant
+    mass_loading_kg: null                 # Alternative: specify total mass instead
+
+    # Implementation method
+    ssm_itype: -1                         # -1 = constant concentration cell (typical for spills)
+
+    notes: >
+      TODO: Describe source location context relative to well field and conceptual model.
+      Example: "Industrial TCE spill 150m upgradient of main pumping well cluster.
+      Testing whether current pumping rates can capture the plume before it reaches
+      the Limmat River. Source placed in high-K zone based on perceptual model."
+
+  # Simulation setup
+  simulation:
+    duration_days: 3650                   # 10 years
+    output_times_days: [30, 90, 180, 365, 730, 1095, 1825, 3650]  # Times to save concentration
+
+    # Time stepping (MT3DMS will use adaptive stepping)
+    initial_timestep_days: 0.1            # Initial time step
+    max_timestep_days: 30                 # Maximum time step
+    timestep_multiplier: 1.2              # Growth factor for adaptive stepping
+
+    # Stability criteria targets
+    target_courant_number: 0.75           # Cr = v·Δt/Δx ≤ 1 (advective stability)
+    target_peclet_number: 2.0             # Pe = v·Δx/D ≤ 2-4 (dispersive stability)
+
+    notes: >
+      TODO: Justify simulation duration. Consider plume travel time to reach
+      compliance points or boundaries. Verify domain is large enough.
+
+  # Telescope submodel configuration
+  submodel:
+    # Domain definition (buffer around source and wells)
+    buffer_north_m: 500                   # TODO: Adjust based on plume travel distance
+    buffer_south_m: 500
+    buffer_east_m: 500
+    buffer_west_m: 500
+
+    # Grid refinement
+    cell_size_m: 5                        # Fine resolution near source and wells
+
+    # Boundary condition extraction
+    boundary_type: "head"                 # Use head-dependent boundaries from parent
+
+    notes: >
+      TODO: Justify buffer distances. Estimate 10-year travel distance using
+      v = K·i/n. Ensure plume doesn't reach submodel boundaries during simulation.
+      Consider well capture zones in domain sizing.
+
+# Monitoring/observation points
+monitoring:
+  points:
+    - name: "MW-1"
+      description: "Primary downgradient monitoring well"
+      easting: 2684600                    # TODO: Set coordinates
+      northing: 1249600
+      layer: 1
+      purpose: "Downgradient plume monitoring"
+
+    - name: "MW-2"
+      description: "Pumping well monitoring point"
+      easting: 2684550                    # TODO: Set at or near pumping well
+      northing: 1249550
+      layer: 1
+      purpose: "Assess capture by pumping wells"
+
+    - name: "River-boundary"
+      description: "Limmat River compliance point"
+      easting: 2684800                    # TODO: Set near river boundary
+      northing: 1249700
+      layer: 1
+      purpose: "Assess river impact / regulatory compliance"
+
+  # Compliance criteria
+  compliance:
+    threshold_mg_L: 5.0                   # TODO: Set regulatory threshold for contaminant
+    location: "Property boundary and Limmat River"
+    notes: >
+      TODO: Cite regulatory standard (Swiss GSchV, EU drinking water directive, etc.)
+
+# Analytical comparison (MANDATORY)
+analytical_verification:
+  required: true                          # MANDATORY for all groups
+  tier: 1                                 # 1 = conservative (full Ogata-Banks), 2 = reactive (simplified)
+
+  # Tier 1 requirements (Groups 0, 1, 2, 5, 6)
+  approach: "ogata_banks_1d"              # Full 1D analytical comparison
+
+  tasks:
+    - "Extract 1D concentration transect from MT3DMS results along flow direction"
+    - "Implement 1D Ogata-Banks analytical solution with same parameters (v, D, source)"
+    - "Plot comparison: analytical vs. numerical at multiple times"
+    - "Calculate breakthrough curves at monitoring point: analytical vs. numerical"
+    - "Discuss discrepancies (2D spreading, grid effects, well influences, boundary conditions)"
+    - "Conclude when analytical is sufficient vs. when numerical is required"
+
+  notes: >
+    Analytical comparison is MANDATORY. Templates provided in SUPPORT_REPO.
+    This teaches verification practice and understanding of when simple vs. complex
+    methods are needed. Budget 30-60 minutes for this task.
+
+# Analysis tasks
+analysis_tasks:
+  - "Map concentration distribution at 1, 3, 5, and 10 years"
+  - "Plot breakthrough curves at all monitoring points"
+  - "Calculate plume extent (area where C > threshold) over time"
+  - "Estimate time for contamination to reach compliance points"
+  - "Assess whether concentration exceeds threshold at any location/time"
+  - "Evaluate mass balance (% mass remaining vs. exported vs. captured by wells)"
+  - "Analyze well-contaminant interactions (capture zones, spreading from injection)"
+  - "MANDATORY: Analytical comparison (Tier 1 requirements)"
+  - "Sensitivity analysis: vary dispersivity ±50%, compare results"
+  - "Create concentration vs. time plots at key locations"
+
+# Quality control checklist
+quality_checks:
+  - "Mass balance error < 1%"
+  - "Courant number ≤ 1 (advective stability)"
+  - "Peclet number ≤ 2-4 (dispersive stability)"
+  - "Plume contained within submodel domain (or justify truncation)"
+  - "Concentration values physically reasonable (no negatives, no overshoot)"
+  - "Results make sense given flow direction, source location, and well pumping/injection"
+  - "MT3DMS convergence achieved for all time steps"
+  - "Flow model converged and mass balance closed before running transport"
+
+# Deliverables
+deliverables:
+  technical:
+    - "Completed case_config_transport.yaml with justified parameters"
+    - "Executed case_study_transport_group_0.ipynb with all results"
+    - "MT3DMS model files (input and output)"
+    - "Concentration maps (at least 4 time steps)"
+    - "Breakthrough curves at all monitoring points"
+    - "Mass balance summary table"
+    - "MANDATORY: Analytical comparison section with plots and discussion"
+    - "Analysis of well effects on contaminant transport"
+    - "Parameter sensitivity plots (dispersivity variation)"
+
+  report:
+    format: "PDF"
+    length_pages: "3-4"
+    sections:
+      - "Problem statement and objectives (0.5 page)"
+      - "Methodology (0.75 page)"
+      - "Results with figures (1.5-2 pages)"
+      - "Discussion and conclusions (0.75-1 page)"
+    notes: >
+      Professional modeling report demonstrating communication skills.
+      Template provided. Focus on key findings and well-contaminant interactions.
+
+# Implementation notes
+implementation_plan: >
+  TODO: Outline your workflow in bullet points:
+  - Load fresh base parent model and verify baseline flow field
+  - Load well locations from case_config.yaml
+  - Define transport submodel domain (around wells and source area)
+  - Create refined grid for submodel (5m cells)
+  - Extract boundary conditions from parent model
+  - Set up MODFLOW submodel with wells (steady-state flow)
+  - Set up MT3DMS transport model (transient concentrations)
+  - Define source term in SSM package
+  - Run transport simulation (10 years)
+  - Post-process and visualize results
+  - Perform analytical comparison (Ogata-Banks)
+  - Conduct sensitivity analysis
+  - Write professional report
+
+evaluation_metrics: >
+  TODO: Define 3–5 key metrics for your scenario:
+  - Maximum plume extent (area where C > 1 mg/L)
+  - Time to reach compliance threshold at monitoring points
+  - Percentage of contaminant mass captured by pumping wells
+  - Maximum concentration at river boundary
+  - Breakthrough time at downgradient monitoring well
+  - Plume centerline travel distance at 10 years

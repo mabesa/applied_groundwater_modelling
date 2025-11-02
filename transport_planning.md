@@ -1,5 +1,16 @@
 # Transport Case Study Planning Document
 
+> **📋 IMPORTANT: This is the authoritative planning document for the transport case study**
+>
+> **For AI Assistants**: Always read this document at the start of any session involving transport materials. All design decisions, structure, and implementation guidance are documented here.
+>
+> **For Instructors**: This document guides all transport case study development. Update it when design decisions change.
+>
+> **Last Updated**: 2025-11-02
+> **Status**: Planning complete - ready for implementation
+
+---
+
 ## Project Goal
 
 Create a groundwater transport case study that:
@@ -10,14 +21,22 @@ Create a groundwater transport case study that:
 5. Allows students to work on **different contaminant scenarios** per group
 6. Provides flexibility in solution methods (numerical/analytical/hybrid)
 
-## Key Design Decision (2025-11-01)
+## Key Design Decisions (2025-11-01)
 
-**Wells are INCLUDED in the transport case study!**
+### Decision 1: Wells are INCLUDED
 - Each group uses the same well field from their flow case study
 - Wells are loaded from the existing `case_config.yaml`
 - Students analyze how pumping wells capture contamination and how injection wells/Sickergalerie spread it
 - Contaminant sources are placed strategically relative to the well field
 - This adds real-world relevance: understanding well-contaminant interactions is critical for groundwater management
+
+### Decision 2: Analytical Comparison is MANDATORY
+- **All groups must verify their numerical model with analytical solutions**
+- **Tier 1** (Groups 0, 1, 2, 5 - conservative tracers): Full 1D Ogata-Banks comparison
+- **Tier 2** (Groups 3, 4, 6, 7, 8 - reactive transport): Simplified comparison OR justification
+- **Rationale**: Professional modelers always verify. This teaches when simple methods suffice vs. when complexity is needed.
+- **Implementation**: Templates provided in SUPPORT_REPO to make it manageable (30-60 min effort)
+- **Grading**: 15% of total grade allocated to analytical verification
 
 ---
 
@@ -300,12 +319,26 @@ For most case studies, **Approach 1** (constant concentration cell) is simpler a
 # Effectiveness of natural attenuation (if decay/sorption)
 ```
 
-#### 13. (Optional) Alternative Method Comparison
+#### 13. MANDATORY: Analytical Verification
 ```python
-# Compare with analytical solution (if applicable)
-# Or demonstrate why analytical is insufficient
-# Justify chosen method
+# Extract 1D transect from MT3DMS results
+# Implement Ogata-Banks analytical solution
+# Compare numerical vs. analytical results
+# Plot comparison at multiple times
+# Breakthrough curve comparison
+# Discuss discrepancies and when each method is appropriate
 ```
+
+**For Tier 1 Groups (0, 1, 2, 5)**:
+- Full implementation of 1D analytical solution
+- Direct comparison with MT3DMS along flow transect
+- Quantify differences and explain causes (2D effects, grid discretization, etc.)
+
+**For Tier 2 Groups (3, 4, 6, 7, 8)**:
+- Choose Option A, B, or C (see analytical_verification in config)
+- If A: Run MT3DMS without reactions, compare to Ogata-Banks
+- If B: Implement analytical with R/λ, compare to full MT3DMS
+- If C: Justify why analytical comparison is not meaningful
 
 #### 14. Summary and Conclusions
 - Key findings for your scenario
@@ -354,11 +387,11 @@ scenarios:
 
   - id: 1
     group: 1
-    title: "Agricultural nitrate contamination"
+    title: "Sports field fertilizer contamination"
     contaminant: "Nitrate (NO3-)"
     description: >
-      Continuous nitrate loading from agricultural field. Evaluate long-term
-      plume development and potential impact on nearby drinking water wells.
+      Continuous nitrate loading from over-fertilized sports fields/football pitches.
+      Evaluate long-term plume development and potential impact on nearby drinking water wells.
 
   - id: 2
     group: 2
@@ -378,11 +411,11 @@ scenarios:
 
   - id: 4
     group: 4
-    title: "Pesticide contamination"
+    title: "Garden allotment pesticide contamination"
     contaminant: "Atrazine"
     description: >
-      Diffuse pesticide source with sorption. Evaluate retardation effects and
-      breakthrough timing at monitoring locations.
+      Diffuse pesticide source from family garden plots (Schrebergärten) with sorption.
+      Evaluate retardation effects and breakthrough timing at monitoring locations.
 
   - id: 5
     group: 5
@@ -394,27 +427,27 @@ scenarios:
 
   - id: 6
     group: 6
-    title: "Deicing salt from roadway"
-    contaminant: "Chloride"
+    title: "Dry cleaning facility solvent leak"
+    contaminant: "Perchloroethylene (PCE)"
     description: >
-      Seasonal chloride loading from road de-icing. Evaluate cumulative
-      impact and seasonal concentration variations.
+      Point source PCE leak from urban dry cleaning facility with slight sorption.
+      Assess plume migration and potential for natural attenuation.
 
   - id: 7
     group: 7
-    title: "Wastewater treatment plant effluent"
+    title: "Leaking sewer line contamination"
     contaminant: "Ammonium"
     description: >
-      Continuous ammonium discharge with nitrification (decay). Model
-      transformation and downgradient concentration profiles.
+      Continuous ammonium discharge from aging urban sewer infrastructure with
+      nitrification (decay). Model transformation and downgradient concentration profiles.
 
   - id: 8
     group: 8
-    title: "Industrial chromium plume"
+    title: "Metal plating facility chromium leak"
     contaminant: "Chromium (Cr-VI)"
     description: >
-      Point source chromium with sorption. Assess plume mobility and
-      evaluate pump-and-treat remediation timing requirements.
+      Point source chromium from electroplating workshop with sorption. Assess plume
+      mobility and evaluate pump-and-treat remediation timing requirements.
 
 # Source term definition for THIS group (group 0 example)
 source:
@@ -504,20 +537,48 @@ monitoring:
     threshold_mg_L: 10.0                  # Regulatory threshold
     location: "Property boundary / River"
 
-# Modeling approach (student documents their choice)
+# Modeling approach
 approach:
-  method: "numerical_mt3d"                # "analytical", "numerical_mt3d", "hybrid"
+  primary_method: "numerical_mt3d"        # Primary method is always MT3DMS
+
+  analytical_comparison:
+    required: true                         # MANDATORY for all groups
+    tier: 1                                # 1 for simple, 2 for moderate (assigned by scenario)
 
   justification: >
-    TODO: Explain why this method is appropriate for your scenario.
-    Consider: geometry complexity, boundary conditions, parameter
-    heterogeneity, source term characteristics.
+    TODO: Explain why numerical MT3DMS is needed for your scenario.
+    Consider: 2D/3D effects, well influences, boundary conditions,
+    heterogeneity that analytical solutions cannot capture.
 
-  analytical_alternative:
-    feasible: false                        # Could analytical work?
-    reason: >
-      TODO: Explain why analytical solution is/isn't suitable for
-      comparison or primary analysis.
+# Analytical comparison requirements (MANDATORY)
+analytical_verification:
+  tier: 1  # or 2, automatically set based on group scenario
+
+  # Tier 1 requirements (Groups 0, 1, 2, 5 - conservative tracers)
+  tier_1_tasks:
+    - "Extract 1D concentration transect from MT3DMS results along flow direction"
+    - "Implement 1D Ogata-Banks analytical solution with same parameters (v, D, source)"
+    - "Plot comparison: analytical vs. numerical at multiple times"
+    - "Calculate breakthrough curves at monitoring point: analytical vs. numerical"
+    - "Discuss discrepancies (2D spreading, grid effects, boundary conditions)"
+    - "Conclude when analytical is sufficient vs. when numerical is required"
+
+  # Tier 2 requirements (Groups 3, 4, 6, 7, 8 - reactive transport)
+  tier_2_options:
+    option_a: "Run simplified MT3DMS without reactions (Kd=0, λ=0), compare to Ogata-Banks"
+    option_b: "Implement 1D analytical with retardation/decay, compare to full MT3DMS"
+    option_c: "Detailed written justification why analytical comparison is not meaningful"
+
+  tier_2_tasks:
+    - "Choose one of the three options above"
+    - "If Option A or B: Plot and discuss comparison"
+    - "If Option C: Explain specific aspects that make analytical unsuitable"
+    - "In all cases: discuss what transport processes require numerical modeling"
+
+  notes: >
+    Analytical comparison is MANDATORY. Templates will be provided in SUPPORT_REPO.
+    This teaches verification practice and understanding of when simple vs. complex
+    methods are needed. Budget 30-60 minutes for this task.
 
 # Analysis tasks
 analysis_tasks:
@@ -527,6 +588,8 @@ analysis_tasks:
   - "Estimate time for contamination to reach compliance point"
   - "Assess whether concentration exceeds threshold at any location"
   - "Evaluate mass balance (% mass remaining in domain vs exported)"
+  - "Analyze well-contaminant interactions (capture zones, spreading)"
+  - "MANDATORY: Analytical comparison (tier 1 or tier 2 requirements)"
   - "Sensitivity analysis: vary dispersivity ±50%, compare results"
 
 # Deliverables
@@ -536,6 +599,8 @@ deliverables:
   - "Concentration maps (at least 4 time steps)"
   - "Breakthrough curves at monitoring points"
   - "Mass balance summary"
+  - "MANDATORY: Analytical comparison section with plots and discussion"
+  - "Analysis of well effects on contaminant transport"
   - "Written interpretation (2-3 paragraphs in notebook)"
   - "Parameter sensitivity discussion"
 
@@ -559,32 +624,40 @@ Each group analyzes contamination in relation to their well field from the flow 
 
 | Group | Concession | Wells | Contaminant | Source Scenario | Sorption | Decay | Key Question |
 |-------|------------|-------|-------------|-----------------|----------|-------|--------------|
-| 0 | 210 | Mixed | TCE | Spill upgradient | No | No | Will pumping wells capture the plume? |
-| 1 | 219 | Mixed | Nitrate | Agricultural area | No | No | Effect on downgradient wells |
-| 2 | 201 | Mixed | Chloride | Legacy contamination | No | No | Extent of historical plume |
+| 0 | 210 | Mixed | TCE | Industrial spill upgradient | No | No | Will pumping wells capture the plume? |
+| 1 | 219 | Mixed | Nitrate | Sports field fertilizer | No | No | Effect on downgradient wells |
+| 2 | 201 | Mixed | Chloride | Legacy landfill | No | No | Extent of historical plume |
 | 3 | 236 | Mixed | Benzene | Gas station leak | No | Yes | Natural attenuation vs. capture |
-| 4 | 190 | Mixed | Atrazine | Agricultural diffuse | Yes | No | Retardation effects |
-| 5 | 223 | Mixed | PFOA | Industrial point | No | No | Long-term migration |
-| 6 | 227 | Mixed | Chloride | Road deicing | No | No | Multiple source timing |
-| 7 | 213 | Mixed | Ammonium | Wastewater | No | Yes | Degradation in capture zone |
-| 8 | 207 | Mixed | Chromium | Industrial spill | Yes | No | Sorption + pumping interaction |
+| 4 | 190 | Mixed | Atrazine | Garden allotment pesticide | Yes | No | Retardation effects |
+| 5 | 223 | Mixed | PFOA | Industrial point source | No | No | Long-term migration |
+| 6 | 227 | Mixed | PCE | Dry cleaning facility leak | Slight | No | Plume migration and attenuation |
+| 7 | 213 | Mixed | Ammonium | Leaking sewer line | No | Yes | Degradation in capture zone |
+| 8 | 207 | Mixed | Chromium | Metal plating facility | Yes | No | Sorption + pumping interaction |
 
 **Note**: "Mixed" means well fields contain both pumping wells (extraction) and injection wells/Sickergalerie. Groups will need to:
 1. Identify which wells pump and which inject
 2. Place contamination source strategically relative to wells
 3. Analyze how wells affect contaminant fate and transport
 
-### Scenario Complexity Levels
+### Scenario Complexity and Analytical Comparison Tiers
 
-**Simple (Groups 0, 1, 2, 5):**
-- Conservative tracer (no sorption or decay)
+**Tier 1 - Simple Scenarios (Groups 0, 1, 2, 5, 6):**
+- Conservative tracer (no sorption or decay, or very slight sorption for PCE)
 - Focus on advection, dispersion, and well capture/spreading
-- Good candidates for analytical comparison (without wells)
+- **Analytical requirement**: Full 1D Ogata-Banks comparison
+  - Extract 1D transect from numerical model
+  - Implement analytical solution with same parameters
+  - Plot comparison and discuss differences
+  - Estimate when analytical is "good enough" vs. when 2D/3D numerical is needed
 
-**Moderate (Groups 3, 4, 6, 7, 8):**
+**Tier 2 - Moderate Scenarios (Groups 3, 4, 7, 8):**
 - Reactive transport (sorption OR decay)
 - Combined effect of reactions + well pumping/injection
-- Requires careful parameter selection and interpretation
+- **Analytical requirement**: Choose one option
+  - **Option A**: Simplified comparison (set Kd=0 and λ=0, compare conservative transport)
+  - **Option B**: Semi-analytical with retardation/decay (1D with R and λ)
+  - **Option C**: Detailed justification why analytical comparison is not feasible/meaningful
+- **Purpose**: Understand what aspects require numerical modeling vs. can be solved analytically
 
 ---
 
@@ -592,8 +665,8 @@ Each group analyzes contamination in relation to their well field from the flow 
 
 ### Phase 1: Planning and Design (Current)
 - [x] Define overall approach (simpler, independent from flow case)
-- [ ] Finalize 9 transport scenarios (one per group)
-- [ ] Design transport_config.yaml structure
+- [x] Finalize 9 transport scenarios (one per group)
+- [x] Design transport_config.yaml structure
 - [ ] Outline both notebook structures
 
 ### Phase 2: Teaching Notebook (4b_transport_model_implementation.ipynb)
@@ -636,13 +709,29 @@ Each group analyzes contamination in relation to their well field from the flow 
 
 ### Phase 5: Supporting Materials
 - [ ] Update README.md in student_work/ with transport instructions
-- [ ] Add analytical solution functions to SUPPORT_REPO (Ogata-Banks, etc.)
+- [ ] **Add analytical solution functions to SUPPORT_REPO** (CRITICAL for mandatory comparison)
+  - [ ] Ogata-Banks 1D solution (instantaneous and continuous source)
+  - [ ] 1D solution with retardation factor
+  - [ ] 1D solution with first-order decay
+  - [ ] Combined retardation + decay
+  - [ ] Helper function to extract 1D transect from 2D/3D MT3DMS results
+  - [ ] Template plotting functions for analytical vs. numerical comparison
 - [ ] Create helper functions for common transport tasks
   - [ ] Source term cell identification
-  - [ ] Breakthrough curve plotting
+  - [ ] Breakthrough curve plotting (both numerical and analytical)
   - [ ] Mass balance checking
   - [ ] Stability criteria checking (Courant, Peclet)
+  - [ ] Velocity calculation from head gradients
 - [ ] Add transport-specific plotting utilities
+  - [ ] Concentration map plotting with well locations
+  - [ ] Side-by-side analytical vs. numerical comparison plots
+  - [ ] Breakthrough curve comparison templates
+- [ ] **Create professional report template** (CRITICAL for deliverable)
+  - [ ] LaTeX or Word template with standard structure
+  - [ ] Example filled-in report (from group_0 demo)
+  - [ ] Figure quality guidelines
+  - [ ] Citation style guidance
+  - [ ] Writing style tips for technical reports
 
 ### Phase 6: Documentation and Testing
 - [ ] Test group_0 notebook runs without errors
@@ -658,6 +747,59 @@ Each group analyzes contamination in relation to their well field from the flow 
 - [ ] Add transport to progress tracking (if applicable)
 - [ ] Prepare assignment handout/instructions
 - [ ] Schedule: when transport assignment is due relative to flow assignment
+
+---
+
+## Professional Report Structure (3-4 pages)
+
+Students must submit a concise professional modeling report (PDF, 3-4 pages) focusing on key learning goals:
+
+### Report Outline
+
+**1. Problem Statement and Objectives (0.5 page)**
+- Brief description of well field and contamination scenario
+- Modeling objectives (what questions are we answering?)
+- Why numerical modeling is needed (justify over analytical alone)
+
+**2. Methodology (0.75 page)**
+- Transport model setup summary (domain, parameters, source term)
+- Key assumptions and their justification
+- Analytical verification approach (which method, why appropriate)
+
+**3. Results (1.5-2 pages, mostly figures with brief text)**
+- **Figure 1**: Concentration map at key time (e.g., 5 or 10 years)
+- **Figure 2**: Breakthrough curve at critical location
+- **Figure 3**: Analytical vs. numerical comparison
+- Brief text: Maximum concentrations, breakthrough times, plume extent
+- Well-contaminant interaction summary (capture or spreading)
+
+**4. Discussion and Conclusions (0.75-1 page)**
+- Interpretation: What do results mean for the scenario?
+- Analytical comparison: When is simple method sufficient? When is numerical needed?
+- Parameter uncertainty: Which parameters matter most?
+- Recommendations: Well management, monitoring, or remediation suggestions
+
+### Key Learning Goals Assessed in Report
+
+✓ **Communication**: Distill technical work into client-ready summary
+✓ **Critical thinking**: Justify modeling choices and parameter selection
+✓ **Analysis**: Interpret results in context of well-contaminant interactions
+✓ **Verification**: Explain value and limitations of analytical comparison
+✓ **Engineering judgment**: Provide actionable recommendations
+
+### Quality Guidelines
+
+- **Figures**: High resolution, clear labels, captions, referenced in text
+- **Conciseness**: Every sentence adds value, no filler
+- **Professional tone**: Technical but accessible, past tense for methods
+- **Citations**: Cite FloPy, MT3DMS, parameter sources
+
+### Template Provided
+
+A Word/LaTeX template with this structure will be provided with:
+- Formatting guidelines
+- Example figures with proper captions
+- Writing tips for each section
 
 ---
 
@@ -747,18 +889,90 @@ By completing this transport case study, students will:
 1. ~~**Source locations**: Should all groups have sources in different parts of the valley, or clustered in one area?~~
    - **DECIDED**: Use the same well field locations as flow case study. Each group's submodel domain will be centered on their assigned well group (concession area).
 
-2. **Analytical comparison**: Required or optional? (Suggest optional for moderate complexity scenarios)
+2. ~~**Analytical comparison**: Required or optional?~~
+   - **DECIDED**: **Mandatory with tiered requirements**
+   - **Tier 1** (Simple scenarios - Groups 0, 1, 2, 5): Full analytical comparison required (1D Ogata-Banks)
+   - **Tier 2** (Moderate scenarios - Groups 3, 4, 6, 7, 8): Simplified analytical comparison (without reactions) OR detailed justification why analytical is insufficient
+   - **Rationale**: Verification is professional practice, not optional. Templates provided to make manageable. Teaches when simple methods work vs. when complexity is needed.
 
-3. **Time constraints**: How many weeks for transport case study? (Suggest 2-3 weeks)
+3. ~~**Time constraints**: How many weeks for transport case study?~~
+   - **DECIDED**: 2-3 weeks, approximately **10 hours total** including report writing
+   - **Breakdown estimate**:
+     - Read/understand teaching notebook (4b): 1-2 hours
+     - Setup and adapt demo for their scenario: 2-3 hours
+     - Run simulations and troubleshoot: 2-3 hours
+     - Analytical comparison: 0.5-1 hour (with templates)
+     - Analysis and interpretation: 1-2 hours
+     - Professional report writing (3-4 pages): 2-3 hours
+   - **Total: ~10 hours** (manageable for 2-3 week timeline)
 
 4. ~~**Coupling**: Do any groups eventually combine flow + transport? (e.g., pumping well capture of contamination)~~
    - **DECIDED**: Yes! Wells will be active in the transport model. Groups will analyze how their pumping/injection wells affect contaminant transport (capture zones, plume spreading from injection wells).
 
-5. **Software flexibility**: How much do we encourage alternative methods? (Suggest "encouraged to compare, but MT3D must be primary")
+5. ~~**Software flexibility**: How much do we encourage alternative methods?~~
+   - **DECIDED**: MT3DMS via FloPy is **strongly recommended** but not required
+   - Alternative **open-source/free** software is **permitted** if:
+     - Software is publicly and freely available
+     - Can be run/reviewed by tutors
+     - Students provide complete model setup and instructions for reproduction
+     - Analytical comparison requirement still applies
+   - **Examples of acceptable free alternatives**:
+     - MODFLOW 6 with GWT package (via FloPy)
+     - OpenGeoSys (OGS)
+     - MT3D-USGS
+     - PHT3D (if free version available)
+   - **Student responsibility**: Using alternative software will require significantly more work (no templates, no direct support)
+   - **Recommendation**: Strongly encourage MT3DMS/FloPy for 10-hour time constraint
+   - **Grading**: Same rubric applies regardless of software choice
 
-6. **Deliverables format**: Notebook only, or separate report? (Suggest notebook with narrative markdown cells)
+6. ~~**Deliverables format**: Notebook only, or separate report?~~
+   - **DECIDED**: Three required deliverables for ALL students
 
-7. **Grading criteria**: What aspects are weighted? (Suggest: setup 30%, results 30%, interpretation 20%, quality checks 20%)
+   **Deliverable 1: Technical Implementation**
+   - **If using MT3DMS/FloPy (recommended)**:
+     - Jupyter notebook (.ipynb) with code, results, and narrative markdown
+     - Completed transport_config.yaml
+   - **If using alternative software**:
+     - All model input files
+     - Setup instructions/documentation (reproducible steps)
+     - Results visualization and analysis (notebook or script)
+     - Completed transport_config.yaml (adapted as needed)
+
+   **Deliverable 2: Professional Report (PDF)** - **MANDATORY for all groups**
+   - Concise professional modeling report in PDF format
+   - Purpose: Demonstrate ability to communicate key results to clients/stakeholders
+   - Structure follows standard groundwater modeling report format (template provided)
+   - **Target length: 3-4 pages (including figures)**
+   - Focus on: problem statement, key results, analytical verification, conclusions
+   - Allocation: 2-3 hours of the 10-hour budget
+
+   **Deliverable 3: Model Files**
+   - Completed and executed notebook OR model setup files
+   - transport_config.yaml
+   - Any supplementary scripts or data
+
+   - **Rationale**:
+     - Professional report writing is a critical engineering skill
+     - Separates technical implementation (notebook) from communication (report)
+     - Mimics real-world consulting: technical work + client deliverable
+
+7. ~~**Grading criteria**: What aspects are weighted?~~
+   - **DECIDED**: Grading split between technical implementation and professional report
+
+   **Technical Implementation (50%)**:
+   - Model setup and configuration (10%)
+   - MT3DMS implementation and execution (15%)
+   - Analytical verification (15%)
+   - Quality checks and mass balance (10%)
+
+   **Professional Report (50%)**:
+   - Executive summary and clarity (10%)
+   - Methodology description (10%)
+   - Results presentation and visualization (10%)
+   - Interpretation, analysis, and conclusions (15%)
+   - Professional writing quality and format (5%)
+
+   **Note**: Analytical comparison appears in both technical (implementation) and report (discussion of results)
 
 ---
 
@@ -773,12 +987,20 @@ By completing this transport case study, students will:
 - **Total: ~30-45 hours**
 
 **For students (completion):**
-- Read/understand teaching notebook: 2-3 hours
-- Adapt demo case for their scenario: 3-4 hours
+- Read/understand teaching notebook (4b): 1-2 hours
+- Setup and adapt demo for their scenario: 2-3 hours
 - Run simulations and troubleshoot: 2-3 hours
-- Analysis and interpretation: 2-3 hours
-- Documentation and quality checks: 1-2 hours
-- **Total: ~10-15 hours per group**
+- Analytical comparison (with templates): 0.5-1 hour
+- Analysis and interpretation: 1-2 hours
+- Professional report writing (3-4 pages): 2-3 hours
+- **Total: ~10 hours per group** (target based on 2-3 week timeline)
+
+**Note**: The 10-hour target is achievable because:
+- Wells are reused from flow case (no new implementation)
+- Templates provided for analytical solutions and report
+- No parameter scenarios (simpler than flow case)
+- Demo notebook provides complete working example
+- Concise report format (3-4 pages) focuses on key learning goals
 
 ---
 
