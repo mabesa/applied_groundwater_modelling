@@ -6,8 +6,8 @@
 >
 > **For Instructors**: This document guides all transport case study development. Update it when design decisions change.
 >
-> **Last Updated**: 2025-11-02
-> **Status**: Planning complete - ready for implementation
+> **Last Updated**: 2025-11-03
+> **Status**: Planning complete - ready for implementation (analytical verification changed to optional)
 
 ---
 
@@ -30,13 +30,14 @@ Create a groundwater transport case study that:
 - Contaminant sources are placed strategically relative to the well field
 - This adds real-world relevance: understanding well-contaminant interactions is critical for groundwater management
 
-### Decision 2: Analytical Comparison is MANDATORY
-- **All groups must verify their numerical model with analytical solutions**
-- **Tier 1** (Groups 0, 1, 2, 5 - conservative tracers): Full 1D Ogata-Banks comparison
-- **Tier 2** (Groups 3, 4, 6, 7, 8 - reactive transport): Simplified comparison OR justification
-- **Rationale**: Professional modelers always verify. This teaches when simple methods suffice vs. when complexity is needed.
-- **Implementation**: Templates provided in SUPPORT_REPO to make it manageable (30-60 min effort)
-- **Grading**: 15% of total grade allocated to analytical verification
+### Decision 2: Analytical Comparison is OPTIONAL
+- **Groups can optionally verify their numerical model with analytical solutions**
+- **If chosen, two tiers available**:
+  - **Tier 1** (Groups 0, 1, 2, 5 - conservative tracers): Full 1D Ogata-Banks comparison
+  - **Tier 2** (Groups 3, 4, 6, 7, 8 - reactive transport): Simplified comparison OR justification
+- **Rationale**: While professional modelers verify, this is a learning exercise focused on transport modeling workflow. Verification adds significant complexity and time.
+- **Implementation**: Templates provided in SUPPORT_REPO for students who choose to verify
+- **Grading**: Bonus points available (5-10% extra credit) for students who complete analytical verification
 
 ---
 
@@ -381,8 +382,9 @@ For most case studies, **Approach 1** (constant concentration cell) is simpler a
 # Effectiveness of natural attenuation (if decay/sorption)
 ```
 
-#### 13. MANDATORY: Analytical Verification
+#### 13. (OPTIONAL) Analytical Verification for Bonus Credit
 ```python
+# OPTIONAL: Students can choose to complete this for bonus points
 # Extract 1D transect from MT3DMS results
 # Implement Ogata-Banks analytical solution
 # Compare numerical vs. analytical results
@@ -391,16 +393,18 @@ For most case studies, **Approach 1** (constant concentration cell) is simpler a
 # Discuss discrepancies and when each method is appropriate
 ```
 
-**For Tier 1 Groups (0, 1, 2, 5)**:
+**For Tier 1 Groups (0, 1, 2, 5)** - if choosing to do verification:
 - Full implementation of 1D analytical solution
 - Direct comparison with MT3DMS along flow transect
 - Quantify differences and explain causes (2D effects, grid discretization, etc.)
+- **Bonus**: +5-10% extra credit
 
-**For Tier 2 Groups (3, 4, 6, 7, 8)**:
+**For Tier 2 Groups (3, 4, 6, 7, 8)** - if choosing to do verification:
 - Choose Option A, B, or C (see analytical_verification in config)
 - If A: Run MT3DMS without reactions, compare to Ogata-Banks
 - If B: Implement analytical with R/λ, compare to full MT3DMS
-- If C: Justify why analytical comparison is not meaningful
+- If C: Justify why analytical comparison is not meaningful for your scenario
+- **Bonus**: +5-10% extra credit
 
 #### 14. Summary and Conclusions
 - Key findings for your scenario
@@ -612,8 +616,9 @@ approach:
     Consider: 2D/3D effects, well influences, boundary conditions,
     heterogeneity that analytical solutions cannot capture.
 
-# Analytical comparison requirements (MANDATORY)
+# Analytical comparison requirements (OPTIONAL - bonus credit available)
 analytical_verification:
+  optional: true  # Set to false if you choose not to do verification
   tier: 1  # or 2, automatically set based on group scenario
 
   # Tier 1 requirements (Groups 0, 1, 2, 5 - conservative tracers)
@@ -638,9 +643,10 @@ analytical_verification:
     - "In all cases: discuss what transport processes require numerical modeling"
 
   notes: >
-    Analytical comparison is MANDATORY. Templates will be provided in SUPPORT_REPO.
-    This teaches verification practice and understanding of when simple vs. complex
-    methods are needed. Budget 30-60 minutes for this task.
+    Analytical comparison is OPTIONAL (bonus credit: +5-10%). Templates provided in SUPPORT_REPO
+    for students who choose to verify their models. This demonstrates professional verification
+    practice and understanding of when simple vs. complex methods are needed.
+    Budget 30-60 minutes if you choose to complete this.
 
 # Analysis tasks
 analysis_tasks:
@@ -651,7 +657,7 @@ analysis_tasks:
   - "Assess whether concentration exceeds threshold at any location"
   - "Evaluate mass balance (% mass remaining in domain vs exported)"
   - "Analyze well-contaminant interactions (capture zones, spreading)"
-  - "MANDATORY: Analytical comparison (tier 1 or tier 2 requirements)"
+  - "OPTIONAL (bonus): Analytical comparison (tier 1 or tier 2 requirements)"
   - "Sensitivity analysis: vary dispersivity ±50%, compare results"
 
 # Deliverables
@@ -661,7 +667,7 @@ deliverables:
   - "Concentration maps (at least 4 time steps)"
   - "Breakthrough curves at monitoring points"
   - "Mass balance summary"
-  - "MANDATORY: Analytical comparison section with plots and discussion"
+  - "OPTIONAL (bonus): Analytical comparison section with plots and discussion"
   - "Analysis of well effects on contaminant transport"
   - "Written interpretation (2-3 paragraphs in notebook)"
   - "Parameter sensitivity discussion"
@@ -706,19 +712,21 @@ Each group analyzes contamination in relation to their well field from the flow 
 **Tier 1 - Simple Scenarios (Groups 0, 1, 2, 5, 6):**
 - Conservative tracer (no sorption or decay, or very slight sorption for PCE)
 - Focus on advection, dispersion, and well capture/spreading
-- **Analytical requirement**: Full 1D Ogata-Banks comparison
+- **Analytical verification (optional bonus)**: Full 1D Ogata-Banks comparison
   - Extract 1D transect from numerical model
   - Implement analytical solution with same parameters
   - Plot comparison and discuss differences
   - Estimate when analytical is "good enough" vs. when 2D/3D numerical is needed
+  - **Bonus credit**: +5-10%
 
 **Tier 2 - Moderate Scenarios (Groups 3, 4, 7, 8):**
 - Reactive transport (sorption OR decay)
 - Combined effect of reactions + well pumping/injection
-- **Analytical requirement**: Choose one option
+- **Analytical verification (optional bonus)**: Choose one option
   - **Option A**: Simplified comparison (set Kd=0 and λ=0, compare conservative transport)
   - **Option B**: Semi-analytical with retardation/decay (1D with R and λ)
   - **Option C**: Detailed justification why analytical comparison is not feasible/meaningful
+  - **Bonus credit**: +5-10%
 - **Purpose**: Understand what aspects require numerical modeling vs. can be solved analytically
 
 ---
@@ -785,7 +793,7 @@ Each group analyzes contamination in relation to their well field from the flow 
 
 ### Phase 5: Supporting Materials
 - [ ] Update README.md in student_work/ with transport instructions
-- [ ] **Add analytical solution functions to SUPPORT_REPO** (CRITICAL for mandatory comparison)
+- [ ] **Add analytical solution functions to SUPPORT_REPO** (for students choosing optional verification)
   - [ ] Ogata-Banks 1D solution (instantaneous and continuous source)
   - [ ] 1D solution with retardation factor
   - [ ] 1D solution with first-order decay
@@ -840,18 +848,18 @@ Students must submit a concise professional modeling report (PDF, 3-4 pages) foc
 **2. Methodology (0.75 page)**
 - Transport model setup summary (domain, parameters, source term)
 - Key assumptions and their justification
-- Analytical verification approach (which method, why appropriate)
+- (If completed) Brief mention of analytical verification approach
 
 **3. Results (1.5-2 pages, mostly figures with brief text)**
 - **Figure 1**: Concentration map at key time (e.g., 5 or 10 years)
 - **Figure 2**: Breakthrough curve at critical location
-- **Figure 3**: Analytical vs. numerical comparison
+- **Figure 3** (optional): Analytical vs. numerical comparison (if completed)
 - Brief text: Maximum concentrations, breakthrough times, plume extent
 - Well-contaminant interaction summary (capture or spreading)
 
 **4. Discussion and Conclusions (0.75-1 page)**
 - Interpretation: What do results mean for the scenario?
-- Analytical comparison: When is simple method sufficient? When is numerical needed?
+- (If completed) Analytical comparison: When is simple method sufficient? When is numerical needed?
 - Parameter uncertainty: Which parameters matter most?
 - Recommendations: Well management, monitoring, or remediation suggestions
 
@@ -860,7 +868,7 @@ Students must submit a concise professional modeling report (PDF, 3-4 pages) foc
 ✓ **Communication**: Distill technical work into client-ready summary
 ✓ **Critical thinking**: Justify modeling choices and parameter selection
 ✓ **Analysis**: Interpret results in context of well-contaminant interactions
-✓ **Verification**: Explain value and limitations of analytical comparison
+✓ **Verification (bonus)**: If completed, explain value and limitations of analytical comparison
 ✓ **Engineering judgment**: Provide actionable recommendations
 
 ### Quality Guidelines
@@ -966,10 +974,10 @@ By completing this transport case study, students will:
    - **DECIDED**: Use the same well field locations as flow case study. Each group's submodel domain will be centered on their assigned well group (concession area).
 
 2. ~~**Analytical comparison**: Required or optional?~~
-   - **DECIDED**: **Mandatory with tiered requirements**
-   - **Tier 1** (Simple scenarios - Groups 0, 1, 2, 5): Full analytical comparison required (1D Ogata-Banks)
-   - **Tier 2** (Moderate scenarios - Groups 3, 4, 6, 7, 8): Simplified analytical comparison (without reactions) OR detailed justification why analytical is insufficient
-   - **Rationale**: Verification is professional practice, not optional. Templates provided to make manageable. Teaches when simple methods work vs. when complexity is needed.
+   - **DECIDED (2025-11-03)**: **Optional with bonus credit**
+   - **Tier 1** (Simple scenarios - Groups 0, 1, 2, 5): Full analytical comparison available (1D Ogata-Banks) - bonus +5-10%
+   - **Tier 2** (Moderate scenarios - Groups 3, 4, 6, 7, 8): Simplified analytical comparison OR justification - bonus +5-10%
+   - **Rationale**: While verification is professional practice, this is a learning exercise focused on transport workflow. Making it optional reduces student workload while still providing incentive for those interested in deeper understanding.
 
 3. ~~**Time constraints**: How many weeks for transport case study?~~
    - **DECIDED**: 2-3 weeks, approximately **10 hours total** including report writing
@@ -977,10 +985,10 @@ By completing this transport case study, students will:
      - Read/understand teaching notebook (4b): 1-2 hours
      - Setup and adapt demo for their scenario: 2-3 hours
      - Run simulations and troubleshoot: 2-3 hours
-     - Analytical comparison: 0.5-1 hour (with templates)
+     - (Optional) Analytical comparison: 0.5-1 hour (with templates) - bonus credit
      - Analysis and interpretation: 1-2 hours
      - Professional report writing (3-4 pages): 2-3 hours
-   - **Total: ~10 hours** (manageable for 2-3 week timeline)
+   - **Total: ~8-10 hours** (manageable for 2-3 week timeline, 10-11 hours if including optional verification)
 
 4. ~~**Coupling**: Do any groups eventually combine flow + transport? (e.g., pumping well capture of contamination)~~
    - **DECIDED**: Yes! Wells will be active in the transport model. Groups will analyze how their pumping/injection wells affect contaminant transport (capture zones, plume spreading from injection wells).
@@ -1033,22 +1041,23 @@ By completing this transport case study, students will:
      - Mimics real-world consulting: technical work + client deliverable
 
 7. ~~**Grading criteria**: What aspects are weighted?~~
-   - **DECIDED**: Grading split between technical implementation and professional report
+   - **DECIDED (Updated 2025-11-03)**: Grading split between technical implementation and professional report
 
    **Technical Implementation (50%)**:
-   - Model setup and configuration (10%)
-   - MT3DMS implementation and execution (15%)
-   - Analytical verification (15%)
-   - Quality checks and mass balance (10%)
+   - Model setup and configuration (15%)
+   - MT3DMS implementation and execution (20%)
+   - Quality checks and mass balance (15%)
 
    **Professional Report (50%)**:
-   - Executive summary and clarity (10%)
+   - Problem statement and objectives (10%)
    - Methodology description (10%)
-   - Results presentation and visualization (10%)
-   - Interpretation, analysis, and conclusions (15%)
+   - Results presentation and visualization (15%)
+   - Interpretation, analysis, and conclusions (10%)
    - Professional writing quality and format (5%)
 
-   **Note**: Analytical comparison appears in both technical (implementation) and report (discussion of results)
+   **Bonus Credit (up to +10%)**:
+   - Analytical verification (tier 1 or tier 2): +5-10% depending on completeness and quality
+   - This allows motivated students to exceed 100% on the assignment
 
 ---
 
@@ -1066,14 +1075,16 @@ By completing this transport case study, students will:
 - Read/understand teaching notebook (4b): 1-2 hours
 - Setup and adapt demo for their scenario: 2-3 hours
 - Run simulations and troubleshoot: 2-3 hours
-- Analytical comparison (with templates): 0.5-1 hour
 - Analysis and interpretation: 1-2 hours
 - Professional report writing (3-4 pages): 2-3 hours
-- **Total: ~10 hours per group** (target based on 2-3 week timeline)
+- **(Optional) Analytical comparison (with templates): 0.5-1 hour** - bonus credit
+- **Total: ~8-10 hours per group** (target based on 2-3 week timeline)
+- **Total with bonus: ~10-11 hours** if including analytical verification
 
-**Note**: The 10-hour target is achievable because:
+**Note**: The 8-10 hour target is achievable because:
 - Wells are reused from flow case (no new implementation)
-- Templates provided for analytical solutions and report
+- No mandatory analytical comparison (reduced from original 10 hours)
+- Templates provided for report and optional analytical solutions
 - No parameter scenarios (simpler than flow case)
 - Demo notebook provides complete working example
 - Concise report format (3-4 pages) focuses on key learning goals
