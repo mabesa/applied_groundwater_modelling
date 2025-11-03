@@ -98,53 +98,115 @@ applied_groundwater_modelling/
 
 ### 4b_transport_model_implementation.ipynb (Teaching Notebook)
 
-**Purpose**: Demonstrate transport concepts and MT3DMS setup to students
+**Purpose**: Demonstrate transport concepts and MT3D-USGS setup to students
 
-**Content Structure**:
-1. **Introduction to Transport Modeling**
-   - Recap of advection, dispersion, sorption, decay
-   - When to use analytical vs numerical approaches
-   - Overview of MT3DMS coupling with MODFLOW
+**Status**: Sections 1-6 implemented (as of 2025-11-03)
 
-2. **Transport Model Setup Fundamentals**
-   - Loading a MODFLOW model and flow results
-   - Creating an MT3DMS model with FloPy
-   - Setting transport parameters (porosity, dispersivity)
-   - Understanding Courant and Peclet numbers
+**Content Structure (IMPLEMENTED)**:
 
-3. **Source Term Definition**
-   - Point sources vs area sources
-   - Continuous vs pulse releases
-   - Mapping coordinates to grid cells
-   - SSM (Source-Sink Mixing) package
+#### **Section 1: Overview - Learning Path for Contaminant Transport Modeling**
+   - 1.1 The Problem: Contaminant Plume Migration
+   - 1.2 The Approach: Simple to Complex (roadmap through sections)
+   - 1.3 Why This Structure? (pedagogical justification)
+   - 1.4 Learning Outcomes
+   - 1.5 Notebook Structure (visual roadmap)
+   - 1.6 The Key Insight (analytical → verification → application)
 
-4. **Simple Example: 1D Analytical Verification**
-   - Ogata-Banks solution implementation
-   - MT3DMS verification against analytical
-   - Building confidence in numerical setup
+**Key Innovation**: Students see the entire learning journey upfront - why we start with analytical, verify numerically, then apply to real cases.
 
-5. **2D/3D Example on Base Model**
-   - Point source in Limmat Valley base model
-   - Running MT3DMS coupled transport
-   - Post-processing: concentration maps, breakthrough curves
-   - Mass balance checking
+#### **Section 2: Introduction to Contaminant Transport Modeling**
+   - 2.1 Fundamental Transport Processes (advection, dispersion, sorption, decay)
+   - 2.2 Governing Equation (3D advection-dispersion-reaction)
+   - 2.3 **Formulation with Forcing Terms** (NEW - comprehensive source term theory)
+     - Complete transport equation with sources/sinks
+     - Physical interpretation of forcing terms
+     - Mathematical forms for different source types (Dirichlet, Neumann, Cauchy)
+     - Units and consistency
+     - Boundary and initial conditions
+     - Solution strategy in MT3D-USGS
+     - Key takeaways for modeling
+   - 2.4 Analytical vs. Numerical Solutions
+   - 2.5 MT3D-USGS: Modular Transport Simulator (package overview)
+   - 2.6 When to Use Which Method? (decision framework)
+   - 2.7 References
 
-6. **Telescope Approach for Transport**
-   - Why refine around the source area?
-   - Creating transport submodel from parent model
-   - Extracting flow boundary conditions
-   - Running transport on submodel
-   - Advantages: resolution, computation time
+**Key Innovation**: Section 2.3 provides comprehensive theoretical foundation for source terms, eliminating need for separate section later.
 
-7. **Alternative Approaches Discussion**
+#### **Section 3: Analytical Solution - Ogata-Banks for 1D Transport**
+   - 3.1 The Ogata-Banks Solution (theory and equations)
+   - 3.2 Implement Ogata-Banks Function (Python implementation)
+   - 3.3 Visualize Analytical Solution (parameter exploration)
+   - 3.4 Summary: Analytical Solution Established
+
+**Purpose**: Establish "ground truth" before any numerical modeling. Students understand what the correct answer should look like.
+
+#### **Section 4: Numerical Verification - 1D MT3D-USGS Model**
+   - 4.1 Why Verify Against Analytical Solution?
+   - 4.2 Model Design for Verification (Pe = 0.5 target)
+   - 4.3 Set Up 1D MODFLOW Model
+   - 4.4 Set Up 1D MT3D Model (all packages: BTN, ADV, DSP, SSM, GCG)
+   - 4.5 Run 1D MT3D and Extract Results
+   - 4.6 Compare MT3D Results to Analytical Solution
+   - 4.8 Summary: Numerical Verification Complete
+
+**Purpose**: Build confidence in MT3D-USGS. Students see <10% error when properly configured (Pe = 0.5). This establishes that the tool works correctly.
+
+#### **Section 5: Load Limmat Valley Flow Model**
+   - 5.1 Import Libraries
+   - 5.2 Load and Run Parent Flow Model
+   - 5.3 Load and Inspect Flow Results
+   - 5.4 Summary: Flow Model Ready for Transport
+
+**Purpose**: Transition from idealized 1D to real 2.5D Limmat Valley model.
+
+#### **Section 6: 2.5D Transport - Limmat Valley Implementation**
+   - 6.1 Define Contaminant Source Location (includes source term practical implementation)
+   - 6.2 Create MT3D Model and Check Grid Resolution (Pe = 5.0 - too coarse!)
+   - 6.3 Set Up MT3D Packages (BTN, ADV, DSP, SSM)
+   - 6.4 Optional: RCT Package for Reactive Transport
+   - 6.5 Write and Run MT3D Model
+   - 6.6 Load Concentration Results
+   - 6.7 Diagnostic Analysis of Concentrations
+   - 6.8 Visualize Concentration Over Time
+   - 6.9 Summary: 2.5D Transport Implementation Complete
+   - 6.10 **Diagnosis: Grid Resolution is the Problem**
+     - Peclet Number Check (Pe = 5.0 vs Pe = 0.5)
+     - The Contrast: Good vs Bad Resolution (comparison with Section 4)
+     - Why We Implemented It Anyway (learning from controlled failure)
+     - When is Coarse Grid Acceptable?
+     - Solution: Telescope Approach (preview of Section 7)
+     - What We Learned Despite Coarse Grid
+
+**Key Innovation**: Section 6 deliberately implements transport on coarse grid (Pe = 5.0) to create a "controlled failure." Section 6.10 diagnoses why it fails and contrasts with successful Section 4 (Pe = 0.5). This teaches students to recognize and diagnose grid resolution problems.
+
+**Pedagogical Flow**:
+- Section 3: Theory → "correct answer"
+- Section 4: Proper numerical implementation → success (Pe = 0.5)
+- Section 6: Coarse grid implementation → problems (Pe = 5.0)
+- Section 6.10: Diagnosis → understanding
+- Section 7: Solution → telescope approach
+
+#### **Section 7: Alternative Approaches and Method Selection** (PLANNED - not yet implemented)
    - When analytical solutions are sufficient
    - Hybrid approaches (particle tracking, analytical overlays)
    - Trade-offs between methods
+   - Decision framework for method selection
+
+#### **Section 8: Telescope Approach for Transport** (PLANNED - not yet implemented)
+   - Why refine around the source area?
+   - Creating transport submodel from parent model
+   - Extracting flow boundary conditions
+   - Running transport on submodel with Pe = 0.5
+   - Comparison: coarse (Section 6) vs refined (Section 8)
+   - Advantages: resolution, computation time
 
 **Key Teaching Points**:
 - Students see complete workflow before their assignment
-- Emphasis on verification and quality checks
-- Clear explanation of when/why telescope approach helps
+- **Analytical-first approach builds confidence** (Section 3)
+- **Verification is mandatory** (Section 4)
+- **Learning from controlled failure** (Section 6.10 diagnosis)
+- **Grid resolution is critical** (Pe number as diagnostic)
+- Clear explanation of when/why telescope approach helps (Section 8)
 - Balanced view of analytical vs numerical methods
 
 **MT3DMS Package Overview for Students**:
@@ -663,21 +725,35 @@ Each group analyzes contamination in relation to their well field from the flow 
 
 ## Implementation Steps
 
-### Phase 1: Planning and Design (Current)
+### Phase 1: Planning and Design ✅ COMPLETE
 - [x] Define overall approach (simpler, independent from flow case)
 - [x] Finalize 9 transport scenarios (one per group)
 - [x] Design transport_config.yaml structure
-- [ ] Outline both notebook structures
+- [x] Outline both notebook structures
+- [x] Update planning document with implemented structure (2025-11-03)
 
-### Phase 2: Teaching Notebook (4b_transport_model_implementation.ipynb)
-- [ ] Section 1-2: Transport fundamentals recap
-- [ ] Section 3: MT3DMS basics and FloPy interface
-- [ ] Section 4: Simple 1D analytical verification example
-- [ ] Section 5: 2D/3D example on base model (no submodel)
-- [ ] Section 6: Telescope approach demonstration
-- [ ] Section 7: Alternative methods discussion
-- [ ] Test notebook end-to-end
-- [ ] Add exercises/reflection questions
+### Phase 2: Teaching Notebook (4b_transport_model_implementation.ipynb) - PARTIALLY COMPLETE
+**Completed (2025-11-03):**
+- [x] Section 1: Overview and learning path with complete pedagogical roadmap
+- [x] Section 2: Transport fundamentals with comprehensive forcing terms theory
+- [x] Section 3: Analytical solution (Ogata-Banks) implementation and visualization
+- [x] Section 4: 1D numerical verification (MT3D-USGS) with analytical comparison
+- [x] Section 5: Load Limmat Valley flow model
+- [x] Section 6: 2.5D transport on coarse grid (Pe = 5.0) with diagnostic analysis
+- [x] Section 6.10: Comprehensive diagnosis of grid resolution problems
+
+**Remaining:**
+- [ ] Section 7: Alternative approaches and method selection (partially implemented, needs completion)
+- [ ] Section 8: Telescope approach demonstration (create refined submodel, compare with Section 6)
+- [ ] Test complete notebook end-to-end (Sections 1-8)
+- [ ] Add exercises/reflection questions (if needed)
+
+**Key Changes from Original Plan:**
+- Added Section 1 as comprehensive overview/roadmap (major pedagogical improvement)
+- Expanded Section 2.3 to include complete forcing terms theory (eliminates need for separate source term section)
+- Section 6 deliberately uses coarse grid (Pe = 5.0) as "controlled failure" for learning
+- Section 6.10 provides detailed diagnosis comparing good (Sec 4) vs bad (Sec 6) resolution
+- Telescope approach moved to Section 8 (was originally Section 6)
 
 ### Phase 3: Demo Case Study (group_0/)
 - [ ] Create transport_config.yaml for group 0 (demo scenario)
