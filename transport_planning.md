@@ -33,7 +33,7 @@ Create a groundwater transport case study that:
 ### Decision 2: Analytical Comparison is OPTIONAL
 - **Groups can optionally verify their numerical model with analytical solutions**
 - **If chosen, two tiers available**:
-  - **Tier 1** (Groups 0, 1, 2, 5 - conservative tracers): Full 1D Ogata-Banks comparison
+  - **Tier 1** (Groups 0, 1, 2, 5 - conservative tracers): Full 1D pulse comparison
   - **Tier 2** (Groups 3, 4, 6, 7, 8 - reactive transport): Simplified comparison OR justification
 - **Rationale**: While professional modelers verify, this is a learning exercise focused on transport modeling workflow. Verification adds significant complexity and time.
 - **Implementation**: Templates provided in SUPPORT_REPO for students who choose to verify
@@ -133,9 +133,9 @@ applied_groundwater_modelling/
 
 **Key Innovation**: Section 2.3 provides comprehensive theoretical foundation for source terms, eliminating need for separate section later.
 
-#### **Section 3: Analytical Solution - Ogata-Banks for 1D Transport**
-   - 3.1 The Ogata-Banks Solution (theory and equations)
-   - 3.2 Implement Ogata-Banks Function (Python implementation)
+#### **Section 3: Analytical Solution - Pulse Source for 1D Transport**
+   - 3.1 The Pulse Source Solution (theory and equations)
+   - 3.2 Implement Pulse Source Function (Python implementation)
    - 3.3 Visualize Analytical Solution (parameter exploration)
    - 3.4 Summary: Analytical Solution Established
 
@@ -386,7 +386,7 @@ For most case studies, **Approach 1** (constant concentration cell) is simpler a
 ```python
 # OPTIONAL: Students can choose to complete this for bonus points
 # Extract 1D transect from MT3DMS results
-# Implement Ogata-Banks analytical solution
+# Implement pulse source analytical solution
 # Compare numerical vs. analytical results
 # Plot comparison at multiple times
 # Breakthrough curve comparison
@@ -401,7 +401,7 @@ For most case studies, **Approach 1** (constant concentration cell) is simpler a
 
 **For Tier 2 Groups (3, 4, 6, 7, 8)** - if choosing to do verification:
 - Choose Option A, B, or C (see analytical_verification in config)
-- If A: Run MT3DMS without reactions, compare to Ogata-Banks
+- If A: Run MT3DMS without reactions, compare to pulse source
 - If B: Implement analytical with R/λ, compare to full MT3DMS
 - If C: Justify why analytical comparison is not meaningful for your scenario
 - **Bonus**: +5-10% extra credit
@@ -624,7 +624,7 @@ analytical_verification:
   # Tier 1 requirements (Groups 0, 1, 2, 5 - conservative tracers)
   tier_1_tasks:
     - "Extract 1D concentration transect from MT3DMS results along flow direction"
-    - "Implement 1D Ogata-Banks analytical solution with same parameters (v, D, source)"
+    - "Implement 1D pulse source analytical solution with same parameters (v, D, source)"
     - "Plot comparison: analytical vs. numerical at multiple times"
     - "Calculate breakthrough curves at monitoring point: analytical vs. numerical"
     - "Discuss discrepancies (2D spreading, grid effects, boundary conditions)"
@@ -632,7 +632,7 @@ analytical_verification:
 
   # Tier 2 requirements (Groups 3, 4, 6, 7, 8 - reactive transport)
   tier_2_options:
-    option_a: "Run simplified MT3DMS without reactions (Kd=0, λ=0), compare to Ogata-Banks"
+    option_a: "Run simplified MT3DMS without reactions (Kd=0, λ=0), compare to pulse source"
     option_b: "Implement 1D analytical with retardation/decay, compare to full MT3DMS"
     option_c: "Detailed written justification why analytical comparison is not meaningful"
 
@@ -712,7 +712,7 @@ Each group analyzes contamination in relation to their well field from the flow 
 **Tier 1 - Simple Scenarios (Groups 0, 1, 2, 5, 6):**
 - Conservative tracer (no sorption or decay, or very slight sorption for PCE)
 - Focus on advection, dispersion, and well capture/spreading
-- **Analytical verification (optional bonus)**: Full 1D Ogata-Banks comparison
+- **Analytical verification (optional bonus)**: Full 1D pulse source comparison
   - Extract 1D transect from numerical model
   - Implement analytical solution with same parameters
   - Plot comparison and discuss differences
@@ -745,7 +745,7 @@ Each group analyzes contamination in relation to their well field from the flow 
 **Completed (2025-11-03):**
 - [x] Section 1: Overview and learning path with complete pedagogical roadmap
 - [x] Section 2: Transport fundamentals with comprehensive forcing terms theory
-- [x] Section 3: Analytical solution (Ogata-Banks) implementation and visualization
+- [x] Section 3: Analytical solution (pulse source) implementation and visualization
 - [x] Section 4: 1D numerical verification (MT3D-USGS) with analytical comparison
 - [x] Section 5: Load Limmat Valley flow model
 - [x] Section 6: 2.5D transport on coarse grid (Pe = 5.0) with diagnostic analysis
@@ -843,7 +843,7 @@ Each group analyzes contamination in relation to their well field from the flow 
 
 - [ ] **Section 14 (OPTIONAL): Analytical Verification**
   - [ ] Extract 1D transect along flow
-  - [ ] Implement Ogata-Banks pulse source
+  - [ ] Implement 1D pulse source
   - [ ] Plot analytical vs numerical profiles
   - [ ] Breakthrough curve comparison
   - [ ] Discuss discrepancies
@@ -997,7 +997,7 @@ For each group:
 ### Phase 6: Supporting Materials - NOT STARTED
 - [ ] Update README.md in student_work/ with transport instructions
 - [ ] **Add analytical solution functions to SUPPORT_REPO** (for students choosing optional verification)
-  - [ ] Ogata-Banks 1D solution (instantaneous and continuous source)
+  - [ ] 1D solution in uniform flow field (instantaneous and continuous source)
   - [ ] 1D solution with retardation factor
   - [ ] 1D solution with first-order decay
   - [ ] Combined retardation + decay
@@ -1218,7 +1218,7 @@ By completing this transport case study, students will:
 
 2. ~~**Analytical comparison**: Required or optional?~~
    - **DECIDED (2025-11-03)**: **Optional with bonus credit**
-   - **Tier 1** (Simple scenarios - Groups 0, 1, 2, 5): Full analytical comparison available (1D Ogata-Banks) - bonus +5-10%
+   - **Tier 1** (Simple scenarios - Groups 0, 1, 2, 5): Full analytical comparison available (1D pulse source) - bonus +5-10%
    - **Tier 2** (Moderate scenarios - Groups 3, 4, 6, 7, 8): Simplified analytical comparison OR justification - bonus +5-10%
    - **Rationale**: While verification is professional practice, this is a learning exercise focused on transport workflow. Making it optional reduces student workload while still providing incentive for those interested in deeper understanding.
 
@@ -1435,10 +1435,10 @@ If stability criteria are violated, reduce time step size or refine grid.
 
 ### Useful Analytical Solutions
 
-**1D Advection-Dispersion (Ogata-Banks)**:
+**1D Advection-Dispersion (Pulse Source)**:
 For instantaneous source in uniform flow:
 ```
-C(x,t) = (C₀/2) · [erfc((x-vt)/(2√(Dₓt))) + exp(vx/Dₓ)·erfc((x+vt)/(2√(Dₓt)))]
+C(x,t) = 1 / (n * np.sqrt(4 * np.pi * D * t)) * np.exp(-((x - xc - v * t) ** 2) / (4 * D * t) - lamb * t)
 ```
 
 **1D with Retardation**:
