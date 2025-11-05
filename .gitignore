@@ -176,3 +176,13 @@ config.py
 SUPPORT_REPO/src/scripts/scripts_limmat_data_preprocessing/time_series_decomposition.png
 SUPPORT_REPO/src/scripts/scripts_limmat_data_preprocessing/seasonal_pattern.png
 SUPPORT_REPO/src/scripts/scripts_limmat_data_preprocessing/groundwater_visualization.png
+
+# Student work folders - ignore groups 1-8 (student work), but track group_0 (demo/template)
+CASE_STUDY/student_work/group_1/
+CASE_STUDY/student_work/group_2/
+CASE_STUDY/student_work/group_3/
+CASE_STUDY/student_work/group_4/
+CASE_STUDY/student_work/group_5/
+CASE_STUDY/student_work/group_6/
+CASE_STUDY/student_work/group_7/
+CASE_STUDY/student_work/group_8/
