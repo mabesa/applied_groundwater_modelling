@@ -739,8 +739,9 @@ Each group analyzes contamination in relation to their well field from the flow 
 - [x] Design transport_config.yaml structure
 - [x] Outline both notebook structures
 - [x] Update planning document with implemented structure (2025-11-03)
+- [x] Update group_0 template to make analytical verification optional (2025-11-04)
 
-### Phase 2: Teaching Notebook (4b_transport_model_implementation.ipynb) - PARTIALLY COMPLETE
+### Phase 2: Teaching Notebook (4b_transport_model_implementation.ipynb) ✅ COMPLETE
 **Completed (2025-11-03):**
 - [x] Section 1: Overview and learning path with complete pedagogical roadmap
 - [x] Section 2: Transport fundamentals with comprehensive forcing terms theory
@@ -749,12 +750,9 @@ Each group analyzes contamination in relation to their well field from the flow 
 - [x] Section 5: Load Limmat Valley flow model
 - [x] Section 6: 2.5D transport on coarse grid (Pe = 5.0) with diagnostic analysis
 - [x] Section 6.10: Comprehensive diagnosis of grid resolution problems
-
-**Remaining:**
-- [ ] Section 7: Alternative approaches and method selection (partially implemented, needs completion)
-- [ ] Section 8: Telescope approach demonstration (create refined submodel, compare with Section 6)
-- [ ] Test complete notebook end-to-end (Sections 1-8)
-- [ ] Add exercises/reflection questions (if needed)
+- [x] Section 7: Alternative approaches and method selection
+- [x] Section 8: Telescope approach demonstration (create refined submodel, compare with Section 6)
+- [x] Test complete notebook end-to-end (Sections 1-8)
 
 **Key Changes from Original Plan:**
 - Added Section 1 as comprehensive overview/roadmap (major pedagogical improvement)
@@ -763,35 +761,240 @@ Each group analyzes contamination in relation to their well field from the flow 
 - Section 6.10 provides detailed diagnosis comparing good (Sec 4) vs bad (Sec 6) resolution
 - Telescope approach moved to Section 8 (was originally Section 6)
 
-### Phase 3: Demo Case Study (group_0/)
-- [ ] Create transport_config.yaml for group 0 (demo scenario)
-- [ ] Build case_study_transport_group_0.ipynb following structure above
-  - [ ] Sections 1-4: Setup and parent model
-  - [ ] Sections 5-6: Telescope submodel creation
-  - [ ] Sections 7-8: MT3DMS setup and source term
-  - [ ] Sections 9-10: Run and visualize
-  - [ ] Sections 11-12: QC and analysis
-  - [ ] Section 13: Optional analytical comparison
-  - [ ] Section 14: Summary
-- [ ] Test complete workflow end-to-end
-- [ ] Verify computational time is reasonable
-- [ ] Add helpful comments and TODO markers for students
+**Status**: Teaching notebook is complete and ready for student use
 
-### Phase 4: Student Configurations (groups 1-8)
-- [ ] Create transport_config.yaml for each group
-  - [ ] Group 1: Nitrate scenario
-  - [ ] Group 2: Legacy landfill
-  - [ ] Group 3: Benzene
-  - [ ] Group 4: Atrazine
-  - [ ] Group 5: PFOA
-  - [ ] Group 6: Deicing salt
-  - [ ] Group 7: Ammonium
-  - [ ] Group 8: Chromium
-- [ ] Define source locations (varied across valley)
-- [ ] Set appropriate parameters for each contaminant
-- [ ] Write scenario-specific descriptions and questions
+### Phase 3: Demo Case Study (group_0/) - IN PROGRESS
+**Status**: Template structure complete, now implementing full working example
 
-### Phase 5: Supporting Materials
+**Completed (2025-11-04):**
+- [x] Create transport_config.yaml template for group 0
+- [x] Create case_study_transport_group_0.ipynb structure with all sections
+- [x] Update both files to make analytical verification optional (bonus credit)
+
+**Implementation Tasks (Priority 1 - Current Focus):**
+
+#### 3.1 Pre-Implementation Analysis
+- [ ] Review existing flow case study for group_0 (concession 210)
+  - [ ] Extract well locations and rates from case_config.yaml
+  - [ ] Identify pumping vs injection wells
+  - [ ] Understand well field geometry
+- [ ] Define source location strategically
+  - [ ] Review well positions relative to flow direction
+  - [ ] Select placement to create interesting interactions (e.g., upgradient of pumping wells)
+  - [ ] Document placement rationale
+
+#### 3.2 Core Implementation (All Sections)
+- [ ] **Section 3-4: Configuration and Parent Model**
+  - [ ] Load transport_config.yaml
+  - [ ] Download/load baseline_model
+  - [ ] Run parent model, verify convergence
+  - [ ] Extract and visualize flow field
+
+- [ ] **Section 5-6: Wells and Domain Definition**
+  - [ ] Load wells from flow case config
+  - [ ] Visualize well locations
+  - [ ] Estimate 10-year plume travel distance
+  - [ ] Define submodel extent with buffers
+  - [ ] Create domain visualization
+
+- [ ] **Section 7: Create Telescope Submodel**
+  - [ ] Generate 5m refined grid
+  - [ ] Extract boundary conditions from parent
+  - [ ] Interpolate aquifer properties (K, elevations)
+  - [ ] Set up MODFLOW submodel packages
+  - [ ] Run submodel flow simulation
+  - [ ] Verify convergence and mass balance
+  - [ ] Visualize head contours and flow vectors
+
+- [ ] **Section 8-9: MT3DMS Setup and Source Term**
+  - [ ] Create MT3DMS model object
+  - [ ] BTN package: porosity, time stepping
+  - [ ] ADV package: TVD scheme
+  - [ ] DSP package: dispersivity parameters
+  - [ ] SSM package: 30-day pulse source
+  - [ ] GCG solver package
+  - [ ] Map source location to grid
+  - [ ] Visualize source on model grid
+
+- [ ] **Section 10: Run Transport**
+  - [ ] Write MT3DMS input files
+  - [ ] Run 10-year simulation
+  - [ ] Load UCN results
+  - [ ] Check for warnings/errors
+
+- [ ] **Section 11: Post-Processing**
+  - [ ] Concentration maps at 30d, 1yr, 3yr, 5yr, 10yr
+  - [ ] Breakthrough curves at monitoring points
+  - [ ] Plume extent over time (area C > threshold)
+  - [ ] Mass balance analysis
+
+- [ ] **Section 12: Quality Checks**
+  - [ ] Verify mass balance < 1%
+  - [ ] Calculate Courant and Peclet numbers
+  - [ ] Check for negative concentrations
+  - [ ] Verify plume contained in domain
+
+- [ ] **Section 13: Well-Contaminant Interactions**
+  - [ ] Classify wells (pumping vs injection)
+  - [ ] Analyze capture by pumping wells
+  - [ ] Assess spreading from injection wells
+  - [ ] Calculate mass captured by wells
+  - [ ] Create summary visualizations
+
+- [ ] **Section 14 (OPTIONAL): Analytical Verification**
+  - [ ] Extract 1D transect along flow
+  - [ ] Implement Ogata-Banks pulse source
+  - [ ] Plot analytical vs numerical profiles
+  - [ ] Breakthrough curve comparison
+  - [ ] Discuss discrepancies
+  - [ ] Document bonus credit value
+
+- [ ] **Section 15: Sensitivity Analysis**
+  - [ ] Run with αL = 5m (low dispersivity)
+  - [ ] Run with αL = 15m (high dispersivity)
+  - [ ] Compare plume extents
+  - [ ] Compare breakthrough times
+
+- [ ] **Section 16-17: Summary and Report Prep**
+  - [ ] Write key findings summary
+  - [ ] Interpretation and recommendations
+  - [ ] Report structure guidance
+  - [ ] Checklist before submission
+
+#### 3.3 Testing and Quality Assurance
+- [ ] Run complete notebook from fresh kernel
+- [ ] Verify computational time < 1 hour
+- [ ] Check all figures render correctly
+- [ ] Verify results are physically reasonable
+- [ ] Test on clean Python environment
+- [ ] Add troubleshooting notes
+
+#### 3.4 Documentation Polish
+- [ ] Review all markdown cells for clarity
+- [ ] Add parameter justifications
+- [ ] Include troubleshooting tips
+- [ ] Highlight common pitfalls
+- [ ] Cross-reference to teaching notebook (4b)
+
+**Time Estimate for Phase 3**: 2-3 days focused work
+
+### Phase 4: Student Configurations (groups 1-8) - NOT STARTED
+**Target**: Complete transport_config.yaml files for all groups
+
+**Note**: Groups 1-8 folders are git-ignored, so implementations will be complete instructor solutions
+
+#### 4.1 Configuration Files
+- [ ] **Group 1 (Concession 219): Nitrate - Sports field fertilizer**
+  - [ ] Load well data from existing case_config.yaml
+  - [ ] Define continuous source (fertilizer application)
+  - [ ] Set nitrate parameters: conservative tracer
+  - [ ] Position source near sports fields
+  - [ ] Tier 1 analytical verification (conservative)
+
+- [ ] **Group 2 (Concession 201): Chloride - Legacy landfill**
+  - [ ] Load well data
+  - [ ] Define long-duration continuous source (10-year history)
+  - [ ] Set chloride parameters: conservative tracer
+  - [ ] Position source at landfill location
+  - [ ] Tier 1 analytical verification (conservative)
+
+- [ ] **Group 3 (Concession 236): Benzene - Gas station leak**
+  - [ ] Load well data
+  - [ ] Define point source with decay (biodegradation)
+  - [ ] Set benzene parameters: λ = 0.002-0.01 /day
+  - [ ] Position source at gas station
+  - [ ] Tier 2 analytical verification options
+
+- [ ] **Group 4 (Concession 190): Atrazine - Garden allotment pesticide**
+  - [ ] Load well data
+  - [ ] Define diffuse/area source with sorption
+  - [ ] Set atrazine parameters: Kd = 0.2-0.5 mL/g
+  - [ ] Position source at Schrebergärten
+  - [ ] Tier 2 analytical verification options
+
+- [ ] **Group 5 (Concession 223): PFOA - Industrial point source**
+  - [ ] Load well data
+  - [ ] Define point source, continuous
+  - [ ] Set PFOA parameters: conservative, very mobile
+  - [ ] Position source at industrial facility
+  - [ ] Tier 1 analytical verification (conservative)
+
+- [ ] **Group 6 (Concession 227): PCE - Dry cleaning facility leak**
+  - [ ] Load well data
+  - [ ] Define point source pulse
+  - [ ] Set PCE parameters: slight sorption (Kd = 0.05-0.1 mL/g)
+  - [ ] Position source at dry cleaner
+  - [ ] Tier 1 analytical verification (nearly conservative)
+
+- [ ] **Group 7 (Concession 213): Ammonium - Leaking sewer line**
+  - [ ] Load well data
+  - [ ] Define continuous line source with decay (nitrification)
+  - [ ] Set ammonium parameters: λ = 0.01-0.05 /day
+  - [ ] Position source along sewer infrastructure
+  - [ ] Tier 2 analytical verification options
+
+- [ ] **Group 8 (Concession 207): Chromium - Metal plating facility**
+  - [ ] Load well data
+  - [ ] Define point source with strong sorption
+  - [ ] Set chromium parameters: Kd = 1-5 mL/g
+  - [ ] Position source at electroplating workshop
+  - [ ] Tier 2 analytical verification options
+
+#### 4.2 Source Location Strategy
+For each group, position sources to create diverse well-contaminant interactions:
+- Some upgradient of pumping wells (test capture efficiency)
+- Some near injection wells (test spreading effects)
+- Some between pumping and injection (complex interactions)
+- Vary locations across Limmat Valley for diversity
+
+**Time Estimate for Phase 4**: 1-2 days
+
+### Phase 5: Instructor Solution Implementations (groups 1-8) - NOT STARTED
+**Target**: Fully working notebooks for all groups to verify feasibility
+
+**Note**: These will be complete implementations in git-ignored folders
+
+#### 5.1 Implementation Order (by complexity)
+
+**Tier 1 Groups (Conservative Tracers) - Implement First:**
+1. [ ] Group 1: Nitrate (continuous source)
+2. [ ] Group 2: Chloride (legacy continuous)
+3. [ ] Group 5: PFOA (point source)
+
+**Tier 1.5 Groups (Slight Complexity):**
+4. [ ] Group 6: PCE (slight sorption)
+
+**Tier 2 Groups (Reactive Transport) - Implement Last:**
+5. [ ] Group 3: Benzene (decay, needs RCT package)
+6. [ ] Group 4: Atrazine (sorption, needs RCT package)
+7. [ ] Group 7: Ammonium (decay, needs RCT package)
+8. [ ] Group 8: Chromium (strong sorption, needs RCT package)
+
+#### 5.2 Implementation Workflow (Per Group)
+For each group:
+- [ ] Copy group_0 notebook as starting template
+- [ ] Update group number and scenario description
+- [ ] Load group-specific well configuration
+- [ ] Implement source location and type (continuous vs pulse)
+- [ ] Add RCT package if needed (sorption/decay)
+- [ ] Run full simulation
+- [ ] Generate all required outputs
+- [ ] **Verify feasibility**: computational time < 1 hour
+- [ ] Document any group-specific challenges
+- [ ] Test notebook runs end-to-end
+
+#### 5.3 Quality Checks (Per Group)
+- [ ] Mass balance error < 1%
+- [ ] Courant and Peclet numbers acceptable
+- [ ] Plume contained in domain (or documented)
+- [ ] Results physically reasonable
+- [ ] Computational time manageable
+- [ ] Well-contaminant interactions clear
+- [ ] All visualizations render correctly
+
+**Time Estimate for Phase 5**: 3-5 days (0.5-1 day per group)
+
+### Phase 6: Supporting Materials - NOT STARTED
 - [ ] Update README.md in student_work/ with transport instructions
 - [ ] **Add analytical solution functions to SUPPORT_REPO** (for students choosing optional verification)
   - [ ] Ogata-Banks 1D solution (instantaneous and continuous source)
@@ -817,20 +1020,60 @@ Each group analyzes contamination in relation to their well field from the flow 
   - [ ] Citation style guidance
   - [ ] Writing style tips for technical reports
 
-### Phase 6: Documentation and Testing
-- [ ] Test group_0 notebook runs without errors
+**Time Estimate for Phase 6**: 2-3 days
+
+### Phase 7: Documentation and Testing - NOT STARTED
+- [ ] Test group_0 notebook runs without errors on clean environment
 - [ ] Verify each group's transport_config.yaml is complete
 - [ ] Check that all scenarios are appropriately differentiated
-- [ ] Write instructor notes (solution key, expected results)
-- [ ] Document common pitfalls and troubleshooting
-- [ ] Estimate completion time for students
+- [ ] **Write instructor notes with expected results for all groups**
+  - [ ] Summary table: plume extents, breakthrough times, well capture percentages
+  - [ ] Parameter sensitivity insights per group
+  - [ ] Known challenges and solutions
+  - [ ] Grading rubric with examples
+- [ ] **Document common pitfalls and troubleshooting**
+  - [ ] Create TRANSPORT_TROUBLESHOOTING.md
+  - [ ] Common MT3DMS errors and solutions
+  - [ ] Grid resolution issues
+  - [ ] Mass balance problems
+  - [ ] Convergence failures
+- [ ] Estimate and verify completion time for students (target: 8-10 hours)
 
-### Phase 7: Integration and Deployment
+**Time Estimate for Phase 7**: 1-2 days
+
+### Phase 8: Integration and Deployment - NOT STARTED
 - [ ] Link 4b notebook from main course structure
 - [ ] Update course introduction to mention transport case study
 - [ ] Add transport to progress tracking (if applicable)
 - [ ] Prepare assignment handout/instructions
 - [ ] Schedule: when transport assignment is due relative to flow assignment
+- [ ] Create cross-group comparison gallery (optional but nice)
+
+**Time Estimate for Phase 8**: 0.5-1 day
+
+---
+
+## Overall Implementation Timeline
+
+**Total estimated time**: 12-18 days of focused work
+
+| Phase | Description | Days | Status |
+|-------|-------------|------|--------|
+| 1 | Planning and design | 0.5 | ✅ **COMPLETE** |
+| 2 | Teaching notebook (4b) | 1-2 | ✅ **COMPLETE** |
+| 3 | Group 0 demo implementation | 2-3 | 🚧 **IN PROGRESS** |
+| 4 | Configs for groups 1-8 | 1-2 | ⏳ Not started |
+| 5 | Instructor solutions (groups 1-8) | 3-5 | ⏳ Not started |
+| 6 | Supporting materials | 2-3 | ⏳ Not started |
+| 7 | Documentation and testing | 1-2 | ⏳ Not started |
+| 8 | Integration and deployment | 0.5-1 | ⏳ Not started |
+
+**Current Priority**: Phase 3 - Complete Group 0 demo implementation
+
+**Recommended schedule**:
+- **Week 1**: ✅ Phases 1-2 complete, Phase 3 in progress (demo implementation)
+- **Week 2**: Phases 4-5 (configs and instructor solutions)
+- **Week 3**: Phases 6-8 (supporting materials, testing, deployment)
 
 ---
 
