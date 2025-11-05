@@ -7,7 +7,7 @@ import nbformat
 import string
 
 # Packages that are installed by other means (e.g., conda)
-EXCLUDED_PACKAGES = {'tools'}  # {'flopy', 'porespy', 'tools'}
+EXCLUDED_PACKAGES = {'tools', 'adepy'}  # {'flopy', 'porespy', 'tools'}
 
 import sys 
 
