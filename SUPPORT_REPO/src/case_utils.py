@@ -106,7 +106,7 @@ def filter_wells_by_concession(wells_gdf, concession_id):
     concession_mask = wells_filtered['GWR_PREFIX'] == str(concession_id).lower()
     return wells_filtered[concession_mask].copy()
 
-def plot_wells_on_model(m, wells_gdf, concession_id, modelgrid=None):
+def plot_wells_on_model(m, wells_gdf, concession_id, modelgrid=None, source_point=None):
     """
     Plot wells on the model grid with proper rotation handling.
     
@@ -120,6 +120,8 @@ def plot_wells_on_model(m, wells_gdf, concession_id, modelgrid=None):
         The concession ID for labeling
     modelgrid : flopy.discretization.StructuredGrid, optional
         Override modelgrid (if None, uses m.modelgrid)
+    source_point : geopandas.GeoDataFrame, optional
+        GeoDataFrame containing the contamination source location
     """
     fig, ax = plt.subplots(figsize=(14, 12))
 
@@ -177,6 +179,21 @@ def plot_wells_on_model(m, wells_gdf, concession_id, modelgrid=None):
                     xytext=(8, 8), textcoords='offset points',
                     fontsize=9, ha='left', va='bottom',
                     bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.7))
+
+    # Plot source point if provided
+    if source_point is not None:
+        source_transformed = source_point.copy()
+        source_transformed.plot(ax=ax, color='orange', markersize=200, 
+                               marker='*', label='Contamination Source', 
+                               alpha=0.95, edgecolor='black', linewidth=2, zorder=5)
+        # Add label for source
+        for idx, row in source_transformed.iterrows():
+            ax.annotate('SOURCE',
+                        xy=(row.geometry.x, row.geometry.y),
+                        xytext=(10, -15), textcoords='offset points',
+                        fontsize=11, fontweight='bold', ha='left', va='top',
+                        bbox=dict(boxstyle='round,pad=0.3', facecolor='orange', 
+                                 alpha=0.7, edgecolor='black', linewidth=1.5))
 
     # Formatting
     ax.legend(loc='upper right')
