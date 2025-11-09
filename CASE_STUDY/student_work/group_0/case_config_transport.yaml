@@ -95,23 +95,23 @@ transport_scenarios:
           northing: +100             # m, perpendicular offset for better pedagogy
           layer: 1
         start_time_days: 0
-        duration_days: 30               # 30-day spill
+        duration_days: 1               # 1-day spill
         concentration_mg_L: 100.0
 
       simulation:
-        duration_days: 730              # 2 years (manageable domain size)
-        output_times_days: [30, 90, 180, 365, 730]
+        duration_days: 60              # 60 days (manageable domain size)
+        output_times_days: [6, 11, 21, 61]
 
       submodel:
-        buffer_north_m: 300
-        buffer_south_m: 300
-        buffer_east_m: 300
-        buffer_west_m: 300
-        cell_size_m: 5
+        buffer_north_m: 100
+        buffer_south_m: 100
+        buffer_east_m: 100
+        buffer_west_m: 100
+        cell_size_m: 2
 
       monitoring:
         threshold_mg_L: 5.0
-        compliance_location: "Property boundary and Limmat River"
+        compliance_location: "Well"
 
     # ========== GROUP 1: Nitrate - Sports Field Fertilizer ==========
     - id: 1
