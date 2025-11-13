@@ -6,8 +6,8 @@
 >
 > **For Instructors**: This document guides all transport case study development. Update it when design decisions change.
 >
-> **Last Updated**: 2025-11-03
-> **Status**: Planning complete - ready for implementation (analytical verification changed to optional)
+> **Last Updated**: 2025-11-09
+> **Status**: Planning complete - ready for implementation (analytical verification is optional without bonus credit)
 
 ---
 
@@ -32,12 +32,10 @@ Create a groundwater transport case study that:
 
 ### Decision 2: Analytical Comparison is OPTIONAL
 - **Groups can optionally verify their numerical model with analytical solutions**
-- **If chosen, two tiers available**:
-  - **Tier 1** (Groups 0, 1, 2, 5 - conservative tracers): Full 1D pulse comparison
-  - **Tier 2** (Groups 3, 4, 6, 7, 8 - reactive transport): Simplified comparison OR justification
 - **Rationale**: While professional modelers verify, this is a learning exercise focused on transport modeling workflow. Verification adds significant complexity and time.
 - **Implementation**: Templates provided in SUPPORT_REPO for students who choose to verify
-- **Grading**: Bonus points available (5-10% extra credit) for students who complete analytical verification
+- **Grading**: Optional component that demonstrates advanced understanding, but does not affect grading
+- **Note**: All groups have equal opportunity for verification regardless of contaminant properties (conservative vs. reactive)
 
 ---
 
@@ -84,12 +82,12 @@ applied_groundwater_modelling/
 │       ├── group_0/
 │       │   ├── case_config.yaml (flow - existing)
 │       │   ├── case_study_flow_group_0.ipynb (existing)
-│       │   ├── transport_config.yaml  ← NEW: Transport scenario config
+│       │   ├── case_config_transport.yaml  ← NEW: Transport scenario config (all groups)
 │       │   └── case_study_transport_group_0.ipynb  ← NEW: Complete demo case
 │       ├── group_1/
-│       │   └── transport_config.yaml  ← NEW: Pre-configured scenario
+│       │   └── case_config_transport.yaml  ← Same file, different group uses id: 1
 │       ├── group_2/
-│       │   └── transport_config.yaml
+│       │   └── case_config_transport.yaml  ← Same file, different group uses id: 2
 │       └── ... (groups 3-8)
 ```
 
@@ -251,7 +249,8 @@ Transport case study workflow (simpler than 3-stage flow case):
 
 #### 3. Configuration and Setup
 ```python
-# Load transport_config.yaml
+# Load case_config.yaml (group number, authors, wells from flow case)
+# Load case_config_transport.yaml (transport scenarios, select by group number)
 # Defines: source location, contaminant type, parameters
 # Set group number, load parent model
 ```
@@ -266,7 +265,7 @@ Transport case study workflow (simpler than 3-stage flow case):
 
 #### 5. Define Transport Submodel Domain
 ```python
-# Identify source location from transport_config.yaml
+# Identify source location from case_config_transport.yaml
 # Define buffer around source (consider 10-year travel time)
 # Create submodel boundary polygon
 # Check that domain is adequate (plume won't exit during simulation)
@@ -375,16 +374,16 @@ For most case studies, **Approach 1** (constant concentration cell) is simpler a
 
 #### 12. Analysis and Interpretation
 ```python
-# Answer scenario-specific questions from transport_config.yaml
+# Answer scenario-specific questions from case_config_transport.yaml
 # Maximum extent of plume
 # Time to reach monitoring/compliance points
 # Concentration exceedances
 # Effectiveness of natural attenuation (if decay/sorption)
 ```
 
-#### 13. (OPTIONAL) Analytical Verification for Bonus Credit
+#### 13. (OPTIONAL) Analytical Verification
 ```python
-# OPTIONAL: Students can choose to complete this for bonus points
+# OPTIONAL: Students can choose to complete this section
 # Extract 1D transect from MT3DMS results
 # Implement pulse source analytical solution
 # Compare numerical vs. analytical results
@@ -393,18 +392,12 @@ For most case studies, **Approach 1** (constant concentration cell) is simpler a
 # Discuss discrepancies and when each method is appropriate
 ```
 
-**For Tier 1 Groups (0, 1, 2, 5)** - if choosing to do verification:
-- Full implementation of 1D analytical solution
-- Direct comparison with MT3DMS along flow transect
-- Quantify differences and explain causes (2D effects, grid discretization, etc.)
-- **Bonus**: +5-10% extra credit
-
-**For Tier 2 Groups (3, 4, 6, 7, 8)** - if choosing to do verification:
-- Choose Option A, B, or C (see analytical_verification in config)
-- If A: Run MT3DMS without reactions, compare to pulse source
-- If B: Implement analytical with R/λ, compare to full MT3DMS
-- If C: Justify why analytical comparison is not meaningful for your scenario
-- **Bonus**: +5-10% extra credit
+**If choosing to do verification** - available to all groups:
+- Implementation approach depends on contaminant properties:
+  - **Conservative tracers**: Direct 1D analytical comparison possible
+  - **Reactive transport**: Can compare conservative scenario OR implement analytical with sorption/decay
+- Quantify differences and explain causes (2D effects, grid discretization, reactions, etc.)
+- Discuss when analytical vs. numerical methods are appropriate
 
 #### 14. Summary and Conclusions
 - Key findings for your scenario
@@ -416,258 +409,176 @@ For most case studies, **Approach 1** (constant concentration cell) is simpler a
 
 ## Configuration File Design
 
-### transport_config.yaml Structure
+### Complementary Configuration Strategy
+
+**Design Decision**: Transport configuration is **complementary** to flow configuration, not duplicative.
+
+- **case_config.yaml** (from flow case study): Contains group number, authors, concession, and well definitions
+- **case_config_transport.yaml** (new for transport): Contains transport-specific parameters, all 9 scenarios, and references wells from case_config.yaml
+
+**Benefits of this approach**:
+- Eliminates duplication (DRY principle)
+- Single source of truth for wells (avoids inconsistencies)
+- Students load both configs: `case_config.yaml` for wells/concession, `case_config_transport.yaml` for transport scenario
+- Easier maintenance (update wells in one place)
+
+### case_config_transport.yaml Structure
+
+**Note**: This file contains ALL 9 transport scenarios (id 0-8). Each group uses the scenario matching their group number.
 
 ```yaml
 ###############################################################
-# Transport Case Study Configuration
-# Independent transport problem using base parent model
+# Transport Case Study Configuration (All Groups)
 ###############################################################
+# This file contains ALL transport scenarios for groups 0-8.
+# Each group uses the scenario matching their group number.
+# Wells are REUSED from flow case study (case_config.yaml).
+# The group number and authors are already defined in the case_config.yaml file.
 
-group:
-  number: 0                               # TODO: Set to your group number (0-8)
-  authors:                                # TODO: List group members
-    - "First Last"
-    - "Second Last"
-
-# Base parent model (fresh download, not student flow results)
-parent_model:
+# Base parent model (fresh download, independent from student flow results)
+model:
   data_name: baseline_model               # Fixed - downloads known-good model
-  workspace: "~/applied_groundwater_modelling_data/limmat/baseline_model"
+  workspace: "~/applied_groundwater_modelling_data/limmat/transport/baseline_model"
   namefile: "limmat_valley_model_nwt.nam"
 
 # Transport submodel output location
 output:
-  workspace: "~/applied_groundwater_modelling_data/limmat/transport_case_study_group_"
+  workspace: "~/applied_groundwater_modelling_data/limmat/transport/case_study_transport_group_"
 
-# Transport scenario assignment (FIXED by group number)
-scenarios:
-  - id: 0
-    group: 0
-    title: "Demo - Industrial solvent spill"
-    contaminant: "Trichloroethylene (TCE)"
-    description: >
-      A 30-day TCE spill from an industrial facility. Assess plume migration
-      under natural gradient conditions and determine if/when contamination
-      reaches the Limmat River.
+# Wells from flow case study (REUSED, not reimplemented)
+wells:
+  source: "case_config"                   # Reuse wells from flow case study
+  config_file: "./case_config.yaml"       # Path to flow case configuration
 
-  - id: 1
-    group: 1
-    title: "Sports field fertilizer contamination"
-    contaminant: "Nitrate (NO3-)"
-    description: >
-      Continuous nitrate loading from over-fertilized sports fields/football pitches.
-      Evaluate long-term plume development and potential impact on nearby drinking water wells.
+# Transport scenario assignments (FIXED by group number)
+transport_scenarios:
+  options:
+    # ========== GROUP 0: TCE - Industrial Spill (Demo) ==========
+    - id: 0
+      title: "Industrial solvent spill (TCE)"
+      contaminant: "Trichloroethylene (TCE)"
+      description: >
+        A 30-day TCE spill from an industrial facility. Assess plume migration
+        under natural gradient conditions and with well pumping/injection effects.
+        Determine if/when contamination reaches the well (monitoring location).
 
-  - id: 2
-    group: 2
-    title: "Legacy landfill plume"
-    contaminant: "Chloride (conservative tracer)"
-    description: >
-      Historical contamination from old landfill (10-year continuous source).
-      Characterize current plume extent and predict future migration.
+      properties:
+        cas_number: "79-01-6"
+        molecular_weight_g_mol: 131.39
+        solubility_mg_L: 1100
+        conservative: true                # No sorption or decay
 
-  - id: 3
-    group: 3
-    title: "Gasoline station leak (BTEX)"
-    contaminant: "Benzene"
-    description: >
-      Point source benzene leak with biodegradation. Assess natural attenuation
-      capacity and monitored natural attenuation feasibility.
+      transport:
+        porosity: 0.25
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 1.0e-9
+        sorption: false
+        distribution_coefficient_mL_g: 0.0
+        decay: false
+        first_order_decay_constant_1_per_day: 0.0
+        half_life_days: null
 
-  - id: 4
-    group: 4
-    title: "Garden allotment pesticide contamination"
-    contaminant: "Atrazine"
-    description: >
-      Diffuse pesticide source from family garden plots (Schrebergärten) with sorption.
-      Evaluate retardation effects and breakthrough timing at monitoring locations.
+      source:
+        type: "point"
+        release_type: "pulse"
+        location:
+          easting: +60              # m, relative to well locations
+          northing: +60             # m, relative to well locations
+          layer: 1
+        start_time_days: 0
+        duration_days: 30               # 30-day spill
+        concentration_mg_L: 100.0
 
-  - id: 5
-    group: 5
-    title: "PFAS contamination"
-    contaminant: "PFOA (perfluorooctanoic acid)"
-    description: >
-      Point source PFAS release (conservative, mobile). Assess long-term
-      migration and compliance with drinking water standards.
+      simulation:
+        duration_days: 3650             # 10 years
+        output_times_days: [30, 90, 180, 365, 730, 1095, 1825, 3650]
 
-  - id: 6
-    group: 6
-    title: "Dry cleaning facility solvent leak"
-    contaminant: "Perchloroethylene (PCE)"
-    description: >
-      Point source PCE leak from urban dry cleaning facility with slight sorption.
-      Assess plume migration and potential for natural attenuation.
+      submodel:
+        buffer_north_m: 500
+        buffer_south_m: 500
+        buffer_east_m: 500
+        buffer_west_m: 500
+        cell_size_m: 5
 
-  - id: 7
-    group: 7
-    title: "Leaking sewer line contamination"
-    contaminant: "Ammonium"
-    description: >
-      Continuous ammonium discharge from aging urban sewer infrastructure with
-      nitrification (decay). Model transformation and downgradient concentration profiles.
+      monitoring:
+        threshold_mg_L: 5.0
+        compliance_location: "Property boundary and Limmat River"
 
-  - id: 8
-    group: 8
-    title: "Metal plating facility chromium leak"
-    contaminant: "Chromium (Cr-VI)"
-    description: >
-      Point source chromium from electroplating workshop with sorption. Assess plume
-      mobility and evaluate pump-and-treat remediation timing requirements.
+    # ========== Additional scenarios for Groups 1-8 follow same structure ==========
+    # See case_config_transport.yaml for complete definitions
 
-# Source term definition for THIS group (group 0 example)
-source:
-  type: "point"                           # "point" or "area"
-  release_type: "pulse"                   # "pulse" or "continuous"
-
-  # Location (Swiss coordinates) - relative to well field
-  location:
-    easting: 2684500                      # TODO: Set relative to well locations
-    northing: 1249500                     # TODO: Set relative to well locations
-    layer: 1                               # Top active layer
-    placement_strategy: >
-      Position source strategically relative to wells. Options:
-      - Upgradient of pumping wells (test capture efficiency)
-      - Near injection wells/Sickergalerie (test spreading)
-      - Between pumping and injection wells (test complex interactions)
-      - Downgradient of all wells (test if wells provide protection)
-
-  # Timing
-  start_time_days: 0
-  duration_days: 30                       # For pulse; large number for continuous
-
-  # Concentration
-  concentration_mg_L: 100.0               # TODO: Set realistic value for contaminant
-
-  notes: >
-    TODO: Describe source location context relative to well field.
-    Example: "Industrial TCE spill 150m upgradient of pumping well cluster,
-    testing whether current pumping rates can capture the plume before it
-    reaches the Limmat River."
-
-# Transport parameters (students adjust within reasonable ranges)
-transport:
-  simulation_time_days: 3650              # 10 years
-
-  # Basic transport properties
-  porosity: 0.25                          # Effective porosity
-
-  # Dispersivity (students should justify these choices)
-  longitudinal_dispersivity_m: 10.0      # TODO: Justify based on scale
-  transverse_dispersivity_m: 1.0         # Typically 0.1 * alpha_L
-  vertical_dispersivity_m: 0.1           # Typically 0.01 * alpha_L
-
-  # Sorption (if applicable)
-  sorption: false                         # true if contaminant sorbs
-  bulk_density_kg_m3: 1800.0             # Aquifer bulk density
-  distribution_coefficient_mL_g: 0.0     # Kd; 0 for conservative tracer
-
-  # Decay/degradation (if applicable)
-  decay: false                            # true if contaminant degrades
-  first_order_decay_constant_1_per_day: 0.0  # 0 for conservative
-  half_life_days: null                    # Alternative: specify half-life
-
-  notes: >
-    TODO: Justify parameter choices. Cite literature values or
-    explain assumptions. Discuss uncertainty ranges.
-
-# Telescope submodel configuration
-submodel:
-  # Buffer distances from source (ensure plume is contained)
-  buffer_north_m: 500                     # TODO: Adjust based on travel time
-  buffer_south_m: 500
-  buffer_east_m: 500
-  buffer_west_m: 500
-
-  # Grid refinement
-  cell_size_m: 5                          # Fine resolution near source
-
-  notes: >
-    TODO: Justify buffer distances. Consider 10-year travel time under
-    maximum hydraulic gradient. Verify plume doesn't reach boundaries.
-
-# Monitoring/observation points
-monitoring:
-  points:
-    - name: "MW-1"
-      easting: 2684600
-      northing: 1249600
-      purpose: "Downgradient monitoring well"
-
-    - name: "River boundary"
-      easting: 2684800
-      northing: 1249700
-      purpose: "Assess river impact"
-
-  compliance:
-    threshold_mg_L: 10.0                  # Regulatory threshold
-    location: "Property boundary / River"
-
-# Modeling approach
-approach:
-  primary_method: "numerical_mt3d"        # Primary method is always MT3DMS
-
-  analytical_comparison:
-    required: true                         # MANDATORY for all groups
-    tier: 1                                # 1 for simple, 2 for moderate (assigned by scenario)
-
-  justification: >
-    TODO: Explain why numerical MT3DMS is needed for your scenario.
-    Consider: 2D/3D effects, well influences, boundary conditions,
-    heterogeneity that analytical solutions cannot capture.
-
-# Analytical comparison requirements (OPTIONAL - bonus credit available)
+# Analytical comparison (OPTIONAL)
 analytical_verification:
-  optional: true  # Set to false if you choose not to do verification
-  tier: 1  # or 2, automatically set based on group scenario
-
-  # Tier 1 requirements (Groups 0, 1, 2, 5 - conservative tracers)
-  tier_1_tasks:
-    - "Extract 1D concentration transect from MT3DMS results along flow direction"
-    - "Implement 1D pulse source analytical solution with same parameters (v, D, source)"
-    - "Plot comparison: analytical vs. numerical at multiple times"
-    - "Calculate breakthrough curves at monitoring point: analytical vs. numerical"
-    - "Discuss discrepancies (2D spreading, grid effects, boundary conditions)"
-    - "Conclude when analytical is sufficient vs. when numerical is required"
-
-  # Tier 2 requirements (Groups 3, 4, 6, 7, 8 - reactive transport)
-  tier_2_options:
-    option_a: "Run simplified MT3DMS without reactions (Kd=0, λ=0), compare to pulse source"
-    option_b: "Implement 1D analytical with retardation/decay, compare to full MT3DMS"
-    option_c: "Detailed written justification why analytical comparison is not meaningful"
-
-  tier_2_tasks:
-    - "Choose one of the three options above"
-    - "If Option A or B: Plot and discuss comparison"
-    - "If Option C: Explain specific aspects that make analytical unsuitable"
-    - "In all cases: discuss what transport processes require numerical modeling"
+  optional: true                          # OPTIONAL for all groups
 
   notes: >
-    Analytical comparison is OPTIONAL (bonus credit: +5-10%). Templates provided in SUPPORT_REPO
-    for students who choose to verify their models. This demonstrates professional verification
-    practice and understanding of when simple vs. complex methods are needed.
-    Budget 30-60 minutes if you choose to complete this.
+    Analytical comparison is OPTIONAL. Templates provided in SUPPORT_REPO.
+    Completing this section demonstrates professional verification practice and deepens
+    understanding of numerical modeling limitations. Budget 30-60 minutes for this task
+    if you choose to complete it.
 
-# Analysis tasks
+    All groups can complete analytical verification regardless of contaminant properties.
+    Approach depends on scenario: conservative tracers can use direct comparison,
+    reactive transport can compare simplified scenarios or use analytical solutions with reactions.
+
+# Analysis tasks (apply to all groups)
 analysis_tasks:
   - "Map concentration distribution at 1, 3, 5, and 10 years"
-  - "Plot breakthrough curves at monitoring points"
-  - "Calculate plume extent (area where C > 1 mg/L) over time"
-  - "Estimate time for contamination to reach compliance point"
-  - "Assess whether concentration exceeds threshold at any location"
-  - "Evaluate mass balance (% mass remaining in domain vs exported)"
-  - "Analyze well-contaminant interactions (capture zones, spreading)"
-  - "OPTIONAL (bonus): Analytical comparison (tier 1 or tier 2 requirements)"
+  - "Plot breakthrough curves at all monitoring points"
+  - "Calculate plume extent (area where C > threshold) over time"
+  - "Estimate time for contamination to reach compliance points"
+  - "Assess whether concentration exceeds threshold at any location/time"
+  - "Evaluate mass balance (% mass remaining vs. exported vs. captured by wells)"
+  - "Analyze well-contaminant interactions (capture zones, spreading from injection)"
+  - "OPTIONAL: Analytical comparison for verification"
   - "Sensitivity analysis: vary dispersivity ±50%, compare results"
+  - "Create concentration vs. time plots at key locations"
 
-# Deliverables
+# Quality control checklist (apply to all groups)
+quality_checks:
+  - "Mass balance error < 1%"
+  - "Courant number ≤ 1 (advective stability)"
+  - "Peclet number ≤ 2-4 (dispersive stability)"
+  - "Plume contained within submodel domain (or justify truncation)"
+  - "Concentration values physically reasonable (no negatives, no overshoot)"
+  - "Results make sense given flow direction, source location, and well pumping/injection"
+  - "MT3DMS convergence achieved for all time steps"
+  - "Flow model converged and mass balance closed before running transport"
+
+# Deliverables (apply to all groups)
 deliverables:
-  - "Completed transport_config.yaml with justified parameters"
+  technical:
+    - "Completed case_config_transport.yaml with justified parameters"
+    - "Executed case_study_transport_group_X.ipynb with all results"
+    - "MT3DMS model files (input and output)"
+    - "Concentration maps (at least 4 time steps)"
+    - "Breakthrough curves at all monitoring points"
+    - "Mass balance summary table"
+    - "OPTIONAL: Analytical comparison section with plots and discussion"
+    - "Analysis of well effects on contaminant transport"
+    - "Parameter sensitivity plots (dispersivity variation)"
+
+  report:
+    format: "PDF"
+    length_pages: "3-4"
+    sections:
+      - "Problem statement and objectives (0.5 page)"
+      - "Methodology (0.75 page)"
+      - "Results with figures (1.5-2 pages)"
+      - "Discussion and conclusions (0.75-1 page)"
+    notes: >
+      Professional modeling report demonstrating communication skills.
+      Template provided. Focus on key findings and well-contaminant interactions.
+      Include analytical comparison section only if you completed that optional work.
+```
   - "Executed case_study_transport_group_X.ipynb with all results"
   - "Concentration maps (at least 4 time steps)"
   - "Breakthrough curves at monitoring points"
   - "Mass balance summary"
-  - "OPTIONAL (bonus): Analytical comparison section with plots and discussion"
+  - "OPTIONAL: Analytical comparison section with plots and discussion"
   - "Analysis of well effects on contaminant transport"
   - "Written interpretation (2-3 paragraphs in notebook)"
   - "Parameter sensitivity discussion"
@@ -707,27 +618,23 @@ Each group analyzes contamination in relation to their well field from the flow 
 2. Place contamination source strategically relative to wells
 3. Analyze how wells affect contaminant fate and transport
 
-### Scenario Complexity and Analytical Comparison Tiers
+### Scenario Complexity
 
-**Tier 1 - Simple Scenarios (Groups 0, 1, 2, 5, 6):**
-- Conservative tracer (no sorption or decay, or very slight sorption for PCE)
+**Conservative Tracer Scenarios (Groups 0, 1, 2, 5, 6):**
+- No sorption or decay (or very slight sorption for PCE)
 - Focus on advection, dispersion, and well capture/spreading
-- **Analytical verification (optional bonus)**: Full 1D pulse source comparison
-  - Extract 1D transect from numerical model
-  - Implement analytical solution with same parameters
-  - Plot comparison and discuss differences
-  - Estimate when analytical is "good enough" vs. when 2D/3D numerical is needed
-  - **Bonus credit**: +5-10%
+- Simpler transport physics, good for learning fundamentals
+- **Analytical verification (optional)**: Direct 1D comparison possible
 
-**Tier 2 - Moderate Scenarios (Groups 3, 4, 7, 8):**
-- Reactive transport (sorption OR decay)
+**Reactive Transport Scenarios (Groups 3, 4, 7, 8):**
+- Sorption OR decay processes included
 - Combined effect of reactions + well pumping/injection
-- **Analytical verification (optional bonus)**: Choose one option
-  - **Option A**: Simplified comparison (set Kd=0 and λ=0, compare conservative transport)
-  - **Option B**: Semi-analytical with retardation/decay (1D with R and λ)
-  - **Option C**: Detailed justification why analytical comparison is not feasible/meaningful
-  - **Bonus credit**: +5-10%
-- **Purpose**: Understand what aspects require numerical modeling vs. can be solved analytically
+- More complex transport physics, realistic contaminant behavior
+- **Analytical verification (optional)**: Multiple approaches possible
+  - Compare simplified conservative scenario, OR
+  - Use analytical solutions with retardation/decay factors
+
+**Note on Analytical Verification**: All groups have equal opportunity to complete analytical verification. The approach may differ based on contaminant properties, but the learning value is equivalent.
 
 ---
 
@@ -736,10 +643,12 @@ Each group analyzes contamination in relation to their well field from the flow 
 ### Phase 1: Planning and Design ✅ COMPLETE
 - [x] Define overall approach (simpler, independent from flow case)
 - [x] Finalize 9 transport scenarios (one per group)
-- [x] Design transport_config.yaml structure
+- [x] Design case_config_transport.yaml structure (complementary to case_config.yaml)
 - [x] Outline both notebook structures
 - [x] Update planning document with implemented structure (2025-11-03)
 - [x] Update group_0 template to make analytical verification optional (2025-11-04)
+- [x] Implement complementary config design: case_config.yaml + case_config_transport.yaml (2025-11-07)
+- [x] Remove tier distinctions from analytical verification (2025-11-07)
 
 ### Phase 2: Teaching Notebook (4b_transport_model_implementation.ipynb) ✅ COMPLETE
 **Completed (2025-11-03):**
@@ -763,125 +672,39 @@ Each group analyzes contamination in relation to their well field from the flow 
 
 **Status**: Teaching notebook is complete and ready for student use
 
-### Phase 3: Demo Case Study (group_0/) - IN PROGRESS
-**Status**: Template structure complete, now implementing full working example
+### Phase 3: Demo Case Study (group_0/) ✅ COMPLETE
+**Status**: Demo case study notebook fully implemented and ready for testing
 
 **Completed (2025-11-04):**
-- [x] Create transport_config.yaml template for group 0
+- [x] Create case_config_transport.yaml with all 9 transport scenarios
 - [x] Create case_study_transport_group_0.ipynb structure with all sections
-- [x] Update both files to make analytical verification optional (bonus credit)
+- [x] Update both files to make analytical verification optional (without bonus credit)
 
-**Implementation Tasks (Priority 1 - Current Focus):**
+**Completed (2025-11-07):**
+- [x] Implement complementary config design (loads from both case_config.yaml and case_config_transport.yaml)
+- [x] Update planning document to reflect improved design
 
-#### 3.1 Pre-Implementation Analysis
-- [ ] Review existing flow case study for group_0 (concession 210)
-  - [ ] Extract well locations and rates from case_config.yaml
-  - [ ] Identify pumping vs injection wells
-  - [ ] Understand well field geometry
-- [ ] Define source location strategically
-  - [ ] Review well positions relative to flow direction
-  - [ ] Select placement to create interesting interactions (e.g., upgradient of pumping wells)
-  - [ ] Document placement rationale
+**Completed (2025-11-09):**
+- [x] Full implementation of all core sections (Sections 1-17)
+- [x] Configuration and parent model loading
+- [x] Well loading and submodel domain definition
+- [x] Telescope submodel creation with refined grid
+- [x] MT3D-USGS transport model setup (all packages)
+- [x] Source term definition and implementation
+- [x] Transport simulation execution
+- [x] Post-processing and visualization
+- [x] Quality checks and diagnostics
+- [x] Well-contaminant interaction analysis
+- [x] Optional analytical verification section
+- [x] Sensitivity analysis
+- [x] Summary and conclusions
 
-#### 3.2 Core Implementation (All Sections)
-- [ ] **Section 3-4: Configuration and Parent Model**
-  - [ ] Load transport_config.yaml
-  - [ ] Download/load baseline_model
-  - [ ] Run parent model, verify convergence
-  - [ ] Extract and visualize flow field
+**Next Step**: Testing and validation (Phase 3.3)
 
-- [ ] **Section 5-6: Wells and Domain Definition**
-  - [ ] Load wells from flow case config
-  - [ ] Visualize well locations
-  - [ ] Estimate 10-year plume travel distance
-  - [ ] Define submodel extent with buffers
-  - [ ] Create domain visualization
+### Phase 4: Student Configurations (groups 1-8) ✅ COMPLETE
+**Status**: All 9 transport scenarios defined in case_config_transport.yaml
 
-- [ ] **Section 7: Create Telescope Submodel**
-  - [ ] Generate 5m refined grid
-  - [ ] Extract boundary conditions from parent
-  - [ ] Interpolate aquifer properties (K, elevations)
-  - [ ] Set up MODFLOW submodel packages
-  - [ ] Run submodel flow simulation
-  - [ ] Verify convergence and mass balance
-  - [ ] Visualize head contours and flow vectors
-
-- [ ] **Section 8-9: MT3DMS Setup and Source Term**
-  - [ ] Create MT3DMS model object
-  - [ ] BTN package: porosity, time stepping
-  - [ ] ADV package: TVD scheme
-  - [ ] DSP package: dispersivity parameters
-  - [ ] SSM package: 30-day pulse source
-  - [ ] GCG solver package
-  - [ ] Map source location to grid
-  - [ ] Visualize source on model grid
-
-- [ ] **Section 10: Run Transport**
-  - [ ] Write MT3DMS input files
-  - [ ] Run 10-year simulation
-  - [ ] Load UCN results
-  - [ ] Check for warnings/errors
-
-- [ ] **Section 11: Post-Processing**
-  - [ ] Concentration maps at 30d, 1yr, 3yr, 5yr, 10yr
-  - [ ] Breakthrough curves at monitoring points
-  - [ ] Plume extent over time (area C > threshold)
-  - [ ] Mass balance analysis
-
-- [ ] **Section 12: Quality Checks**
-  - [ ] Verify mass balance < 1%
-  - [ ] Calculate Courant and Peclet numbers
-  - [ ] Check for negative concentrations
-  - [ ] Verify plume contained in domain
-
-- [ ] **Section 13: Well-Contaminant Interactions**
-  - [ ] Classify wells (pumping vs injection)
-  - [ ] Analyze capture by pumping wells
-  - [ ] Assess spreading from injection wells
-  - [ ] Calculate mass captured by wells
-  - [ ] Create summary visualizations
-
-- [ ] **Section 14 (OPTIONAL): Analytical Verification**
-  - [ ] Extract 1D transect along flow
-  - [ ] Implement 1D pulse source
-  - [ ] Plot analytical vs numerical profiles
-  - [ ] Breakthrough curve comparison
-  - [ ] Discuss discrepancies
-  - [ ] Document bonus credit value
-
-- [ ] **Section 15: Sensitivity Analysis**
-  - [ ] Run with αL = 5m (low dispersivity)
-  - [ ] Run with αL = 15m (high dispersivity)
-  - [ ] Compare plume extents
-  - [ ] Compare breakthrough times
-
-- [ ] **Section 16-17: Summary and Report Prep**
-  - [ ] Write key findings summary
-  - [ ] Interpretation and recommendations
-  - [ ] Report structure guidance
-  - [ ] Checklist before submission
-
-#### 3.3 Testing and Quality Assurance
-- [ ] Run complete notebook from fresh kernel
-- [ ] Verify computational time < 1 hour
-- [ ] Check all figures render correctly
-- [ ] Verify results are physically reasonable
-- [ ] Test on clean Python environment
-- [ ] Add troubleshooting notes
-
-#### 3.4 Documentation Polish
-- [ ] Review all markdown cells for clarity
-- [ ] Add parameter justifications
-- [ ] Include troubleshooting tips
-- [ ] Highlight common pitfalls
-- [ ] Cross-reference to teaching notebook (4b)
-
-**Time Estimate for Phase 3**: 2-3 days focused work
-
-### Phase 4: Student Configurations (groups 1-8) - NOT STARTED
-**Target**: Complete transport_config.yaml files for all groups
-
-**Note**: Groups 1-8 folders are git-ignored, so implementations will be complete instructor solutions
+**Note**: All group configurations (0-8) are defined in the shared case_config_transport.yaml file. Each group uses their group ID to select their specific scenario.
 
 #### 4.1 Configuration Files
 - [ ] **Group 1 (Concession 219): Nitrate - Sports field fertilizer**
@@ -889,56 +712,48 @@ Each group analyzes contamination in relation to their well field from the flow 
   - [ ] Define continuous source (fertilizer application)
   - [ ] Set nitrate parameters: conservative tracer
   - [ ] Position source near sports fields
-  - [ ] Tier 1 analytical verification (conservative)
 
 - [ ] **Group 2 (Concession 201): Chloride - Legacy landfill**
   - [ ] Load well data
   - [ ] Define long-duration continuous source (10-year history)
   - [ ] Set chloride parameters: conservative tracer
   - [ ] Position source at landfill location
-  - [ ] Tier 1 analytical verification (conservative)
 
 - [ ] **Group 3 (Concession 236): Benzene - Gas station leak**
   - [ ] Load well data
   - [ ] Define point source with decay (biodegradation)
   - [ ] Set benzene parameters: λ = 0.002-0.01 /day
   - [ ] Position source at gas station
-  - [ ] Tier 2 analytical verification options
 
 - [ ] **Group 4 (Concession 190): Atrazine - Garden allotment pesticide**
   - [ ] Load well data
   - [ ] Define diffuse/area source with sorption
   - [ ] Set atrazine parameters: Kd = 0.2-0.5 mL/g
   - [ ] Position source at Schrebergärten
-  - [ ] Tier 2 analytical verification options
 
 - [ ] **Group 5 (Concession 223): PFOA - Industrial point source**
   - [ ] Load well data
   - [ ] Define point source, continuous
   - [ ] Set PFOA parameters: conservative, very mobile
   - [ ] Position source at industrial facility
-  - [ ] Tier 1 analytical verification (conservative)
 
 - [ ] **Group 6 (Concession 227): PCE - Dry cleaning facility leak**
   - [ ] Load well data
   - [ ] Define point source pulse
   - [ ] Set PCE parameters: slight sorption (Kd = 0.05-0.1 mL/g)
   - [ ] Position source at dry cleaner
-  - [ ] Tier 1 analytical verification (nearly conservative)
 
 - [ ] **Group 7 (Concession 213): Ammonium - Leaking sewer line**
   - [ ] Load well data
   - [ ] Define continuous line source with decay (nitrification)
   - [ ] Set ammonium parameters: λ = 0.01-0.05 /day
   - [ ] Position source along sewer infrastructure
-  - [ ] Tier 2 analytical verification options
 
 - [ ] **Group 8 (Concession 207): Chromium - Metal plating facility**
   - [ ] Load well data
   - [ ] Define point source with strong sorption
   - [ ] Set chromium parameters: Kd = 1-5 mL/g
   - [ ] Position source at electroplating workshop
-  - [ ] Tier 2 analytical verification options
 
 #### 4.2 Source Location Strategy
 For each group, position sources to create diverse well-contaminant interactions:
@@ -949,50 +764,87 @@ For each group, position sources to create diverse well-contaminant interactions
 
 **Time Estimate for Phase 4**: 1-2 days
 
-### Phase 5: Instructor Solution Implementations (groups 1-8) - NOT STARTED
-**Target**: Fully working notebooks for all groups to verify feasibility
+### Phase 5: Test Case Studies for Groups 1-8 🚧 IN PROGRESS
+**Target**: Verify each group's transport scenario works correctly with the demo notebook
 
-**Note**: These will be complete implementations in git-ignored folders
+**Note**: The case_study_transport_group_0.ipynb notebook is designed to work for all groups by reading their group-specific configuration from case_config_transport.yaml. Each group needs to:
+1. Copy the group_0 notebook to their folder
+2. Update the group number in Section 3
+3. Test that their specific scenario runs successfully
 
-#### 5.1 Implementation Order (by complexity)
+#### 5.1 Testing Checklist by Group
 
-**Tier 1 Groups (Conservative Tracers) - Implement First:**
-1. [ ] Group 1: Nitrate (continuous source)
-2. [ ] Group 2: Chloride (legacy continuous)
-3. [ ] Group 5: PFOA (point source)
+**Conservative Tracer Groups (Test First - No RCT package):**
+- [ ] **Group 1: Nitrate** (Concession 219) - Sports field fertilizer, continuous source
+  - [ ] Test notebook runs with group_id=1
+  - [ ] Verify continuous source implementation
+  - [ ] Check plume migration patterns
+  - [ ] Verify computational time < 1 hour
+  - [ ] Document any issues
 
-**Tier 1.5 Groups (Slight Complexity):**
-4. [ ] Group 6: PCE (slight sorption)
+- [ ] **Group 2: Chloride** (Concession 201) - Legacy landfill, long-duration source
+  - [ ] Test notebook runs with group_id=2
+  - [ ] Verify historical source implementation
+  - [ ] Check plume extent
+  - [ ] Verify computational time < 1 hour
+  - [ ] Document any issues
 
-**Tier 2 Groups (Reactive Transport) - Implement Last:**
-5. [ ] Group 3: Benzene (decay, needs RCT package)
-6. [ ] Group 4: Atrazine (sorption, needs RCT package)
-7. [ ] Group 7: Ammonium (decay, needs RCT package)
-8. [ ] Group 8: Chromium (strong sorption, needs RCT package)
+- [ ] **Group 5: PFOA** (Concession 223) - Industrial point source
+  - [ ] Test notebook runs with group_id=5
+  - [ ] Verify point source setup
+  - [ ] Check long-term migration
+  - [ ] Verify computational time < 1 hour
+  - [ ] Document any issues
 
-#### 5.2 Implementation Workflow (Per Group)
-For each group:
-- [ ] Copy group_0 notebook as starting template
-- [ ] Update group number and scenario description
-- [ ] Load group-specific well configuration
-- [ ] Implement source location and type (continuous vs pulse)
-- [ ] Add RCT package if needed (sorption/decay)
-- [ ] Run full simulation
-- [ ] Generate all required outputs
-- [ ] **Verify feasibility**: computational time < 1 hour
-- [ ] Document any group-specific challenges
-- [ ] Test notebook runs end-to-end
+**Slight Complexity Groups:**
+- [ ] **Group 6: PCE** (Concession 227) - Dry cleaning, slight sorption
+  - [ ] Test notebook runs with group_id=6
+  - [ ] Verify RCT package with low Kd
+  - [ ] Check retardation effects
+  - [ ] Verify computational time < 1 hour
+  - [ ] Document any issues
 
-#### 5.3 Quality Checks (Per Group)
+**Reactive Transport Groups (Test Last - Need RCT package):**
+- [ ] **Group 3: Benzene** (Concession 236) - Gas station, decay only
+  - [ ] Test notebook runs with group_id=3
+  - [ ] Verify RCT package with decay
+  - [ ] Check natural attenuation
+  - [ ] Verify computational time < 1 hour
+  - [ ] Document any issues
+
+- [ ] **Group 4: Atrazine** (Concession 190) - Pesticide, sorption only
+  - [ ] Test notebook runs with group_id=4
+  - [ ] Verify RCT package with Kd
+  - [ ] Check retardation effects
+  - [ ] Verify computational time < 1 hour
+  - [ ] Document any issues
+
+- [ ] **Group 7: Ammonium** (Concession 213) - Sewer line, decay
+  - [ ] Test notebook runs with group_id=7
+  - [ ] Verify RCT package with decay
+  - [ ] Check degradation in capture zone
+  - [ ] Verify computational time < 1 hour
+  - [ ] Document any issues
+
+- [ ] **Group 8: Chromium** (Concession 207) - Metal plating, strong sorption
+  - [ ] Test notebook runs with group_id=8
+  - [ ] Verify RCT package with high Kd
+  - [ ] Check strong retardation
+  - [ ] Verify computational time < 1 hour
+  - [ ] Document any issues
+
+#### 5.2 Common Quality Checks (All Groups)
+For each tested group, verify:
 - [ ] Mass balance error < 1%
 - [ ] Courant and Peclet numbers acceptable
-- [ ] Plume contained in domain (or documented)
-- [ ] Results physically reasonable
-- [ ] Computational time manageable
-- [ ] Well-contaminant interactions clear
+- [ ] Plume contained in domain (or documented/justified)
+- [ ] Results physically reasonable for contaminant type
+- [ ] Computational time < 1 hour
+- [ ] Well-contaminant interactions clearly visible
 - [ ] All visualizations render correctly
+- [ ] No errors or warnings in model output
 
-**Time Estimate for Phase 5**: 3-5 days (0.5-1 day per group)
+**Time Estimate for Phase 5**: 1-2 days (testing 8 scenarios, ~2-3 hours per scenario)
 
 ### Phase 6: Supporting Materials - NOT STARTED
 - [ ] Update README.md in student_work/ with transport instructions
@@ -1061,14 +913,14 @@ For each group:
 |-------|-------------|------|--------|
 | 1 | Planning and design | 0.5 | ✅ **COMPLETE** |
 | 2 | Teaching notebook (4b) | 1-2 | ✅ **COMPLETE** |
-| 3 | Group 0 demo implementation | 2-3 | 🚧 **IN PROGRESS** |
-| 4 | Configs for groups 1-8 | 1-2 | ⏳ Not started |
-| 5 | Instructor solutions (groups 1-8) | 3-5 | ⏳ Not started |
+| 3 | Group 0 demo implementation | 2-3 | ✅ **COMPLETE** |
+| 4 | Configs for groups 1-8 | 1-2 | ✅ **COMPLETE** (configs exist) |
+| 5 | Instructor solutions (groups 1-8) | 3-5 | 🚧 **READY FOR TESTING** |
 | 6 | Supporting materials | 2-3 | ⏳ Not started |
-| 7 | Documentation and testing | 1-2 | ⏳ Not started |
+| 7 | Documentation and testing | 1-2 | 🚧 **IN PROGRESS** |
 | 8 | Integration and deployment | 0.5-1 | ⏳ Not started |
 
-**Current Priority**: Phase 3 - Complete Group 0 demo implementation
+**Current Priority**: Phase 5 & 7 - Test case studies for groups 1-8
 
 **Recommended schedule**:
 - **Week 1**: ✅ Phases 1-2 complete, Phase 3 in progress (demo implementation)
@@ -1111,7 +963,7 @@ Students must submit a concise professional modeling report (PDF, 3-4 pages) foc
 ✓ **Communication**: Distill technical work into client-ready summary
 ✓ **Critical thinking**: Justify modeling choices and parameter selection
 ✓ **Analysis**: Interpret results in context of well-contaminant interactions
-✓ **Verification (bonus)**: If completed, explain value and limitations of analytical comparison
+✓ **Verification (optional)**: If completed, explain value and limitations of analytical comparison
 ✓ **Engineering judgment**: Provide actionable recommendations
 
 ### Quality Guidelines
@@ -1217,10 +1069,11 @@ By completing this transport case study, students will:
    - **DECIDED**: Use the same well field locations as flow case study. Each group's submodel domain will be centered on their assigned well group (concession area).
 
 2. ~~**Analytical comparison**: Required or optional?~~
-   - **DECIDED (2025-11-03)**: **Optional with bonus credit**
-   - **Tier 1** (Simple scenarios - Groups 0, 1, 2, 5): Full analytical comparison available (1D pulse source) - bonus +5-10%
-   - **Tier 2** (Moderate scenarios - Groups 3, 4, 6, 7, 8): Simplified analytical comparison OR justification - bonus +5-10%
-   - **Rationale**: While verification is professional practice, this is a learning exercise focused on transport workflow. Making it optional reduces student workload while still providing incentive for those interested in deeper understanding.
+   - **DECIDED (2025-11-03, updated 2025-11-09)**: **Optional without bonus credit**
+   - **All groups** have equal opportunity to complete analytical verification regardless of contaminant properties
+   - **Conservative tracers**: Can use direct 1D analytical comparison
+   - **Reactive transport**: Can compare simplified scenarios or use analytical solutions with reactions
+   - **Rationale**: While verification is professional practice, this is a learning exercise focused on transport workflow. Making it optional without extra credit keeps it as a learning opportunity for those interested in deeper understanding without creating grade disparities.
 
 3. ~~**Time constraints**: How many weeks for transport case study?~~
    - **DECIDED**: 2-3 weeks, approximately **10 hours total** including report writing
@@ -1228,7 +1081,7 @@ By completing this transport case study, students will:
      - Read/understand teaching notebook (4b): 1-2 hours
      - Setup and adapt demo for their scenario: 2-3 hours
      - Run simulations and troubleshoot: 2-3 hours
-     - (Optional) Analytical comparison: 0.5-1 hour (with templates) - bonus credit
+     - (Optional) Analytical comparison: 0.5-1 hour (with templates)
      - Analysis and interpretation: 1-2 hours
      - Professional report writing (3-4 pages): 2-3 hours
    - **Total: ~8-10 hours** (manageable for 2-3 week timeline, 10-11 hours if including optional verification)
@@ -1284,7 +1137,7 @@ By completing this transport case study, students will:
      - Mimics real-world consulting: technical work + client deliverable
 
 7. ~~**Grading criteria**: What aspects are weighted?~~
-   - **DECIDED (Updated 2025-11-03)**: Grading split between technical implementation and professional report
+   - **DECIDED (Updated 2025-11-09)**: Grading split between technical implementation and professional report
 
    **Technical Implementation (50%)**:
    - Model setup and configuration (15%)
@@ -1298,9 +1151,8 @@ By completing this transport case study, students will:
    - Interpretation, analysis, and conclusions (10%)
    - Professional writing quality and format (5%)
 
-   **Bonus Credit (up to +10%)**:
-   - Analytical verification (tier 1 or tier 2): +5-10% depending on completeness and quality
-   - This allows motivated students to exceed 100% on the assignment
+   **Optional Analytical Verification**:
+   - Not graded, but demonstrates advanced understanding for students interested in deeper learning
 
 ---
 
@@ -1320,13 +1172,13 @@ By completing this transport case study, students will:
 - Run simulations and troubleshoot: 2-3 hours
 - Analysis and interpretation: 1-2 hours
 - Professional report writing (3-4 pages): 2-3 hours
-- **(Optional) Analytical comparison (with templates): 0.5-1 hour** - bonus credit
+- **(Optional) Analytical comparison (with templates): 0.5-1 hour**
 - **Total: ~8-10 hours per group** (target based on 2-3 week timeline)
-- **Total with bonus: ~10-11 hours** if including analytical verification
+- **Total with optional verification: ~10-11 hours**
 
 **Note**: The 8-10 hour target is achievable because:
 - Wells are reused from flow case (no new implementation)
-- No mandatory analytical comparison (reduced from original 10 hours)
+- Analytical comparison is optional (not required)
 - Templates provided for report and optional analytical solutions
 - No parameter scenarios (simpler than flow case)
 - Demo notebook provides complete working example

@@ -5,12 +5,12 @@
 # Each group uses the scenario matching their group number.
 # Keep units consistent (meters, days, m3/day, mg/L).
 # Wells are REUSED from flow case study (case_config.yaml).
-
-group:
-  number: 0                               # TODO: Set to your group number (0-8)
-  authors:                                # TODO: List all group members (2–3 persons)
-    - "First Last"
-    - "Second Last"                      # remove if only 2 / add third if needed
+# The group number and authors are already defined in the case_config.yaml file.
+# group:
+#   number: 0                               
+#   authors:                                
+#     - "First Last"
+#     - "Second Last"                      
 
 # Fixed assignments by group number:
 # Group 0: concession 210 - TCE - Industrial spill (demo)
@@ -34,13 +34,13 @@ description: >
 # Base parent model (fresh download, independent from student flow results)
 model:
   data_name: baseline_model               # Fixed - downloads known-good model
-  workspace: "~/applied_groundwater_modelling_data/limmat/baseline_model"
+  workspace: "~/applied_groundwater_modelling_data/limmat/transport/baseline_model"
   namefile: "limmat_valley_model_nwt.nam"
   baseline_model_name: "limmat_valley_model_nwt"
 
 # Transport submodel output location
 output:
-  workspace: "~/applied_groundwater_modelling_data/limmat/transport_case_study_group_"  # auto-expand with group number
+  workspace: "~/applied_groundwater_modelling_data/limmat/transport/case_study_transport_group_"  # auto-expand with group number
 
 # Wells from flow case study (REUSED, not reimplemented)
 wells:
@@ -56,16 +56,17 @@ transport_scenarios:
   options:
     # ========== GROUP 0: TCE - Industrial Spill (Demo) ==========
     - id: 0
-      concession: 210
       title: "Industrial solvent spill (TCE)"
       contaminant: "Trichloroethylene (TCE)"
-      tier: 1                             # Tier 1: conservative tracer (full Ogata-Banks)
       description: >
         A 30-day TCE spill from an industrial facility. Assess plume migration
         under natural gradient conditions and with well pumping/injection effects.
-        Determine if/when contamination reaches the Limmat River or monitoring points.
+        Determine if/when contamination reaches the well (monitoring location).
 
       properties:
+        # Chemical Abstracts Service (CAS) number and properties
+        # Relevant to look up properties of a chemical in databases/literature,
+        # find regulatory limits, toxicity, etc.
         cas_number: "79-01-6"
         molecular_weight_g_mol: 131.39
         solubility_mg_L: 1100
@@ -88,28 +89,29 @@ transport_scenarios:
         type: "point"
         release_type: "pulse"
         location:
-          easting: 2684500              # TODO: Set relative to well locations
-          northing: 1249500             # TODO: Set relative to well locations
+          # Location relative to pumping well (first in list if cluster)
+          # Positioned upstream/perpendicular to create interesting transport scenario
+          easting: -150              # m, upstream of wells
+          northing: +100             # m, perpendicular offset for better pedagogy
           layer: 1
         start_time_days: 0
-        duration_days: 30               # 30-day spill
+        duration_days: 1               # 1-day spill
         concentration_mg_L: 100.0
-        ssm_itype: -1                   # Constant concentration cell
 
       simulation:
-        duration_days: 3650             # 10 years
-        output_times_days: [30, 90, 180, 365, 730, 1095, 1825, 3650]
+        duration_days: 60              # 60 days (manageable domain size)
+        output_times_days: [6, 11, 21, 61]
 
       submodel:
-        buffer_north_m: 500
-        buffer_south_m: 500
-        buffer_east_m: 500
-        buffer_west_m: 500
-        cell_size_m: 5
+        buffer_north_m: 100
+        buffer_south_m: 100
+        buffer_east_m: 100
+        buffer_west_m: 100
+        cell_size_m: 2
 
       monitoring:
         threshold_mg_L: 5.0
-        compliance_location: "Property boundary and Limmat River"
+        compliance_location: "Well"
 
     # ========== GROUP 1: Nitrate - Sports Field Fertilizer ==========
     - id: 1
