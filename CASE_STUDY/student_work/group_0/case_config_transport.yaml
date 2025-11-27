@@ -1,0 +1,623 @@
+###############################################################
+# Transport Case Study Configuration (All Groups)
+###############################################################
+# This file contains ALL transport scenarios for groups 0-8.
+# Each group uses the scenario matching their group number.
+# Keep units consistent (meters, days, m3/day, mg/L).
+# Wells are REUSED from flow case study (case_config.yaml).
+# The group number and authors are already defined in the case_config.yaml file.
+# group:
+#   number: 0                               
+#   authors:                                
+#     - "First Last"
+#     - "Second Last"                      
+
+# Fixed assignments by group number:
+# Group 0: concession 210 - TCE - Industrial spill (demo)
+# Group 1: concession 219 - Nitrate - Sports field fertilizer
+# Group 2: concession 201 - Chloride - Legacy landfill
+# Group 3: concession 236 - Benzene - Gas station leak
+# Group 4: concession 190 - Atrazine - Garden allotment pesticide
+# Group 5: concession 223 - PFOA - Industrial point source
+# Group 6: concession 227 - PCE - Dry cleaning facility leak
+# Group 7: concession 213 - Ammonium - Leaking sewer line
+# Group 8: concession 207 - Chromium - Metal plating facility
+
+title: "Contaminant transport with well field interactions"  # TODO: Tailor with your contaminant
+
+description: >
+  TODO: Provide 2–5 sentences describing your transport scenario. Include: contaminant type,
+  source location/type, duration (pulse vs continuous), and the key question you're addressing
+  regarding well-contaminant interactions (e.g., will pumping wells capture the plume? Does
+  injection spread contamination? What's the breakthrough time at monitoring locations?).
+
+# Base parent model (fresh download, independent from student flow results)
+model:
+  data_name: baseline_model               # Fixed - downloads known-good model
+  workspace: "~/applied_groundwater_modelling_data/limmat/transport/baseline_model"
+  namefile: "limmat_valley_model_nwt.nam"
+  baseline_model_name: "limmat_valley_model_nwt"
+
+# Transport submodel output location
+output:
+  workspace: "~/applied_groundwater_modelling_data/limmat/transport/case_study_transport_group_"  # auto-expand with group number
+
+# Wells from flow case study (REUSED, not reimplemented)
+wells:
+  source: "case_config"                   # Reuse wells from flow case study
+  config_file: "./case_config.yaml"       # Path to flow case configuration
+  notes: >
+    Wells are loaded from the flow case study configuration. Students will identify
+    which wells are pumping (extraction) vs injection wells/Sickergalerie based on
+    flow rates, then analyze how these wells affect contaminant transport.
+
+# Transport scenario assignments are FIXED by group number
+transport_scenarios:
+  options:
+    # ========== GROUP 0: TCE - Industrial Spill (Demo) ==========
+    - id: 0
+      title: "Industrial solvent spill (TCE)"
+      contaminant: "Trichloroethylene (TCE)"
+      description: >
+        A 1-day TCE spill from an industrial facility. Assess plume migration
+        under natural gradient conditions and with well pumping/injection effects.
+        Determine if/when contamination reaches the well (monitoring location).
+
+      properties:
+        # Chemical Abstracts Service (CAS) number and properties
+        # Relevant to look up properties of a chemical in databases/literature,
+        # find regulatory limits, toxicity, etc.
+        cas_number: "79-01-6"
+        molecular_weight_g_mol: 131.39
+        solubility_mg_L: 1100
+        conservative: true                # No sorption or decay
+
+      transport:
+        porosity: 0.25
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 1.0e-9
+        sorption: false
+        distribution_coefficient_mL_g: 0.0
+        decay: false
+        first_order_decay_constant_1_per_day: 0.0
+        half_life_days: null
+
+      source:
+        type: "point"
+        release_type: "pulse"
+        location:
+          # Location relative to pumping well (first in list if cluster)
+          # Positioned between the injection and pumping wells to create an 
+          # interesting transport scenario
+          # TODO: Choose the source location to fit your groups well configuration
+          easting: -150              # m
+          northing: +100             # m 
+          layer: 1
+        start_time_days: 0
+        # TODO: Adjust duration of source activation based on model runs to 
+        # ensure plume reaches monitoring point. Minimum 1 day.
+        duration_days: 1               # 1-day spill
+        concentration_mg_L: 100.0
+
+      simulation:
+        # TODO: Adjust simulation duration based on model runs to ensure plume
+        # reaches monitoring point. Minimum 30 days. 
+        duration_days: 60              # 60 days (manageable domain size)
+        # TODO: Adjust output times to capture key transport dynamics
+        output_times_days: [6, 11, 21, 61]
+
+      submodel:
+        # TODO: Adjust buffer size based on estimated plume travel distance
+        # We accept smaller buffer zones to limit model size.
+        buffer_north_m: 100
+        buffer_south_m: 100
+        buffer_east_m: 100
+        buffer_west_m: 100
+        # Do not edit the cell size
+        cell_size_m: 2
+
+      monitoring:
+        threshold_mg_L: 5.0
+        compliance_location: "Well"
+
+    # ========== GROUP 1: Nitrate - Sports Field Fertilizer ==========
+    - id: 1
+      concession: 219
+      title: "Sports field fertilizer contamination"
+      contaminant: "Nitrate (NO3-)"
+      description: >
+        The tank holding the nitrate fertilizer for a large sports field has 
+        leaked, unloading nitrate into the groundwater over a 1-day period. 
+        Determine if the nitrate plume reaches the downgradient monitoring well 
+        or the pumping well.
+
+      properties:
+        cas_number: "14797-55-8"
+        molecular_weight_g_mol: 62.0
+        solubility_mg_L: 850000
+        conservative: true
+
+      transport:
+        porosity: 0.25
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 1.9e-9
+        sorption: false
+        distribution_coefficient_mL_g: 0.0
+        decay: false
+        first_order_decay_constant_1_per_day: 0.0
+        half_life_days: null
+
+      source:
+        type: "point"
+        release_type: "pulse"
+        location:
+          # Location relative to pumping well (first in list if cluster)
+          # Positioned between the injection and pumping wells to create an 
+          # interesting transport scenario
+          # TODO: Choose the source location to fit your groups well configuration
+          easting: -50              # m, TODO: Set relative to well locations
+          northing: 150              # m, TODO: Set relative to well locations
+          layer: 1
+        start_time_days: 0
+        # TODO: Adjust duration of source activation based on model runs to 
+        # ensure plume reaches monitoring point. Minimum 1 day.
+        duration_days: 1             # 1-day spill
+        concentration_mg_L: 50.0
+        ssm_itype: -1
+
+      simulation:
+        # TODO: Adjust simulation duration based on model runs to ensure plume
+        # reaches monitoring point. Minimum 30 days. 
+        duration_days: 30
+        # TODO: Adjust output times to capture key transport dynamics
+        output_times_days: [2, 4, 6, 31]
+
+      submodel:
+        # TODO: Adjust buffer size based on estimated plume travel distance
+        # We accept smaller buffer zones to limit model size.
+        buffer_north_m: 100
+        buffer_south_m: 100
+        buffer_east_m: 100
+        buffer_west_m: 100
+        cell_size_m: 2
+
+      monitoring:
+        threshold_mg_L: 25.0            # Drinking water standard
+        compliance_location: "Downgradient wells"
+
+    # ========== GROUP 2: Benzene - Gas Station Leak ==========
+    - id: 2
+      concession: 201
+      title: "Gasoline station leak (BTEX)"
+      contaminant: "Benzene"
+      description: >
+        Point source benzene leak with biodegradation. Assess natural attenuation
+        capacity and monitored natural attenuation feasibility.
+
+      properties:
+        cas_number: "71-43-2"
+        molecular_weight_g_mol: 78.11
+        solubility_mg_L: 1780
+        conservative: false
+
+      transport:
+        porosity: 0.25
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 1.0e-9
+        sorption: false
+        distribution_coefficient_mL_g: 0.0
+        decay: true
+        first_order_decay_constant_1_per_day: 0.005  # Moderate biodegradation
+        half_life_days: 138.6           # ~5 months half-life
+
+      source:
+        type: "point"
+        release_type: "pulse"
+        # Location relative to pumping well (first in list if cluster)
+        # Positioned between the injection and pumping wells to create an 
+        # interesting transport scenario
+        # TODO: Choose the source location to fit your groups well configuration
+        location:
+          easting: 100              # m, TODO: Set relative to well locations
+          northing: 100             # m, TODO: Set relative to well locations
+          layer: 1
+        start_time_days: 0
+        # TODO: Adjust duration of source activation based on model runs to 
+        # ensure plume reaches monitoring point. Minimum 1 day.
+        duration_days: 10               # 2-month leak
+        concentration_mg_L: 10.0
+        ssm_itype: -1
+
+      simulation:
+        # TODO: Adjust simulation duration based on model runs to ensure plume
+        # reaches monitoring point. Minimum 30 days. 
+        duration_days: 60
+        # TODO: Adjust output times to capture key transport dynamics
+        output_times_days: [6, 11, 21, 31, 61]
+
+      submodel:
+        buffer_north_m: 100
+        buffer_south_m: 100
+        buffer_east_m: 100
+        buffer_west_m: 100
+        cell_size_m: 2
+
+      monitoring:
+        threshold_mg_L: 0.005           # Drinking water MCL
+        compliance_location: "Downgradient monitoring wells"
+
+    # ========== GROUP 3: Chloride - Legacy Landfill ==========
+    - id: 3
+      concession: 236
+      title: "Legacy landfill plume"
+      contaminant: "Chloride (conservative tracer)"
+      description: >
+        Historical contamination from old landfill (10-year continuous source).
+        Characterize current plume extent and predict future migration.
+
+      properties:
+        cas_number: "16887-00-6"
+        molecular_weight_g_mol: 35.45
+        solubility_mg_L: 350000
+        conservative: true
+
+      transport:
+        porosity: 0.25
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 2.0e-9
+        sorption: false
+        distribution_coefficient_mL_g: 0.0
+        decay: false
+        first_order_decay_constant_1_per_day: 0.0
+        half_life_days: null
+
+      source:
+        type: "area"
+        release_type: "continuous"
+        # Location relative to pumping well (first in list if cluster)
+        # Positioned between the injection and pumping wells to create an 
+        # interesting transport scenario
+        # TODO: Choose the source location to fit your groups well configuration
+        location:
+          easting: 100              # m, TODO: Set relative to well locations
+          northing: 100             # m, TODO: Set relative to well locations
+          layer: 1
+        start_time_days: 0
+        duration_days: 3650             # Started 10 years ago, ongoing
+        concentration_mg_L: 200.0
+        ssm_itype: -1
+
+      simulation:
+        duration_days: 3650
+        output_times_days: [365, 730, 1095, 1825, 2555, 3650]
+
+      submodel:
+        buffer_north_m: 700
+        buffer_south_m: 700
+        buffer_east_m: 700
+        buffer_west_m: 700
+        cell_size_m: 5
+
+      monitoring:
+        threshold_mg_L: 100.0
+        compliance_location: "Property boundary and river"
+
+    # ========== GROUP 4: Chromium - Metal Plating Facility ==========
+    - id: 4
+      concession: 190
+      title: "Metal plating facility chromium leak"
+      contaminant: "Chromium (Cr-VI)"
+      description: >
+        Point source chromium from electroplating workshop with sorption. Assess plume
+        mobility and evaluate pump-and-treat remediation timing requirements.
+
+      properties:
+        cas_number: "18540-29-9"
+        molecular_weight_g_mol: 52.0
+        solubility_mg_L: 10000
+        conservative: false
+
+      transport:
+        porosity: 0.25
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 1.1e-9
+        sorption: true
+        distribution_coefficient_mL_g: 2.0  # Strong sorption
+        decay: false
+        first_order_decay_constant_1_per_day: 0.0
+        half_life_days: null
+
+      source:
+        type: "point"
+        release_type: "pulse"
+        # Location relative to pumping well (first in list if cluster)
+        # Positioned between the injection and pumping wells to create an 
+        # interesting transport scenario
+        # TODO: Choose the source location to fit your groups well configuration
+        location:
+          easting: 100              # TODO: Set relative to well locations
+          northing: 100             # TODO: Set relative to well locations
+          layer: 1
+        start_time_days: 0
+        # TODO: Adjust duration of source activation based on model runs to
+        # ensure plume reaches monitoring point. Minimum 1 day.
+        duration_days: 1               # 1-day spill
+        concentration_mg_L: 20.0
+        ssm_itype: -1
+
+      simulation:
+        # TODO: Adjust simulation duration based on model runs to ensure plume
+        # reaches monitoring point. Minimum 30 days.
+        duration_days: 30
+        # TODO: Adjust output times to capture key transport dynamics
+        output_times_days: [5, 15, 21, 31]
+
+      submodel:
+        # TODO: Adjust buffer size based on estimated plume travel distance
+        # We accept smaller buffer zones to limit model size.
+        buffer_north_m: 100
+        buffer_south_m: 100
+        buffer_east_m: 100
+        buffer_west_m: 100
+        # Do not edit the cell size
+        cell_size_m: 2
+
+      monitoring:
+        threshold_mg_L: 0.1             # Drinking water standard
+        compliance_location: "Property boundary and wells"
+
+    # ========== GROUP 5: PFOA - Industrial Point Source ==========
+    - id: 5
+      concession: 223
+      title: "PFAS contamination"
+      contaminant: "PFOA (perfluorooctanoic acid)"
+      description: >
+        Point source PFAS release (conservative, mobile). Assess Spill
+        migration and compliance with drinking water standards.
+
+      properties:
+        cas_number: "335-67-1"
+        molecular_weight_g_mol: 414.07
+        solubility_mg_L: 9500
+        conservative: true
+
+      transport:
+        porosity: 0.25
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 0.7e-9
+        sorption: false                 # PFAS are highly mobile
+        distribution_coefficient_mL_g: 0.0
+        decay: false                    # Persistent
+        first_order_decay_constant_1_per_day: 0.0
+        half_life_days: null
+
+      source:
+        type: "point"
+        release_type: "pulse"
+        # Location relative to pumping well (first in list if cluster)
+        # Positioned between the injection and pumping wells to create an 
+        # interesting transport scenario
+        location:
+          easting: 100              # m, TODO: Set relative to well locations
+          northing: 100             # m, TODO: Set relative to well locations
+          layer: 1
+        start_time_days: 0
+        # TODO: Adjust duration of source activation based on model runs to
+        # ensure plume reaches monitoring point. Minimum 1 day.
+        duration_days: 1               # 1-day spill
+        concentration_mg_L: 1.0
+        ssm_itype: -1
+
+      simulation:
+        # TODO: Adjust simulation duration based on model runs to ensure plume
+        # reaches monitoring point. Minimum 30 days.
+        duration_days: 30
+        # TODO: Adjust output times to capture key transport dynamics
+        output_times_days: [5, 15, 21, 31]
+
+      submodel:
+        # TODO: Adjust buffer size based on estimated plume travel distance
+        # We accept smaller buffer zones to limit model size.
+        buffer_north_m: 100
+        buffer_south_m: 100
+        buffer_east_m: 100
+        buffer_west_m: 100
+        # Do not edit the cell size
+        cell_size_m: 2
+
+      monitoring:
+        threshold_mg_L: 0.0002          # Very low drinking water advisory (0.2 µg/L)
+        compliance_location: "Drinking water wells"
+
+    # ========== GROUP 6: PCE - Dry Cleaning Facility Leak ==========
+    - id: 6
+      concession: 227
+      title: "Dry cleaning facility solvent leak"
+      contaminant: "Perchloroethylene (PCE)"
+      description: >
+        Point source PCE leak from urban dry cleaning facility with slight sorption.
+        Assess plume migration and potential for natural attenuation.
+
+      properties:
+        cas_number: "127-18-4"
+        molecular_weight_g_mol: 165.83
+        solubility_mg_L: 200
+        conservative: false
+
+      transport:
+        porosity: 0.25
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 0.9e-9
+        sorption: true
+        distribution_coefficient_mL_g: 0.08  # Slight sorption
+        decay: false
+        first_order_decay_constant_1_per_day: 0.0
+        half_life_days: null
+
+      source:
+        type: "point"
+        release_type: "pulse"
+        location:
+          easting: 100              # m, TODO: Set relative to well locations
+          northing: 100             # m, TODO: Set relative to well locations
+          layer: 1
+        start_time_days: 0
+        duration_days: 90               # 3-month leak
+        concentration_mg_L: 50.0
+        ssm_itype: -1
+
+      simulation:
+        duration_days: 3650
+        output_times_days: [90, 180, 365, 730, 1095, 1825, 3650]
+
+      submodel:
+        buffer_north_m: 500
+        buffer_south_m: 500
+        buffer_east_m: 500
+        buffer_west_m: 500
+        cell_size_m: 5
+
+      monitoring:
+        threshold_mg_L: 0.04            # Drinking water MCL
+        compliance_location: "Property boundary"
+
+    # ========== GROUP 7: Ammonium - Leaking Sewer Line ==========
+    - id: 7
+      concession: 213
+      title: "Leaking sewer line contamination"
+      contaminant: "Ammonium (NH4+)"
+      description: >
+        Continuous ammonium discharge from aging urban sewer infrastructure with
+        nitrification (decay). Model transformation and downgradient concentration profiles.
+
+      properties:
+        cas_number: "14798-03-9"
+        molecular_weight_g_mol: 18.04
+        solubility_mg_L: 1000000
+        conservative: false
+
+      transport:
+        porosity: 0.25
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 1.9e-9
+        sorption: false
+        distribution_coefficient_mL_g: 0.0
+        decay: true
+        first_order_decay_constant_1_per_day: 0.02  # Fast nitrification
+        half_life_days: 34.7            # ~1 month half-life
+
+      source:
+        type: "line"                    # Line source (sewer)
+        release_type: "continuous"
+        location:
+          easting: 2684480              # TODO: Set relative to well locations
+          northing: 1249480             # TODO: Set relative to well locations
+          layer: 1
+        start_time_days: 0
+        duration_days: 3650             # Ongoing leak
+        concentration_mg_L: 30.0
+        ssm_itype: -1
+
+      simulation:
+        duration_days: 3650
+        output_times_days: [30, 90, 180, 365, 730, 1095, 1825, 3650]
+
+      submodel:
+        buffer_north_m: 400
+        buffer_south_m: 400
+        buffer_east_m: 400
+        buffer_west_m: 400
+        cell_size_m: 5
+
+      monitoring:
+        threshold_mg_L: 0.5             # Drinking water guideline
+        compliance_location: "Downgradient monitoring points"
+
+    # ========== GROUP 8: Atrazine - Garden Allotment Pesticide ==========
+    - id: 8
+      concession: 207
+      title: "Garden allotment pesticide contamination"
+      contaminant: "Atrazine"
+      description: >
+        An atrazine spill from a garden allotment pesticide application. 
+
+      properties:
+        cas_number: "1912-24-9"
+        molecular_weight_g_mol: 215.68
+        solubility_mg_L: 35
+        conservative: false
+
+      transport:
+        porosity: 0.25
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 0.8e-9
+        sorption: true
+        distribution_coefficient_mL_g: 0.3  # Moderate sorption
+        decay: false
+        first_order_decay_constant_1_per_day: 0.0
+        half_life_days: null
+
+      source:
+        type: "point"
+        release_type: "pulse"
+        # Location relative to pumping well (first in list if cluster)
+        # Positioned between the injection and pumping wells to create an 
+        # interesting transport scenario
+        # TODO: Choose the source location to fit your groups well configuration
+        location:
+          easting: 100              # m, TODO: Set relative to well locations
+          northing: 100             # m, TODO: Set relative to well locations
+          layer: 1
+        start_time_days: 0
+        # TODO: Adjust duration of source activation based on model runs to
+        # ensure plume reaches monitoring point. Minimum 1 day.
+        duration_days: 1             # 1 day of application
+        concentration_mg_L: 5.0
+        ssm_itype: -1
+
+      simulation:
+        # TODO: Adjust simulation duration based on model runs to ensure plume
+        # reaches monitoring point. Minimum 30 days.
+        duration_days: 60
+        output_times_days: [30, 45, 60]
+
+      submodel:
+        buffer_north_m: 100
+        buffer_south_m: 100
+        buffer_east_m: 100
+        buffer_west_m: 100
+        # Do not change the cell size
+        cell_size_m: 2
+
+      monitoring:
+        threshold_mg_L: 0.1             # Drinking water standard (EU)
+        compliance_location: "Groundwater monitoring network"
+
+

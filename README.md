@@ -397,7 +397,28 @@ applied_groundwater_modelling_data/ (will be created automatically)
 │   ├── time_series/             # Time series data files for the Limmat case study
 ```
 
-## 7 How to Use this Repository as a Student
+## 7 Planning Documents (For Course Development)
+
+**Important for instructors and AI assistants working on this course:**
+
+This repository contains planning documents that guide the development and structure of course materials:
+
+- **[transport_planning.md](transport_planning.md)**: Complete planning document for the transport case study
+  - Design decisions (wells included, mandatory analytical comparison, etc.)
+  - Deliverables structure (notebook + 3-4 page report + config)
+  - Grading rubric (50% technical, 50% report)
+  - Timeline estimates (10 hours total for students)
+  - Implementation phases and checklists
+  - **Always refer to this document when working on transport-related materials**
+
+### When to Reference Planning Documents
+
+- Before creating new notebooks or materials: Check if planning document exists
+- During implementation: Follow structure and decisions outlined in planning docs
+- When making changes: Update planning document to reflect any design changes
+- For AI assistants: Always read relevant planning document at start of session
+
+## 8 How to Use this Repository as a Student
 
 ### 7.1 JupyterHub (ETH Students)
 ETH students can access these materials through the course JupyterHub environment linked in Moodle. The JupyterHub provides a pre-configured environment with all necessary dependencies installed. 

@@ -6,7 +6,7 @@
 # Concession numbers and scenarios are FIXED by group number.
 
 group:
-  number: 0                               # TODO: integer group number (0-8)
+  number: 4                               # TODO: integer group number (0-8)
   authors:                                # TODO: list all group members (2–3 persons)
     - "First Last"
     - "Second Last"                      # remove if only 2 members / add third if needed
