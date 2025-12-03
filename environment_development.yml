@@ -39,3 +39,5 @@ dependencies:
   - plotly=6.2.0
   - affine=2.4.0
   - rasterstats=0.20.0
+  - pip:
+    - pyemu
