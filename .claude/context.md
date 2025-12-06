@@ -19,14 +19,59 @@ The course implementation is complete with 10 case study notebooks covering the 
 9. Documentation
 10. Communication
 
+## Planned Changes for course_2026
+
+### Migration from MODFLOW-NWT to MODFLOW 6
+- **Current**: Notebooks use MODFLOW-NWT
+- **Target**: Migrate to MODFLOW 6 (MF6)
+- **Scope**: Affects notebooks 3, 4, 4b, 5, 6, 7, 8 and student_work templates
+- **Key differences**:
+  - MF6 uses a modular package structure (GWF, GWT models)
+  - Different input file format (structured text → name files + packages)
+  - FloPy API changes: `flopy.mf6` module instead of `flopy.modflow`
+  - Transport: GWT model replaces MT3DMS
+
+### Notebook Refactoring - Keep Content Concise
+
+**Planning Document:** [planning/notebook_refactoring.md](../planning/notebook_refactoring.md)
+
+**Priority Order:**
+1. Notebook 4 (Model Implementation) - 2915 lines → target ~800
+2. Notebook 5 (Calibration) - 1563 lines → target ~500
+3. Notebook 4b (Transport) - 1308 lines → target ~400 (combine with MF6 migration)
+4. Notebook 6 (Validation) - 930 lines → target ~400
+
+**New Utility Modules to Create:**
+- `model_utils.py` - MF6 model loading, inspection, water balance
+- `calibration_utils.py` - metrics, observation handling, trial runs
+- `transport_utils.py` - GWT setup, concentration plotting, analytical solutions
+
+**Existing Modules to Expand:**
+- `grid_utils.py` - rotation, DEM resampling, active cells
+- `plot_utils.py` - heads maps, boundary conditions, calibration plots
+- `data_utils.py` - boundary loading, parameter zones, river cells
+
 ## Repository Structure
 
-Key directories:
-- `CASE_STUDY/` - Case study notebooks (1-10)
-- `CASE_STUDY/student_work/` - Student working area
-  - `group_0/` - Demo/template (tracked in git)
-  - `group_1/` through `group_8/` - Student work (gitignored)
+```
+CASE_STUDY/
+├── 0_introduction.ipynb      # Shared intro to 10-step framework
+├── flow/                     # Flow modeling track (steps 1-10)
+│   ├── 1_model_goal.ipynb
+│   ├── 2_perceptual_model.ipynb
+│   ├── ...
+│   └── 10_communication.ipynb
+├── transport/                # Transport extension track (steps 1-10)
+│   ├── 1_model_goal.ipynb
+│   ├── ...
+│   └── 10_communication.ipynb
+├── student_work/             # Group working areas
+└── grading_scheme/
+```
+
+Other directories:
 - `EXERCISES/` - 6 exercises + theory reminder
+- `DEMOS/` - Optional demo materials (REV, porosity)
 - `SUPPORT_REPO/src/` - Helper functions and utilities
 - `SUPPORT_REPO/static/` - Static files (images, figures)
 
