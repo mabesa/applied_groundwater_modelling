@@ -385,8 +385,8 @@ applied_groundwater_modelling/   # Your local copy of the git repository
 │   ├── static/                  # Static files (images, figures, etc.)
 ├── 0_diagnostics.ipynb          # Diagnostics notebook to check environment
 ├── config_template.py           # Template for configuration file
-├── environment_development.yml  # Conda environment for development
-├── environment_students.yml     # Conda environment for students
+├── pyproject.toml           # Project dependencies (uv)
+├── DEVELOPMENT.md           # Developer guide
 ├── README.md                    # This file
 └── LICENSE                      # License file
 
@@ -460,52 +460,39 @@ See https://discourse.jupyter.org/t/scrolling-bug-makes-my-screen-shake-erratica
 <details>
 <summary><strong>💻 Local Installation Setup</strong></summary>
 
-We recommend Visual Studio Code as an IDE (available for free [here](https://code.visualstudio.com/)) but any other Python IDE will work. We further recommend using the Anaconda distribution of Python (available for free [here](https://www.anaconda.com/products/distribution)) to manage your Python environment.  
+We recommend Visual Studio Code as an IDE (available for free [here](https://code.visualstudio.com/)) but any other Python IDE will work.
 
 To run these materials locally, follow these steps:
 
-1. **Navigate to your desired directory** in your terminal using the `cd` command:
+1. **Install uv** (Python package manager):
    ```bash
-   cd path/to/your/folder
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
-   Replace `path/to/your/folder` with the actual path to your desired folder.
 
-2. **Clone this repository:**  
+2. **Clone this repository:**
    ```bash
    git clone https://github.com/mabesa/applied-groundwater-modeling.git
-   ```
-   This will create a new folder called `applied-groundwater-modeling` in your current directory.
-
-3. **Navigate into the cloned repository:**
-   ```bash
    cd applied-groundwater-modeling
    ```
 
-4. **Set up your Python environment using conda:**
-   - Update conda (may take a while):  
-     ```bash
-     conda update -n base -c conda-forge conda
-     ```
-   - Create a new environment with Python 3.12 and the required packages:  
-     ```bash
-     conda env create -f environment_students.yml
-     ```
-   - Activate the environment:  
-     ```bash
-     conda activate gw_course_students
-     ```
+3. **Set up your Python environment:**
+   ```bash
+   uv sync
+   source .venv/bin/activate  # macOS/Linux
+   # or: .venv\Scripts\activate  # Windows
+   ```
 
-5. **Get MODFLOW executables:**  
+4. **Get MODFLOW executables:**
    ```bash
    get-modflow :flopy
    ```
 
-6. **Install LaTeX support for notebooks** (optional):
+5. **Install LaTeX support for notebooks** (optional):
    In Visual Studio Code, install the `Markdown+Math` and `Markdown All in One` extensions or the `LaTeX Workshop` extension.
 
 ### 7.3 Repository Branches
 - `main`: Contains the latest stable version of the course materials
-- `course_2025`: Contains the latest version for the 2025 course (displayed on course JupyterHub)
+- `course_2026`: Contains the latest version for the 2026 course (displayed on course JupyterHub)
 - Other branches are used for development. Stale branches may be removed.
 
 </details>
@@ -513,73 +500,38 @@ To run these materials locally, follow these steps:
 <details>
 <summary><strong>🤝 How to Contribute</strong></summary>
 
-We welcome contributions to improve the course materials! 
+We welcome contributions to improve the course materials!
 
-### 7.4 Setting up Your Environment
-Install the project dependencies using the following command:
-```bash
-conda env create -f environment_development.yml
-```
-This will create a new conda environment with the necessary packages. Activate the environment using:
-```bash
-conda activate gw_course_development
-```
-If, during development, you need to install additional packages, please add them to the `environment_development.yml` files and run the following command to update the environment:
-```bash
-conda env update -f environment_development.yml
-```
-Please also keep the `environment_students.yml` file up to date. 
+For detailed development instructions, including AI-assisted development tools (Claude Code with Serena and Context7), see **[DEVELOPMENT.md](DEVELOPMENT.md)**.
 
-### 7.5 Git Workflow to Contribute
-Here's how you can contribute if you are not yet a collaborator in this repository:
+### 7.4 Quick Start for Contributors
 
-- **Fork the repository**: Create your own fork of this repository (skip this step if you are a collaborator in this repository).
-- **Create a feature branch**: Base your work on the develop branch.  
+1. **Install uv** (Python package manager):
    ```bash
-   git checkout year_feature_name  
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. **Set up the development environment**:
+   ```bash
+   uv sync
+   source .venv/bin/activate  # macOS/Linux
+   get-modflow :flopy
+   ```
+
+3. **Set up pre-commit hooks** (auto-strips notebook outputs):
+   ```bash
+   uv run pre-commit install
+   ```
+
+4. **Create a feature branch** and make your changes:
+   ```bash
+   git checkout course_2026
    git checkout -b your-feature-name
    ```
-- **Make your changes**: Implement your contribution, focusing on one specific improvement or addition.
-- **Test your changes**: Ensure your notebooks run without errors in the JupyterHub environment.
-- **Document your work**: Add clear comments and documentation to any code or notebooks.
-- **Submit a Pull Request**: Create a pull request to the develop branch with a clear description of what your changes accomplish. We will review your contribution and provide feedback.
 
-### 7.6 Notebook Output Management (Required)
-To keep the repository clean and free of unnecessary output, notebook outputs should be cleared before committing. Contributors have two options:
+5. **Test and submit**: Ensure notebooks run without errors, then submit a Pull Request.
 
-#### Option 1: Manual Output Clearing (Simple)
-Before committing notebooks, manually clear all outputs:
-- **In Jupyter/JupyterLab**: `Kernel` → `Restart & Clear Output`
-- **In VS Code**: Use the "Clear All Outputs" button in the notebook toolbar
-- **Command line**: Use `jupyter nbconvert --clear-output --inplace your_notebook.ipynb`
-
-#### Option 2: Automated with nbstripout (Recommended for Regular Contributors)
-Set up `nbstripout` to automatically strip outputs during commits:
-
-1. **Activate the pre-commit hook** (installed with the `environment_development.yml` file):
-   ```bash
-   pre-commit install
-   ```
-2. **Install `nbstripout`** in your conda environment: 
-   ```bash
-   conda install nbstripout
-   ```
-3. **Enable `nbstripout`** for your repository:
-   ```bash
-   nbstripout --install
-   ```
-4. **Verify the setup** by checking the `.git/hooks/pre-commit` file. It should contain a line similar to:
-   ```bash
-   #!/bin/sh
-   nbstripout --strip
-   ```
-5. **Automatic stripping**: Once set up, `nbstripout` will automatically strip output from all Jupyter notebooks when you commit changes.
-6. **Skip specific notebooks** (if needed):
-   ```bash
-   nbstripout --skip-notebook your_notebook.ipynb
-   ```
-
-**Important**: Please ensure notebook outputs are cleared using either method before submitting pull requests to maintain clean repository history.
+**Note**: Notebook outputs are automatically stripped when you commit (via pre-commit hook).
 
 </details>
 

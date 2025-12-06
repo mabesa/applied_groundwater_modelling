@@ -1,0 +1,8 @@
+repos:
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+      - id: nbstripout
+        name: Strip notebook outputs
+        description: Strip output from Jupyter notebooks
+        files: '\.ipynb$'
