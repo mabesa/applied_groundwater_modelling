@@ -97,6 +97,24 @@ get-modflow :flopy
 3. **Test thoroughly** with group_0 demo before deploying to students
 4. **Notebook outputs** are stripped automatically via pre-commit hook
 
+### MODFLOW/FloPy Coding Patterns
+
+**Always remove packages before replacing:**
+When modifying model packages (boundary conditions, properties, etc.), always remove the existing package before adding new content. This prevents cached files from causing unexpected behavior.
+
+```python
+# Remove existing package before replacing
+gwf.remove_package('CHD')  # or 'RIV', 'WEL', etc.
+# Then add new package
+flopy.mf6.ModflowGwfchd(gwf, stress_period_data=new_spd)
+```
+
+**Use FloPy utilities:**
+Prefer FloPy's built-in utilities over custom implementations:
+- `flopy.utils.gridintersect` for spatial operations
+- `flopy.utils.postprocessing` for results analysis
+- `modelgrid` methods for coordinate transformations
+
 ## Important Notes
 
 - Students use JupyterHub environment (ETH)

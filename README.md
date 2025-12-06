@@ -71,6 +71,17 @@ If notebooks scroll erratically: `Settings → Settings Editor → Notebook → 
 
 </details>
 
+### Tips for Working with Notebooks
+
+**Navigation in long notebooks:**
+- **VS Code:** Use the Outline panel (View → Open View → Outline) to jump between sections
+- **JupyterHub:** Use the Table of Contents panel in the left sidebar
+
+**Recommended workflow:**
+1. Clear all outputs: `Kernel → Restart Kernel and Clear Outputs`
+2. Run cells sequentially from the top, or run the entire notebook
+3. This ensures variables are properly initialized and avoids stale state
+
 ## 3 Course Structure
 
 ### Case Study: Limmat Valley Aquifer
@@ -187,6 +198,15 @@ Don't bookmark JupyterHub URLs - always access via Moodle.
 **Package not found:** Run `uv sync` to reinstall dependencies
 
 **MODFLOW not found:** Run `get-modflow :flopy`
+
+### MODFLOW or MT3D Model Issues
+
+**Model changes not taking effect:**
+If you modify model settings, run the model, but results don't change:
+1. Delete the model workspace folder (e.g., `model_ws/`)
+2. Re-run the notebook cells that create and run the model
+
+MODFLOW and MT3D may reuse cached files from previous runs, causing your changes to be ignored.
 
 </details>
 
