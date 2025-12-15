@@ -8,22 +8,28 @@
 - [ ] Option B: `jupyter nbconvert --clear-output --inplace notebook.ipynb`
 - [ ] If nbstripout is installed, this happens automatically
 
-### 2. Code Quality
+### 2. Sensitive Information Check
+- [ ] No API keys, passwords, or credentials in code
+- [ ] No private URLs (SWITCHdrive links, etc.)
+- [ ] No personal data or student information
+- [ ] Review `.serena/memories/` content before committing
+
+### 3. Code Quality
 - [ ] Functions have docstrings with Args and Returns
 - [ ] No hardcoded file paths (use `data_utils.py` functions)
 - [ ] Mathematical content has text explanations
 
-### 3. Accessibility
+### 4. Accessibility
 - [ ] Images have descriptive alt text
 - [ ] Widgets have proper labels
 - [ ] Color is not the only indicator of information
 
-### 4. Testing
+### 5. Testing
 - [ ] Notebooks run without errors (Restart & Run All)
 - [ ] Data downloads work correctly
 - [ ] Visualizations display properly
 
-### 5. Environment Files
+### 6. Environment Files
 - [ ] If new packages added, update `pyproject.toml`
 - [ ] Run `uv sync` to update lock file
 

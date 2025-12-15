@@ -25,6 +25,14 @@ applied_groundwater_modelling/
 ├── CASE_STUDY/              # Main case study notebooks (10 notebooks)
 │   ├── student_work/        # Student workspace with templates
 │   └── grading_scheme/      # Grading materials
+├── DEMOS/                   # Demonstration notebooks for lectures
+│   ├── 05a_calibration_concept.ipynb
+│   ├── 05b_calibration_overfitting.ipynb
+│   ├── 05c_calibration_equifinality.ipynb
+│   ├── 07a_sensitivity_tornado.ipynb
+│   ├── 07b_uncertainty_envelope.ipynb
+│   ├── calibration_common.py    # Shared utilities for calibration demos
+│   └── _animations/             # GIF animations (gitignored)
 ├── EXERCISES/               # 6 exercises + theory reminder
 ├── SUPPORT_REPO/
 │   ├── src/                 # Utility modules
@@ -35,7 +43,7 @@ applied_groundwater_modelling/
 │   │   ├── plot_utils.py    # Plotting helpers
 │   │   └── ...
 │   └── static/              # Static files (images, figures)
-├── planning/                # Implementation planning documents
+├── PLANNING/                # Internal planning documents (gitignored)
 ├── config.py                # Data source configuration (gitignored)
 ├── config_template.py       # Template for config.py
 ├── pyproject.toml           # Project dependencies (uv)

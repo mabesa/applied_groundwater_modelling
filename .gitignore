@@ -189,3 +189,7 @@ CASE_STUDY/student_work/group_8/
 
 # Planning folder (internal use only)
 planning/
+PLANNING/
+
+# Demo animations (generated GIFs)
+DEMOS/_animations/
