@@ -207,7 +207,7 @@ The `.claude/context.md` file provides project-specific context for AI assistant
 
 Run the dependency check script:
 ```bash
-python SUPPORT_REPO/src/scripts/check_notebook_dependencies.py
+python _SUPPORT/src/scripts/check_notebook_dependencies.py
 ```
 
 ### 3.4 Documentation
@@ -285,13 +285,13 @@ checkbox = widgets.Checkbox(
 
 ### 4.4 File Organization
 
-**Utility modules** go in `SUPPORT_REPO/src/`:
+**Utility modules** go in `_SUPPORT/src/`:
 - `data_utils.py` - Data download and management
 - `map_utils.py` - Map visualization
 - `grid_utils.py` - Model grid operations
 - `plot_utils.py` - Plotting helpers
 
-**Static files** go in `SUPPORT_REPO/static/`.
+**Static files** go in `_SUPPORT/static/`.
 
 ---
 
@@ -304,7 +304,7 @@ checkbox = widgets.Checkbox(
 | Install MODFLOW | `get-modflow :flopy` |
 | Setup pre-commit | `uv run pre-commit install` |
 | Clear notebook outputs (manual) | `uv run jupyter nbconvert --clear-output --inplace notebook.ipynb` |
-| Check dependencies | `uv run python SUPPORT_REPO/src/scripts/check_notebook_dependencies.py` |
+| Check dependencies | `uv run python _SUPPORT/src/scripts/check_notebook_dependencies.py` |
 | Run Jupyter | `uv run jupyter lab` |
 | Serena onboarding | `serena onboarding()` in Claude Code |
 

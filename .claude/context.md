@@ -72,8 +72,8 @@ CASE_STUDY/
 Other directories:
 - `EXERCISES/` - 6 exercises + theory reminder
 - `DEMOS/` - Optional demo materials (REV, porosity)
-- `SUPPORT_REPO/src/` - Helper functions and utilities
-- `SUPPORT_REPO/static/` - Static files (images, figures)
+- `_SUPPORT/src/` - Helper functions and utilities
+- `_SUPPORT/static/` - Static files (images, figures)
 
 ## Development Setup
 

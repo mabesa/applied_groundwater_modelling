@@ -22,19 +22,24 @@ Project-based course materials for Master-level groundwater modeling (4 ECTS) at
 ## Repository Structure
 ```
 applied_groundwater_modelling/
-├── CASE_STUDY/              # Main case study notebooks (10 notebooks)
-│   ├── student_work/        # Student workspace with templates
-│   └── grading_scheme/      # Grading materials
-├── DEMOS/                   # Demonstration notebooks for lectures
-│   ├── 05a_calibration_concept.ipynb
-│   ├── 05b_calibration_overfitting.ipynb
-│   ├── 05c_calibration_equifinality.ipynb
-│   ├── 07a_sensitivity_tornado.ipynb
-│   ├── 07b_uncertainty_envelope.ipynb
-│   ├── calibration_common.py    # Shared utilities for calibration demos
-│   └── _animations/             # GIF animations (gitignored)
-├── EXERCISES/               # 6 exercises + theory reminder
-├── SUPPORT_REPO/
+├── THEORY/                  # Phase 1: Theory materials (Weeks 1-8)
+│   ├── exercises/           # 6 exercises + theory reminder
+│   └── _demos/              # Lecture demonstrations (porosity, REV)
+├── PROJECT/                 # Phase 2: Case study (Weeks 9-14)
+│   ├── 0_introduction.ipynb # 10-step modeling framework
+│   ├── flow/                # Flow modeling notebooks (steps 2-10)
+│   ├── transport/           # Transport extension
+│   ├── workspace/           # Student working area
+│   │   └── template/        # Template files for student groups
+│   ├── _demos/              # Calibration, sensitivity, uncertainty demos
+│   │   ├── 05a_calibration_concept.ipynb
+│   │   ├── 05b_calibration_overfitting.ipynb
+│   │   ├── 05c_calibration_equifinality.ipynb
+│   │   ├── 07a_sensitivity_tornado.ipynb
+│   │   ├── 07b_uncertainty_envelope.ipynb
+│   │   └── _animations/     # Generated GIFs (gitignored)
+│   └── _grading/            # Grading rubrics
+├── _SUPPORT/
 │   ├── src/                 # Utility modules
 │   │   ├── data_utils.py    # Data download and management
 │   │   ├── map_utils.py     # Map visualization
@@ -44,6 +49,11 @@ applied_groundwater_modelling/
 │   │   └── ...
 │   └── static/              # Static files (images, figures)
 ├── PLANNING/                # Internal planning documents (gitignored)
+├── .claude/skills/          # Claude Code skills for course development
+│   ├── flopy-modflow/       # FloPy, MODFLOW 6, PEST++ expertise
+│   ├── hydrogeology-theory/ # Equation checking, assumptions, validity
+│   ├── notebook-pedagogy/   # Jupyter exercise design, project conventions
+│   └── course-context/      # ETH course syllabus, learning objectives, rubrics
 ├── config.py                # Data source configuration (gitignored)
 ├── config_template.py       # Template for config.py
 ├── pyproject.toml           # Project dependencies (uv)
@@ -57,13 +67,24 @@ applied_groundwater_modelling/
 - Supports multiple case studies: currently "limmat" (publicly available)
 - Data sources: Dropbox links (public), SWITCHdrive (private)
 
-## Case Study: Limmat Valley Aquifer
-Based on the real-world Limmat valley aquifer in Zurich, Switzerland. The case study follows 10 numbered notebooks:
-1. Introduction
+## Course Structure (HS26)
+
+### Phase 1: Theory (Weeks 1-8)
+- Lectures + exercises covering flow and transport fundamentals
+- Formative quiz (Week 5) for early feedback on flow concepts
+- Comprehensive exam (Week 8) covering flow + transport
+
+### Phase 2: Project (Weeks 9-14)
+- Limmat Valley aquifer case study
+- Students work with pre-calibrated model
+- Report + presentation assessment
+
+### 10-Step Modeling Methodology
+The project follows 10 steps, applied first to flow then transport:
+0. Introduction
 2. Perceptual Model
 3. MODFLOW Fundamentals
 4. Model Implementation
-4b. Transport Model Implementation
 5. Calibration
 6. Validation
 7. Sensitivity & Uncertainty

@@ -38,7 +38,7 @@
 ### Before Submitting
 - [ ] Base branch is correct (usually `develop` or year branch)
 - [ ] All notebooks have cleared outputs
-- [ ] Run dependency check: `python SUPPORT_REPO/src/scripts/check_notebook_dependencies.py`
+- [ ] Run dependency check: `python _SUPPORT/src/scripts/check_notebook_dependencies.py`
 - [ ] Commit messages are clear and descriptive
 
 ### PR Description Should Include

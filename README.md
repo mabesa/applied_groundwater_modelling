@@ -1,12 +1,12 @@
 [![Package Dependencies](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml)
 
-# Applied Groundwater Modeling - Exercises and Case Study
+# Applied Groundwater Modeling
 
-![Groundwater Model Visualization](SUPPORT_REPO/static/figures/0_readme/Groundwater_course.jpg)
+![Groundwater Model Visualization](_SUPPORT/static/figures/0_readme/Groundwater_course.jpg)
 
 ## 1 Overview
 
-Project-based course materials for Master-level groundwater modeling (4 ECTS) at ETH Zurich. Focuses on practical modeling skills using MODFLOW and FloPy through a real-world case study of the Limmat valley aquifer.
+Course materials for Master-level groundwater modeling (4 ECTS) at ETH Zurich. Combines theoretical exercises with a practical project using MODFLOW and FloPy, applied to the Limmat Valley aquifer case study.
 
 ## 2 Quick Start for Students
 
@@ -33,7 +33,11 @@ source .venv/bin/activate  # macOS/Linux
 # 3. Install MODFLOW
 get-modflow :flopy
 
-# 4. Start working
+# 4. Verify setup (optional)
+# Open 0_diagnostics.ipynb and run all cells
+# Confirm: overall_ready = True
+
+# 5. Start working
 code .  # Open in VS Code
 ```
 
@@ -84,54 +88,62 @@ If notebooks scroll erratically: `Settings → Settings Editor → Notebook → 
 
 ## 3 Course Structure
 
-### Case Study: Limmat Valley Aquifer
+The course is organized into two main phases:
 
-The course follows a 10-step modeling methodology, applied first to groundwater flow, then extended to transport:
+### Phase 1: Theory (Weeks 1-8)
 
-**Shared Introduction:**
-- `0_introduction.ipynb` - The 10-step modeling framework
+Lectures and exercises covering flow and transport fundamentals.
 
-**Flow Track** (`CASE_STUDY/flow/`):
+**Materials in `THEORY/`:**
+- `exercises/` - 6 exercises reinforcing key concepts
+- `_demos/` - Lecture demonstrations (e.g., porosity and REV)
 
-| Step | Topic |
-|------|-------|
-| 1 | Model Goal |
-| 2 | Perceptual Model |
-| 3 | MODFLOW Fundamentals |
-| 4 | Model Implementation |
-| 5 | Calibration |
-| 6 | Validation |
-| 7 | Sensitivity & Uncertainty |
-| 8 | Model Application |
-| 9 | Documentation |
-| 10 | Communication |
+### Phase 2: Project (Weeks 9-14)
 
-**Transport Track** (`CASE_STUDY/transport/`):
-Same 10-step structure, extending the flow model to solute transport.
+Apply concepts to the Limmat Valley aquifer case study.
 
-### Exercises
+**Materials in `PROJECT/`:**
+- `flow/` and `transport/` - Step-by-step modeling notebooks
+- `workspace/` - Your working area
+- `_demos/` - Calibration, sensitivity, and uncertainty demonstrations (for lectures)
 
-6 standalone exercises reinforcing key concepts, plus a theory reminder notebook.
+The project follows a 10-step modeling methodology:
 
-### Demos
+| Step | Topic | Flow Track | Transport Track |
+|------|-------|------------|-----------------|
+| 0 | Introduction | `0_introduction.ipynb` | `0_introduction.ipynb` |
+| 1 | Model Goal | `flow/1_model_goal.ipynb` | `transport/1_model_goal.ipynb` |
+| 2 | Perceptual Model | `flow/2_perceptual_model.ipynb` | `transport/2_perceptual_model.ipynb` |
+| 3 | Conceptual Model | `flow/3_modflow_fundamentals.ipynb` | — |
+| 4 | Model Implementation | `flow/4_model_implementation.ipynb` | `transport/4_model_implementation.ipynb` |
+| 5 | Calibration | `flow/5_calibration.ipynb` | — |
+| 6 | Validation | `flow/6_validation.ipynb` | — |
+| 7 | Sensitivity & Uncertainty | `flow/7_sensitivity_uncertainty.ipynb` | — |
+| 8 | Model Application | `flow/8_model_application.ipynb` | — |
+| 9 | Documentation | `flow/9_documentation.ipynb` | — |
+| 10 | Communication | `flow/10_communication.ipynb` | — |
 
-Optional materials in `DEMOS/` for exploring concepts like porosity and REV (Representative Elementary Volume).
+The transport track builds on the calibrated flow model. Steps marked with "—" use the flow model results.
 
 ### Repository Structure
 
 ```
 applied_groundwater_modelling/
-├── CASE_STUDY/
-│   ├── 0_introduction.ipynb  # Shared intro to 10-step framework
-│   ├── flow/                 # Flow modeling (steps 1-10)
-│   ├── transport/            # Transport extension (steps 1-10)
-│   └── student_work/         # Your working area
-├── EXERCISES/                # Standalone exercises
-├── DEMOS/                    # Optional demo materials
-├── SUPPORT_REPO/             # Helper code and static files
+├── THEORY/                   # Phase 1: Theory materials (Weeks 1-8)
+│   ├── exercises/            # Exercises aligned with lectures
+│   └── _demos/               # Lecture demonstrations
+├── PROJECT/                  # Phase 2: Case study (Weeks 9-14)
+│   ├── 0_introduction.ipynb  # Course intro & 10-step framework
+│   ├── flow/                 # Flow modeling track (steps 1-10)
+│   ├── transport/            # Transport track (steps 1, 2, 4)
+│   ├── workspace/            # Your working area
+│   └── _demos/               # Calibration & uncertainty demos
+├── _SUPPORT/                 # Helper code and static files
 ├── 0_diagnostics.ipynb       # Environment check
 └── 0_sync_repo.ipynb         # Update from upstream
 ```
+
+> **Note:** Folders starting with `_` contain internal/instructor materials - you can ignore them.
 
 ## 4 Learning Objectives
 
@@ -179,7 +191,7 @@ file_path = download_named_file(name='groundwater_map_norm', data_type='gis')
 **Repository out of date:**
 Run `0_sync_repo.ipynb` or in terminal:
 ```bash
-git fetch origin && git reset --hard origin/course_2026
+git fetch origin && git reset --hard origin/main
 ```
 
 **405: Method Not Allowed:**

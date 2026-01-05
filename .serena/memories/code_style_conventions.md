@@ -99,7 +99,7 @@ Where:
 ## File Organization
 
 ### Utility Modules Location
-Place utility code in `SUPPORT_REPO/src/`:
+Place utility code in `_SUPPORT/src/`:
 - `data_utils.py` - Data download and file management
 - `map_utils.py` - Map visualization functions
 - `grid_utils.py` - Model grid operations

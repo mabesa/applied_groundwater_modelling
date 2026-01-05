@@ -165,31 +165,20 @@ cython_debug/
 # Ignore vscode settings
 .vscode/
 
-# Ignore all files in the folder 'test_model_ws'
-03_modflow/content/test_model_ws/*
-03_modflow/content/test_model_ws/**/*
-
-# Ignore all files in the folder 'limmat_model_ws
-03_modflow/content/limmat_model_ws/*
-03_modflow/content/limmat_model_ws/**/*
+# Course-specific configuration
 config.py
-SUPPORT_REPO/src/scripts/scripts_limmat_data_preprocessing/time_series_decomposition.png
-SUPPORT_REPO/src/scripts/scripts_limmat_data_preprocessing/seasonal_pattern.png
-SUPPORT_REPO/src/scripts/scripts_limmat_data_preprocessing/groundwater_visualization.png
 
-# Student work folders - ignore groups 1-8 (student work), but track group_0 (demo/template)
-CASE_STUDY/student_work/group_1/
-CASE_STUDY/student_work/group_2/
-CASE_STUDY/student_work/group_3/
-CASE_STUDY/student_work/group_4/
-CASE_STUDY/student_work/group_5/
-CASE_STUDY/student_work/group_6/
-CASE_STUDY/student_work/group_7/
-CASE_STUDY/student_work/group_8/
+# Generated images from preprocessing scripts
+_SUPPORT/src/scripts/scripts_limmat_data_preprocessing/time_series_decomposition.png
+_SUPPORT/src/scripts/scripts_limmat_data_preprocessing/seasonal_pattern.png
+_SUPPORT/src/scripts/scripts_limmat_data_preprocessing/groundwater_visualization.png
+
+# Student workspace - track only template folder
+PROJECT/workspace/*/
+!PROJECT/workspace/template/
 
 # Planning folder (internal use only)
-planning/
 PLANNING/
 
 # Demo animations (generated GIFs)
-DEMOS/_animations/
+PROJECT/_demos/_animations/

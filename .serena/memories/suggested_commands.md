@@ -70,7 +70,7 @@ uv run jupyter nbconvert --clear-output --inplace your_notebook.ipynb
 
 ### Run Dependency Check Script
 ```bash
-uv run python SUPPORT_REPO/src/scripts/check_notebook_dependencies.py
+uv run python _SUPPORT/src/scripts/check_notebook_dependencies.py
 ```
 
 ## Running Notebooks
