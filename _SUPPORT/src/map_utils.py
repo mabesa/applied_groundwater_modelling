@@ -1831,7 +1831,22 @@ def create_dem_overlay_map(
     img = (rgba * 255).astype(np.uint8)
 
     # Project bounds to WGS84
-    transformer = Transformer.from_crs(src_crs, "EPSG:4326", always_xy=True)
+    # Handle Swiss coordinate systems that may not be recognized by pyproj
+    def normalize_swiss_crs(crs):
+        """Convert non-standard Swiss CRS strings to proper EPSG codes."""
+        if crs is None:
+            return crs
+        crs_str = str(crs).upper()
+        # Check for Swiss LV95 (CH1903+)
+        if "CH1903+" in crs_str or "LV95" in crs_str:
+            return "EPSG:2056"
+        # Check for Swiss LV03 (CH1903)
+        if "CH1903" in crs_str or "LV03" in crs_str:
+            return "EPSG:21781"
+        return crs
+
+    normalized_crs = normalize_swiss_crs(src_crs)
+    transformer = Transformer.from_crs(normalized_crs, "EPSG:4326", always_xy=True)
     lon_min, lat_min = transformer.transform(bounds.left, bounds.bottom)
     lon_max, lat_max = transformer.transform(bounds.right, bounds.top)
     center_lat = (lat_min + lat_max) / 2
@@ -1971,7 +1986,22 @@ def create_interactive_dem_map(
         }
 
     # Project bounds to WGS84
-    transformer = Transformer.from_crs(src_crs, "EPSG:4326", always_xy=True)
+    # Handle Swiss coordinate systems that may not be recognized by pyproj
+    def normalize_swiss_crs(crs):
+        """Convert non-standard Swiss CRS strings to proper EPSG codes."""
+        if crs is None:
+            return crs
+        crs_str = str(crs).upper()
+        # Check for Swiss LV95 (CH1903+)
+        if "CH1903+" in crs_str or "LV95" in crs_str:
+            return "EPSG:2056"
+        # Check for Swiss LV03 (CH1903)
+        if "CH1903" in crs_str or "LV03" in crs_str:
+            return "EPSG:21781"
+        return crs
+
+    normalized_crs = normalize_swiss_crs(src_crs)
+    transformer = Transformer.from_crs(normalized_crs, "EPSG:4326", always_xy=True)
     lon_min, lat_min = transformer.transform(bounds.left, bounds.bottom)
     lon_max, lat_max = transformer.transform(bounds.right, bounds.top)
     center_lat = (lat_min + lat_max) / 2
