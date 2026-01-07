@@ -252,4 +252,63 @@ def plot_climate_data(df, station_string="Fluntern", custom_title=None):
 
     return plt, fig
 
+
+def get_and_plot_climate_data(
+    station_string: str = "Fluntern",
+    custom_title: str = None
+) -> tuple:
+    """
+    Download, read, and plot climate data for a MeteoSwiss station.
+
+    This function downloads climate data, extracts it if zipped, reads the data,
+    and creates a climate plot showing temperature and precipitation.
+
+    Parameters
+    ----------
+    station_string : str, optional
+        Station name to filter data for (default: "Fluntern")
+    custom_title : str, optional
+        Custom title for the plot. If None, a default title is generated.
+
+    Returns
+    -------
+    tuple
+        (climate_data_path, climate_norms) where:
+        - climate_data_path: str, path to the climate data directory
+        - climate_norms: pd.DataFrame, the processed climate data
+
+    Examples
+    --------
+    >>> climate_data_path, climate_norms = get_and_plot_climate_data()
+    >>> print(climate_norms.columns)
+    """
+    import zipfile
+    from data_utils import download_named_file
+
+    # Download climate data
+    climate_data_path = download_named_file(
+        name='climate_data',
+        data_type='climate',
+    )
+
+    # Unzip if necessary
+    if climate_data_path.endswith('.zip'):
+        with zipfile.ZipFile(climate_data_path, 'r') as zip_ref:
+            extract_path = os.path.dirname(climate_data_path)
+            zip_ref.extractall(extract_path)
+        climate_data_path = extract_path
+
+    # Read and process climate data
+    climate_norms = read_climate_data(climate_data_path, station_string=station_string)
+
+    # Plot the climate data
+    plt_obj, fig = plot_climate_data(
+        climate_norms,
+        station_string=station_string,
+        custom_title=custom_title
+    )
+    plt_obj.show()
+
+    return climate_data_path, climate_norms
+
 # endregion

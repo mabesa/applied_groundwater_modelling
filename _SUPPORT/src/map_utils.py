@@ -1888,7 +1888,6 @@ def create_interactive_dem_map(
     default_colormap: str = "viridis",
     opacity: float = 0.55,
     clip_percentiles: tuple[float, float] = (1, 99),
-    tiles: str = "OpenStreetMap",
     zoom_start: int | None = None,
     container_title: str = "DEM Controls",
     custom_title: str | None = None
@@ -1904,6 +1903,7 @@ def create_interactive_dem_map(
       * All (colormap, reversed) variants are pre-rendered once and embedded
         as base64 data URIs. Switching is instant without round trips.
       * PNGs generated via matplotlib (plt.imsave) to avoid adding Pillow.
+      * Areas with no DEM data (nodata values) are rendered as transparent.
 
     Parameters
     ----------
@@ -1917,8 +1917,6 @@ def create_interactive_dem_map(
         Initial opacity (0..1).
     clip_percentiles : (float,float)
         Robust stretch percentiles.
-    tiles : str
-        Base tiles provider name.
     zoom_start : int | None
         Optional manual zoom; else derived from raster extent.
     container_title : str
@@ -1932,6 +1930,15 @@ def create_interactive_dem_map(
         Interactive map object.
     """
     try:
+        import os
+        import sys
+
+        # Fix PROJ library path conflict - must be set before importing pyproj/rasterio
+        # This prevents anaconda's old PROJ database from being used
+        import pyproj
+        os.environ['PROJ_LIB'] = pyproj.datadir.get_data_dir()
+        os.environ['PROJ_DEBUG'] = '0'
+
         import rasterio
         import matplotlib.cm as cm
         import matplotlib.colors as mcolors
@@ -1950,8 +1957,14 @@ def create_interactive_dem_map(
         data = src.read(1).astype(float)
         bounds = src.bounds
         src_crs = src.crs
+        nodata = src.nodata
 
+    # Mark nodata values as NaN for transparency
     data[~np.isfinite(data)] = np.nan
+    if nodata is not None:
+        data[data == nodata] = np.nan
+    # Also treat values <= 0 as nodata for DEMs (elevation should be positive in Switzerland)
+    data[data <= 0] = np.nan
     if np.isnan(data).all():
         vmin, vmax = 0, 1
     else:
@@ -1963,14 +1976,18 @@ def create_interactive_dem_map(
 
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
 
+    # Create a mask for invalid/nodata pixels (used for transparency)
+    nodata_mask = np.isnan(data)
+
     def render_png(cmap_name: str, reverse: bool) -> str:
         cmap_obj = cm.get_cmap(cmap_name)
         if reverse:
             cmap_obj = cmap_obj.reversed()
         rgba = cmap_obj(norm(data))  # float 0..1
-        # Uniform alpha handled client side so keep full alpha then adjust by opacity in JS
+        # Set full alpha for valid pixels, then adjust by opacity in JS
         rgba[..., 3] = 1.0
-        rgba[~np.isfinite(data), 3] = 0.0
+        # Make nodata pixels fully transparent
+        rgba[nodata_mask, 3] = 0.0
         buf = BytesIO()
         plt.imsave(buf, rgba, format="png")
         buf.seek(0)
@@ -2019,55 +2036,13 @@ def create_interactive_dem_map(
         else:
             zoom_start = 13
 
-    # Base map with explicit multi-provider support. We set tiles=None first and add providers.
-    fmap = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start, tiles=None, control_scale=True)
-
-    # Add a suite of base layers; ensure requested 'tiles' provider is added last so it is active.
-    # Mapping from generic parameter values to folium provider specs or (custom URL, attr, name)
-    provider_order = [
-        ('openstreetmap', ('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                           'OpenStreetMap')),
-        ('carto-positron', ('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                            'CartoDB Positron')),
-        ('carto-voyager', ('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                           '&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                           'CartoDB Voyager')),
-        ('esri-imagery', ('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                          'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-                          'Esri WorldImagery')),
-        ('opentopomap', ('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-                         'Map data: &copy; OpenStreetMap contributors, SRTM | Style: &copy; OpenTopoMap (CC-BY-SA)',
-                         'OpenTopoMap')),
-    ]
-
-    # Normalize tiles param for matching
-    norm_tiles = (tiles or 'OpenStreetMap').lower()
-    added = set()
-    for key, (prov, attr, name) in provider_order:
-        try:
-            if attr is not None:
-                folium.TileLayer(tiles=prov, attr=attr, name=name, overlay=False, control=True).add_to(fmap)
-            else:
-                folium.TileLayer(prov, name=name, control=True).add_to(fmap)
-            added.add(key)
-        except Exception as _tile_err:
-            warnings.warn(f"Failed to add base layer {key}: {_tile_err}")
-    # If requested provider exists, add it again last (activates it) unless already last via ordering
-    try:
-        if norm_tiles not in added:
-            pass  # already handled via default OSM fallback
-        elif norm_tiles not in ('opentopomap', 'esri-imagery') and norm_tiles != 'openstreetmap':
-            # Add its folium name again to ensure activation (only for some carto variants)
-            mapping = {
-                'carto-positron': 'CartoDB Positron',
-                'carto-voyager': 'CartoDB Voyager',
-            }
-            if norm_tiles in mapping:
-                folium.TileLayer(mapping[norm_tiles], name=mapping[norm_tiles], control=True).add_to(fmap)
-    except Exception as _reactivate_err:
-        warnings.warn(f"Could not set requested base layer active: {_reactivate_err}")
+    # Base map with grayscale CartoDB Positron tiles for better DEM visibility
+    fmap = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=zoom_start,
+        tiles='cartodbpositron',
+        control_scale=True
+    )
 
     if custom_title:
         map_title = custom_title

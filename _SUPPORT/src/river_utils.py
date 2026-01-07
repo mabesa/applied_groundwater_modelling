@@ -718,9 +718,229 @@ def compute_medial_centerlines(
     return gpd.GeoDataFrame(centerline_records, crs=river_gdf.crs)
 
 
+def get_and_display_river_water_level_data(
+    start_year: int = 2010,
+    end_year: int = 2020,
+    figure_number: int = 13,
+    figsize: Tuple[int, int] = (12, 8),
+    save_summary: bool = True
+) -> Tuple[str, Dict[str, Any]]:
+    """
+    Download, display, and summarize river water level data for the Sihl and Limmat rivers.
+
+    This function downloads river water level data, plots the typical yearly evolution,
+    displays summary statistics, and optionally saves the summary to a file.
+
+    Parameters
+    ----------
+    start_year : int, optional
+        Start year for analysis (default: 2010)
+    end_year : int, optional
+        End year for analysis (default: 2020)
+    figure_number : int, optional
+        Figure number for the plot caption (default: 13)
+    figsize : tuple, optional
+        Figure size as (width, height) in inches (default: (12, 8))
+    save_summary : bool, optional
+        Whether to save the summary to a .npy file (default: True)
+
+    Returns
+    -------
+    tuple
+        (river_data_path, summary) where:
+        - river_data_path: str, path to the river data directory
+        - summary: dict, summary statistics for both rivers
+
+    Examples
+    --------
+    >>> river_data_path, summary = get_and_display_river_water_level_data()
+    >>> print(summary['sihl']['mean'])
+    """
+    import zipfile
+    from data_utils import download_named_file
+
+    # Download river data
+    river_data_path = download_named_file(
+        name='river_data',
+        data_type='time_series',
+    )
+
+    # Unzip if necessary
+    if river_data_path.endswith('.zip'):
+        with zipfile.ZipFile(river_data_path, 'r') as zip_ref:
+            extract_path = os.path.dirname(river_data_path)
+            zip_ref.extractall(extract_path)
+        river_data_path = extract_path
+
+    # Check if path exists
+    if not os.path.exists(river_data_path):
+        raise FileNotFoundError(f"Path {river_data_path} does not exist.")
+
+    summary = None
+
+    try:
+        # Plot the typical yearly evolution of river water levels
+        fig, axes = plot_yearly_river_levels(
+            data_path=river_data_path,
+            start_year=start_year,
+            end_year=end_year,
+            figsize=figsize,
+            figure_number=figure_number
+        )
+
+        # Display the plot
+        plt.show()
+
+        # Get summary statistics
+        summary = get_river_level_summary(
+            data_path=river_data_path,
+            start_year=start_year,
+            end_year=end_year
+        )
+
+        # Print summary
+        print(f"\n=== RIVER WATER LEVEL SUMMARY ({start_year}-{end_year}) ===")
+        print(f"\nSihl River ({summary['sihl']['station_name']}):")
+        print(f"  Mean water level: {summary['sihl']['mean']:.3f} m a.s.l.")
+        print(f"  Range: {summary['sihl']['min']:.3f} - {summary['sihl']['max']:.3f} m a.s.l.")
+        print(f"  Standard deviation: {summary['sihl']['std']:.3f} m")
+        print(f"  Total range: {summary['sihl']['range']:.3f} m")
+
+        print(f"\nLimmat River ({summary['limmat']['station_name']}):")
+        print(f"  Mean water level: {summary['limmat']['mean']:.3f} m a.s.l.")
+        print(f"  Range: {summary['limmat']['min']:.3f} - {summary['limmat']['max']:.3f} m a.s.l.")
+        print(f"  Standard deviation: {summary['limmat']['std']:.3f} m")
+        print(f"  Total range: {summary['limmat']['range']:.3f} m")
+
+    except ImportError as e:
+        print(f"Plotting functionality not available: {e}")
+        print("However, we can still analyze the data...")
+
+        # Get summary statistics even without plotting
+        summary = get_river_level_summary(
+            data_path=river_data_path,
+            start_year=start_year,
+            end_year=end_year
+        )
+
+        print(f"\n=== RIVER WATER LEVEL SUMMARY ({start_year}-{end_year}) ===")
+        print(f"\nSihl River ({summary['sihl']['station_name']}):")
+        print(f"  Mean water level: {summary['sihl']['mean']:.3f} m a.s.l.")
+        print(f"  Range: {summary['sihl']['min']:.3f} - {summary['sihl']['max']:.3f} m a.s.l.")
+        print(f"  Standard deviation: {summary['sihl']['std']:.3f} m")
+        print(f"  Total range: {summary['sihl']['range']:.3f} m")
+
+        print(f"\nLimmat River ({summary['limmat']['station_name']}):")
+        print(f"  Mean water level: {summary['limmat']['mean']:.3f} m a.s.l.")
+        print(f"  Range: {summary['limmat']['min']:.3f} - {summary['limmat']['max']:.3f} m a.s.l.")
+        print(f"  Standard deviation: {summary['limmat']['std']:.3f} m")
+        print(f"  Total range: {summary['limmat']['range']:.3f} m")
+
+    # Save the river data summary
+    if save_summary and summary is not None:
+        np.save(
+            os.path.join(river_data_path, 'river_data_summary.npy'),
+            summary
+        )
+
+    return river_data_path, summary
 
 
+def get_river_area(
+    gw_map_path: str = None,
+    show_figures: bool = False
+) -> Dict[str, float]:
+    """
+    Download river data, clip to model boundary, and calculate river bed areas.
 
+    This function downloads river and gauge data, clips rivers to the model boundary,
+    and calculates the areas of the Sihl and Limmat rivers within the model domain.
 
+    Parameters
+    ----------
+    gw_map_path : str, optional
+        Path to the groundwater map file. If provided and show_figures=True,
+        displays a map with rivers and gauges.
+    show_figures : bool, optional
+        Whether to display figures (default: False)
 
+    Returns
+    -------
+    dict
+        Dictionary with keys:
+        - 'sihl_area': float, area of Sihl river in m²
+        - 'limmat_area': float, area of Limmat river in m²
+        - 'canal_area': float, area of canal in m²
+        - 'rivers_gdf': GeoDataFrame, clipped river geometries
+        - 'boundary_gdf': GeoDataFrame, model boundary
 
+    Examples
+    --------
+    >>> areas = get_river_area()
+    >>> print(f"Sihl area: {areas['sihl_area']:.0f} m²")
+    """
+    import matplotlib.patches as mpatches
+    import matplotlib.lines as mlines
+    from data_utils import download_named_file
+    from map_utils import plot_model_area_map
+
+    # Download data
+    rivers_file_path = download_named_file(name='rivers', data_type='gis')
+    boundary_path = download_named_file(name='model_boundary', data_type='gis')
+
+    # Optionally show map with rivers and gauges
+    if show_figures and gw_map_path is not None:
+        gauges_file_path = download_named_file(name='gauges', data_type='gis')
+        plot_model_area_map(
+            gw_depth_path=gw_map_path,
+            rivers_path=rivers_file_path,
+            gauges_path=gauges_file_path,
+            custom_title="Model region with surface water bodies and groundwater gauging stations.",
+        )
+
+    # Read and clip river data to model boundary
+    river_gdf = gpd.read_file(rivers_file_path)
+    boundary_gdf = gpd.read_file(boundary_path)
+    river_clipped = gpd.clip(river_gdf, boundary_gdf)
+
+    # Filter for Sihl, Limmat, and the canal north of Werdinsel
+    river_clipped = river_clipped[
+        (river_clipped['GEWAESSERNAME'].isin(['Sihl', 'Limmat'])) |
+        (river_clipped['OBJID'].isin(['32998', '34996', '37804', '95527']))
+    ]
+
+    # Calculate areas
+    sihl_area = river_clipped[river_clipped['GEWAESSERNAME'] == 'Sihl'].geometry.area.sum()
+    limmat_area = river_clipped[river_clipped['GEWAESSERNAME'] == 'Limmat'].geometry.area.sum()
+    canal_area = river_clipped[river_clipped['OBJID'].isin(['32998', '34996', '37804', '95527'])].geometry.area.sum()
+
+    # Print summary
+    print(f"Area of Sihl within model boundary: {sihl_area:.0f} m²")
+    print(f"Area of Limmat within model boundary: {limmat_area:.0f} m²")
+    print(f"Area of canal within model boundary: {canal_area:.0f} m²")
+
+    # Optionally show clipped river plot
+    if show_figures:
+        fig, ax = plt.subplots(figsize=(12, 12))
+        river_clipped.plot(ax=ax, color='blue', linewidth=2, label='Clipped River Data')
+        blue_polygon = mpatches.Patch(facecolor='blue', linewidth=2, label='Clipped River Data')
+        boundary_gdf.plot(ax=ax, facecolor='none', edgecolor='red', linewidth=2)
+        red_line = mlines.Line2D([], [], color='red', linewidth=2, label='Model Boundary')
+        ax.set_title(
+            f"Clipped river data within the model boundary.\n"
+            f"River bed areas: Sihl: {sihl_area:.0f} m², Limmat: {limmat_area:.0f} m², Canal: {canal_area:.0f} m²",
+            fontsize=12
+        )
+        ax.set_xlabel("X-coordinate")
+        ax.set_ylabel("Y-coordinate")
+        ax.set_aspect('equal', adjustable='box')
+        ax.legend(handles=[blue_polygon, red_line])
+        plt.show()
+
+    return {
+        'sihl_area': sihl_area,
+        'limmat_area': limmat_area,
+        'canal_area': canal_area,
+        'rivers_gdf': river_clipped,
+        'boundary_gdf': boundary_gdf
+    }
