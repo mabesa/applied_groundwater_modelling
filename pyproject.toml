@@ -10,7 +10,7 @@ dependencies = [
     # Core scientific computing
     "numpy>=1.26.4,<2.0",
     "scipy>=1.15.2",
-    "pandas>=2.2.3",
+    "pandas>=2.2.3", 
     "statsmodels>=0.14.4",
 
     # Groundwater modeling
