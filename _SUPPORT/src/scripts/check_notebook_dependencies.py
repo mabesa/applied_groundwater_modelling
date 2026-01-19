@@ -2,16 +2,25 @@ import os
 import re
 import sys
 import glob
-import yaml
 import nbformat
 import string
 
-# Packages that are installed by other means (e.g., conda)
-EXCLUDED_PACKAGES = {'tools', 'adepy'}  # {'flopy', 'porespy', 'tools'}
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 
-import sys 
+# Packages that are installed by other means or are local
+EXCLUDED_PACKAGES = {'tools', 'adepy'}
 
-STD_LIB = set(sys.stdlib_module_names)|{'future'}
+# Mapping from package name (in pyproject.toml) to import name
+# Only needed when the import name differs from the package name
+PACKAGE_TO_IMPORT = {
+    'scikit_image': 'skimage',
+    'pyyaml': 'yaml',
+}
+
+STD_LIB = set(sys.stdlib_module_names) | {'future'}
 
 def is_stdlib_module(name: str) -> bool:
     """Check if a module is part of the standard library."""
@@ -106,55 +115,41 @@ def is_local_module(module_name):
     local_packages = glob.glob(f"**/{module_name}/__init__.py", recursive=True)
     return len(local_modules) > 0 or len(local_packages) > 0
 
-def get_packages_from_environment(env_file):
-    """Parse environment.yml and return a set of package names."""
-    if not os.path.exists(env_file):
-        print(f"Warning: Environment file {env_file} not found.")
+def get_requirements():
+    """Parse pyproject.toml and return a set of package names."""
+    pyproject_path = 'pyproject.toml'
+
+    if not os.path.exists(pyproject_path):
+        print(f"Warning: {pyproject_path} not found.")
         return set()
 
-    with open(env_file, 'r') as f:
+    with open(pyproject_path, 'rb') as f:
         try:
-            env_data = yaml.safe_load(f)
-            if not env_data or 'dependencies' not in env_data:
-                print(f"Warning: No dependencies found in {env_file}")
-                return set()
-            
-            packages = set()
-            for dep in env_data['dependencies']:
-                if isinstance(dep, str):
-                    # Handle package specifiers like package=1.0
-                    if '=' in dep:
-                        package = dep.split('=')[0].strip()
-                    else:
-                        package = dep.strip()
-                    # Avoid pip, python, etc.
-                    if package not in ['python', 'pip']:
-                        packages.add(package)
-                elif isinstance(dep, dict) and 'pip' in dep:
-                    # Handle pip dependencies if present
-                    for pip_dep in dep['pip']:
-                        if '=' in pip_dep:
-                            package = pip_dep.split('=')[0].strip()
-                        else:
-                            package = pip_dep.strip()
-                        packages.add(package)
-            return packages
-            
-        except yaml.YAMLError as e:
-            print(f"Error parsing {env_file}: {e}")
+            data = tomllib.load(f)
+        except Exception as e:
+            print(f"Error parsing {pyproject_path}: {e}")
             return set()
 
-def get_requirements():
-    """Parse environment yml files and return a set of package names."""
     packages = set()
-    
-    # Check both environment files
-    student_env = 'environment_students.yml'
-    dev_env = 'environment_development.yml'
-    
-    packages.update(get_packages_from_environment(student_env))
-    packages.update(get_packages_from_environment(dev_env))
-    
+
+    # Get main dependencies
+    dependencies = data.get('project', {}).get('dependencies', [])
+    for dep in dependencies:
+        # Extract package name from dependency specifier
+        # Handle formats like: "numpy>=1.26.4,<2.0", "flopy>=3.9.2", "pyemu"
+        match = re.match(r'^([a-zA-Z0-9_-]+)', dep)
+        if match:
+            package = match.group(1).lower().replace('-', '_')
+            packages.add(package)
+
+    # Get dev dependencies from dependency-groups
+    dev_deps = data.get('dependency-groups', {}).get('dev', [])
+    for dep in dev_deps:
+        match = re.match(r'^([a-zA-Z0-9_-]+)', dep)
+        if match:
+            package = match.group(1).lower().replace('-', '_')
+            packages.add(package)
+
     return packages
 
 def main():
@@ -182,20 +177,29 @@ def main():
     # Get requirements
     requirements = get_requirements()
 
+    # Build set of valid import names from requirements
+    # Include both the package name and any known import name aliases
+    valid_imports = set()
+    for req in requirements:
+        req_lower = req.lower()
+        valid_imports.add(req_lower)
+        # Add the import name if it differs from package name
+        if req_lower in PACKAGE_TO_IMPORT:
+            valid_imports.add(PACKAGE_TO_IMPORT[req_lower].lower())
+
     # Find missing requirements (case-insensitive)
     missing = set()
-    requirements_lower = {req.lower() for req in requirements}
     for imp in all_imports_cleaned:
-        if imp.lower() not in requirements_lower:
+        if imp.lower() not in valid_imports:
             missing.add(imp)
 
     if missing:
-        print("Missing packages in environment:")
+        print("\nMissing packages in pyproject.toml:")
         for package in sorted(missing):
             print(f"  - {package}")
         sys.exit(1)
     else:
-        print("All notebook dependencies are in environment files!")
+        print("\nAll notebook dependencies are in pyproject.toml!")
         print(f"Note: The following packages were excluded from the check: {', '.join(sorted(EXCLUDED_PACKAGES))}")
         sys.exit(0)
 
