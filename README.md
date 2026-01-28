@@ -248,7 +248,6 @@ This course is designed with accessibility in mind - screen reader compatibility
 See [DEVELOPMENT.md](DEVELOPMENT.md) for:
 - Environment setup with uv
 - Pre-commit hooks (auto-strips notebook outputs)
-- AI-assisted development (Claude Code with Serena and Context7)
 - Code style and contribution guidelines
 
 ## 10 Acknowledgments

@@ -79,7 +79,6 @@ Other directories:
 
 See **[DEVELOPMENT.md](../DEVELOPMENT.md)** for complete instructions including:
 - Environment setup with uv
-- AI-assisted development (Serena, Context7)
 - Contributing guidelines
 - Code style conventions
 
