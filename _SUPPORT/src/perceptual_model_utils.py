@@ -334,3 +334,94 @@ def estimate_river_aquifer_flux(
         'total_flux_m3_per_year': q_total_m3_per_year,
         'total_flux_million_m3_per_year': q_total_m3_per_year / 1e6,
     }
+
+
+def get_and_plot_groundwater_levels(
+    custom_title: str = None,
+    figsize: tuple = (12, 5)
+) -> tuple:
+    """
+    Download, process, and plot groundwater level trends from AWEL monitoring wells.
+
+    This function downloads groundwater time series data, computes annual means,
+    and creates a plot showing long-term groundwater level trends. The plot helps
+    verify the steady-state assumption (no significant long-term trends).
+
+    Parameters
+    ----------
+    custom_title : str, optional
+        Custom title for the plot. If None, a default title is used.
+    figsize : tuple, optional
+        Figure size as (width, height) in inches. Default is (12, 5).
+
+    Returns
+    -------
+    tuple
+        (gw_ts_path, gw_annual) where:
+        - gw_ts_path: str, path to the groundwater time series file
+        - gw_annual: pd.DataFrame, annual mean groundwater levels by well
+
+    Examples
+    --------
+    >>> gw_path, gw_data = get_and_plot_groundwater_levels()
+    >>> print(gw_data.columns)
+    """
+    from data_utils import download_named_file
+
+    try:
+        from style_utils import apply_caption_style
+    except ImportError:
+        apply_caption_style = None
+
+    # Download the groundwater time series data
+    gw_ts_path = download_named_file(
+        name='groundwater_timeseries',
+        data_type='time_series'
+    )
+
+    # Load and process the data
+    gw_ts_raw = pd.read_csv(gw_ts_path)
+    gw_ts = gw_ts_raw[['date', 'value', 'well_id']].copy()
+    gw_ts['date'] = pd.to_datetime(gw_ts['date'], errors='coerce')
+    gw_ts = gw_ts.drop_duplicates()
+    gw_ts = gw_ts.sort_values('date')
+
+    # Harmonize well IDs (B53 and B5-3 are the same location)
+    gw_ts.loc[gw_ts['well_id'] == 'B53', 'well_id'] = 'B5-3'
+
+    # Compute annual means per well
+    gw_ts['year'] = gw_ts['date'].dt.year
+    gw_annual = (
+        gw_ts
+        .groupby(['well_id', 'year'], as_index=False)['value']
+        .mean()
+        .rename(columns={'value': 'annual_mean_m_asl'})
+    )
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=figsize)
+
+    for well_id, group in gw_annual.groupby('well_id'):
+        ax.plot(group['year'], group['annual_mean_m_asl'],
+                marker='o', markersize=3, linewidth=1.5, label=well_id)
+
+    ax.set_xlabel('Year')
+    ax.set_ylabel('Groundwater Level (m a.s.l.)')
+    ax.legend(title='Well ID', loc='upper left', bbox_to_anchor=(1.02, 1))
+    ax.grid(True, alpha=0.3)
+
+    # Set title
+    if custom_title:
+        title = custom_title
+    else:
+        title = "Annual mean groundwater levels in AWEL monitoring wells. No significant long-term trends are visible."
+
+    if apply_caption_style:
+        apply_caption_style(ax, title, pad=12, wrap=100)
+    else:
+        ax.set_title(title, fontsize=11, fontweight='bold', wrap=True)
+
+    plt.tight_layout()
+    plt.show()
+
+    return gw_ts_path, gw_annual
