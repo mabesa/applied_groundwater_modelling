@@ -318,7 +318,7 @@ create_hint_accordion(OrderedDict([
 
 ### Existing Pattern: Index Notebook
 
-The project uses `0_introduction.ipynb` with:
+The project uses `0_start_here.ipynb` with:
 - Course overview
 - 10-step modeling process descriptions
 - `create_introduction_progress_tracker()` at start

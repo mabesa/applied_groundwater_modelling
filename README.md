@@ -111,7 +111,7 @@ The project follows a 10-step modeling methodology:
 
 | Step | Topic | Flow Track | Transport Track |
 |------|-------|------------|-----------------|
-| 0 | Introduction | `0_introduction.ipynb` | `0_introduction.ipynb` |
+| 0 | Introduction | `0_start_here.ipynb` | `0_start_here.ipynb` |
 | 1 | Model Goal | `flow/1_model_goal.ipynb` | `transport/1_model_goal.ipynb` |
 | 2 | Perceptual Model | `flow/2_perceptual_model.ipynb` | `transport/2_perceptual_model.ipynb` |
 | 3 | Conceptual Model | `flow/3_modflow_fundamentals.ipynb` | — |
@@ -133,7 +133,7 @@ applied_groundwater_modelling/
 │   ├── exercises/            # Exercises aligned with lectures
 │   └── _demos/               # Lecture demonstrations
 ├── PROJECT/                  # Phase 2: Case study (Weeks 9-14)
-│   ├── 0_introduction.ipynb  # Course intro & 10-step framework
+│   ├── 0_start_here.ipynb    # Course intro & 10-step framework
 │   ├── flow/                 # Flow modeling track (steps 1-10)
 │   ├── transport/            # Transport track (steps 1, 2, 4)
 │   ├── workspace/            # Your working area
