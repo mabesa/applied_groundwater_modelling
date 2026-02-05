@@ -7,37 +7,38 @@ to complement the existing grid_utils.py (for structured grids) and
 uses FloPy utilities wherever possible.
 
 Key capabilities:
-- Create Voronoi grids from boundary polygons
+- Create Voronoi grids from boundary polygons using FloPy's Triangle and VoronoiGrid
 - Add local refinement to existing grids
 - Export model arrays to GeoPackage format
 - Assign properties and points to grid cells via spatial intersection
 
 Requirements:
 - FloPy >= 3.4.0 (for stable DISV support)
-- scipy (for Voronoi tessellation)
 - geopandas
 - shapely
 - numpy
 
 References:
-- scipy.spatial.Voronoi: https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.Voronoi.html
+- FloPy VoronoiGrid: https://flopy.readthedocs.io/en/latest/source/flopy.utils.voronoi.html
 - MODFLOW 6 DISV: https://modflow6.readthedocs.io/en/latest/mf6io_gwf_disv.html
 """
 
 from __future__ import annotations
 
+import tempfile
 import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import geopandas as gpd
 import numpy as np
-from scipy.spatial import Voronoi
-from shapely.geometry import Point, Polygon, MultiPolygon, box, LineString
+from shapely.geometry import Point, Polygon, MultiPolygon
 from shapely.ops import unary_union
 
 try:
     import flopy
     from flopy.discretization import VertexGrid, StructuredGrid
+    from flopy.utils.triangle import Triangle
+    from flopy.utils.voronoi import VoronoiGrid
     from flopy.utils.gridintersect import GridIntersect
 
     # Check FloPy version
@@ -60,11 +61,11 @@ def create_voronoi_grid(
     cell_size: float,
     rotation_angle: Optional[float] = None,
     crs: Optional[str] = None,
-) -> Tuple[Dict[str, Any], VertexGrid]:
+) -> Tuple[VoronoiGrid, VertexGrid]:
     """
     Create a Voronoi-based unstructured grid for MODFLOW 6 DISV.
 
-    This function uses scipy.spatial.Voronoi to generate a Voronoi
+    This function wraps flopy.utils.voronoi.VoronoiGrid to generate a Voronoi
     tessellation within the provided boundary polygon. The resulting grid
     satisfies the control volume finite difference (CVFD) requirements of
     MODFLOW 6, where flow directions are perpendicular to cell faces.
@@ -77,23 +78,21 @@ def create_voronoi_grid(
         exist, they will be dissolved into a single boundary.
     cell_size : float
         Target cell size in the units of the CRS (typically meters).
-        This determines the spacing of seed points for Voronoi generation.
+        This determines the maximum_area parameter for Triangle meshing.
         Actual cell sizes will vary, especially near boundaries.
     rotation_angle : float, optional
         Rotation angle in degrees for aligning the seed point grid with
         the principal flow direction. Positive values rotate counter-clockwise.
-        If None, no rotation is applied.
+        If None, no rotation is applied. Note: rotation is applied by
+        rotating the boundary polygon before meshing.
     crs : str, optional
         Coordinate reference system for the output grid. If None, uses
         the CRS from boundary_gdf. Example: 'EPSG:2056' for Swiss LV95.
 
     Returns
     -------
-    vor_data : dict
-        Dictionary containing Voronoi grid data:
-        - 'seed_points': array of seed point coordinates
-        - 'scipy_vor': scipy.spatial.Voronoi object
-        - 'cell_polygons': list of shapely Polygon objects for each cell
+    vor : flopy.utils.voronoi.VoronoiGrid
+        The VoronoiGrid object containing vertices and cell connectivity.
     modelgrid : flopy.discretization.VertexGrid
         A FloPy VertexGrid object that can be used for model construction
         and visualization.
@@ -103,15 +102,16 @@ def create_voronoi_grid(
     >>> import geopandas as gpd
     >>> from disv_grid_utils import create_voronoi_grid
     >>> boundary = gpd.read_file("model_boundary.gpkg")
-    >>> vor_data, modelgrid = create_voronoi_grid(boundary, cell_size=50)
+    >>> vor, modelgrid = create_voronoi_grid(boundary, cell_size=50)
     >>> print(f"Created grid with {modelgrid.ncpl} cells")
 
     Notes
     -----
-    - The function generates a regular grid of seed points within the boundary,
-      then uses Voronoi tessellation to create cells.
-    - Cells near the boundary are clipped to the domain boundary.
-    - For local refinement, use refine_grid_locally() instead.
+    - The function uses FloPy's Triangle class for mesh generation and
+      VoronoiGrid for creating the Voronoi tessellation.
+    - Cells near the boundary may have irregular shapes due to clipping.
+    - For local refinement, use refine_grid_locally() or create_disv_from_boundary()
+      with refinement_areas parameter.
 
     See Also
     --------
@@ -136,23 +136,20 @@ def create_voronoi_grid(
     # Dissolve to single boundary polygon
     boundary_polygon = _get_boundary_polygon(boundary_gdf)
 
-    # Generate seed points within the boundary
-    seed_points = _generate_seed_points(
-        boundary_polygon, cell_size, rotation_angle
+    # Apply rotation if specified
+    if rotation_angle is not None and rotation_angle != 0:
+        boundary_polygon = _rotate_polygon(boundary_polygon, rotation_angle)
+
+    # Convert cell_size to maximum_area for Triangle
+    # Triangle uses area, so for roughly square cells: area ≈ cell_size^2
+    maximum_area = cell_size ** 2
+
+    # Create Voronoi grid using FloPy utilities
+    vor, modelgrid = _create_voronoi_with_flopy(
+        boundary_polygon, maximum_area, output_crs
     )
 
-    if len(seed_points) == 0:
-        raise ValueError(
-            f"No seed points generated. Check that cell_size ({cell_size}) "
-            f"is appropriate for the boundary extent."
-        )
-
-    # Create Voronoi tessellation and clip to boundary
-    vor_data, modelgrid = _create_voronoi_from_points(
-        np.array(seed_points), boundary_polygon, output_crs
-    )
-
-    return vor_data, modelgrid
+    return vor, modelgrid
 
 
 def create_disv_from_boundary(
@@ -167,8 +164,7 @@ def create_disv_from_boundary(
 
     This function creates a complete DISV (Discretization by Vertices) grid
     with options for local refinement and proper handling of boundary vertices.
-    It ensures that boundary vertices are incorporated to avoid cells extending
-    outside the model domain.
+    It uses FloPy's Triangle and VoronoiGrid classes for robust mesh generation.
 
     Parameters
     ----------
@@ -182,8 +178,8 @@ def create_disv_from_boundary(
         - float specifying the refined cell size for that area
         Areas are processed in order, so later entries override earlier ones.
     include_boundary_vertices : bool, default True
-        If True, ensures boundary polygon vertices are included as seed points
-        to maintain domain boundary alignment.
+        If True, ensures boundary polygon vertices are respected in the mesh.
+        This is handled automatically by FloPy's Triangle class.
     crs : str, optional
         Coordinate reference system. If None, uses CRS from boundary_gdf.
 
@@ -191,13 +187,13 @@ def create_disv_from_boundary(
     -------
     dict
         Dictionary containing DISV grid components:
-        - 'vor_data': Voronoi data dictionary
+        - 'voronoi_grid': VoronoiGrid object from FloPy
         - 'modelgrid': VertexGrid object
         - 'vertices': list of (iv, xv, yv) vertex tuples for DISV package
         - 'cell2d': list of cell connectivity for DISV package
         - 'ncpl': number of cells per layer
         - 'nvert': number of vertices
-        - 'seed_points': array of seed point coordinates used
+        - 'disv_gridprops': dict that can be unpacked into ModflowGwfdisv
         - 'crs': coordinate reference system
 
     Examples
@@ -218,9 +214,9 @@ def create_disv_from_boundary(
 
     Notes
     -----
-    This function regenerates the entire Voronoi tessellation with all
-    seed points (base + refinement). For iterative refinement of an
-    existing grid, use refine_grid_locally() instead.
+    This function uses FloPy's Triangle class with region-based refinement.
+    The Triangle class automatically handles boundary vertices and ensures
+    proper mesh quality.
 
     See Also
     --------
@@ -240,21 +236,13 @@ def create_disv_from_boundary(
     # Dissolve to single boundary polygon
     boundary_polygon = _get_boundary_polygon(boundary_gdf)
 
-    # Collect all seed points
-    all_seed_points = []
+    # Convert cell_size to maximum_area
+    base_max_area = cell_size ** 2
 
-    # Generate base seed points
-    base_seeds = _generate_seed_points(boundary_polygon, cell_size, None)
-    all_seed_points.extend(base_seeds)
+    # Process refinement areas
+    refinement_polygons = []
+    refinement_max_areas = []
 
-    # Add boundary vertices if requested
-    if include_boundary_vertices:
-        boundary_coords = list(boundary_polygon.exterior.coords)[:-1]  # Exclude closing point
-        # Densify boundary with additional points
-        densified_boundary = _densify_boundary(boundary_coords, cell_size / 2)
-        all_seed_points.extend(densified_boundary)
-
-    # Add refinement area seed points
     if refinement_areas:
         for refine_gdf, refine_cell_size in refinement_areas:
             if refine_cell_size <= 0:
@@ -274,47 +262,43 @@ def create_disv_from_boundary(
                 )
                 continue
 
-            # Generate refined seed points
-            refined_seeds = _generate_seed_points(
-                refine_clipped, refine_cell_size, None
-            )
+            # Handle MultiPolygon
+            if isinstance(refine_clipped, MultiPolygon):
+                for poly in refine_clipped.geoms:
+                    refinement_polygons.append(poly)
+                    refinement_max_areas.append(refine_cell_size ** 2)
+            elif isinstance(refine_clipped, Polygon):
+                refinement_polygons.append(refine_clipped)
+                refinement_max_areas.append(refine_cell_size ** 2)
 
-            # Remove base seeds that fall within refinement area
-            # to avoid overlapping seeds
-            all_seed_points = [
-                p for p in all_seed_points
-                if not Point(p).within(refine_clipped)
-            ]
-
-            all_seed_points.extend(refined_seeds)
-
-    # Convert to numpy array and remove duplicates
-    seed_array = np.array(all_seed_points)
-    seed_array = _remove_duplicate_points(seed_array, tolerance=cell_size / 10)
-
-    if len(seed_array) == 0:
-        raise ValueError("No seed points generated after processing")
-
-    # Create Voronoi grid
-    vor_data, modelgrid = _create_voronoi_from_points(
-        seed_array, boundary_polygon, output_crs
+    # Create Voronoi grid with refinement
+    vor, modelgrid = _create_voronoi_with_refinement(
+        boundary_polygon,
+        base_max_area,
+        refinement_polygons,
+        refinement_max_areas,
+        output_crs,
     )
 
-    # Extract DISV components
-    vertices = modelgrid._vertices
-    cell2d = modelgrid.cell2d
-    ncpl = modelgrid.ncpl
-    nvert = len(vertices)
+    # Extract DISV properties
+    disv_gridprops = vor.get_disv_gridprops()
+    ncpl = disv_gridprops['ncpl']
+    nvert = disv_gridprops['nvert']
+    vertices = disv_gridprops['vertices']
+    cell2d = disv_gridprops['cell2d']
 
     return {
-        'vor_data': vor_data,
+        'voronoi_grid': vor,
         'modelgrid': modelgrid,
         'vertices': vertices,
         'cell2d': cell2d,
         'ncpl': ncpl,
         'nvert': nvert,
-        'seed_points': seed_array,
+        'disv_gridprops': disv_gridprops,
         'crs': output_crs,
+        # For backwards compatibility with refine_grid_locally
+        'boundary_polygon': boundary_polygon,
+        'base_max_area': base_max_area,
     }
 
 
@@ -328,15 +312,14 @@ def refine_grid_locally(
     Add local refinement to an existing DISV grid.
 
     This function regenerates the Voronoi tessellation with additional
-    seed points in the specified refinement area. It is designed for
-    students to refine the base grid around their detail study areas
-    in case study notebooks.
+    refinement in the specified area. It is designed for students to
+    refine the base grid around their detail study areas in case study
+    notebooks.
 
     Parameters
     ----------
     base_grid : dict
-        Dictionary from create_disv_from_boundary() containing
-        'seed_points' and boundary information.
+        Dictionary from create_disv_from_boundary() containing grid information.
     refinement_gdf : geopandas.GeoDataFrame
         GeoDataFrame with polygon(s) defining the area(s) to refine.
         Multiple polygons will be merged.
@@ -344,7 +327,7 @@ def refine_grid_locally(
         Target cell size within the refinement area (in CRS units).
         Should be smaller than the base grid cell size.
     boundary_gdf : geopandas.GeoDataFrame, optional
-        Model boundary polygon. Required to get boundary coordinates.
+        Model boundary polygon. Required if not stored in base_grid.
 
     Returns
     -------
@@ -389,23 +372,25 @@ def refine_grid_locally(
             f"base_grid must be a dict from create_disv_from_boundary(), got {type(base_grid)}"
         )
 
-    seed_points = base_grid.get('seed_points')
     output_crs = base_grid.get('crs')
     base_ncpl = base_grid.get('ncpl', 0)
-
-    if seed_points is None:
-        raise ValueError(
-            "base_grid dictionary must contain 'seed_points'. "
-            "Use create_disv_from_boundary() to create the base grid."
-        )
+    boundary_polygon = base_grid.get('boundary_polygon')
+    base_max_area = base_grid.get('base_max_area')
 
     # Get boundary polygon
-    if boundary_gdf is None:
-        raise ValueError("boundary_gdf is required for local refinement")
+    if boundary_polygon is None:
+        if boundary_gdf is None:
+            raise ValueError("boundary_gdf is required for local refinement")
+        boundary_polygon = _get_boundary_polygon(boundary_gdf)
 
-    boundary_polygon = _get_boundary_polygon(boundary_gdf)
-    if output_crs is None:
+    if output_crs is None and boundary_gdf is not None:
         output_crs = boundary_gdf.crs
+
+    if base_max_area is None:
+        raise ValueError(
+            "base_grid dictionary must contain 'base_max_area'. "
+            "Use create_disv_from_boundary() to create the base grid."
+        )
 
     # Validate refinement input
     if refinement_gdf.empty:
@@ -427,41 +412,42 @@ def refine_grid_locally(
 
     refinement_area = refine_clipped.area
 
-    # Generate refined seed points
-    refined_seeds = _generate_seed_points(refine_clipped, refined_cell_size, None)
+    # Prepare refinement polygons
+    refinement_polygons = []
+    if isinstance(refine_clipped, MultiPolygon):
+        refinement_polygons = list(refine_clipped.geoms)
+    elif isinstance(refine_clipped, Polygon):
+        refinement_polygons = [refine_clipped]
 
-    # Remove base seeds within refinement area
-    new_seeds = []
-    for p in seed_points:
-        point = Point(p[0], p[1]) if len(p) >= 2 else Point(p)
-        if not point.within(refine_clipped):
-            new_seeds.append(p)
+    refinement_max_areas = [refined_cell_size ** 2] * len(refinement_polygons)
 
-    # Combine seed points
-    all_seeds = new_seeds + refined_seeds
-    seed_array = np.array(all_seeds)
-    seed_array = _remove_duplicate_points(seed_array, tolerance=refined_cell_size / 10)
-
-    # Create new Voronoi grid
-    vor_data, modelgrid = _create_voronoi_from_points(
-        seed_array, boundary_polygon, output_crs
+    # Create new Voronoi grid with refinement
+    vor, modelgrid = _create_voronoi_with_refinement(
+        boundary_polygon,
+        base_max_area,
+        refinement_polygons,
+        refinement_max_areas,
+        output_crs,
     )
 
-    # Extract DISV components
-    vertices = modelgrid._vertices
-    cell2d = modelgrid.cell2d
-    ncpl = modelgrid.ncpl
-    nvert = len(vertices)
+    # Extract DISV properties
+    disv_gridprops = vor.get_disv_gridprops()
+    ncpl = disv_gridprops['ncpl']
+    nvert = disv_gridprops['nvert']
+    vertices = disv_gridprops['vertices']
+    cell2d = disv_gridprops['cell2d']
 
     return {
-        'vor_data': vor_data,
+        'voronoi_grid': vor,
         'modelgrid': modelgrid,
         'vertices': vertices,
         'cell2d': cell2d,
         'ncpl': ncpl,
         'nvert': nvert,
-        'seed_points': seed_array,
+        'disv_gridprops': disv_gridprops,
         'crs': output_crs,
+        'boundary_polygon': boundary_polygon,
+        'base_max_area': base_max_area,
         'base_cell_count': base_ncpl,
         'refined_cell_count': ncpl,
         'refinement_area_m2': refinement_area,
@@ -1032,316 +1018,208 @@ def _get_boundary_polygon(boundary_gdf: gpd.GeoDataFrame) -> Polygon:
     return boundary_polygon
 
 
-def _create_voronoi_from_points(
-    seed_points: np.ndarray,
-    boundary_polygon: Polygon,
-    crs: Optional[str],
-) -> Tuple[Dict[str, Any], VertexGrid]:
+def _rotate_polygon(polygon: Polygon, angle_degrees: float) -> Polygon:
     """
-    Create Voronoi tessellation from seed points and clip to boundary.
+    Rotate a polygon around its centroid.
 
     Parameters
     ----------
-    seed_points : numpy.ndarray
-        Array of shape (n, 2) with seed point coordinates.
+    polygon : Polygon
+        Shapely polygon to rotate.
+    angle_degrees : float
+        Rotation angle in degrees (counter-clockwise).
+
+    Returns
+    -------
+    Polygon
+        Rotated polygon.
+    """
+    from shapely import affinity
+    return affinity.rotate(polygon, angle_degrees, origin='centroid')
+
+
+def _create_voronoi_with_flopy(
+    boundary_polygon: Polygon,
+    maximum_area: float,
+    crs: Optional[str],
+) -> Tuple[VoronoiGrid, VertexGrid]:
+    """
+    Create Voronoi grid using FloPy's Triangle and VoronoiGrid classes.
+
+    Parameters
+    ----------
     boundary_polygon : Polygon
-        Boundary polygon for clipping.
+        Boundary polygon for the model domain.
+    maximum_area : float
+        Maximum cell area for Triangle meshing.
     crs : str, optional
         Coordinate reference system.
 
     Returns
     -------
-    vor_data : dict
-        Dictionary with Voronoi data.
+    vor : VoronoiGrid
+        FloPy VoronoiGrid object.
     modelgrid : VertexGrid
         FloPy VertexGrid object.
     """
-    # Create scipy Voronoi tessellation
-    # Add boundary buffer points to handle edge regions
-    minx, miny, maxx, maxy = boundary_polygon.bounds
-    buffer_dist = max(maxx - minx, maxy - miny)
+    # Get boundary coordinates as numpy array
+    boundary_coords = np.array(boundary_polygon.exterior.coords[:-1])
 
-    # Add far-away points to bound the Voronoi regions
-    far_points = np.array([
-        [minx - buffer_dist, miny - buffer_dist],
-        [maxx + buffer_dist, miny - buffer_dist],
-        [maxx + buffer_dist, maxy + buffer_dist],
-        [minx - buffer_dist, maxy + buffer_dist],
-    ])
-    all_points = np.vstack([seed_points, far_points])
+    # Create Triangle object with a temporary workspace
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tri = Triangle(maximum_area=maximum_area, angle=30, model_ws=tmpdir)
 
-    # Create Voronoi diagram
-    vor = Voronoi(all_points)
+        # Add the boundary polygon
+        tri.add_polygon(boundary_coords)
 
-    # Clip Voronoi cells to boundary and collect valid cells
-    cell_polygons = []
-    cell_centers = []
-    valid_point_indices = []
+        # Build the triangular mesh
+        tri.build(verbose=False)
 
-    for point_idx in range(len(seed_points)):
-        region_idx = vor.point_region[point_idx]
-        region_vertices = vor.regions[region_idx]
+        # Create Voronoi grid from Triangle
+        vor = VoronoiGrid(tri)
 
-        # Skip cells with missing vertices (-1 indicates infinite)
-        if -1 in region_vertices or len(region_vertices) == 0:
-            continue
+    # Create VertexGrid from VoronoiGrid
+    gridprops = vor.get_gridprops_vertexgrid()
 
-        # Get vertex coordinates
-        try:
-            region_coords = [tuple(vor.vertices[v]) for v in region_vertices]
-            cell_poly = Polygon(region_coords)
-
-            # Clip to boundary
-            clipped = cell_poly.intersection(boundary_polygon)
-
-            if clipped.is_empty or not isinstance(clipped, Polygon):
-                continue
-
-            # Ensure valid polygon
-            if not clipped.is_valid:
-                clipped = clipped.buffer(0)
-
-            if clipped.area > 0:
-                cell_polygons.append(clipped)
-                cell_centers.append(seed_points[point_idx])
-                valid_point_indices.append(point_idx)
-        except Exception:
-            continue
-
-    if len(cell_polygons) == 0:
-        raise ValueError("No valid Voronoi cells generated. Check boundary and seed points.")
-
-    # Convert to DISV format (vertices, cell2d)
-    vertices, cell2d = _polygons_to_disv_format(cell_polygons, cell_centers)
-
-    # Create VertexGrid
-    ncpl = len(cell2d)
+    # Add placeholder top/botm for VertexGrid
+    ncpl = gridprops['ncpl']
     top = np.ones(ncpl)
     botm = np.zeros((1, ncpl))
 
     modelgrid = VertexGrid(
-        vertices=vertices,
-        cell2d=cell2d,
+        **gridprops,
         top=top,
         botm=botm,
         nlay=1,
-        ncpl=ncpl,
         crs=crs,
     )
 
-    vor_data = {
-        'seed_points': seed_points,
-        'scipy_vor': vor,
-        'cell_polygons': cell_polygons,
-        'valid_point_indices': valid_point_indices,
-    }
-
-    return vor_data, modelgrid
+    return vor, modelgrid
 
 
-def _polygons_to_disv_format(
-    cell_polygons: List[Polygon],
-    cell_centers: List[np.ndarray],
-) -> Tuple[List[Tuple], List[Tuple]]:
+def _create_voronoi_with_refinement(
+    boundary_polygon: Polygon,
+    base_max_area: float,
+    refinement_polygons: List[Polygon],
+    refinement_max_areas: List[float],
+    crs: Optional[str],
+) -> Tuple[VoronoiGrid, VertexGrid]:
     """
-    Convert shapely polygons to DISV format.
+    Create Voronoi grid with local refinement using FloPy's Triangle.
 
     Parameters
     ----------
-    cell_polygons : list of Polygon
-        List of cell polygons.
-    cell_centers : list of ndarray
-        List of cell center coordinates.
+    boundary_polygon : Polygon
+        Boundary polygon for the model domain.
+    base_max_area : float
+        Maximum cell area for base (non-refined) regions.
+    refinement_polygons : list of Polygon
+        List of polygons defining refinement areas.
+    refinement_max_areas : list of float
+        Maximum cell areas for each refinement polygon.
+    crs : str, optional
+        Coordinate reference system.
 
     Returns
     -------
-    vertices : list of tuples
-        List of (iv, xv, yv) vertex tuples.
-    cell2d : list of tuples
-        List of cell connectivity tuples.
+    vor : VoronoiGrid
+        FloPy VoronoiGrid object.
+    modelgrid : VertexGrid
+        FloPy VertexGrid object.
     """
-    # Collect all unique vertices
-    vertex_coords = []
-    vertex_to_id = {}
+    # Get boundary coordinates as numpy array
+    boundary_coords = np.array(boundary_polygon.exterior.coords[:-1])
 
-    def get_vertex_id(x, y, tolerance=1e-6):
-        """Get or create vertex ID for coordinates."""
-        for vid, (vx, vy) in enumerate(vertex_coords):
-            if abs(x - vx) < tolerance and abs(y - vy) < tolerance:
-                return vid
-        new_id = len(vertex_coords)
-        vertex_coords.append((x, y))
-        return new_id
+    # Create Triangle object with a temporary workspace
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tri = Triangle(angle=30, model_ws=tmpdir)
 
-    # Build cell2d records
-    cell2d = []
-    for cell_id, (poly, center) in enumerate(zip(cell_polygons, cell_centers)):
-        # Get exterior coordinates (exclude closing point)
-        ext_coords = list(poly.exterior.coords)[:-1]
+        # Add the boundary polygon (must be first)
+        tri.add_polygon(boundary_coords)
 
-        # Get vertex IDs
-        vertex_ids = [get_vertex_id(x, y) for x, y in ext_coords]
+        # Add refinement polygons
+        for refine_poly in refinement_polygons:
+            refine_coords = np.array(refine_poly.exterior.coords[:-1])
+            tri.add_polygon(refine_coords)
 
-        # Cell center
-        xc, yc = center[0], center[1]
+        # Add regions with different maximum areas
+        # Region for base area (point inside boundary but outside refinement)
+        base_centroid = boundary_polygon.centroid
 
-        # cell2d format: (cellid, xc, yc, ncvert, iv1, iv2, ...)
-        cell_record = [cell_id, xc, yc, len(vertex_ids)] + vertex_ids
-        cell2d.append(tuple(cell_record))
+        # Find a point in the base region (not in any refinement area)
+        base_point = _find_point_outside_polygons(
+            boundary_polygon, refinement_polygons
+        )
+        tri.add_region(base_point, 0, maximum_area=base_max_area)
 
-    # Build vertices list
-    vertices = [(vid, x, y) for vid, (x, y) in enumerate(vertex_coords)]
+        # Regions for refinement areas
+        for i, (refine_poly, max_area) in enumerate(
+            zip(refinement_polygons, refinement_max_areas)
+        ):
+            centroid = refine_poly.centroid
+            tri.add_region((centroid.x, centroid.y), i + 1, maximum_area=max_area)
 
-    return vertices, cell2d
+        # Build the triangular mesh
+        tri.build(verbose=False)
+
+        # Create Voronoi grid from Triangle
+        vor = VoronoiGrid(tri)
+
+    # Create VertexGrid from VoronoiGrid
+    gridprops = vor.get_gridprops_vertexgrid()
+
+    # Add placeholder top/botm for VertexGrid
+    ncpl = gridprops['ncpl']
+    top = np.ones(ncpl)
+    botm = np.zeros((1, ncpl))
+
+    modelgrid = VertexGrid(
+        **gridprops,
+        top=top,
+        botm=botm,
+        nlay=1,
+        crs=crs,
+    )
+
+    return vor, modelgrid
 
 
-def _generate_seed_points(
-    polygon: Union[Polygon, MultiPolygon],
-    cell_size: float,
-    rotation_angle: Optional[float],
-) -> List[Tuple[float, float]]:
+def _find_point_outside_polygons(
+    boundary: Polygon,
+    exclusion_polygons: List[Polygon],
+) -> Tuple[float, float]:
     """
-    Generate a regular grid of seed points within a polygon.
+    Find a point inside the boundary but outside all exclusion polygons.
 
     Parameters
     ----------
-    polygon : Polygon or MultiPolygon
-        Boundary polygon to fill with seed points.
-    cell_size : float
-        Spacing between seed points.
-    rotation_angle : float, optional
-        Rotation angle in degrees (counter-clockwise).
+    boundary : Polygon
+        Outer boundary polygon.
+    exclusion_polygons : list of Polygon
+        Polygons to avoid.
 
     Returns
     -------
-    list of (x, y) tuples
-        Seed point coordinates within the polygon.
+    tuple
+        (x, y) coordinates of a valid point.
     """
-    # Handle MultiPolygon
-    if isinstance(polygon, MultiPolygon):
-        all_points = []
-        for geom in polygon.geoms:
-            all_points.extend(_generate_seed_points(geom, cell_size, rotation_angle))
-        return all_points
+    # Try the boundary centroid first
+    centroid = boundary.centroid
+    if not any(poly.contains(centroid) for poly in exclusion_polygons):
+        return (centroid.x, centroid.y)
 
-    # Get polygon bounds
-    minx, miny, maxx, maxy = polygon.bounds
+    # Sample points along a grid within the boundary
+    minx, miny, maxx, maxy = boundary.bounds
+    for x in np.linspace(minx, maxx, 20):
+        for y in np.linspace(miny, maxy, 20):
+            point = Point(x, y)
+            if boundary.contains(point):
+                if not any(poly.contains(point) for poly in exclusion_polygons):
+                    return (x, y)
 
-    # Expand bounds slightly to ensure coverage
-    buffer = cell_size
-    minx -= buffer
-    miny -= buffer
-    maxx += buffer
-    maxy += buffer
-
-    # Generate regular grid
-    x_coords = np.arange(minx, maxx + cell_size, cell_size)
-    y_coords = np.arange(miny, maxy + cell_size, cell_size)
-
-    xx, yy = np.meshgrid(x_coords, y_coords)
-    points = np.column_stack([xx.ravel(), yy.ravel()])
-
-    # Apply rotation if specified
-    if rotation_angle is not None and rotation_angle != 0:
-        # Rotate around polygon centroid
-        centroid = polygon.centroid
-        cx, cy = centroid.x, centroid.y
-
-        theta = np.radians(rotation_angle)
-        cos_t, sin_t = np.cos(theta), np.sin(theta)
-
-        # Translate to origin, rotate, translate back
-        x_rot = (points[:, 0] - cx) * cos_t - (points[:, 1] - cy) * sin_t + cx
-        y_rot = (points[:, 0] - cx) * sin_t + (points[:, 1] - cy) * cos_t + cy
-
-        points = np.column_stack([x_rot, y_rot])
-
-    # Filter points to those within polygon
-    seed_points = []
-    for x, y in points:
-        if polygon.contains(Point(x, y)):
-            seed_points.append((x, y))
-
-    return seed_points
-
-
-def _densify_boundary(
-    coords: List[Tuple[float, float]],
-    max_segment_length: float,
-) -> List[Tuple[float, float]]:
-    """
-    Add intermediate points along boundary segments.
-
-    Parameters
-    ----------
-    coords : list of (x, y) tuples
-        Boundary vertex coordinates.
-    max_segment_length : float
-        Maximum distance between consecutive points.
-
-    Returns
-    -------
-    list of (x, y) tuples
-        Densified boundary coordinates.
-    """
-    densified = []
-
-    for i in range(len(coords)):
-        p1 = coords[i]
-        p2 = coords[(i + 1) % len(coords)]
-
-        densified.append(p1)
-
-        # Calculate segment length
-        dx = p2[0] - p1[0]
-        dy = p2[1] - p1[1]
-        length = np.sqrt(dx**2 + dy**2)
-
-        # Add intermediate points if segment is too long
-        if length > max_segment_length:
-            n_segments = int(np.ceil(length / max_segment_length))
-            for j in range(1, n_segments):
-                t = j / n_segments
-                x = p1[0] + t * dx
-                y = p1[1] + t * dy
-                densified.append((x, y))
-
-    return densified
-
-
-def _remove_duplicate_points(
-    points: np.ndarray,
-    tolerance: float,
-) -> np.ndarray:
-    """
-    Remove duplicate points within a tolerance.
-
-    Parameters
-    ----------
-    points : numpy.ndarray
-        Array of shape (n, 2) with point coordinates.
-    tolerance : float
-        Minimum distance between distinct points.
-
-    Returns
-    -------
-    numpy.ndarray
-        Array with duplicates removed.
-    """
-    if len(points) == 0:
-        return points
-
-    # Use a simple approach: keep points that are far enough from all previous
-    unique = [points[0]]
-
-    for p in points[1:]:
-        is_duplicate = False
-        for u in unique:
-            dist = np.sqrt((p[0] - u[0])**2 + (p[1] - u[1])**2)
-            if dist < tolerance:
-                is_duplicate = True
-                break
-        if not is_duplicate:
-            unique.append(p)
-
-    return np.array(unique)
+    # Fallback: use boundary centroid anyway
+    warnings.warn(
+        "Could not find point outside refinement areas. "
+        "Using boundary centroid."
+    )
+    return (centroid.x, centroid.y)

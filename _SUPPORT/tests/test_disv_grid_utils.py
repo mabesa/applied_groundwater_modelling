@@ -2,7 +2,7 @@
 Unit tests for disv_grid_utils module.
 
 Tests cover:
-- create_voronoi_grid: Basic Voronoi grid creation
+- create_voronoi_grid: Basic Voronoi grid creation using FloPy's VoronoiGrid
 - create_disv_from_boundary: DISV grid with refinement options
 - refine_grid_locally: Local grid refinement
 - export_grid_to_geopackage: GeoPackage export
@@ -39,19 +39,19 @@ from disv_grid_utils import (
 # Test Helper Functions
 # =============================================================================
 
-def assert_valid_voronoi_grid(vor_data, modelgrid, min_cells=10):
+def assert_valid_voronoi_grid(vor, modelgrid, min_cells=10):
     """
     Assert that a Voronoi grid is valid.
 
     Checks:
     - Grid has minimum expected cells
     - All cells have valid vertices
-    - Cell centers are within boundary
+    - VoronoiGrid object has expected attributes
 
     Parameters
     ----------
-    vor_data : dict
-        Dictionary with Voronoi data (from create_voronoi_grid).
+    vor : flopy.utils.voronoi.VoronoiGrid
+        FloPy VoronoiGrid object.
     modelgrid : VertexGrid
         FloPy VertexGrid object.
     min_cells : int
@@ -71,11 +71,10 @@ def assert_valid_voronoi_grid(vor_data, modelgrid, min_cells=10):
         assert nvert >= 3, f"Cell {cell_id} has only {nvert} vertices"
         assert len(cell) == 4 + nvert, f"Cell {cell_id} has incorrect vertex count"
 
-    # Check vor_data structure
-    if vor_data is not None:
-        assert 'seed_points' in vor_data
-        assert 'cell_polygons' in vor_data
-        assert len(vor_data['cell_polygons']) == modelgrid.ncpl
+    # Check VoronoiGrid object (FloPy VoronoiGrid has get_disv_gridprops method)
+    if vor is not None:
+        assert hasattr(vor, 'get_disv_gridprops'), "VoronoiGrid missing get_disv_gridprops method"
+        assert hasattr(vor, 'get_gridprops_vertexgrid'), "VoronoiGrid missing get_gridprops_vertexgrid method"
 
 
 def assert_array_values_in_range(array, min_val, max_val, name="array"):
@@ -179,12 +178,6 @@ class TestCreateVoronoiGrid:
         with pytest.raises(ValueError, match="positive"):
             create_voronoi_grid(simple_square_boundary, cell_size=-50)
 
-    def test_very_large_cell_size_raises(self, simple_square_boundary):
-        """Test that cell size larger than domain raises ValueError."""
-        # Cell size 5000m is larger than 1000m domain
-        with pytest.raises(ValueError, match="seed points"):
-            create_voronoi_grid(simple_square_boundary, cell_size=5000)
-
 
 # =============================================================================
 # Tests for create_disv_from_boundary
@@ -202,8 +195,8 @@ class TestCreateDisvFromBoundary:
 
         # Check all expected keys are present
         expected_keys = [
-            'vor_data', 'modelgrid', 'vertices', 'cell2d',
-            'ncpl', 'nvert', 'seed_points', 'crs'
+            'voronoi_grid', 'modelgrid', 'vertices', 'cell2d',
+            'ncpl', 'nvert', 'disv_gridprops', 'crs'
         ]
         for key in expected_keys:
             assert key in disv_data, f"Missing key: {key}"
@@ -212,6 +205,13 @@ class TestCreateDisvFromBoundary:
         assert disv_data['ncpl'] == len(disv_data['cell2d'])
         assert disv_data['nvert'] == len(disv_data['vertices'])
         assert disv_data['ncpl'] == disv_data['modelgrid'].ncpl
+
+        # Check disv_gridprops can be used with ModflowGwfdisv
+        gridprops = disv_data['disv_gridprops']
+        assert 'ncpl' in gridprops
+        assert 'nvert' in gridprops
+        assert 'vertices' in gridprops
+        assert 'cell2d' in gridprops
 
     def test_with_single_refinement(self, simple_square_boundary, small_refinement_area):
         """Test DISV grid with one refinement area."""
@@ -283,16 +283,20 @@ class TestCreateDisvFromBoundary:
                 refinement_areas=[(outside_zone, 25)],
             )
 
-    def test_seed_points_saved(self, simple_square_boundary):
-        """Test that seed points are saved in output."""
+    def test_voronoi_grid_has_disv_methods(self, simple_square_boundary):
+        """Test that VoronoiGrid object has required methods."""
         disv_data = create_disv_from_boundary(
             simple_square_boundary,
             cell_size=100,
         )
 
-        seed_points = disv_data['seed_points']
-        assert len(seed_points) > 0
-        assert seed_points.shape[1] == 2  # x, y coordinates
+        vor = disv_data['voronoi_grid']
+        assert hasattr(vor, 'get_disv_gridprops')
+        assert hasattr(vor, 'get_gridprops_vertexgrid')
+
+        # Test that methods work
+        gridprops = vor.get_disv_gridprops()
+        assert 'ncpl' in gridprops
 
 
 # =============================================================================
@@ -332,8 +336,8 @@ class TestRefineGridLocally:
         # Base count should be preserved in output
         assert refined_data['base_cell_count'] == base_count
 
-    def test_refinement_preserves_seed_points(self, simple_disv_data, small_refinement_area, simple_square_boundary):
-        """Test that refinement preserves seed points outside refinement area."""
+    def test_refinement_has_voronoi_grid(self, simple_disv_data, small_refinement_area, simple_square_boundary):
+        """Test that refinement preserves VoronoiGrid object."""
         refined_data = refine_grid_locally(
             simple_disv_data,
             small_refinement_area,
@@ -341,9 +345,9 @@ class TestRefineGridLocally:
             boundary_gdf=simple_square_boundary,
         )
 
-        # Refined grid should have seed_points
-        assert 'seed_points' in refined_data
-        assert len(refined_data['seed_points']) > 0
+        # Refined grid should have voronoi_grid
+        assert 'voronoi_grid' in refined_data
+        assert refined_data['voronoi_grid'] is not None
 
     def test_empty_refinement_area_raises(self, simple_disv_data, simple_square_boundary):
         """Test that empty refinement GeoDataFrame raises ValueError."""

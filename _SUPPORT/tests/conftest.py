@@ -334,18 +334,18 @@ def simple_voronoi_grid(simple_square_boundary):
     Create a simple Voronoi grid for testing.
 
     Uses the simple_square_boundary with 100m cell size.
-    Returns dict with 'vor_data' (Voronoi info dict) and 'modelgrid' (VertexGrid).
+    Returns dict with 'voronoi_grid' (FloPy VoronoiGrid) and 'modelgrid' (VertexGrid).
     """
     # Import here to avoid import errors if FloPy not available
     import sys
     sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
     from disv_grid_utils import create_voronoi_grid
 
-    vor_data, modelgrid = create_voronoi_grid(
+    vor, modelgrid = create_voronoi_grid(
         simple_square_boundary,
         cell_size=100,
     )
-    return {'vor_data': vor_data, 'modelgrid': modelgrid, 'boundary': simple_square_boundary}
+    return {'voronoi_grid': vor, 'modelgrid': modelgrid, 'boundary': simple_square_boundary}
 
 
 @pytest.fixture
@@ -425,7 +425,16 @@ def assert_valid_voronoi_grid(vor, modelgrid, min_cells=10):
     Checks:
     - Grid has minimum expected cells
     - All cells have valid vertices
-    - Cell centers are within boundary
+    - VoronoiGrid object has expected methods
+
+    Parameters
+    ----------
+    vor : flopy.utils.voronoi.VoronoiGrid
+        FloPy VoronoiGrid object.
+    modelgrid : VertexGrid
+        FloPy VertexGrid object.
+    min_cells : int
+        Minimum expected number of cells.
     """
     assert modelgrid.ncpl >= min_cells, (
         f"Grid has {modelgrid.ncpl} cells, expected at least {min_cells}"
@@ -441,6 +450,11 @@ def assert_valid_voronoi_grid(vor, modelgrid, min_cells=10):
 
         assert nvert >= 3, f"Cell {cell_id} has only {nvert} vertices"
         assert len(cell) == 4 + nvert, f"Cell {cell_id} has incorrect vertex count"
+
+    # Check VoronoiGrid object (FloPy VoronoiGrid has get_disv_gridprops method)
+    if vor is not None:
+        assert hasattr(vor, 'get_disv_gridprops'), "VoronoiGrid missing get_disv_gridprops method"
+        assert hasattr(vor, 'get_gridprops_vertexgrid'), "VoronoiGrid missing get_gridprops_vertexgrid method"
 
 
 def assert_array_values_in_range(array, min_val, max_val, name="array"):
