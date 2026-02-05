@@ -14,12 +14,13 @@ Key capabilities:
 
 Requirements:
 - FloPy >= 3.4.0 (for stable DISV support)
+- scipy (for Voronoi tessellation)
 - geopandas
 - shapely
 - numpy
 
 References:
-- FloPy VoronoiGrid: https://flopy.readthedocs.io/en/latest/source/flopy.utils.voronoi.html
+- scipy.spatial.Voronoi: https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.Voronoi.html
 - MODFLOW 6 DISV: https://modflow6.readthedocs.io/en/latest/mf6io_gwf_disv.html
 """
 
@@ -30,13 +31,13 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import geopandas as gpd
 import numpy as np
-from shapely.geometry import Point, Polygon, MultiPolygon, box
+from scipy.spatial import Voronoi
+from shapely.geometry import Point, Polygon, MultiPolygon, box, LineString
 from shapely.ops import unary_union
 
 try:
     import flopy
     from flopy.discretization import VertexGrid, StructuredGrid
-    from flopy.utils.voronoi import VoronoiGrid
     from flopy.utils.gridintersect import GridIntersect
 
     # Check FloPy version
@@ -59,11 +60,11 @@ def create_voronoi_grid(
     cell_size: float,
     rotation_angle: Optional[float] = None,
     crs: Optional[str] = None,
-) -> Tuple[VoronoiGrid, VertexGrid]:
+) -> Tuple[Dict[str, Any], VertexGrid]:
     """
     Create a Voronoi-based unstructured grid for MODFLOW 6 DISV.
 
-    This function wraps flopy.utils.voronoi.VoronoiGrid to generate a Voronoi
+    This function uses scipy.spatial.Voronoi to generate a Voronoi
     tessellation within the provided boundary polygon. The resulting grid
     satisfies the control volume finite difference (CVFD) requirements of
     MODFLOW 6, where flow directions are perpendicular to cell faces.
@@ -88,8 +89,11 @@ def create_voronoi_grid(
 
     Returns
     -------
-    vor : flopy.utils.voronoi.VoronoiGrid
-        The VoronoiGrid object containing vertices and cell connectivity.
+    vor_data : dict
+        Dictionary containing Voronoi grid data:
+        - 'seed_points': array of seed point coordinates
+        - 'scipy_vor': scipy.spatial.Voronoi object
+        - 'cell_polygons': list of shapely Polygon objects for each cell
     modelgrid : flopy.discretization.VertexGrid
         A FloPy VertexGrid object that can be used for model construction
         and visualization.
@@ -99,14 +103,14 @@ def create_voronoi_grid(
     >>> import geopandas as gpd
     >>> from disv_grid_utils import create_voronoi_grid
     >>> boundary = gpd.read_file("model_boundary.gpkg")
-    >>> vor, modelgrid = create_voronoi_grid(boundary, cell_size=50)
+    >>> vor_data, modelgrid = create_voronoi_grid(boundary, cell_size=50)
     >>> print(f"Created grid with {modelgrid.ncpl} cells")
 
     Notes
     -----
     - The function generates a regular grid of seed points within the boundary,
       then uses Voronoi tessellation to create cells.
-    - Cells near the boundary may have irregular shapes due to clipping.
+    - Cells near the boundary are clipped to the domain boundary.
     - For local refinement, use refine_grid_locally() instead.
 
     See Also
@@ -130,23 +134,7 @@ def create_voronoi_grid(
         )
 
     # Dissolve to single boundary polygon
-    boundary_union = unary_union(boundary_gdf.geometry)
-    if isinstance(boundary_union, MultiPolygon):
-        # Use the largest polygon if multipolygon
-        boundary_polygon = max(boundary_union.geoms, key=lambda p: p.area)
-        warnings.warn(
-            "boundary_gdf contains multiple polygons. "
-            "Using the largest polygon as the boundary."
-        )
-    elif isinstance(boundary_union, Polygon):
-        boundary_polygon = boundary_union
-    else:
-        raise ValueError(
-            f"Expected Polygon or MultiPolygon, got {type(boundary_union)}"
-        )
-
-    # Get boundary extent
-    minx, miny, maxx, maxy = boundary_polygon.bounds
+    boundary_polygon = _get_boundary_polygon(boundary_gdf)
 
     # Generate seed points within the boundary
     seed_points = _generate_seed_points(
@@ -159,38 +147,12 @@ def create_voronoi_grid(
             f"is appropriate for the boundary extent."
         )
 
-    # Create Voronoi grid using FloPy
-    # Extract boundary as list of vertices
-    boundary_vertices = list(boundary_polygon.exterior.coords)
-
-    vor = VoronoiGrid(
-        boundary=boundary_vertices,
-        point_data=seed_points,
+    # Create Voronoi tessellation and clip to boundary
+    vor_data, modelgrid = _create_voronoi_from_points(
+        np.array(seed_points), boundary_polygon, output_crs
     )
 
-    # Create VertexGrid from VoronoiGrid
-    vertices = vor.vertices
-    cell2d = vor.cell2d
-    ncpl = len(cell2d)
-
-    # Get cell centers for top/bottom arrays
-    xcyc = vor.get_cell_xy()
-
-    # Create placeholder top/bottom (will be set by user)
-    top = np.ones(ncpl)
-    botm = np.zeros((1, ncpl))
-
-    modelgrid = VertexGrid(
-        vertices=vertices,
-        cell2d=cell2d,
-        top=top,
-        botm=botm,
-        nlay=1,
-        ncpl=ncpl,
-        crs=output_crs,
-    )
-
-    return vor, modelgrid
+    return vor_data, modelgrid
 
 
 def create_disv_from_boundary(
@@ -229,7 +191,7 @@ def create_disv_from_boundary(
     -------
     dict
         Dictionary containing DISV grid components:
-        - 'vor': VoronoiGrid object
+        - 'vor_data': Voronoi data dictionary
         - 'modelgrid': VertexGrid object
         - 'vertices': list of (iv, xv, yv) vertex tuples for DISV package
         - 'cell2d': list of cell connectivity for DISV package
@@ -276,18 +238,7 @@ def create_disv_from_boundary(
     output_crs = crs or boundary_gdf.crs
 
     # Dissolve to single boundary polygon
-    boundary_union = unary_union(boundary_gdf.geometry)
-    if isinstance(boundary_union, MultiPolygon):
-        boundary_polygon = max(boundary_union.geoms, key=lambda p: p.area)
-        warnings.warn(
-            "boundary_gdf contains multiple polygons. Using largest polygon."
-        )
-    elif isinstance(boundary_union, Polygon):
-        boundary_polygon = boundary_union
-    else:
-        raise ValueError(
-            f"Expected Polygon or MultiPolygon, got {type(boundary_union)}"
-        )
+    boundary_polygon = _get_boundary_polygon(boundary_gdf)
 
     # Collect all seed points
     all_seed_points = []
@@ -345,36 +296,18 @@ def create_disv_from_boundary(
         raise ValueError("No seed points generated after processing")
 
     # Create Voronoi grid
-    boundary_vertices = list(boundary_polygon.exterior.coords)
-
-    vor = VoronoiGrid(
-        boundary=boundary_vertices,
-        point_data=seed_array.tolist(),
+    vor_data, modelgrid = _create_voronoi_from_points(
+        seed_array, boundary_polygon, output_crs
     )
 
     # Extract DISV components
-    vertices = vor.vertices
-    cell2d = vor.cell2d
-    ncpl = len(cell2d)
+    vertices = modelgrid._vertices
+    cell2d = modelgrid.cell2d
+    ncpl = modelgrid.ncpl
     nvert = len(vertices)
 
-    # Create placeholder arrays
-    top = np.ones(ncpl)
-    botm = np.zeros((1, ncpl))
-
-    # Create VertexGrid
-    modelgrid = VertexGrid(
-        vertices=vertices,
-        cell2d=cell2d,
-        top=top,
-        botm=botm,
-        nlay=1,
-        ncpl=ncpl,
-        crs=output_crs,
-    )
-
     return {
-        'vor': vor,
+        'vor_data': vor_data,
         'modelgrid': modelgrid,
         'vertices': vertices,
         'cell2d': cell2d,
@@ -386,7 +319,7 @@ def create_disv_from_boundary(
 
 
 def refine_grid_locally(
-    base_grid: Union[VoronoiGrid, Dict[str, Any]],
+    base_grid: Dict[str, Any],
     refinement_gdf: gpd.GeoDataFrame,
     refined_cell_size: float,
     boundary_gdf: Optional[gpd.GeoDataFrame] = None,
@@ -401,9 +334,8 @@ def refine_grid_locally(
 
     Parameters
     ----------
-    base_grid : VoronoiGrid or dict
-        Either a VoronoiGrid object from create_voronoi_grid(), or
-        a dictionary from create_disv_from_boundary() containing
+    base_grid : dict
+        Dictionary from create_disv_from_boundary() containing
         'seed_points' and boundary information.
     refinement_gdf : geopandas.GeoDataFrame
         GeoDataFrame with polygon(s) defining the area(s) to refine.
@@ -412,9 +344,7 @@ def refine_grid_locally(
         Target cell size within the refinement area (in CRS units).
         Should be smaller than the base grid cell size.
     boundary_gdf : geopandas.GeoDataFrame, optional
-        Model boundary polygon. Required if base_grid is a VoronoiGrid
-        object (to get boundary coordinates). Not needed if base_grid
-        is a dictionary containing boundary information.
+        Model boundary polygon. Required to get boundary coordinates.
 
     Returns
     -------
@@ -435,7 +365,7 @@ def refine_grid_locally(
     >>>
     >>> # Refine locally
     >>> refined_data = refine_grid_locally(
-    ...     base_data, my_study_area, refined_cell_size=10
+    ...     base_data, my_study_area, refined_cell_size=10, boundary_gdf=boundary
     ... )
     >>>
     >>> print(f"Cells: {refined_data['base_cell_count']} -> {refined_data['refined_cell_count']}")
@@ -454,44 +384,28 @@ def refine_grid_locally(
     assign_properties_from_zones : Reassign properties after refinement
     """
     # Extract base grid information
-    if isinstance(base_grid, dict):
-        seed_points = base_grid.get('seed_points')
-        boundary_vertices = base_grid['vor'].boundary if 'vor' in base_grid else None
-        output_crs = base_grid.get('crs')
-        base_ncpl = base_grid.get('ncpl', 0)
-
-        if seed_points is None:
-            raise ValueError(
-                "base_grid dictionary must contain 'seed_points'. "
-                "Use create_disv_from_boundary() to create the base grid."
-            )
-    elif isinstance(base_grid, VoronoiGrid):
-        # Get seed points from VoronoiGrid cell centers
-        seed_points = np.array(base_grid.get_cell_xy())
-        boundary_vertices = base_grid.boundary
-        output_crs = None
-        base_ncpl = len(base_grid.cell2d)
-    else:
+    if not isinstance(base_grid, dict):
         raise TypeError(
-            f"base_grid must be VoronoiGrid or dict, got {type(base_grid)}"
+            f"base_grid must be a dict from create_disv_from_boundary(), got {type(base_grid)}"
+        )
+
+    seed_points = base_grid.get('seed_points')
+    output_crs = base_grid.get('crs')
+    base_ncpl = base_grid.get('ncpl', 0)
+
+    if seed_points is None:
+        raise ValueError(
+            "base_grid dictionary must contain 'seed_points'. "
+            "Use create_disv_from_boundary() to create the base grid."
         )
 
     # Get boundary polygon
-    if boundary_gdf is not None:
-        boundary_union = unary_union(boundary_gdf.geometry)
-        if isinstance(boundary_union, MultiPolygon):
-            boundary_polygon = max(boundary_union.geoms, key=lambda p: p.area)
-        else:
-            boundary_polygon = boundary_union
-        boundary_vertices = list(boundary_polygon.exterior.coords)
-        if output_crs is None:
-            output_crs = boundary_gdf.crs
-    elif boundary_vertices is not None:
-        boundary_polygon = Polygon(boundary_vertices)
-    else:
-        raise ValueError(
-            "boundary_gdf is required when base_grid is a VoronoiGrid object"
-        )
+    if boundary_gdf is None:
+        raise ValueError("boundary_gdf is required for local refinement")
+
+    boundary_polygon = _get_boundary_polygon(boundary_gdf)
+    if output_crs is None:
+        output_crs = boundary_gdf.crs
 
     # Validate refinement input
     if refinement_gdf.empty:
@@ -529,34 +443,18 @@ def refine_grid_locally(
     seed_array = _remove_duplicate_points(seed_array, tolerance=refined_cell_size / 10)
 
     # Create new Voronoi grid
-    vor = VoronoiGrid(
-        boundary=boundary_vertices,
-        point_data=seed_array.tolist(),
+    vor_data, modelgrid = _create_voronoi_from_points(
+        seed_array, boundary_polygon, output_crs
     )
 
     # Extract DISV components
-    vertices = vor.vertices
-    cell2d = vor.cell2d
-    ncpl = len(cell2d)
+    vertices = modelgrid._vertices
+    cell2d = modelgrid.cell2d
+    ncpl = modelgrid.ncpl
     nvert = len(vertices)
 
-    # Create placeholder arrays
-    top = np.ones(ncpl)
-    botm = np.zeros((1, ncpl))
-
-    # Create VertexGrid
-    modelgrid = VertexGrid(
-        vertices=vertices,
-        cell2d=cell2d,
-        top=top,
-        botm=botm,
-        nlay=1,
-        ncpl=ncpl,
-        crs=output_crs,
-    )
-
     return {
-        'vor': vor,
+        'vor_data': vor_data,
         'modelgrid': modelgrid,
         'vertices': vertices,
         'cell2d': cell2d,
@@ -679,7 +577,7 @@ def export_grid_to_geopackage(
             )
 
         # Get vertices
-        vertices = modelgrid.vertices
+        vertices = modelgrid._vertices
         vert_dict = {v[0]: (v[1], v[2]) for v in vertices}
 
         # Build cell polygons from cell2d
@@ -1103,6 +1001,200 @@ def assign_points_to_grid(
 # Private helper functions
 # =============================================================================
 
+def _get_boundary_polygon(boundary_gdf: gpd.GeoDataFrame) -> Polygon:
+    """
+    Extract and validate boundary polygon from GeoDataFrame.
+
+    Parameters
+    ----------
+    boundary_gdf : geopandas.GeoDataFrame
+        GeoDataFrame with boundary polygon(s).
+
+    Returns
+    -------
+    Polygon
+        Single boundary polygon.
+    """
+    boundary_union = unary_union(boundary_gdf.geometry)
+    if isinstance(boundary_union, MultiPolygon):
+        # Use the largest polygon if multipolygon
+        boundary_polygon = max(boundary_union.geoms, key=lambda p: p.area)
+        warnings.warn(
+            "boundary_gdf contains multiple polygons. "
+            "Using the largest polygon as the boundary."
+        )
+    elif isinstance(boundary_union, Polygon):
+        boundary_polygon = boundary_union
+    else:
+        raise ValueError(
+            f"Expected Polygon or MultiPolygon, got {type(boundary_union)}"
+        )
+    return boundary_polygon
+
+
+def _create_voronoi_from_points(
+    seed_points: np.ndarray,
+    boundary_polygon: Polygon,
+    crs: Optional[str],
+) -> Tuple[Dict[str, Any], VertexGrid]:
+    """
+    Create Voronoi tessellation from seed points and clip to boundary.
+
+    Parameters
+    ----------
+    seed_points : numpy.ndarray
+        Array of shape (n, 2) with seed point coordinates.
+    boundary_polygon : Polygon
+        Boundary polygon for clipping.
+    crs : str, optional
+        Coordinate reference system.
+
+    Returns
+    -------
+    vor_data : dict
+        Dictionary with Voronoi data.
+    modelgrid : VertexGrid
+        FloPy VertexGrid object.
+    """
+    # Create scipy Voronoi tessellation
+    # Add boundary buffer points to handle edge regions
+    minx, miny, maxx, maxy = boundary_polygon.bounds
+    buffer_dist = max(maxx - minx, maxy - miny)
+
+    # Add far-away points to bound the Voronoi regions
+    far_points = np.array([
+        [minx - buffer_dist, miny - buffer_dist],
+        [maxx + buffer_dist, miny - buffer_dist],
+        [maxx + buffer_dist, maxy + buffer_dist],
+        [minx - buffer_dist, maxy + buffer_dist],
+    ])
+    all_points = np.vstack([seed_points, far_points])
+
+    # Create Voronoi diagram
+    vor = Voronoi(all_points)
+
+    # Clip Voronoi cells to boundary and collect valid cells
+    cell_polygons = []
+    cell_centers = []
+    valid_point_indices = []
+
+    for point_idx in range(len(seed_points)):
+        region_idx = vor.point_region[point_idx]
+        region_vertices = vor.regions[region_idx]
+
+        # Skip cells with missing vertices (-1 indicates infinite)
+        if -1 in region_vertices or len(region_vertices) == 0:
+            continue
+
+        # Get vertex coordinates
+        try:
+            region_coords = [tuple(vor.vertices[v]) for v in region_vertices]
+            cell_poly = Polygon(region_coords)
+
+            # Clip to boundary
+            clipped = cell_poly.intersection(boundary_polygon)
+
+            if clipped.is_empty or not isinstance(clipped, Polygon):
+                continue
+
+            # Ensure valid polygon
+            if not clipped.is_valid:
+                clipped = clipped.buffer(0)
+
+            if clipped.area > 0:
+                cell_polygons.append(clipped)
+                cell_centers.append(seed_points[point_idx])
+                valid_point_indices.append(point_idx)
+        except Exception:
+            continue
+
+    if len(cell_polygons) == 0:
+        raise ValueError("No valid Voronoi cells generated. Check boundary and seed points.")
+
+    # Convert to DISV format (vertices, cell2d)
+    vertices, cell2d = _polygons_to_disv_format(cell_polygons, cell_centers)
+
+    # Create VertexGrid
+    ncpl = len(cell2d)
+    top = np.ones(ncpl)
+    botm = np.zeros((1, ncpl))
+
+    modelgrid = VertexGrid(
+        vertices=vertices,
+        cell2d=cell2d,
+        top=top,
+        botm=botm,
+        nlay=1,
+        ncpl=ncpl,
+        crs=crs,
+    )
+
+    vor_data = {
+        'seed_points': seed_points,
+        'scipy_vor': vor,
+        'cell_polygons': cell_polygons,
+        'valid_point_indices': valid_point_indices,
+    }
+
+    return vor_data, modelgrid
+
+
+def _polygons_to_disv_format(
+    cell_polygons: List[Polygon],
+    cell_centers: List[np.ndarray],
+) -> Tuple[List[Tuple], List[Tuple]]:
+    """
+    Convert shapely polygons to DISV format.
+
+    Parameters
+    ----------
+    cell_polygons : list of Polygon
+        List of cell polygons.
+    cell_centers : list of ndarray
+        List of cell center coordinates.
+
+    Returns
+    -------
+    vertices : list of tuples
+        List of (iv, xv, yv) vertex tuples.
+    cell2d : list of tuples
+        List of cell connectivity tuples.
+    """
+    # Collect all unique vertices
+    vertex_coords = []
+    vertex_to_id = {}
+
+    def get_vertex_id(x, y, tolerance=1e-6):
+        """Get or create vertex ID for coordinates."""
+        for vid, (vx, vy) in enumerate(vertex_coords):
+            if abs(x - vx) < tolerance and abs(y - vy) < tolerance:
+                return vid
+        new_id = len(vertex_coords)
+        vertex_coords.append((x, y))
+        return new_id
+
+    # Build cell2d records
+    cell2d = []
+    for cell_id, (poly, center) in enumerate(zip(cell_polygons, cell_centers)):
+        # Get exterior coordinates (exclude closing point)
+        ext_coords = list(poly.exterior.coords)[:-1]
+
+        # Get vertex IDs
+        vertex_ids = [get_vertex_id(x, y) for x, y in ext_coords]
+
+        # Cell center
+        xc, yc = center[0], center[1]
+
+        # cell2d format: (cellid, xc, yc, ncvert, iv1, iv2, ...)
+        cell_record = [cell_id, xc, yc, len(vertex_ids)] + vertex_ids
+        cell2d.append(tuple(cell_record))
+
+    # Build vertices list
+    vertices = [(vid, x, y) for vid, (x, y) in enumerate(vertex_coords)]
+
+    return vertices, cell2d
+
+
 def _generate_seed_points(
     polygon: Union[Polygon, MultiPolygon],
     cell_size: float,
@@ -1125,6 +1217,13 @@ def _generate_seed_points(
     list of (x, y) tuples
         Seed point coordinates within the polygon.
     """
+    # Handle MultiPolygon
+    if isinstance(polygon, MultiPolygon):
+        all_points = []
+        for geom in polygon.geoms:
+            all_points.extend(_generate_seed_points(geom, cell_size, rotation_angle))
+        return all_points
+
     # Get polygon bounds
     minx, miny, maxx, maxy = polygon.bounds
 
