@@ -1,7 +1,7 @@
 
 import ipywidgets as widgets
 from IPython.display import display, Markdown, clear_output
-from tasks_data import solutions, solutions_exact, solution_unit, questions_markdown, solutions_markdown, task_functions, task_functions_start
+from tasks_data import solutions, solutions_exact, solution_unit, questions_markdown, solutions_markdown, task_functions, task_functions_start, multiple_choice_options
 from uncertainty_plot import display_disc_area_interactive
 
 
@@ -89,8 +89,110 @@ def check_task_with_solution(task_id):
     display(Markdown(question_to_print))
     if task_functions_start and task_id in task_functions_start:
         task_functions_start[task_id]()  # Call the function
-    display(widgets.HBox([input_box, submit_button]), output, solution_button, solution_output)    
+    display(widgets.HBox([input_box, submit_button]), output, solution_button, solution_output)
 
 
-    
+def create_multiple_choice(task_id):
+    """
+    Create a multiple-choice widget for conceptual checkpoints.
+
+    Parameters:
+    - task_id (str): The ID of the task (e.g., "task04_checkpoint_5").
+
+    The task must have entries in:
+    - multiple_choice_options: list of (value, label) tuples
+    - questions_markdown: the question text
+    - solutions_exact: the correct answer (matching one of the values)
+    - solutions_markdown: the solution explanation
+    """
+    question_to_print = questions_markdown.get(task_id)
+    options = multiple_choice_options.get(task_id)
+    correct_answer = solutions_exact.get(task_id)
+    solution_to_print = solutions_markdown.get(task_id)
+
+    if not options:
+        print(f"Error: No multiple choice options found for {task_id}.")
+        return
+
+    if not correct_answer:
+        print(f"Error: No correct answer found for {task_id}.")
+        return
+
+    # Extract just the labels for display in RadioButtons
+    option_labels = [label for (value, label) in options]
+    # Create mapping from label back to value for checking
+    label_to_value = {label: value for (value, label) in options}
+
+    # Create widgets
+    radio = widgets.RadioButtons(
+        options=option_labels,
+        value=None,
+        description='',
+        disabled=False,
+        layout=widgets.Layout(width='100%')
+    )
+
+    submit_button = widgets.Button(description="Check Answer", button_style='primary')
+    solution_button = widgets.Button(description="Show Solution", button_style='info', disabled=True)
+    output = widgets.Output()
+    solution_output = widgets.Output()
+
+    # Track solution visibility state
+    solution_visible = {"state": False}
+
+    def on_submit(b):
+        with output:
+            output.clear_output()
+            if radio.value is None:
+                display(Markdown("**Please select an answer.**"))
+                return
+
+            selected_label = radio.value
+            selected_value = label_to_value[selected_label]
+
+            # Check if correct - match the value prefix (e.g., "B) Losing" starts with "B)")
+            is_correct = (selected_value == correct_answer or
+                         selected_value.startswith(correct_answer.split(")")[0] + ")"))
+
+            if is_correct:
+                display(Markdown("**✓ Correct!**"))
+            else:
+                display(Markdown(f"**✗ Incorrect.** The correct answer is: **{correct_answer}**"))
+
+            # Enable solution button and disable inputs
+            solution_button.disabled = False
+            submit_button.disabled = True
+            radio.disabled = True
+
+    def on_toggle_solution(b):
+        with solution_output:
+            if solution_visible["state"]:
+                # Hide the solution
+                solution_output.clear_output()
+                solution_button.description = "Show Solution"
+                solution_visible["state"] = False
+            else:
+                # Show the solution
+                solution_output.clear_output()
+                display(Markdown(solution_to_print))
+                display(Markdown(r"""<br><br>"""))
+                solution_button.description = "Hide Solution"
+                solution_visible["state"] = True
+                # Execute the task-specific function if provided
+                if task_functions and task_id in task_functions:
+                    task_functions[task_id]()
+
+    # Attach event handlers
+    submit_button.on_click(on_submit)
+    solution_button.on_click(on_toggle_solution)
+
+    # Display widgets
+    display(Markdown(question_to_print))
+    if task_functions_start and task_id in task_functions_start:
+        task_functions_start[task_id]()
+    display(radio)
+    display(widgets.HBox([submit_button, solution_button]))
+    display(output, solution_output)
+
+
 

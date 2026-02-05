@@ -175,6 +175,18 @@ solution_unit = {
 }
 
 
+#------ Dictionary to store multiple choice options for conceptual checkpoints
+# Format: task_id -> list of (value, label) tuples
+# The 'value' is what gets compared against solutions_exact[task_id]
+multiple_choice_options = {
+    "task04_checkpoint_5": [
+        ("A) Gaining", "A) Gaining (river receives discharge from aquifer)"),
+        ("B) Losing", "B) Losing (river loses water to aquifer)"),
+        ("C) Varies", "C) Varies along reach (both gaining and losing sections)"),
+    ],
+    # Add more multiple choice tasks here as needed
+}
+
 
 #------ Dictionary to store the markdown to display the correction
 solutions_markdown = {
