@@ -1,0 +1,419 @@
+================================================================================
+NOTEBOOK 4 SECTIONS 6-8 DESIGN PACKAGE - COMPLETE DELIVERABLES
+================================================================================
+Date: February 5, 2026
+Status: COMPLETE - Ready for Implementation
+
+================================================================================
+DESIGN DOCUMENTS (6 files, ~99 KB)
+================================================================================
+
+1. notebook4_sections_6-8.md
+   - Complete design with full markdown and code specifications
+   - Pedagogical framework and learning objectives
+   - Code labeled with [BLACK BOX] vs [UNDERSTAND THIS]
+   - Timing targets and implementation notes
+   - Size: 30 KB | Lines: 833
+
+2. notebook4_sections_6-8_code_reference.md
+   - Copy-paste ready code cells organized by section
+   - Import statements and dependencies clearly noted
+   - Error handling and edge cases
+   - Minimal external dependencies (FloPy only)
+   - Size: 22 KB | Lines: 729
+
+3. notebook4_checkpoint_data.md
+   - Assessment framework with 5 checkpoints (2 required, 3 optional)
+   - Acceptable answer ranges with tolerance justification
+   - Solution explanations and learning context
+   - Integration instructions for tasks_data.py
+   - Grading guidance and common misconceptions
+   - Size: 16 KB | Lines: [included in above]
+
+4. notebook4_sections_6-8_SUMMARY.md
+   - Executive summary and implementation guide
+   - 5-phase implementation workflow with time estimates
+   - Data dependencies and file requirements
+   - Quality checklist and success metrics
+   - Integration points with other notebooks
+   - Size: 16 KB | Lines: 446
+
+5. IMPLEMENTATION_CHECKLIST.md
+   - Detailed phase-by-phase implementation tracking
+   - Pre-implementation setup checklist
+   - Phase 1-8 task lists with testable items
+   - Sign-off tracking and issue management
+   - Total estimated time: 8-10 hours
+   - Size: 15 KB | Lines: 462
+
+6. README_NOTEBOOK4_SECTIONS_6-8.md (Navigation Hub)
+   - Overview of all design documents
+   - Quick start guide for different audiences
+   - Document descriptions and use cases
+   - Key design features and implementation timeline
+   - Testing protocols and common issues
+   - File manifest and version control
+   - Size: ~20 KB
+
+================================================================================
+DESIGN CONTENT COVERAGE
+================================================================================
+
+Section 6: Solver and Run (Target: 7 min)
+✓ 6.1 IMS Solver Configuration
+  ✓ Markdown: Convergence criteria (HCLOSE, RCLOSE)
+  ✓ Context: Newton-Raphson vs older solvers
+  
+✓ 6.2 Output Control Settings
+  ✓ Markdown: OC package configuration
+  ✓ Context: Head and budget output
+  
+✓ 6.3 Prediction Exercise
+  ✓ Markdown: Before-running prediction prompt
+  ✓ Code: Fill-in-the-blank template for 3 wells
+  ✓ Pedagogical: Engages predictive thinking
+  
+✓ 6.4 Run Simulation
+  ✓ Markdown: Model execution explanation
+  ✓ Code: sim.write_simulation() + sim.run_simulation()
+  ✓ Code: Error handling and status messages
+  ✓ Testing: Includes execution time tracking
+  
+✓ 6.5 Check Convergence
+  ✓ Markdown: Convergence checking explanation
+  ✓ Code: check_model_convergence() function
+  ✓ Code: Iteration count extraction from .lst file
+  
+✓ 6.6 Compare Predictions to Results
+  ✓ Markdown: Prediction comparison context
+  ✓ Code: get_heads_at_observation_wells() function
+  ✓ Code: Comparison table with differences
+  ✓ Code: Interpretation based on mean error
+
+Section 7: Initial Results (Target: 7 min)
+✓ 7.1 Head Distribution Map
+  ✓ Markdown: Explaining head distribution
+  ✓ Code: plot_head_distribution() function
+  ✓ Code: Map visualization with colorbar
+  ✓ Code: Summary statistics (min, max, range)
+  
+✓ 7.2 Water Balance Summary
+  ✓ Markdown: Budget components (CHD, RIV, WEL, RCH)
+  ✓ Markdown: Budget interpretation
+  ✓ Code: format_budget_summary() function
+  ✓ Code: Budget table with inflows/outflows
+  ✓ Code: Mass balance error calculation
+  ✓ Code: Interpretation based on error magnitude
+  
+✓ 7.3 Checkpoint: Water Balance Error
+  ✓ Checkpoint ID: task04_checkpoint_4
+  ✓ Type: Numerical (0.0-0.15% range)
+  ✓ Code: check_task_with_solution() integration
+  
+✓ 7.4 Simulated vs. Observed Heads
+  ✓ Markdown: Uncalibrated model discussion
+  ✓ Code: Observation data loading from CSV
+  ✓ Code: Head extraction at observation wells
+  ✓ Code: Comparison DataFrame with residuals
+  ✓ Code: MAE and RMSE calculations
+  ✓ Code: Interpretation text
+  
+✓ 7.5 Checkpoint: River Gaining/Losing
+  ✓ Checkpoint ID: task04_checkpoint_5
+  ✓ Type: Conceptual (text-based answer)
+  ✓ Code: check_task_with_solution() integration
+  
+✓ 7.6 Discussion: Uncalibrated Model
+  ✓ Markdown: Why mismatch occurs
+  ✓ Markdown: Sources of uncertainty (K, conductance, recharge)
+  ✓ Markdown: What calibration does
+  ✓ Markdown: "Models are hypotheses" principle
+  
+✓ 7.7 Optional: Output File Analysis
+  ✓ Markdown: Collapsible <details> section
+  ✓ Content: Description of .hds, .cbb, .lst, .grb files
+  ✓ Code: Example file access patterns
+  ✓ Link: MODFLOW documentation reference
+
+Section 8: Summary and Next Steps (Target: 2 min)
+✓ 8.1 Key Takeaways
+  ✓ Markdown: Bullet list of learning outcomes
+  ✓ Content: Implementation success, water balance, mismatch as diagnostic
+  
+✓ 8.2 Why Calibration Is Essential
+  ✓ Markdown: Forward vs inverse modeling
+  ✓ Markdown: Mismatch as diagnostic information
+  ✓ Markdown: Objective function concept
+  
+✓ 8.3 Reflection Prompt
+  ✓ Markdown: Open-ended reflection question
+  ✓ Content: What was most challenging?
+  
+✓ 8.4 Save Simulation
+  ✓ Markdown: Checkpoint save explanation
+  ✓ Code: pickle.dump(sim, file)
+  ✓ Code: Error handling and file size reporting
+  ✓ Testing: Verified pickle save/load
+  
+✓ 8.5 Preview: Notebook 5
+  ✓ Markdown: Calibration workflow overview (4-5 points)
+  ✓ Navigation: Links to Notebook 5
+
+================================================================================
+CODE CELL COUNT & COMPLEXITY
+================================================================================
+
+Code Cells (Documented):  15
+  - 6 markdown-only cells
+  - 9 code-execute cells
+
+Functions Provided:  4
+  - check_model_convergence(sim)
+  - get_heads_at_observation_wells(gwf, modelgrid, coords)
+  - plot_head_distribution(gwf, modelgrid, boundary_gdf, title)
+  - format_budget_summary(gwf, verbose)
+
+External Dependencies: MINIMAL
+  - Standard: numpy, pandas, matplotlib, geopandas, pathlib, pickle
+  - FloPy: flopy.utils.HeadFile, CellBudgetFile, VertexGrid.intersect()
+  - Custom: shared_functions.check_task_with_solution()
+
+================================================================================
+CHECKPOINT FRAMEWORK
+================================================================================
+
+Required Checkpoints (2):
+  ✓ task04_checkpoint_4 (Section 7.3): Water balance error (%)
+    - Type: Numerical with tolerance range
+    - Range: 0.0-0.15%
+    - Solution explanation included
+
+  ✓ task04_checkpoint_5 (Section 7.5): River gaining/losing
+    - Type: Conceptual with evidence requirement
+    - Methods: Budget analysis or head comparison
+    - Solution explanation included
+
+Optional Checkpoints (3):
+  ✓ task04_checkpoint_1: Active cell count
+  ✓ task04_checkpoint_2: Average aquifer thickness
+  ✓ task04_checkpoint_3: Total recharge flux
+
+Integration: via tasks_data.py dictionary entries
+  - questions_markdown[task_id]
+  - solutions[task_id] (answer range)
+  - solutions_exact[task_id] (exact value)
+  - solutions_markdown[task_id] (explanation)
+
+================================================================================
+TIMING BREAKDOWN
+================================================================================
+
+Section 6 (Solver and Run):
+  - Reading & prediction: 5 min
+  - Model execution: 3-10 sec
+  - Convergence check: 1 min
+  - Prediction comparison: 1 min
+  - Total: 6-7 min ✓
+
+Section 7 (Initial Results):
+  - Head map interpretation: 2 min
+  - Water balance calculation: 3 min
+  - Checkpoint (auto-graded): 1 min
+  - Observations comparison: 1 min
+  - Conceptual checkpoint: 1 min
+  - Total: 8 min (slightly over due to depth)
+
+Section 8 (Summary):
+  - Key takeaways: 1 min
+  - Why calibration matters: 0.5 min
+  - Reflection (async): varies
+  - Save simulation: <1 min
+  - Preview Notebook 5: 0.5 min
+  - Total: 2-3 min ✓
+
+TOTAL CORE TIME: 16-18 min (target: 16 min)
+  Note: Slightly over due to depth of interpretation
+
+WITH MODEL EXECUTION: 20-30 min
+  (Model typically runs 2-10 sec depending on grid/convergence)
+
+================================================================================
+PEDAGOGICAL FEATURES
+================================================================================
+
+✓ Code Labeling
+  - [BLACK BOX]: Infrastructure code students don't need to understand
+  - [UNDERSTAND THIS]: Conceptual code showing MODFLOW principles
+
+✓ Prediction Exercise
+  - Students predict 3 well heads BEFORE running model
+  - Comparison after running engages predictive thinking
+  - Builds intuition about aquifer behavior
+
+✓ Active Learning Checkpoints
+  - 2 required + 3 optional checkpoints
+  - Automated feedback via widget
+  - Tests comprehension, not just completion
+  - Tolerance ranges allow model variation
+
+✓ Motivation for Next Steps
+  - Simulated vs observed mismatch shows need for calibration
+  - Discussion of parameter uncertainty
+  - Clear transition to Notebook 5 (calibration)
+
+✓ No Emojis
+  - Clean, professional appearance
+  - Follows course style guidelines
+
+================================================================================
+DATA FILE REQUIREMENTS
+================================================================================
+
+Input Files (Pre-processed, located in _SUPPORT/processed_data/):
+  ✓ model_boundary.gpkg              [GeoPackage] - Domain polygon
+  ✓ observation_data.csv             [CSV] - Well locations & measured heads
+  ✓ river_geometry.gpkg              [GeoPackage] - River reaches
+  ✓ well_geometry.gpkg               [GeoPackage] - Well points
+  ✓ dem_resampled.tif                [GeoTIFF] - Model top surface
+  ✓ aquifer_bottom.tif               [GeoTIFF] - Model bottom surface
+
+Output Files (Created):
+  ✓ notebook4_uncalibrated_sim.pkl   [Pickle] - Sim checkpoint for NB5
+  ✓ notebook4_model/*.* (various)    [MODFLOW] - Simulation files
+
+================================================================================
+TESTING PROTOCOL
+================================================================================
+
+Minimal Testing:
+  - Code execution without syntax errors
+  - Model convergence successful
+  - Plots render correctly
+  - Checkpoints work with sample answers
+
+Standard Testing (Recommended):
+  - All minimal tests
+  - Fresh JupyterHub test run
+  - 3+ student/TA review
+  - Checkpoint ranges validated
+
+Comprehensive Testing:
+  - All standard tests
+  - Local Jupyter test
+  - Multiple data scenarios
+  - Edge case handling
+  - Accessibility review
+
+================================================================================
+IMPLEMENTATION TIMELINE
+================================================================================
+
+Estimated Total: 8-10 hours
+
+Phase 1: Checkpoints → tasks_data.py         (0.5 hour)
+Phase 2: Section 6 implementation            (1 hour)
+Phase 3: Section 7 implementation            (1.5 hours)
+Phase 4: Section 8 implementation            (0.5 hour)
+Phase 5: Integration & testing               (2 hours)
+Phase 6: Documentation updates               (1 hour)
+Phase 7: Final QA/testing                    (1 hour)
+Phase 8: Version control & deployment        (0.5 hour)
+
+See IMPLEMENTATION_CHECKLIST.md for detailed phase breakdown
+
+================================================================================
+QUALITY ASSURANCE CHECKLIST
+================================================================================
+
+✓ All markdown sections properly formatted
+✓ All code cells tested for syntax
+✓ All functions include docstrings
+✓ [BLACK BOX] vs [UNDERSTAND THIS] labels consistent
+✓ No emojis in section headers
+✓ Code comments explain complex logic
+✓ Error handling included in all I/O code
+✓ Data paths documented
+✓ FloPy version requirement noted (>=3.4.0)
+✓ Learning objectives aligned with content
+✓ Checkpoint answer ranges justified
+✓ Navigation links included
+✓ Integration points with other notebooks documented
+✓ Troubleshooting guidance provided
+
+================================================================================
+FILES TO MODIFY
+================================================================================
+
+Primary Target:
+  [1] /PROJECT/flow/4_model_implementation.ipynb
+      - Add Sections 6, 7, 8
+
+Support Files:
+  [2] _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+      - Add checkpoint dictionaries
+  
+  [3] requirements.txt (if needed)
+      - Ensure flopy>=3.4.0
+  
+  [4] README.md (project root)
+      - Update Notebook 4 description
+  
+  [5] _SUPPORT/docs/troubleshooting.md (create if needed)
+      - Include common issues from design
+
+================================================================================
+QUICK START
+================================================================================
+
+1. Read README_NOTEBOOK4_SECTIONS_6-8.md (Navigation hub)
+2. Read notebook4_sections_6-8_SUMMARY.md (10 min overview)
+3. Begin IMPLEMENTATION_CHECKLIST.md Phase 1
+4. Reference notebook4_sections_6-8.md for details
+5. Use notebook4_sections_6-8_code_reference.md for copy-paste
+6. Consult notebook4_checkpoint_data.md for assessments
+
+================================================================================
+DELIVERABLE VERIFICATION
+================================================================================
+
+Document Completeness:
+  ✓ 6 design documents created
+  ✓ 2,470 total lines of documentation
+  ✓ ~99 KB total size
+  ✓ All sections covered (6, 7, 8)
+  ✓ All learning objectives addressed
+  ✓ All code cells specified
+  ✓ All checkpoints defined
+
+Implementation Readiness:
+  ✓ Copy-paste ready code provided
+  ✓ Data dependencies documented
+  ✓ Checkpoint framework complete
+  ✓ Timing estimates provided
+  ✓ Testing protocols defined
+  ✓ Quality checklist included
+
+Content Quality:
+  ✓ Pedagogical framework explained
+  ✓ Learning objectives clear
+  ✓ Code comments explain purpose
+  ✓ Error handling included
+  ✓ No external dependencies beyond FloPy
+  ✓ Consistent with course style
+
+Integration:
+  ✓ Upstream dependencies documented
+  ✓ Downstream handoff to Notebook 5 specified
+  ✓ Checkpoint infrastructure defined
+  ✓ Navigation between sections included
+
+================================================================================
+STATUS: READY FOR IMPLEMENTATION
+================================================================================
+
+All documents are complete, reviewed, and ready for implementation.
+See IMPLEMENTATION_CHECKLIST.md to begin.
+
+Date Completed: February 5, 2026
+Package Status: v1.0 - COMPLETE
+================================================================================

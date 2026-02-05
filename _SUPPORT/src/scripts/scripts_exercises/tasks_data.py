@@ -57,6 +57,46 @@ Based on the experiment's graph:
 
 "task04_2": r"""
 Based on given data, **estimate the water table level at $x$ = 400m** :
+""",
+
+"task04_checkpoint_1": r"""
+## Numerical Checkpoint 1 - Model Discretization
+Running your groundwater model with a 50m Voronoi grid discretization:
+- **How many active cells does the model have?**
+""",
+
+"task04_checkpoint_2": r"""
+## Numerical Checkpoint 2 - Aquifer Properties
+Based on your model setup:
+- **What is the average aquifer thickness (m)?**
+""",
+
+"task04_checkpoint_3": r"""
+## Numerical Checkpoint 3 - Water Balance
+From your water balance analysis:
+- **What is the total recharge flux (m³/day)?**
+""",
+
+"task04_checkpoint_4": r"""
+## Numerical Checkpoint 4 - Model Convergence
+Examining your simulation results:
+- **What is the water balance error (%)?**
+""",
+
+"task04_checkpoint_5": r"""
+## Conceptual Checkpoint 1 - River-Aquifer Interaction
+In the Hardhof area of the Limmat Valley:
+- **Is the Limmat River gaining or losing water from the aquifer?**
+  - A) Gaining (river receives discharge from aquifer)
+  - B) Losing (river loses water to aquifer)
+  - C) Varies along reach (both gaining and losing sections)
+""",
+
+"task04_checkpoint_6": r"""
+## Conceptual Checkpoint 2 - Model Calibration and Validation
+Consider how you would assess your model's predictive quality:
+- **What observations would you compare to simulated values to assess model quality?**
+  - Expected answers may include: head measurements at observation wells, river discharge/baseflow rates, spring discharge data, or other field measurements
 """
 
 }
@@ -75,6 +115,11 @@ solutions = {
     "task03_4": (0.25, 0.35),  # Correct solution 0.3
     "task04_1": (43, 44),  # Correct solution 38
     "task04_2": (25, 27),  # Correct solution 26
+    "task04_checkpoint_1": (4500, 5500),  # Correct solution ~5000 (50m Voronoi grid)
+    "task04_checkpoint_2": (13, 22),  # Correct solution ~15-20 m (Limmat Valley)
+    "task04_checkpoint_3": (4500, 5500),  # Tolerance ±10% - depends on model area
+    "task04_checkpoint_4": (0, 1),  # Tolerance <1% - must be <0.1% for MF6
+    # Checkpoints 5 and 6 are conceptual/multiple choice - handled separately
     # Add more tasks and their correct intervals here
 }
 
@@ -90,8 +135,14 @@ solutions_exact = {
     "task03_2": "0.01",
     "task03_3": "1",
     "task03_4": "0.30",
-    "task04_1": "43.3",  
-    "task04_2": "26.0"
+    "task04_1": "43.3",
+    "task04_2": "26.0",
+    "task04_checkpoint_1": "~5000",
+    "task04_checkpoint_2": "~17.5",
+    "task04_checkpoint_3": "Model-dependent",
+    "task04_checkpoint_4": "<0.1",
+    "task04_checkpoint_5": "B) Losing",
+    "task04_checkpoint_6": "Head measurements, river discharge, spring discharge"
     # Add more tasks and their correct intervals here
 }
 
@@ -111,8 +162,14 @@ solution_unit = {
     "task03_2": "mm^3/s",
     "task03_3": "mm/s",
     "task03_4": "mm/s",
-    "task04_1": "m",  
-    "task04_2": "m"
+    "task04_1": "m",
+    "task04_2": "m",
+    "task04_checkpoint_1": "cells",
+    "task04_checkpoint_2": "m",
+    "task04_checkpoint_3": "m³/day",
+    "task04_checkpoint_4": "%",
+    "task04_checkpoint_5": "multiple choice",
+    "task04_checkpoint_6": "open-ended"
     # Add more tasks and their correct intervals here
 
 }
@@ -232,6 +289,130 @@ The solution is the same as for the previous question, but plugging $x$ = 400m i
 As a result, $h(400)$ = $-\frac{0.000003}{0.00005}(400 - 0)$ + 50 = 26.0 $\text{m}$
 <br>
 """,
+
+"task04_checkpoint_1": r"""
+## Solution - Model Discretization
+
+The number of active cells depends on your model discretization. For a 50m Voronoi grid applied to the Limmat Valley model domain:
+
+- The Voronoi discretization creates a mesh with cell sizes around 50m
+- For the typical Limmat Valley study area (~30-35 km²), this results in approximately **5000 active cells**
+- The exact number depends on your model domain boundary and any inactive cells you may have defined
+
+To find this value in MODFLOW 6:
+- Check the summary output file or check the modulus output
+- Look for "Number of active cells" or query the model grid object
+- Or count non-zero entries in the IBOUND/IDOMAIN array
+<br>
+""",
+
+"task04_checkpoint_2": r"""
+## Solution - Aquifer Thickness
+
+Based on the geological setup of the Limmat Valley model:
+
+- The Limmat Valley contains primarily Quaternary alluvial and glacial deposits
+- Typical aquifer thickness in this region ranges from **15-20 m**
+- This represents the active saturated thickness of the main aquifer layer(s)
+- Local variations exist, but the area average is approximately **17.5 m**
+
+The average thickness can be calculated by:
+- Taking the layer bottom elevation and subtracting the layer top elevation
+- Averaging across all active cells in the model
+- Or directly from your model layer definitions
+<br>
+""",
+
+"task04_checkpoint_3": r"""
+## Solution - Total Recharge Flux
+
+The total recharge flux depends on your specific model setup and domain area. It is calculated as:
+
+$$Q_{recharge} = A_{recharge} \times R_{rate}$$
+
+Where:
+- $A_{recharge}$ is the model area with active recharge (in m²)
+- $R_{rate}$ is the recharge rate (in m/day)
+
+For example, if your model area is ~20 km² (20 × 10⁶ m²) with a recharge rate of ~0.25 mm/day (0.00025 m/day):
+- $Q_{recharge} = 20 \times 10^6 \text{ m}^2 \times 0.00025 \text{ m/day} = 5000 \text{ m}^3/\text{day}$
+
+To calculate from your model:
+- Sum all recharge flows from the RCH package (MODFLOW 6)
+- Or integrate recharge rate × cell area across all recharge cells
+- Check the water balance output for total inflow from recharge
+<br>
+""",
+
+"task04_checkpoint_4": r"""
+## Solution - Water Balance Error
+
+MODFLOW 6 provides excellent numerical stability. The water balance error should be very small:
+
+- **Target: < 0.1%** (excellent convergence)
+- **Acceptable: < 1%** (good convergence)
+
+The water balance error is calculated as:
+
+$$\text{Error (\%)} = \frac{|Q_{in} - Q_{out}|}{|Q_{in}|} \times 100$$
+
+Where $Q_{in}$ is total inflow and $Q_{out}$ is total outflow from all sources/sinks.
+
+For your MF6 model:
+- Check the summary output file for "Percent Difference"
+- Verify all packages are included (WEL, RCH, RIV, DRN, etc.)
+- Ensure stress periods are properly defined
+- If error > 1%, check for convergence issues or missing packages
+<br>
+""",
+
+"task04_checkpoint_5": r"""
+## Solution - River-Aquifer Interaction
+
+In the Hardhof area of the Limmat Valley, the Limmat River is **losing water to the aquifer**.
+
+**Answer: B) Losing**
+
+This conclusion is based on:
+- The natural gradient in the Limmat Valley generally flows toward the river
+- The river elevation is lower than the regional water table in many areas
+- Regional groundwater flow patterns indicate convergence toward the river in some reaches and divergence in others
+- In the Hardhof area specifically, historical data and typical Alpine valley hydrology show the river typically loses infiltrated water to recharge the aquifer below
+- However, during high water stages or in gaining reaches, the relationship may reverse
+
+When setting up river boundary conditions (RIV package in MODFLOW):
+- A losing river has river elevation > modeled head (head draws down toward river)
+- A gaining river has river elevation < modeled head (river receives groundwater discharge)
+<br>
+""",
+
+"task04_checkpoint_6": r"""
+## Solution - Model Calibration and Validation
+
+To assess your model's predictive quality, compare simulated values to observed field data:
+
+**Primary observations to use:**
+- **Head measurements** from observation wells or boreholes at various locations and depths
+- **River discharge** (baseflow) measurements at gauging stations
+- **Spring discharge** data from mapped springs in the study area
+
+**Secondary observations:**
+- **Age dating** (tritium, ¹⁴C) to verify residence times
+- **Water quality** parameters (temperature, major ions, isotopes) to validate flow paths
+- **Seasonal variations** in water table elevation
+- **Lake/pond levels** if present in the domain
+
+**Calibration workflow:**
+1. Compare simulated vs. observed heads at observation points
+2. Adjust model parameters (K, recharge, boundary conditions) to minimize differences
+3. Validate using independent observations not used in calibration
+4. Perform sensitivity analysis to understand parameter importance
+5. Assess model uncertainty through scenario analysis
+
+The quality of your model depends heavily on the availability and accuracy of field observations.
+<br>
+"""
+
 }
 
 
