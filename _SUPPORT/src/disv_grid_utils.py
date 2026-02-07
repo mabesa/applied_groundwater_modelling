@@ -8,6 +8,7 @@ uses FloPy utilities wherever possible.
 
 Key capabilities:
 - Create Voronoi grids from boundary polygons using FloPy's Triangle and VoronoiGrid
+- Create grids with river polygons as internal constraints (cells align with river banks)
 - Add local refinement to existing grids
 - Export model arrays to GeoPackage format
 - Assign properties and points to grid cells via spatial intersection
@@ -297,6 +298,231 @@ def create_disv_from_boundary(
         'disv_gridprops': disv_gridprops,
         'crs': output_crs,
         # For backwards compatibility with refine_grid_locally
+        'boundary_polygon': boundary_polygon,
+        'base_max_area': base_max_area,
+    }
+
+
+def create_grid_with_rivers(
+    boundary_gdf: gpd.GeoDataFrame,
+    river_gdf: gpd.GeoDataFrame,
+    cell_size: float,
+    river_cell_size: Optional[float] = None,
+    refinement_areas: Optional[List[Tuple[gpd.GeoDataFrame, float]]] = None,
+    crs: Optional[str] = None,
+    min_river_intersection_fraction: float = 0.0,
+) -> Dict[str, Any]:
+    """
+    Create a Voronoi grid with river polygons as internal constraints.
+
+    This function creates a DISV grid where the river banks become mesh edges,
+    ensuring that Voronoi cells align with river boundaries. This improves
+    accuracy for river-aquifer exchange calculations in the RIV package.
+
+    The river polygons are added as internal boundaries to FloPy's Triangle
+    mesh generator. This forces the triangulation to respect river bank
+    geometries, and consequently the Voronoi cells align with the rivers.
+
+    Parameters
+    ----------
+    boundary_gdf : geopandas.GeoDataFrame
+        GeoDataFrame containing the model boundary polygon.
+    river_gdf : geopandas.GeoDataFrame
+        GeoDataFrame containing river polygons (bank geometries).
+        These become internal boundaries in the mesh.
+    cell_size : float
+        Target cell size for the general domain in CRS units (typically meters).
+    river_cell_size : float, optional
+        Target cell size within and near rivers. Default is cell_size / 2.
+        Smaller values provide better resolution of river-aquifer exchange.
+    refinement_areas : list of (GeoDataFrame, float), optional
+        Additional refinement areas, same format as create_disv_from_boundary().
+        Each tuple contains (polygon_gdf, refined_cell_size).
+    crs : str, optional
+        Coordinate reference system. If None, uses CRS from boundary_gdf.
+    min_river_intersection_fraction : float, default 0.0
+        Minimum fraction of cell area that must overlap with river polygon
+        for the cell to be classified as a river cell. Values between 0.0
+        (any overlap) and 1.0 (complete overlap). A value of 0.3 means at
+        least 30% of the cell must be covered by river. This helps reduce
+        the number of river cells by excluding cells that only marginally
+        touch river boundaries.
+
+    Returns
+    -------
+    dict
+        Dictionary containing DISV grid components:
+        - 'voronoi_grid': VoronoiGrid object from FloPy
+        - 'modelgrid': VertexGrid object
+        - 'vertices': list of (iv, xv, yv) vertex tuples for DISV package
+        - 'cell2d': list of cell connectivity for DISV package
+        - 'ncpl': number of cells per layer
+        - 'nvert': number of vertices
+        - 'disv_gridprops': dict that can be unpacked into ModflowGwfdisv
+        - 'crs': coordinate reference system
+        - 'river_cells': numpy array of cell indices inside river polygons
+        - 'river_polygons': list of river Polygon objects (clipped to boundary)
+        - 'boundary_polygon': the boundary Polygon
+        - 'base_max_area': base maximum cell area (for use with refine_grid_locally)
+
+    Examples
+    --------
+    Basic usage with rivers:
+
+    >>> boundary = gpd.read_file("model_boundary.gpkg")
+    >>> rivers = gpd.read_file("rivers.gpkg")
+    >>> grid_data = create_grid_with_rivers(
+    ...     boundary, rivers, cell_size=50, river_cell_size=20
+    ... )
+    >>> print(f"Grid has {grid_data['ncpl']} cells")
+    >>> print(f"River cells: {len(grid_data['river_cells'])}")
+
+    With additional refinement areas:
+
+    >>> study_area = gpd.read_file("study_area.gpkg")
+    >>> grid_data = create_grid_with_rivers(
+    ...     boundary, rivers, cell_size=50,
+    ...     refinement_areas=[(study_area, 15)]
+    ... )
+
+    Notes
+    -----
+    - River polygons are clipped to the model boundary automatically.
+    - Cells inside rivers are identified and returned in 'river_cells'.
+    - For best results with RIV package, use river_cell_size <= cell_size / 2.
+    - The river banks become edges in the mesh, so Voronoi cell faces
+      will align with the river geometry.
+
+    See Also
+    --------
+    create_disv_from_boundary : Grid creation without river constraints
+    create_voronoi_grid : Simple grid creation
+    refine_grid_locally : Add local refinement to existing grid
+    """
+    # Validate inputs
+    if boundary_gdf.empty:
+        raise ValueError("boundary_gdf is empty")
+
+    if river_gdf.empty:
+        raise ValueError("river_gdf is empty")
+
+    if cell_size <= 0:
+        raise ValueError(f"cell_size must be positive, got {cell_size}")
+
+    if river_cell_size is None:
+        river_cell_size = cell_size / 2
+
+    if river_cell_size <= 0:
+        raise ValueError(f"river_cell_size must be positive, got {river_cell_size}")
+
+    # Determine CRS
+    output_crs = crs or boundary_gdf.crs
+
+    # Get boundary polygon
+    boundary_polygon = _get_boundary_polygon(boundary_gdf)
+
+    # Get river polygons clipped to boundary
+    river_union = unary_union(river_gdf.geometry)
+    river_clipped = river_union.intersection(boundary_polygon)
+
+    if river_clipped.is_empty:
+        warnings.warn(
+            "River polygons do not intersect model boundary. "
+            "Creating grid without river constraints."
+        )
+        return create_disv_from_boundary(
+            boundary_gdf, cell_size, refinement_areas, crs=crs
+        )
+
+    # Simplify river geometry to reduce vertex count
+    # Tolerance based on cell size to preserve detail at mesh resolution
+    simplify_tolerance = river_cell_size / 4
+    river_clipped = river_clipped.simplify(simplify_tolerance, preserve_topology=True)
+
+    # Erode rivers slightly to ensure they don't touch the boundary
+    # Triangle fails with coincident vertices between polygons
+    erosion = 2.0  # 2 meter erosion
+    river_eroded = river_clipped.buffer(-erosion)
+    if river_eroded.is_empty:
+        # If erosion removes all rivers, use original clipped geometry
+        river_eroded = river_clipped
+
+    # Collect river polygons and fill holes (islands)
+    # Triangle mesh generator struggles with interior rings
+    river_polygons = _extract_polygons_no_holes(river_eroded)
+
+    if not river_polygons:
+        warnings.warn(
+            "No valid river polygons found. Creating grid without river constraints."
+        )
+        return create_disv_from_boundary(
+            boundary_gdf, cell_size, refinement_areas, crs=crs
+        )
+
+    # Process additional refinement areas
+    additional_refinement_polygons = []
+    additional_refinement_areas = []
+
+    if refinement_areas:
+        for refine_gdf, refine_cell_size in refinement_areas:
+            if refine_cell_size <= 0:
+                raise ValueError(
+                    f"Refinement cell_size must be positive, got {refine_cell_size}"
+                )
+
+            refine_union = unary_union(refine_gdf.geometry)
+            refine_clipped = refine_union.intersection(boundary_polygon)
+
+            if refine_clipped.is_empty:
+                warnings.warn(
+                    "Refinement area does not intersect model boundary. Skipping."
+                )
+                continue
+
+            for poly in _extract_polygons(refine_clipped):
+                additional_refinement_polygons.append(poly)
+                additional_refinement_areas.append(refine_cell_size ** 2)
+
+    # Convert cell sizes to maximum areas
+    base_max_area = cell_size ** 2
+    river_max_area = river_cell_size ** 2
+
+    # Create Voronoi grid with river constraints
+    vor, modelgrid = _create_voronoi_with_rivers(
+        boundary_polygon,
+        river_polygons,
+        base_max_area,
+        river_max_area,
+        additional_refinement_polygons,
+        additional_refinement_areas,
+        output_crs,
+    )
+
+    # Extract DISV properties
+    disv_gridprops = vor.get_disv_gridprops()
+    ncpl = disv_gridprops['ncpl']
+    nvert = disv_gridprops['nvert']
+    vertices = disv_gridprops['vertices']
+    cell2d = disv_gridprops['cell2d']
+
+    # Identify cells inside rivers
+    river_cells = _identify_river_cells(
+        modelgrid,
+        river_polygons,
+        min_intersection_fraction=min_river_intersection_fraction,
+    )
+
+    return {
+        'voronoi_grid': vor,
+        'modelgrid': modelgrid,
+        'vertices': vertices,
+        'cell2d': cell2d,
+        'ncpl': ncpl,
+        'nvert': nvert,
+        'disv_gridprops': disv_gridprops,
+        'crs': output_crs,
+        'river_cells': river_cells,
+        'river_polygons': river_polygons,
         'boundary_polygon': boundary_polygon,
         'base_max_area': base_max_area,
     }
@@ -1223,3 +1449,279 @@ def _find_point_outside_polygons(
         "Using boundary centroid."
     )
     return (centroid.x, centroid.y)
+
+
+def _extract_polygons(geometry) -> List[Polygon]:
+    """
+    Extract a list of Polygon objects from various geometry types.
+
+    Parameters
+    ----------
+    geometry : shapely geometry
+        Can be Polygon, MultiPolygon, or GeometryCollection.
+
+    Returns
+    -------
+    list of Polygon
+        List of valid Polygon objects.
+    """
+    polygons = []
+
+    if geometry is None or geometry.is_empty:
+        return polygons
+
+    if isinstance(geometry, Polygon):
+        if geometry.is_valid and geometry.area > 0:
+            polygons.append(geometry)
+    elif isinstance(geometry, MultiPolygon):
+        for poly in geometry.geoms:
+            if poly.is_valid and poly.area > 0:
+                polygons.append(poly)
+    elif hasattr(geometry, 'geoms'):
+        # GeometryCollection
+        for geom in geometry.geoms:
+            polygons.extend(_extract_polygons(geom))
+
+    return polygons
+
+
+def _extract_polygons_no_holes(geometry, min_area: float = 100.0) -> List[Polygon]:
+    """
+    Extract polygons from geometry, removing interior holes (islands).
+
+    Triangle mesh generator can struggle with interior rings. This function
+    extracts only the exterior boundary of each polygon, effectively filling
+    any holes (islands in rivers, etc.).
+
+    Parameters
+    ----------
+    geometry : shapely geometry
+        Can be Polygon, MultiPolygon, or GeometryCollection.
+    min_area : float, default 100.0
+        Minimum polygon area to include (filters tiny fragments).
+
+    Returns
+    -------
+    list of Polygon
+        List of valid Polygon objects without holes.
+    """
+    polygons = []
+
+    if geometry is None or geometry.is_empty:
+        return polygons
+
+    # Get all polygons
+    raw_polygons = _extract_polygons(geometry)
+
+    for poly in raw_polygons:
+        if poly.area < min_area:
+            continue
+
+        # Create new polygon from exterior only (no holes)
+        exterior_only = Polygon(poly.exterior.coords)
+
+        if exterior_only.is_valid and exterior_only.area > min_area:
+            polygons.append(exterior_only)
+        elif not exterior_only.is_valid:
+            # Try to fix invalid geometry
+            fixed = exterior_only.buffer(0)
+            if fixed.is_valid and fixed.area > min_area:
+                if isinstance(fixed, Polygon):
+                    polygons.append(fixed)
+                elif isinstance(fixed, MultiPolygon):
+                    for p in fixed.geoms:
+                        if p.area > min_area:
+                            polygons.append(p)
+
+    return polygons
+
+
+def _create_voronoi_with_rivers(
+    boundary_polygon: Polygon,
+    river_polygons: List[Polygon],
+    base_max_area: float,
+    river_max_area: float,
+    additional_refinement_polygons: List[Polygon],
+    additional_refinement_areas: List[float],
+    crs: Optional[str],
+) -> Tuple[VoronoiGrid, VertexGrid]:
+    """
+    Create Voronoi grid with river polygons as internal boundaries.
+
+    The river banks become edges in the triangular mesh, which means
+    Voronoi cells will align with the river boundaries.
+
+    Parameters
+    ----------
+    boundary_polygon : Polygon
+        Outer boundary of the model domain.
+    river_polygons : list of Polygon
+        River polygons to use as internal boundaries.
+    base_max_area : float
+        Maximum cell area for general domain.
+    river_max_area : float
+        Maximum cell area within rivers.
+    additional_refinement_polygons : list of Polygon
+        Additional refinement areas (not rivers).
+    additional_refinement_areas : list of float
+        Maximum areas for additional refinement polygons.
+    crs : str, optional
+        Coordinate reference system.
+
+    Returns
+    -------
+    vor : VoronoiGrid
+        FloPy VoronoiGrid object.
+    modelgrid : VertexGrid
+        FloPy VertexGrid object.
+    """
+    # Get boundary coordinates
+    boundary_coords = np.array(boundary_polygon.exterior.coords[:-1])
+
+    # Combine all internal polygons (rivers + refinement areas)
+    all_internal_polygons = river_polygons + additional_refinement_polygons
+    all_internal_areas = (
+        [river_max_area] * len(river_polygons) +
+        additional_refinement_areas
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tri = Triangle(angle=30, model_ws=tmpdir)
+
+        # 1. Add outer boundary (MUST be first polygon)
+        tri.add_polygon(boundary_coords)
+
+        # 2. Add all internal polygons (rivers and refinement areas)
+        for internal_poly in all_internal_polygons:
+            if internal_poly.is_valid and internal_poly.area > 0:
+                internal_coords = np.array(internal_poly.exterior.coords[:-1])
+                tri.add_polygon(internal_coords)
+
+        # 3. Add regions with different maximum areas
+        # Region for base aquifer (outside all internal polygons)
+        base_point = _find_point_outside_polygons(
+            boundary_polygon, all_internal_polygons
+        )
+        tri.add_region(base_point, attribute=0, maximum_area=base_max_area)
+
+        # Regions for each internal polygon
+        for i, (internal_poly, max_area) in enumerate(
+            zip(all_internal_polygons, all_internal_areas)
+        ):
+            # Find a point inside this polygon
+            centroid = internal_poly.centroid
+            if internal_poly.contains(centroid):
+                region_point = (centroid.x, centroid.y)
+            else:
+                # Use representative point if centroid is outside
+                rep_point = internal_poly.representative_point()
+                region_point = (rep_point.x, rep_point.y)
+
+            tri.add_region(region_point, attribute=i + 1, maximum_area=max_area)
+
+        # Build triangular mesh
+        tri.build(verbose=False)
+
+        # Create Voronoi grid from Triangle
+        vor = VoronoiGrid(tri)
+
+    # Create VertexGrid from VoronoiGrid
+    gridprops = vor.get_gridprops_vertexgrid()
+
+    ncpl = gridprops['ncpl']
+    top = np.ones(ncpl)
+    botm = np.zeros((1, ncpl))
+
+    modelgrid = VertexGrid(
+        **gridprops,
+        top=top,
+        botm=botm,
+        nlay=1,
+        crs=crs,
+    )
+
+    return vor, modelgrid
+
+
+def _identify_river_cells(
+    modelgrid: VertexGrid,
+    river_polygons: List[Polygon],
+    method: str = 'intersects',
+    min_intersection_fraction: float = 0.0,
+) -> np.ndarray:
+    """
+    Identify which grid cells intersect with river polygons.
+
+    Parameters
+    ----------
+    modelgrid : VertexGrid
+        FloPy VertexGrid object.
+    river_polygons : list of Polygon
+        River polygons.
+    method : str, default 'intersects'
+        Method for identifying river cells:
+        - 'intersects': cell polygon intersects river (most inclusive)
+        - 'contains': cell center is inside river (strictest)
+    min_intersection_fraction : float, default 0.0
+        Minimum fraction of cell area that must overlap with river polygon
+        for the cell to be included. Only applies when method='intersects'.
+        Values between 0.0 (any overlap) and 1.0 (complete overlap).
+        A value of 0.3 means at least 30% of the cell must be covered by river.
+
+    Returns
+    -------
+    numpy.ndarray
+        1D array of cell indices that are in/near rivers.
+
+    Notes
+    -----
+    Using min_intersection_fraction > 0 helps reduce the number of river cells
+    by excluding cells that only marginally touch river boundaries. This is
+    useful when the default 'intersects' method includes too many cells (e.g.,
+    cells that barely clip the edge of a river polygon).
+    """
+    river_cells = []
+    river_union = unary_union(river_polygons)
+
+    # Get vertices for building cell polygons
+    vertices = modelgrid._vertices
+    vert_dict = {v[0]: (v[1], v[2]) for v in vertices}
+
+    for cell in modelgrid.cell2d:
+        cell_id = cell[0]
+        xc, yc = cell[1], cell[2]
+        nvert = cell[3]
+        vert_ids = cell[4:4+nvert]
+
+        if method == 'contains':
+            # Check if cell center is inside river
+            if river_union.contains(Point(xc, yc)):
+                river_cells.append(cell_id)
+        else:
+            # Build cell polygon and check intersection
+            try:
+                coords = [vert_dict[vid] for vid in vert_ids]
+                coords.append(coords[0])  # Close polygon
+                cell_poly = Polygon(coords)
+
+                if not cell_poly.is_valid:
+                    continue
+
+                if not river_union.intersects(cell_poly):
+                    continue
+
+                # Apply minimum intersection fraction threshold
+                if min_intersection_fraction > 0:
+                    intersection = cell_poly.intersection(river_union)
+                    intersection_fraction = intersection.area / cell_poly.area
+                    if intersection_fraction >= min_intersection_fraction:
+                        river_cells.append(cell_id)
+                else:
+                    # Any intersection counts
+                    river_cells.append(cell_id)
+
+            except (KeyError, ValueError):
+                # Skip cells with invalid geometry
+                continue
+
+    return np.array(river_cells, dtype=int)

@@ -218,8 +218,13 @@ class PerceptualModelProgressTracker(ProgressTracker):
 class ModelImplementationProgressTracker(ProgressTracker):
     """
     Progress tracker for Notebook 4: Model Implementation.
-    
+
     Covers the main workflow steps converting the perceptual model to a MODFLOW model.
+
+    .. deprecated::
+        This tracker is deprecated as of the MF6 rewrite (2026). Notebook 4 now uses
+        checkpoint-based assessment via shared_functions.py instead of progress markers.
+        See check_task_with_solution() and create_multiple_choice() for the new pattern.
     """
     def __init__(self):
         self.steps = [
@@ -261,7 +266,18 @@ def get_perceptual_model_tracker():
     return _global_perceptual_model_tracker
 
 def get_model_implementation_tracker():
-    """Get or create the global model implementation tracker instance."""
+    """Get or create the global model implementation tracker instance.
+
+    .. deprecated::
+        This function is deprecated. Notebook 4 now uses checkpoint-based assessment.
+    """
+    import warnings
+    warnings.warn(
+        "get_model_implementation_tracker() is deprecated. Notebook 4 now uses "
+        "checkpoint-based assessment via shared_functions.py",
+        DeprecationWarning,
+        stacklevel=2
+    )
     global _global_model_implementation_tracker
     if _global_model_implementation_tracker is None:
         _global_model_implementation_tracker = ModelImplementationProgressTracker()
@@ -363,12 +379,22 @@ def create_introduction_progress_tracker():
 def create_nested_step_completion_marker(main_step, sub_step=None):
     """
     Create a step completion marker for nested steps (e.g. 2.1, 2.2, etc).
-    
+
     Args:
         main_step (int): Main step number (e.g., 2)
-        sub_step (int, optional): Sub-step number (e.g., 1 for step 2.1). 
+        sub_step (int, optional): Sub-step number (e.g., 1 for step 2.1).
                                  If None, matches only the main step.
+
+    .. deprecated::
+        This function is deprecated. Notebook 4 now uses checkpoint-based assessment.
     """
+    import warnings
+    warnings.warn(
+        "create_nested_step_completion_marker() is deprecated. Notebook 4 now uses "
+        "checkpoint-based assessment via shared_functions.py",
+        DeprecationWarning,
+        stacklevel=2
+    )
     try:
         tracker = get_model_implementation_tracker()
         
@@ -500,10 +526,20 @@ def create_step_completion_marker(step_number):
 def create_model_implementation_step_completion_marker(step_number):
     """
     Create a step completion marker for the model implementation tracker (Notebook 4).
-    
+
     Args:
         step_number (int): Step number (1-8)
+
+    .. deprecated::
+        This function is deprecated. Notebook 4 now uses checkpoint-based assessment.
     """
+    import warnings
+    warnings.warn(
+        "create_model_implementation_step_completion_marker() is deprecated. Notebook 4 now uses "
+        "checkpoint-based assessment via shared_functions.py",
+        DeprecationWarning,
+        stacklevel=2
+    )
     try:
         tracker = get_model_implementation_tracker()
         step_id = f'step{step_number}'
@@ -551,7 +587,18 @@ def create_perceptual_model_progress_tracker():
 def create_model_implementation_progress_tracker():
     """
     Create and display the model implementation progress tracker (Notebook 4).
+
+    .. deprecated::
+        This function is deprecated. Notebook 4 now uses checkpoint-based assessment
+        via check_task_with_solution() and create_multiple_choice() in shared_functions.py.
     """
+    import warnings
+    warnings.warn(
+        "create_model_implementation_progress_tracker() is deprecated. Notebook 4 now uses "
+        "checkpoint-based assessment via shared_functions.py",
+        DeprecationWarning,
+        stacklevel=2
+    )
     try:
         tracker = get_model_implementation_tracker()
         tracker.create_interactive_tracker()
@@ -560,16 +607,18 @@ def create_model_implementation_progress_tracker():
         return None
 
 def reset_course_progress():
-    """Reset all course progress for all trackers."""
+    """Reset all course progress for active trackers.
+
+    Note: ModelImplementationProgressTracker is deprecated and not included.
+    Notebook 4 now uses checkpoint-based assessment.
+    """
     try:
         introduction_tracker = get_introduction_tracker()
         perceptual_model_tracker = get_perceptual_model_tracker()
-        model_implementation_tracker = get_model_implementation_tracker()
-        
+
         introduction_tracker.reset_progress()
         perceptual_model_tracker.reset_progress()
-        model_implementation_tracker.reset_progress()
-        
+
     except Exception as e:
         print(f"⚠️ Could not reset progress: {e}")
 
@@ -590,7 +639,18 @@ def reset_perceptual_model_progress():
         print(f"⚠️ Could not reset perceptual model progress: {e}")
 
 def reset_model_implementation_progress():
-    """Reset only the model implementation (Notebook 4) progress."""
+    """Reset only the model implementation (Notebook 4) progress.
+
+    .. deprecated::
+        This function is deprecated. Notebook 4 now uses checkpoint-based assessment.
+    """
+    import warnings
+    warnings.warn(
+        "reset_model_implementation_progress() is deprecated. Notebook 4 now uses "
+        "checkpoint-based assessment via shared_functions.py",
+        DeprecationWarning,
+        stacklevel=2
+    )
     try:
         tracker = get_model_implementation_tracker()
         tracker.reset_progress()

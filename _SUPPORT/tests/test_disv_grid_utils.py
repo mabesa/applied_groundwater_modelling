@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 from disv_grid_utils import (
     create_voronoi_grid,
     create_disv_from_boundary,
+    create_grid_with_rivers,
     refine_grid_locally,
     export_grid_to_geopackage,
     assign_properties_from_zones,
@@ -297,6 +298,292 @@ class TestCreateDisvFromBoundary:
         # Test that methods work
         gridprops = vor.get_disv_gridprops()
         assert 'ncpl' in gridprops
+
+
+# =============================================================================
+# Tests for create_grid_with_rivers
+# =============================================================================
+
+class TestCreateGridWithRivers:
+    """Tests for the create_grid_with_rivers function."""
+
+    def test_basic_river_grid_creation(self, simple_square_boundary, sample_river_polygon):
+        """Test basic grid creation with river constraints."""
+        grid_data = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+        )
+
+        # Check standard grid outputs
+        assert 'voronoi_grid' in grid_data
+        assert 'modelgrid' in grid_data
+        assert 'ncpl' in grid_data
+        assert 'disv_gridprops' in grid_data
+
+        # Check river-specific outputs
+        assert 'river_cells' in grid_data
+        assert 'river_polygons' in grid_data
+
+        # Grid should have cells
+        assert grid_data['ncpl'] > 0
+        assert len(grid_data['modelgrid'].cell2d) == grid_data['ncpl']
+
+    def test_river_cells_identified(self, simple_square_boundary, sample_river_polygon):
+        """Test that cells intersecting rivers are correctly identified."""
+        grid_data = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=30,
+        )
+
+        river_cells = grid_data['river_cells']
+
+        # Should have some river cells
+        assert len(river_cells) > 0
+
+        # River cells should be valid indices
+        assert all(0 <= cell_id < grid_data['ncpl'] for cell_id in river_cells)
+
+        # Check river cells actually intersect river polygons
+        from shapely.geometry import Polygon as ShapelyPolygon
+        from shapely.ops import unary_union
+
+        river_union = unary_union(grid_data['river_polygons'])
+        modelgrid = grid_data['modelgrid']
+        vertices = modelgrid._vertices
+        vert_dict = {v[0]: (v[1], v[2]) for v in vertices}
+
+        for cell_id in river_cells[:5]:  # Check first 5
+            cell = modelgrid.cell2d[cell_id]
+            nvert = cell[3]
+            vert_ids = cell[4:4+nvert]
+            coords = [vert_dict[vid] for vid in vert_ids]
+            coords.append(coords[0])
+            cell_poly = ShapelyPolygon(coords)
+            assert river_union.intersects(cell_poly), (
+                f"River cell {cell_id} does not intersect river polygon"
+            )
+
+    def test_default_river_cell_size(self, simple_square_boundary, sample_river_polygon):
+        """Test that default river_cell_size is cell_size / 2."""
+        grid_data = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            # river_cell_size not specified, should default to 50
+        )
+
+        # Grid should be created successfully
+        assert grid_data['ncpl'] > 0
+        assert len(grid_data['river_cells']) > 0
+
+    def test_with_two_rivers(self, simple_square_boundary, two_river_polygons):
+        """Test grid creation with multiple river polygons."""
+        grid_data = create_grid_with_rivers(
+            simple_square_boundary,
+            two_river_polygons,
+            cell_size=100,
+            river_cell_size=40,
+        )
+
+        # Should have cells in rivers
+        assert len(grid_data['river_cells']) > 0
+        # River polygons may be merged if they touch
+        assert len(grid_data['river_polygons']) >= 1
+
+    def test_with_additional_refinement(
+        self, simple_square_boundary, sample_river_polygon, small_refinement_area
+    ):
+        """Test river grid with additional refinement areas."""
+        grid_data = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+            refinement_areas=[(small_refinement_area, 25)],
+        )
+
+        # Should have more cells due to refinement
+        base_grid = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+        )
+
+        assert grid_data['ncpl'] > base_grid['ncpl']
+
+    def test_empty_river_raises(self, simple_square_boundary):
+        """Test that empty river GeoDataFrame raises error."""
+        import geopandas as gpd
+
+        empty_rivers = gpd.GeoDataFrame(geometry=[], crs=None)
+
+        with pytest.raises(ValueError, match="river_gdf is empty"):
+            create_grid_with_rivers(
+                simple_square_boundary,
+                empty_rivers,
+                cell_size=100,
+            )
+
+    def test_river_outside_boundary_warning(self, simple_square_boundary):
+        """Test that river outside boundary creates grid without rivers."""
+        from shapely.geometry import Polygon
+
+        # Create river outside boundary
+        river_outside = Polygon([
+            (2000, 480), (3000, 480), (3000, 520), (2000, 520), (2000, 480)
+        ])
+        river_gdf = gpd.GeoDataFrame(
+            {'name': ['outside']},
+            geometry=[river_outside],
+            crs=None,
+        )
+
+        # Should warn and fall back to grid without rivers
+        with pytest.warns(UserWarning, match="do not intersect"):
+            grid_data = create_grid_with_rivers(
+                simple_square_boundary,
+                river_gdf,
+                cell_size=100,
+            )
+
+        # Should still create a valid grid
+        assert grid_data['ncpl'] > 0
+
+    def test_invalid_cell_size_raises(self, simple_square_boundary, sample_river_polygon):
+        """Test that invalid cell sizes raise errors."""
+        with pytest.raises(ValueError, match="cell_size must be positive"):
+            create_grid_with_rivers(
+                simple_square_boundary,
+                sample_river_polygon,
+                cell_size=-50,
+            )
+
+        with pytest.raises(ValueError, match="river_cell_size must be positive"):
+            create_grid_with_rivers(
+                simple_square_boundary,
+                sample_river_polygon,
+                cell_size=100,
+                river_cell_size=-25,
+            )
+
+    def test_disv_gridprops_valid(self, simple_square_boundary, sample_river_polygon):
+        """Test that DISV grid properties are valid for MODFLOW."""
+        grid_data = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+        )
+
+        gridprops = grid_data['disv_gridprops']
+
+        # Check required DISV properties
+        assert 'ncpl' in gridprops
+        assert 'nvert' in gridprops
+        assert 'vertices' in gridprops
+        assert 'cell2d' in gridprops
+
+        # Check consistency
+        assert len(gridprops['vertices']) == gridprops['nvert']
+        assert len(gridprops['cell2d']) == gridprops['ncpl']
+
+    def test_min_intersection_fraction_reduces_river_cells(
+        self, simple_square_boundary, sample_river_polygon
+    ):
+        """Test that min_intersection_fraction reduces number of river cells."""
+        # Grid without threshold
+        grid_no_threshold = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+            min_river_intersection_fraction=0.0,
+        )
+
+        # Grid with threshold
+        grid_with_threshold = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+            min_river_intersection_fraction=0.3,
+        )
+
+        # Threshold should reduce number of river cells
+        n_cells_no_threshold = len(grid_no_threshold['river_cells'])
+        n_cells_with_threshold = len(grid_with_threshold['river_cells'])
+
+        assert n_cells_with_threshold < n_cells_no_threshold, (
+            f"Expected fewer river cells with threshold. "
+            f"Without: {n_cells_no_threshold}, With: {n_cells_with_threshold}"
+        )
+
+    def test_min_intersection_fraction_high_threshold(
+        self, simple_square_boundary, sample_river_polygon
+    ):
+        """Test that high threshold results in fewer cells than low threshold."""
+        grid_low = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+            min_river_intersection_fraction=0.1,
+        )
+
+        grid_high = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+            min_river_intersection_fraction=0.5,
+        )
+
+        # Higher threshold should have fewer or equal cells
+        assert len(grid_high['river_cells']) <= len(grid_low['river_cells'])
+
+    def test_min_intersection_fraction_zero_same_as_default(
+        self, simple_square_boundary, sample_river_polygon
+    ):
+        """Test that min_intersection_fraction=0 gives same result as default."""
+        grid_default = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+        )
+
+        grid_explicit_zero = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+            min_river_intersection_fraction=0.0,
+        )
+
+        # Should have same number of river cells
+        assert len(grid_default['river_cells']) == len(grid_explicit_zero['river_cells'])
+
+    def test_min_intersection_fraction_preserves_fully_contained_cells(
+        self, simple_square_boundary, sample_river_polygon
+    ):
+        """Test that cells fully contained in river are always included."""
+        # With a very high threshold (0.9), only cells almost entirely in river
+        grid_strict = create_grid_with_rivers(
+            simple_square_boundary,
+            sample_river_polygon,
+            cell_size=100,
+            river_cell_size=50,
+            min_river_intersection_fraction=0.9,
+        )
+
+        # Should still have some cells (those fully inside river)
+        # The river is 40m wide, cells are ~50m, so some should be mostly inside
+        assert len(grid_strict['river_cells']) > 0
 
 
 # =============================================================================

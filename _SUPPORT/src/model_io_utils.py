@@ -15,6 +15,7 @@ Functions:
     load_model_boundary: Load domain polygon GeoPackage for grid generation
     load_bc_geometries: Load river, well, inflow geometries from GeoPackages
     sample_raster_at_cells: Sample DEM/bottom raster at cell centers
+    load_and_interpolate_aquifer_thickness: Load and interpolate thickness from GIS contours
     load_preprocessed_model_data: Load all pre-computed model inputs as dict
     format_budget_summary: Read MF6 budget and format as DataFrame
     load_base_simulation: Load pre-built MF6 simulation
@@ -291,7 +292,7 @@ def sample_raster_at_cells(
         raise FileNotFoundError(f"Raster file not found: {raster_path}")
 
     # Create FloPy Raster object
-    raster = Raster.load(str(raster_path), band=band)
+    raster = Raster.load(str(raster_path))
 
     print(f"Sampling raster: {raster_path.name}")
     print(f"  Raster bounds: {raster.bounds}")
@@ -885,3 +886,296 @@ def check_simulation_success(sim) -> bool:
 
     except Exception:
         return False
+
+
+def load_and_interpolate_aquifer_thickness(
+    gw_map_path: Union[str, Path],
+    modelgrid,
+    boundary_gdf: gpd.GeoDataFrame,
+    thickness_column: str = 'LABEL',
+    contour_layer: str = 'GS_GW_MAECHTIGKEIT_L',
+    method: str = 'robust',
+    fallback_thickness: float = 17.5,
+    min_thickness: float = 1.0,
+    max_thickness: float = 100.0,
+    verbose: bool = True
+) -> np.ndarray:
+    """
+    Load aquifer thickness data from GIS and interpolate to model grid.
+
+    This function follows the same pattern as sample_raster_at_cells() for model_top:
+    data is loaded and processed at runtime, not from a preprocessing step.
+    This ensures grid consistency (no coupling between preprocessed files and
+    the current model grid).
+
+    The function loads thickness contour lines from the Canton Zurich geological
+    survey (GS_GW_MAECHTIGKEIT_L layer), clips them to the model boundary, and
+    interpolates to grid cell centers using a two-stage algorithm:
+    1. Linear interpolation for smooth interior surfaces
+    2. Nearest-neighbor gap filling for areas outside the convex hull
+
+    Parameters
+    ----------
+    gw_map_path : str or Path
+        Path to the Grundwasservorkommen GeoPackage file containing thickness
+        contours. Can be obtained via: download_named_file('groundwater_map_norm')
+    modelgrid : flopy.discretization.VertexGrid
+        DISV model grid object (from create_voronoi_grid). Must have
+        xcellcenters, ycellcenters, and ncpl attributes.
+    boundary_gdf : gpd.GeoDataFrame
+        Model boundary polygon used for clipping contours.
+    thickness_column : str, optional
+        Column name containing thickness values in the contour layer.
+        Default is 'LABEL' (standard for Canton Zurich data).
+    contour_layer : str, optional
+        Layer name for thickness contours in the GeoPackage.
+        Default is 'GS_GW_MAECHTIGKEIT_L'.
+    method : str, optional
+        Interpolation method:
+        - 'basic': Simple linear + nearest (fastest)
+        - 'robust': Dense point sampling with buffering (recommended)
+        Default is 'robust'.
+    fallback_thickness : float, optional
+        Default thickness (m) if interpolation fails completely.
+        Default is 17.5 m (approximate mean for Limmat Valley).
+    min_thickness : float, optional
+        Minimum valid thickness in meters. Values below are clipped.
+        Default is 1.0 m.
+    max_thickness : float, optional
+        Maximum valid thickness in meters. Values above are clipped.
+        Default is 100.0 m.
+    verbose : bool, optional
+        Print status messages during processing. Default is True.
+
+    Returns
+    -------
+    np.ndarray
+        1D array of shape (ncpl,) with aquifer thickness at each cell center.
+        Values are in meters and are guaranteed to be within [min_thickness, max_thickness].
+
+    Notes
+    -----
+    This function uses existing interpolation functions from grid_utils.py:
+    - interpolate_aquifer_thickness_to_grid() for 'basic' method
+    - interpolate_aquifer_thickness_to_grid_robust() for 'robust' method
+
+    The returned array is guaranteed to match modelgrid.ncpl because
+    interpolation uses the same modelgrid object (no grid coupling issues).
+
+    Graceful degradation:
+    - If data file missing: returns uniform fallback_thickness
+    - If layer not found: returns uniform fallback_thickness
+    - If no contours in boundary: returns uniform fallback_thickness
+    - If interpolation fails: returns uniform fallback_thickness
+
+    Examples
+    --------
+    >>> from data_utils import download_named_file
+    >>> gw_map_path = download_named_file('groundwater_map_norm', data_type='gis')
+    >>> thickness = load_and_interpolate_aquifer_thickness(
+    ...     gw_map_path, modelgrid, boundary_gdf
+    ... )
+    >>> model_bottom = model_top - thickness
+    """
+    import warnings
+
+    gw_map_path = Path(gw_map_path)
+    ncpl = modelgrid.ncpl
+
+    # Validate modelgrid has required attributes
+    if not hasattr(modelgrid, 'xcellcenters') or not hasattr(modelgrid, 'ycellcenters'):
+        raise ValueError("modelgrid must have xcellcenters and ycellcenters attributes")
+    if not hasattr(modelgrid, 'ncpl'):
+        raise ValueError("modelgrid must have ncpl attribute (DISV grid required)")
+
+    # 1. Check if file exists
+    if not gw_map_path.exists():
+        warnings.warn(f"Groundwater map file not found: {gw_map_path}. Using fallback thickness.")
+        if verbose:
+            print(f"Warning: File not found. Using uniform thickness of {fallback_thickness} m")
+        return np.full(ncpl, fallback_thickness)
+
+    # 2. Load thickness contours
+    if verbose:
+        print(f"Loading aquifer thickness data from {contour_layer}...")
+
+    try:
+        contour_gdf = gpd.read_file(gw_map_path, layer=contour_layer)
+    except Exception as e:
+        warnings.warn(f"Could not load contour layer '{contour_layer}': {e}. Using fallback thickness.")
+        if verbose:
+            print(f"Warning: Layer load failed. Using uniform thickness of {fallback_thickness} m")
+        return np.full(ncpl, fallback_thickness)
+
+    if verbose:
+        print(f"  Loaded {len(contour_gdf)} contour features")
+
+    # 3. Clip to model boundary
+    try:
+        contour_gdf = gpd.clip(contour_gdf, boundary_gdf)
+    except Exception as e:
+        warnings.warn(f"Clipping failed: {e}. Proceeding with unclipped contours.")
+
+    if len(contour_gdf) == 0:
+        warnings.warn("No contours within model boundary. Using fallback thickness.")
+        if verbose:
+            print(f"Warning: No contours in boundary. Using uniform thickness of {fallback_thickness} m")
+        return np.full(ncpl, fallback_thickness)
+
+    if verbose:
+        print(f"  {len(contour_gdf)} contours within model boundary")
+
+    # 4. Parse thickness values from column
+    if thickness_column not in contour_gdf.columns:
+        # Try common alternatives
+        alt_columns = ['aquifer_thickness', 'thickness', 'MAECHTIGKEIT', 'value']
+        found = False
+        for alt in alt_columns:
+            if alt in contour_gdf.columns:
+                thickness_column = alt
+                found = True
+                if verbose:
+                    print(f"  Using alternative column: {thickness_column}")
+                break
+
+        if not found:
+            warnings.warn(f"Column '{thickness_column}' not found. Using fallback thickness.")
+            if verbose:
+                print(f"Warning: Thickness column not found. Using uniform thickness of {fallback_thickness} m")
+            return np.full(ncpl, fallback_thickness)
+
+    # Convert to numeric and add as 'aquifer_thickness' for interpolation functions
+    contour_gdf['aquifer_thickness'] = pd.to_numeric(
+        contour_gdf[thickness_column], errors='coerce'
+    )
+
+    # Drop rows with invalid thickness values
+    contour_gdf = contour_gdf.dropna(subset=['aquifer_thickness'])
+
+    if len(contour_gdf) == 0:
+        warnings.warn("No valid thickness values found. Using fallback thickness.")
+        if verbose:
+            print(f"Warning: No valid values. Using uniform thickness of {fallback_thickness} m")
+        return np.full(ncpl, fallback_thickness)
+
+    if verbose:
+        print(f"  Thickness range: {contour_gdf['aquifer_thickness'].min():.1f} - "
+              f"{contour_gdf['aquifer_thickness'].max():.1f} m")
+
+    # 5. Interpolate to grid using existing grid_utils functions
+    if verbose:
+        print(f"  Interpolating to {ncpl} grid cells (method: {method})...")
+
+    try:
+        # Import interpolation functions from grid_utils
+        from grid_utils import (
+            interpolate_aquifer_thickness_to_grid,
+            interpolate_aquifer_thickness_to_grid_robust,
+        )
+
+        if method == 'basic':
+            thickness_result = interpolate_aquifer_thickness_to_grid(
+                contour_gdf, modelgrid, thickness_column='aquifer_thickness'
+            )
+        else:  # 'robust' (default)
+            thickness_result = interpolate_aquifer_thickness_to_grid_robust(
+                contour_gdf, modelgrid, thickness_column='aquifer_thickness',
+                point_spacing=5
+            )
+
+    except ImportError:
+        # Fallback: implement basic interpolation inline
+        if verbose:
+            print("  Note: grid_utils not available, using inline interpolation")
+        thickness_result = _interpolate_thickness_inline(contour_gdf, modelgrid)
+    except Exception as e:
+        warnings.warn(f"Interpolation failed: {e}. Using fallback thickness.")
+        if verbose:
+            print(f"Warning: Interpolation error. Using uniform thickness of {fallback_thickness} m")
+        return np.full(ncpl, fallback_thickness)
+
+    # 6. Convert to 1D array for DISV grid
+    thickness = thickness_result.ravel() if thickness_result.ndim > 1 else thickness_result
+
+    # 7. Validate shape
+    if len(thickness) != ncpl:
+        warnings.warn(f"Shape mismatch: got {len(thickness)}, expected {ncpl}. Using fallback.")
+        if verbose:
+            print(f"Warning: Shape mismatch. Using uniform thickness of {fallback_thickness} m")
+        return np.full(ncpl, fallback_thickness)
+
+    # 8. Clip to valid range
+    thickness = np.clip(thickness, min_thickness, max_thickness)
+
+    # 9. Handle any remaining NaNs
+    nan_count = np.isnan(thickness).sum()
+    if nan_count > 0:
+        mean_thickness = np.nanmean(thickness)
+        if verbose:
+            print(f"  Filling {nan_count} NaN cells with mean ({mean_thickness:.1f} m)")
+        thickness = np.where(np.isnan(thickness), mean_thickness, thickness)
+
+    if verbose:
+        print(f"  Result: {thickness.min():.1f} - {thickness.max():.1f} m, mean {thickness.mean():.1f} m")
+
+    return thickness
+
+
+def _interpolate_thickness_inline(contour_gdf: gpd.GeoDataFrame, modelgrid) -> np.ndarray:
+    """
+    Inline fallback interpolation when grid_utils is not available.
+
+    Uses scipy.interpolate.griddata with linear + nearest-neighbor two-stage approach.
+    """
+    from scipy.interpolate import griddata
+
+    # Extract points from contour geometries
+    points_for_interp = []
+    for idx, row in contour_gdf.iterrows():
+        if row.geometry is None or row.geometry.is_empty:
+            continue
+
+        thickness_value = row['aquifer_thickness']
+
+        if row.geometry.geom_type == 'MultiLineString':
+            for line in row.geometry.geoms:
+                for x, y in line.coords:
+                    points_for_interp.append((x, y, thickness_value))
+        elif row.geometry.geom_type == 'LineString':
+            for x, y in row.geometry.coords:
+                points_for_interp.append((x, y, thickness_value))
+
+    if len(points_for_interp) == 0:
+        raise ValueError("No valid points extracted from contour geometries")
+
+    points_array = np.array(points_for_interp)
+
+    # Get grid cell centers
+    grid_x = modelgrid.xcellcenters
+    grid_y = modelgrid.ycellcenters
+
+    # Flatten if needed (for DISV grids these are already 1D)
+    if grid_x.ndim > 1:
+        grid_x = grid_x.flatten()
+        grid_y = grid_y.flatten()
+
+    # Stage 1: Linear interpolation
+    interpolated = griddata(
+        points_array[:, :2],
+        points_array[:, 2],
+        (grid_x, grid_y),
+        method='linear'
+    )
+
+    # Stage 2: Fill NaN values with nearest neighbor
+    nan_mask = np.isnan(interpolated)
+    if np.any(nan_mask):
+        nearest_values = griddata(
+            points_array[:, :2],
+            points_array[:, 2],
+            (grid_x[nan_mask], grid_y[nan_mask]),
+            method='nearest'
+        )
+        interpolated[nan_mask] = nearest_values
+
+    return interpolated

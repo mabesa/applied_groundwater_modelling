@@ -97,6 +97,20 @@ In the Hardhof area of the Limmat Valley:
 Consider how you would assess your model's predictive quality:
 - **What observations would you compare to simulated values to assess model quality?**
   - Expected answers may include: head measurements at observation wells, river discharge/baseflow rates, spring discharge data, or other field measurements
+""",
+
+"task04_k_values": r"""
+## Exercise - Hydraulic Conductivity Assignment
+
+Based on the geological zones in the Limmat Valley, assign hydraulic conductivity (K) values to each zone.
+Use your understanding of the sediment types and typical K ranges for alluvial aquifers.
+
+**Guidelines:**
+- Zone 1 (Upstream alluvium): Sandy gravels, moderate conductivity
+- Zone 2 (Downstream alluvium): Finer sediments, lower conductivity
+- Zone 3 (Hardhof gravels): Coarse well-sorted gravels, high conductivity
+
+Fill in your K values (m/day) in the dictionary below, then run the check.
 """
 
 }
@@ -115,11 +129,17 @@ solutions = {
     "task03_4": (0.25, 0.35),  # Correct solution 0.3
     "task04_1": (43, 44),  # Correct solution 38
     "task04_2": (25, 27),  # Correct solution 26
-    "task04_checkpoint_1": (4500, 5500),  # Correct solution ~5000 (50m Voronoi grid)
-    "task04_checkpoint_2": (13, 22),  # Correct solution ~15-20 m (Limmat Valley)
-    "task04_checkpoint_3": (4500, 5500),  # Tolerance ±10% - depends on model area
-    "task04_checkpoint_4": (0, 1),  # Tolerance <1% - must be <0.1% for MF6
+    "task04_checkpoint_1": (3000, 3500),  # Correct solution ~3235 active cells (50m Voronoi grid)
+    "task04_checkpoint_2": (15, 20),  # Correct solution ~17.5 m (Limmat Valley default)
+    "task04_checkpoint_3": (6500, 8000),  # Correct solution ~7334 m³/day (depends on model area)
+    "task04_checkpoint_4": (0, 0.1),  # Tolerance <0.1% - MF6 should converge to near-zero
     # Checkpoints 5 and 6 are conceptual/multiple choice - handled separately
+    # K values task uses dict format for per-key tolerances
+    "task04_k_values": {
+        "zone_1_upstream": (15, 25),      # Sandy gravels: 15-25 m/day
+        "zone_2_downstream": (8, 15),     # Finer sediments: 8-15 m/day
+        "zone_3_hardhof": (25, 40),       # Coarse gravels: 25-40 m/day
+    },
     # Add more tasks and their correct intervals here
 }
 
@@ -137,12 +157,17 @@ solutions_exact = {
     "task03_4": "0.30",
     "task04_1": "43.3",
     "task04_2": "26.0",
-    "task04_checkpoint_1": "~5000",
-    "task04_checkpoint_2": "~17.5",
-    "task04_checkpoint_3": "Model-dependent",
-    "task04_checkpoint_4": "<0.1",
+    "task04_checkpoint_1": "~3235",
+    "task04_checkpoint_2": "17.5",
+    "task04_checkpoint_3": "~7334",
+    "task04_checkpoint_4": "~0.0002",
     "task04_checkpoint_5": "B) Losing",
-    "task04_checkpoint_6": "Head measurements, river discharge, spring discharge"
+    "task04_checkpoint_6": "Head measurements, river discharge, spring discharge",
+    "task04_k_values": {
+        "zone_1_upstream": 20,    # Reference value for upstream alluvium
+        "zone_2_downstream": 12,  # Reference value for downstream alluvium
+        "zone_3_hardhof": 32,     # Reference value for Hardhof gravels
+    },
     # Add more tasks and their correct intervals here
 }
 
@@ -169,7 +194,12 @@ solution_unit = {
     "task04_checkpoint_3": "m³/day",
     "task04_checkpoint_4": "%",
     "task04_checkpoint_5": "multiple choice",
-    "task04_checkpoint_6": "open-ended"
+    "task04_checkpoint_6": "open-ended",
+    "task04_k_values": {
+        "zone_1_upstream": "m/day",
+        "zone_2_downstream": "m/day",
+        "zone_3_hardhof": "m/day",
+    },
     # Add more tasks and their correct intervals here
 
 }
@@ -422,6 +452,34 @@ To assess your model's predictive quality, compare simulated values to observed 
 5. Assess model uncertainty through scenario analysis
 
 The quality of your model depends heavily on the availability and accuracy of field observations.
+<br>
+""",
+
+"task04_k_values": r"""
+## Solution - Hydraulic Conductivity Values
+
+The hydraulic conductivity (K) values for the Limmat Valley geological zones are based on:
+- Field measurements (pumping tests, slug tests)
+- Swiss cantonal guidelines (AWA Zurich)
+- Literature values for similar Alpine valley deposits
+
+**Recommended values:**
+
+| Zone | Sediment Type | K Range (m/day) | Reference Value |
+|------|---------------|-----------------|-----------------|
+| Zone 1 (Upstream) | Sandy gravels | 15-25 | 20 m/day |
+| Zone 2 (Downstream) | Finer alluvium | 8-15 | 12 m/day |
+| Zone 3 (Hardhof) | Coarse gravels | 25-40 | 32 m/day |
+
+**Why these values?**
+
+- **Zone 1 (Upstream alluvium)**: Mixed sandy gravels typical of upper valley deposits. Moderate sorting leads to intermediate K values.
+
+- **Zone 2 (Downstream alluvium)**: Contains more silt and clay from floodplain deposition. Lower K reflects finer grain sizes.
+
+- **Zone 3 (Hardhof gravels)**: Well-sorted coarse gravels from glacial outwash. High K due to large grain size and good sorting. This zone is the primary production aquifer.
+
+These are initial estimates. Calibration against observed heads will refine these values in Notebook 5.
 <br>
 """
 

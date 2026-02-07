@@ -309,6 +309,56 @@ def branching_river_lines() -> gpd.GeoDataFrame:
     )
 
 
+@pytest.fixture
+def sample_river_polygon() -> gpd.GeoDataFrame:
+    """
+    Create a sample river polygon (bank geometry) crossing the domain.
+
+    River flows from west to east across the middle of the domain.
+    Width approximately 40m.
+    """
+    # Create a river channel polygon (like bank-to-bank geometry)
+    river_poly = Polygon([
+        (0, 480),      # SW corner
+        (1000, 480),   # SE corner
+        (1000, 520),   # NE corner
+        (0, 520),      # NW corner
+        (0, 480),      # Close
+    ])
+    return gpd.GeoDataFrame(
+        {
+            'name': ['Limmat'],
+            'GEWAESSERNAME': ['Limmat'],
+        },
+        geometry=[river_poly],
+        crs=None,
+    )
+
+
+@pytest.fixture
+def two_river_polygons() -> gpd.GeoDataFrame:
+    """
+    Create two river polygons (main river and tributary).
+
+    Main river: horizontal through middle
+    Tributary: vertical joining from north
+    """
+    main_river = Polygon([
+        (0, 480), (1000, 480), (1000, 520), (0, 520), (0, 480)
+    ])
+    tributary = Polygon([
+        (480, 520), (520, 520), (520, 1000), (480, 1000), (480, 520)
+    ])
+    return gpd.GeoDataFrame(
+        {
+            'name': ['Main', 'Tributary'],
+            'GEWAESSERNAME': ['Limmat', 'Sihl'],
+        },
+        geometry=[main_river, tributary],
+        crs=None,
+    )
+
+
 # =============================================================================
 # Temporary Directory Fixture
 # =============================================================================

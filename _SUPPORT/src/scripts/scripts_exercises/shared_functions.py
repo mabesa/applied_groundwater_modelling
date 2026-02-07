@@ -92,6 +92,107 @@ def check_task_with_solution(task_id):
     display(widgets.HBox([input_box, submit_button]), output, solution_button, solution_output)
 
 
+def check_dict_task_with_solution(task_id, user_values):
+    """
+    Check user's dict input against per-key tolerance ranges.
+
+    Used for exercises where students fill in multiple related values,
+    such as K values for different geological zones.
+
+    Parameters:
+    - task_id (str): The ID of the task (e.g., "task04_k_values")
+    - user_values (dict): Dictionary of user-provided values to check
+
+    The task must have entries in:
+    - solutions: dict mapping keys to (min, max) tolerance tuples
+    - solutions_exact: dict mapping keys to exact/reference values
+    - questions_markdown: the question text
+    - solutions_markdown: the solution explanation
+    - solution_unit: dict mapping keys to unit strings (optional)
+    """
+    question_to_print = questions_markdown.get(task_id)
+    tolerances = solutions.get(task_id)
+    exact_solutions = solutions_exact.get(task_id)
+    solution_to_print = solutions_markdown.get(task_id)
+    units = solution_unit.get(task_id, {})
+
+    if not tolerances or not isinstance(tolerances, dict):
+        print(f"Error: No dict tolerances found for {task_id}.")
+        return
+
+    if not isinstance(user_values, dict):
+        print(f"Error: Expected a dictionary of values, got {type(user_values).__name__}.")
+        return
+
+    # Create output widgets
+    output = widgets.Output()
+    solution_button = widgets.Button(description="Show Solution", disabled=True)
+    solution_output = widgets.Output()
+    solution_visible = {"state": False}
+
+    # Check each key
+    all_correct = True
+    results = []
+
+    for key, (min_val, max_val) in tolerances.items():
+        user_val = user_values.get(key)
+        exact_val = exact_solutions.get(key) if isinstance(exact_solutions, dict) else None
+        unit = units.get(key, "") if isinstance(units, dict) else ""
+
+        if user_val is None:
+            results.append((key, "missing", None, (min_val, max_val), exact_val, unit))
+            all_correct = False
+        elif min_val <= user_val <= max_val:
+            results.append((key, "correct", user_val, (min_val, max_val), exact_val, unit))
+        else:
+            results.append((key, "incorrect", user_val, (min_val, max_val), exact_val, unit))
+            all_correct = False
+
+    # Display results
+    with output:
+        output.clear_output()
+
+        if all_correct:
+            display(Markdown("**All values correct!** Your inputs are within the accepted ranges."))
+        else:
+            display(Markdown("**Some values need adjustment:**"))
+
+        display(Markdown(""))
+
+        for key, status, user_val, (min_val, max_val), exact_val, unit in results:
+            key_display = key.replace("_", " ").title()
+            if status == "missing":
+                display(Markdown(f"- **{key_display}**: ⚠️ Missing value (expected {min_val}-{max_val} {unit})"))
+            elif status == "correct":
+                display(Markdown(f"- **{key_display}**: ✓ {user_val} {unit} (accepted range: {min_val}-{max_val} {unit})"))
+            else:
+                display(Markdown(f"- **{key_display}**: ✗ {user_val} {unit} (expected {min_val}-{max_val} {unit})"))
+
+    # Enable solution button
+    solution_button.disabled = False
+
+    def on_toggle_solution(b):
+        with solution_output:
+            if solution_visible["state"]:
+                solution_output.clear_output()
+                solution_button.description = "Show Solution"
+                solution_visible["state"] = False
+            else:
+                solution_output.clear_output()
+                display(Markdown(solution_to_print))
+                display(Markdown(r"""<br><br>"""))
+                solution_button.description = "Hide Solution"
+                solution_visible["state"] = True
+                if task_functions and task_id in task_functions:
+                    task_functions[task_id]()
+
+    solution_button.on_click(on_toggle_solution)
+
+    # Display
+    display(Markdown(question_to_print))
+    display(output, solution_button, solution_output)
+
+
 def create_multiple_choice(task_id):
     """
     Create a multiple-choice widget for conceptual checkpoints.
