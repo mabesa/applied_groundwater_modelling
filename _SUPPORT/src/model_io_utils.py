@@ -37,6 +37,17 @@ import geopandas as gpd
 import flopy
 from flopy.utils import Raster
 from flopy.mf6 import MFSimulation
+from shapely.geometry import LineString
+
+
+# Canton Zurich shallow groundwater zone type-to-thickness mapping
+# Based on GS_GW_LEITER_F layer GWLTYP classification
+DEFAULT_GWLTYP_TO_THICKNESS_M = {
+    1: 2,   # Low groundwater thickness area
+    2: 2,   # Medium thickness (2-10m) - conservative lower bound
+    4: 10,  # High thickness (10-20m)
+    6: 20,  # Very high thickness (>20m)
+}
 
 
 def load_model_boundary(
@@ -894,11 +905,15 @@ def load_and_interpolate_aquifer_thickness(
     boundary_gdf: gpd.GeoDataFrame,
     thickness_column: str = 'LABEL',
     contour_layer: str = 'GS_GW_MAECHTIGKEIT_L',
-    method: str = 'robust',
+    method: str = 'improved',
     fallback_thickness: float = 17.5,
     min_thickness: float = 1.0,
     max_thickness: float = 100.0,
-    verbose: bool = True
+    verbose: bool = True,
+    blend_shallow_zones: bool = True,
+    shallow_layer: str = 'GS_GW_LEITER_F',
+    gwltyp_to_thickness: Optional[Dict[int, float]] = None,
+    include_boundary_constraint: bool = True,
 ) -> np.ndarray:
     """
     Load aquifer thickness data from GIS and interpolate to model grid.
@@ -909,10 +924,25 @@ def load_and_interpolate_aquifer_thickness(
     the current model grid).
 
     The function loads thickness contour lines from the Canton Zurich geological
-    survey (GS_GW_MAECHTIGKEIT_L layer), clips them to the model boundary, and
-    interpolates to grid cell centers using a two-stage algorithm:
+    survey (GS_GW_MAECHTIGKEIT_L layer), optionally blends with shallow zone data
+    (GS_GW_LEITER_F), clips to the model boundary, and interpolates to grid cell
+    centers using a two-stage algorithm:
     1. Linear interpolation for smooth interior surfaces
     2. Nearest-neighbor gap filling for areas outside the convex hull
+
+    Data Blending Algorithm
+    -----------------------
+    When blend_shallow_zones=True (default), the function combines three sources:
+    1. **Deep contours** (GS_GW_MAECHTIGKEIT_L): Raw LABEL values (typically 30-60m)
+    2. **Shallow zones** (GS_GW_LEITER_F): GWLTYP polygon centroids mapped to
+       thickness values (typically 2-20m based on zone classification). Uses
+       centroids (not polygon boundaries) to produce smooth interpolation without
+       sharp discontinuities at zone edges.
+    3. **Boundary constraint**: Model boundary set to min_thickness to prevent
+       edge extrapolation artifacts
+
+    The deep contours dominate the interpolation pattern, while shallow zone
+    centroids provide additional regional constraints for a smoother result.
 
     Parameters
     ----------
@@ -933,8 +963,11 @@ def load_and_interpolate_aquifer_thickness(
     method : str, optional
         Interpolation method:
         - 'basic': Simple linear + nearest (fastest)
-        - 'robust': Dense point sampling with buffering (recommended)
-        Default is 'robust'.
+        - 'robust': Dense point sampling with buffering
+        - 'improved': RBF interpolation with boundary constraints (recommended)
+        Default is 'improved'. The improved method uses Radial Basis Function
+        interpolation which produces smoother surfaces and handles sparse data
+        better than linear methods.
     fallback_thickness : float, optional
         Default thickness (m) if interpolation fails completely.
         Default is 17.5 m (approximate mean for Limmat Valley).
@@ -946,6 +979,21 @@ def load_and_interpolate_aquifer_thickness(
         Default is 100.0 m.
     verbose : bool, optional
         Print status messages during processing. Default is True.
+    blend_shallow_zones : bool, optional
+        Whether to blend shallow zone data (GS_GW_LEITER_F) with deep contours.
+        Default is True. Set to False for backward-compatible behavior using
+        only deep contours.
+    shallow_layer : str, optional
+        Layer name for shallow groundwater zones in the GeoPackage.
+        Default is 'GS_GW_LEITER_F'.
+    gwltyp_to_thickness : dict, optional
+        Mapping from GWLTYP integer codes to thickness values in meters.
+        Default is DEFAULT_GWLTYP_TO_THICKNESS_M:
+        {1: 2, 2: 2, 4: 10, 6: 20}
+    include_boundary_constraint : bool, optional
+        Whether to add model boundary as a thickness constraint (set to
+        min_thickness). Helps prevent edge extrapolation artifacts.
+        Default is True.
 
     Returns
     -------
@@ -967,6 +1015,9 @@ def load_and_interpolate_aquifer_thickness(
     - If layer not found: returns uniform fallback_thickness
     - If no contours in boundary: returns uniform fallback_thickness
     - If interpolation fails: returns uniform fallback_thickness
+    - If shallow layer not found: continues with deep contours only (warning)
+    - If GWLTYP column missing: continues with deep contours only (warning)
+    - If boundary constraint fails: continues without boundary constraint (warning)
 
     Examples
     --------
@@ -976,11 +1027,21 @@ def load_and_interpolate_aquifer_thickness(
     ...     gw_map_path, modelgrid, boundary_gdf
     ... )
     >>> model_bottom = model_top - thickness
+
+    >>> # Disable blending to use only deep contours (old behavior)
+    >>> thickness = load_and_interpolate_aquifer_thickness(
+    ...     gw_map_path, modelgrid, boundary_gdf,
+    ...     blend_shallow_zones=False
+    ... )
     """
     import warnings
 
     gw_map_path = Path(gw_map_path)
     ncpl = modelgrid.ncpl
+
+    # Use default GWLTYP mapping if not provided
+    if gwltyp_to_thickness is None:
+        gwltyp_to_thickness = DEFAULT_GWLTYP_TO_THICKNESS_M
 
     # Validate modelgrid has required attributes
     if not hasattr(modelgrid, 'xcellcenters') or not hasattr(modelgrid, 'ycellcenters'):
@@ -995,91 +1056,258 @@ def load_and_interpolate_aquifer_thickness(
             print(f"Warning: File not found. Using uniform thickness of {fallback_thickness} m")
         return np.full(ncpl, fallback_thickness)
 
-    # 2. Load thickness contours
+    # Collect all thickness data sources into a list
+    thickness_sources = []
+
+    # 2. Load deep thickness contours (primary source)
     if verbose:
         print(f"Loading aquifer thickness data from {contour_layer}...")
 
     try:
         contour_gdf = gpd.read_file(gw_map_path, layer=contour_layer)
-    except Exception as e:
-        warnings.warn(f"Could not load contour layer '{contour_layer}': {e}. Using fallback thickness.")
         if verbose:
-            print(f"Warning: Layer load failed. Using uniform thickness of {fallback_thickness} m")
-        return np.full(ncpl, fallback_thickness)
+            print(f"  Loaded {len(contour_gdf)} deep contour features")
 
-    if verbose:
-        print(f"  Loaded {len(contour_gdf)} contour features")
+        # Clip to model boundary
+        try:
+            contour_gdf = gpd.clip(contour_gdf, boundary_gdf)
+        except Exception as e:
+            warnings.warn(f"Clipping deep contours failed: {e}. Proceeding with unclipped contours.")
 
-    # 3. Clip to model boundary
-    try:
-        contour_gdf = gpd.clip(contour_gdf, boundary_gdf)
-    except Exception as e:
-        warnings.warn(f"Clipping failed: {e}. Proceeding with unclipped contours.")
-
-    if len(contour_gdf) == 0:
-        warnings.warn("No contours within model boundary. Using fallback thickness.")
-        if verbose:
-            print(f"Warning: No contours in boundary. Using uniform thickness of {fallback_thickness} m")
-        return np.full(ncpl, fallback_thickness)
-
-    if verbose:
-        print(f"  {len(contour_gdf)} contours within model boundary")
-
-    # 4. Parse thickness values from column
-    if thickness_column not in contour_gdf.columns:
-        # Try common alternatives
-        alt_columns = ['aquifer_thickness', 'thickness', 'MAECHTIGKEIT', 'value']
-        found = False
-        for alt in alt_columns:
-            if alt in contour_gdf.columns:
-                thickness_column = alt
-                found = True
-                if verbose:
-                    print(f"  Using alternative column: {thickness_column}")
-                break
-
-        if not found:
-            warnings.warn(f"Column '{thickness_column}' not found. Using fallback thickness.")
+        if len(contour_gdf) > 0:
             if verbose:
-                print(f"Warning: Thickness column not found. Using uniform thickness of {fallback_thickness} m")
-            return np.full(ncpl, fallback_thickness)
+                print(f"  {len(contour_gdf)} deep contours within model boundary")
 
-    # Convert to numeric and add as 'aquifer_thickness' for interpolation functions
-    contour_gdf['aquifer_thickness'] = pd.to_numeric(
-        contour_gdf[thickness_column], errors='coerce'
-    )
+            # Parse thickness values from column
+            if thickness_column in contour_gdf.columns:
+                contour_gdf['aquifer_thickness'] = pd.to_numeric(
+                    contour_gdf[thickness_column], errors='coerce'
+                )
+                contour_gdf = contour_gdf.dropna(subset=['aquifer_thickness'])
 
-    # Drop rows with invalid thickness values
-    contour_gdf = contour_gdf.dropna(subset=['aquifer_thickness'])
+                if len(contour_gdf) > 0:
+                    if verbose:
+                        print(f"  Deep contour thickness range: {contour_gdf['aquifer_thickness'].min():.1f} - "
+                              f"{contour_gdf['aquifer_thickness'].max():.1f} m")
+                    thickness_sources.append(contour_gdf)
+                else:
+                    if verbose:
+                        print(f"  Warning: No valid thickness values in deep contours")
+            else:
+                if verbose:
+                    print(f"  Warning: Column '{thickness_column}' not found in deep contours")
+        else:
+            if verbose:
+                print(f"  Warning: No deep contours within model boundary")
 
-    if len(contour_gdf) == 0:
-        warnings.warn("No valid thickness values found. Using fallback thickness.")
+    except Exception as e:
+        warnings.warn(f"Could not load deep contour layer '{contour_layer}': {e}")
         if verbose:
-            print(f"Warning: No valid values. Using uniform thickness of {fallback_thickness} m")
+            print(f"  Warning: Deep contour layer load failed: {e}")
+
+    # 3. Load shallow zone data (GS_GW_LEITER_F) if blending is enabled
+    if blend_shallow_zones:
+        if verbose:
+            print(f"Loading shallow zone data from {shallow_layer}...")
+
+        try:
+            shallow_gdf = gpd.read_file(gw_map_path, layer=shallow_layer)
+            if verbose:
+                print(f"  Loaded {len(shallow_gdf)} shallow zone features")
+
+            # Clip to model boundary
+            try:
+                shallow_gdf = gpd.clip(shallow_gdf, boundary_gdf)
+            except Exception as e:
+                warnings.warn(f"Clipping shallow zones failed: {e}. Proceeding with unclipped zones.")
+
+            if len(shallow_gdf) > 0 and 'GWLTYP' in shallow_gdf.columns:
+                if verbose:
+                    print(f"  {len(shallow_gdf)} shallow zones within model boundary")
+
+                # Map GWLTYP to thickness
+                shallow_gdf['aquifer_thickness'] = shallow_gdf['GWLTYP'].map(gwltyp_to_thickness)
+                shallow_gdf = shallow_gdf.dropna(subset=['aquifer_thickness'])
+
+                if len(shallow_gdf) > 0:
+                    if verbose:
+                        gwltyp_values = shallow_gdf['GWLTYP'].unique()
+                        thickness_values = shallow_gdf['aquifer_thickness'].unique()
+                        print(f"  GWLTYP values: {sorted(gwltyp_values)} -> thickness: {sorted(thickness_values)} m")
+
+                    # Sample interior points from polygons for smoother interpolation
+                    # Using a grid of points rather than just centroids provides better
+                    # spatial coverage in areas without deep contour data
+                    from shapely.geometry import Point
+
+                    shallow_points = []
+                    shallow_point_spacing = 200  # meters between sample points
+
+                    for idx, row in shallow_gdf.iterrows():
+                        if row.geometry is None or row.geometry.is_empty:
+                            continue
+
+                        thickness_val = row['aquifer_thickness']
+
+                        def sample_polygon_interior(poly, spacing, thickness):
+                            """Sample a grid of points within a polygon."""
+                            points = []
+                            minx, miny, maxx, maxy = poly.bounds
+
+                            # Create grid of candidate points
+                            x = minx
+                            while x <= maxx:
+                                y = miny
+                                while y <= maxy:
+                                    pt = Point(x, y)
+                                    if poly.contains(pt):
+                                        points.append({
+                                            'geometry': pt,
+                                            'aquifer_thickness': thickness
+                                        })
+                                    y += spacing
+                                x += spacing
+
+                            # Always include centroid as fallback for small polygons
+                            if len(points) == 0:
+                                centroid = poly.centroid
+                                if poly.contains(centroid):
+                                    points.append({
+                                        'geometry': centroid,
+                                        'aquifer_thickness': thickness
+                                    })
+                                else:
+                                    # Centroid outside polygon, use representative point
+                                    rep_pt = poly.representative_point()
+                                    points.append({
+                                        'geometry': rep_pt,
+                                        'aquifer_thickness': thickness
+                                    })
+                            return points
+
+                        try:
+                            if row.geometry.geom_type == 'Polygon':
+                                shallow_points.extend(
+                                    sample_polygon_interior(row.geometry, shallow_point_spacing, thickness_val)
+                                )
+                            elif row.geometry.geom_type == 'MultiPolygon':
+                                for poly in row.geometry.geoms:
+                                    shallow_points.extend(
+                                        sample_polygon_interior(poly, shallow_point_spacing, thickness_val)
+                                    )
+                        except Exception:
+                            continue
+
+                    if shallow_points:
+                        shallow_points_gdf = gpd.GeoDataFrame(
+                            shallow_points,
+                            crs=shallow_gdf.crs
+                        )
+                        if verbose:
+                            print(f"  Sampled {len(shallow_points_gdf)} interior points from shallow zones (spacing: {shallow_point_spacing}m)")
+                        thickness_sources.append(shallow_points_gdf)
+                    else:
+                        if verbose:
+                            print(f"  Warning: Could not sample points from shallow zone polygons")
+                else:
+                    if verbose:
+                        print(f"  Warning: No GWLTYP values matched the mapping dictionary")
+            elif 'GWLTYP' not in shallow_gdf.columns:
+                warnings.warn(f"GWLTYP column not found in {shallow_layer}. Continuing without shallow zones.")
+                if verbose:
+                    print(f"  Warning: GWLTYP column not found in shallow layer")
+            else:
+                if verbose:
+                    print(f"  Warning: No shallow zones within model boundary")
+
+        except Exception as e:
+            warnings.warn(f"Could not load shallow layer '{shallow_layer}': {e}. Continuing without shallow zones.")
+            if verbose:
+                print(f"  Warning: Shallow layer load failed: {e}")
+
+    # 4. Add model boundary as thickness constraint
+    if include_boundary_constraint:
+        if verbose:
+            print(f"Adding boundary constraint (thickness = {min_thickness} m)...")
+
+        try:
+            # Extract model boundary as LineString
+            boundary_geom = boundary_gdf.union_all() if hasattr(boundary_gdf, 'union_all') else boundary_gdf.unary_union
+
+            if boundary_geom.geom_type == 'Polygon':
+                boundary_line = LineString(boundary_geom.exterior.coords)
+                boundary_constraint = gpd.GeoDataFrame(
+                    [{'geometry': boundary_line, 'aquifer_thickness': min_thickness}],
+                    crs=boundary_gdf.crs
+                )
+                thickness_sources.append(boundary_constraint)
+                if verbose:
+                    print(f"  Added boundary constraint line")
+            elif boundary_geom.geom_type == 'MultiPolygon':
+                boundary_lines = []
+                for poly in boundary_geom.geoms:
+                    boundary_line = LineString(poly.exterior.coords)
+                    boundary_lines.append({
+                        'geometry': boundary_line,
+                        'aquifer_thickness': min_thickness
+                    })
+                boundary_constraint = gpd.GeoDataFrame(boundary_lines, crs=boundary_gdf.crs)
+                thickness_sources.append(boundary_constraint)
+                if verbose:
+                    print(f"  Added {len(boundary_lines)} boundary constraint lines")
+            else:
+                if verbose:
+                    print(f"  Warning: Could not extract boundary as LineString (geom_type: {boundary_geom.geom_type})")
+
+        except Exception as e:
+            warnings.warn(f"Could not add boundary constraint: {e}. Continuing without boundary constraint.")
+            if verbose:
+                print(f"  Warning: Boundary constraint failed: {e}")
+
+    # 5. Check if we have any data sources
+    if len(thickness_sources) == 0:
+        warnings.warn("No thickness data sources available. Using fallback thickness.")
+        if verbose:
+            print(f"Warning: No data sources. Using uniform thickness of {fallback_thickness} m")
         return np.full(ncpl, fallback_thickness)
 
+    # 6. Concatenate all sources into a single GeoDataFrame
     if verbose:
-        print(f"  Thickness range: {contour_gdf['aquifer_thickness'].min():.1f} - "
-              f"{contour_gdf['aquifer_thickness'].max():.1f} m")
+        print(f"Combining {len(thickness_sources)} data sources...")
 
-    # 5. Interpolate to grid using existing grid_utils functions
+    combined_gdf = pd.concat(thickness_sources, ignore_index=True)
+    combined_gdf = gpd.GeoDataFrame(combined_gdf, crs=thickness_sources[0].crs)
+
     if verbose:
-        print(f"  Interpolating to {ncpl} grid cells (method: {method})...")
+        print(f"  Combined: {len(combined_gdf)} features")
+        print(f"  Combined thickness range: {combined_gdf['aquifer_thickness'].min():.1f} - "
+              f"{combined_gdf['aquifer_thickness'].max():.1f} m")
+
+    # 7. Interpolate to grid using existing grid_utils functions
+    if verbose:
+        print(f"Interpolating to {ncpl} grid cells (method: {method})...")
 
     try:
         # Import interpolation functions from grid_utils
         from grid_utils import (
             interpolate_aquifer_thickness_to_grid,
             interpolate_aquifer_thickness_to_grid_robust,
+            interpolate_aquifer_thickness_to_grid_improved,
         )
 
         if method == 'basic':
             thickness_result = interpolate_aquifer_thickness_to_grid(
-                contour_gdf, modelgrid, thickness_column='aquifer_thickness'
+                combined_gdf, modelgrid, thickness_column='aquifer_thickness'
+            )
+        elif method == 'improved':
+            # RBF interpolation with boundary constraints - best for sparse data
+            thickness_result = interpolate_aquifer_thickness_to_grid_improved(
+                combined_gdf, modelgrid, thickness_column='aquifer_thickness',
+                point_spacing=5, smoothing_factor=0.1
             )
         else:  # 'robust' (default)
             thickness_result = interpolate_aquifer_thickness_to_grid_robust(
-                contour_gdf, modelgrid, thickness_column='aquifer_thickness',
+                combined_gdf, modelgrid, thickness_column='aquifer_thickness',
                 point_spacing=5
             )
 
@@ -1087,27 +1315,27 @@ def load_and_interpolate_aquifer_thickness(
         # Fallback: implement basic interpolation inline
         if verbose:
             print("  Note: grid_utils not available, using inline interpolation")
-        thickness_result = _interpolate_thickness_inline(contour_gdf, modelgrid)
+        thickness_result = _interpolate_thickness_inline(combined_gdf, modelgrid)
     except Exception as e:
         warnings.warn(f"Interpolation failed: {e}. Using fallback thickness.")
         if verbose:
             print(f"Warning: Interpolation error. Using uniform thickness of {fallback_thickness} m")
         return np.full(ncpl, fallback_thickness)
 
-    # 6. Convert to 1D array for DISV grid
+    # 8. Convert to 1D array for DISV grid
     thickness = thickness_result.ravel() if thickness_result.ndim > 1 else thickness_result
 
-    # 7. Validate shape
+    # 9. Validate shape
     if len(thickness) != ncpl:
         warnings.warn(f"Shape mismatch: got {len(thickness)}, expected {ncpl}. Using fallback.")
         if verbose:
             print(f"Warning: Shape mismatch. Using uniform thickness of {fallback_thickness} m")
         return np.full(ncpl, fallback_thickness)
 
-    # 8. Clip to valid range
+    # 10. Clip to valid range
     thickness = np.clip(thickness, min_thickness, max_thickness)
 
-    # 9. Handle any remaining NaNs
+    # 11. Handle any remaining NaNs
     nan_count = np.isnan(thickness).sum()
     if nan_count > 0:
         mean_thickness = np.nanmean(thickness)
@@ -1126,10 +1354,11 @@ def _interpolate_thickness_inline(contour_gdf: gpd.GeoDataFrame, modelgrid) -> n
     Inline fallback interpolation when grid_utils is not available.
 
     Uses scipy.interpolate.griddata with linear + nearest-neighbor two-stage approach.
+    Handles Point, LineString, and MultiLineString geometries.
     """
     from scipy.interpolate import griddata
 
-    # Extract points from contour geometries
+    # Extract points from geometries (supports Point, LineString, MultiLineString)
     points_for_interp = []
     for idx, row in contour_gdf.iterrows():
         if row.geometry is None or row.geometry.is_empty:
@@ -1137,7 +1366,13 @@ def _interpolate_thickness_inline(contour_gdf: gpd.GeoDataFrame, modelgrid) -> n
 
         thickness_value = row['aquifer_thickness']
 
-        if row.geometry.geom_type == 'MultiLineString':
+        if row.geometry.geom_type == 'Point':
+            x, y = row.geometry.x, row.geometry.y
+            points_for_interp.append((x, y, thickness_value))
+        elif row.geometry.geom_type == 'MultiPoint':
+            for point in row.geometry.geoms:
+                points_for_interp.append((point.x, point.y, thickness_value))
+        elif row.geometry.geom_type == 'MultiLineString':
             for line in row.geometry.geoms:
                 for x, y in line.coords:
                     points_for_interp.append((x, y, thickness_value))

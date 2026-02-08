@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
 from matplotlib.collections import PatchCollection
 import ipywidgets as widgets
+from IPython.display import display, Image
+import io
 
 from flopy.utils.triangle import Triangle
 from flopy.utils.voronoi import VoronoiGrid
@@ -230,10 +232,10 @@ def create_voronoi_grid(extent=(0, 10, 0, 10), center=(5, 5)):
         shutil.rmtree(ws)
 
 
-def _plot_grid(grid_type='Structured (rectangles)', show_well=True):
-    """Plot different grid types with optional well location.
+def _create_grid_figure(grid_type, show_well):
+    """Create and return a matplotlib figure for the specified grid type.
 
-    Internal function called by the interactive widget.
+    Internal function that creates the plot without displaying it.
     """
     fig, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=100)
     extent = (0, 10, 0, 10)
@@ -269,7 +271,7 @@ def _plot_grid(grid_type='Structured (rectangles)', show_well=True):
     ax.set_title(f"{title} ({len(cells)} cells)", fontsize=9)
     ax.tick_params(labelsize=7)
     plt.tight_layout()
-    plt.show()
+    return fig
 
 
 def show_grid_comparison():
@@ -288,6 +290,8 @@ def show_grid_comparison():
     >>> from grid_demo import show_grid_comparison
     >>> show_grid_comparison()
     """
+    from IPython.display import clear_output
+
     grid_selector = widgets.Dropdown(
         options=['Structured (rectangles)', 'Quadtree (quadrilaterals)', 'Triangular', 'Voronoi'],
         value='Structured (rectangles)',
@@ -297,8 +301,34 @@ def show_grid_comparison():
 
     well_toggle = widgets.Checkbox(value=True, description='Show well location')
 
-    print("Figure 1: Interactive comparison of MODFLOW 6 grid types.")
-    print("Triangular and Voronoi grids use FloPy's Triangle and VoronoiGrid utilities.")
-    print("All unstructured types (DISV) show refinement near the well.")
+    output = widgets.Output()
 
-    widgets.interact(_plot_grid, grid_type=grid_selector, show_well=well_toggle)
+    def update_plot(_=None):
+        plt.close('all')
+        with output:
+            clear_output(wait=True)
+            fig = _create_grid_figure(grid_selector.value, well_toggle.value)
+            buf = io.BytesIO()
+            fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+            buf.seek(0)
+            display(Image(data=buf.getvalue()))
+            buf.close()
+            plt.close('all')
+
+    grid_selector.observe(update_plot, names='value')
+    well_toggle.observe(update_plot, names='value')
+
+    ui = widgets.VBox([
+        widgets.HTML("<b>Figure 1:</b> Interactive comparison of MODFLOW 6 grid types.<br>"
+                     "Triangular and Voronoi grids use FloPy's Triangle and VoronoiGrid utilities.<br>"
+                     "All unstructured types (DISV) show refinement near the well."),
+        grid_selector,
+        well_toggle,
+        output
+    ])
+
+    # Generate initial plot BEFORE displaying UI
+    update_plot()
+
+    # Return widget instead of displaying - let notebook cell handle display
+    return ui

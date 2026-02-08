@@ -2027,9 +2027,271 @@ def plot_chd_comparison(model_base, model_scenario, figsize=(15, 6), buffer_cell
     cbar.set_label('Head Value [m]', fontsize=12)
     
     fig.suptitle('CHD Boundary Conditions Comparison', fontsize=14, fontweight='bold')
-    
+
     plt.tight_layout()
-    
+
     return fig, axes
 
+
+def plot_chd_validation(
+    chd_spd,
+    modelgrid,
+    model_top,
+    model_bottom,
+    idomain=None,
+    boundary_gdf=None,
+    riv_spd=None,
+    buffer_m=100,
+    figsize=(14, 6),
+    title="CHD Boundary Validation"
+):
+    """
+    Create validation figure for CHD (Constant Head) boundary estimation.
+
+    Shows two panels:
+    1. Map view zoomed to the CHD boundary area with continuous head values
+    2. Cross-section along northing showing model top, CHD head, river bottom, and model bottom
+
+    Parameters
+    ----------
+    chd_spd : list of tuple
+        CHD stress period data. Each tuple contains:
+        - For DISV grids: ((layer, cell_id), head)
+        - For structured grids: ((layer, row, col), head)
+    modelgrid : flopy.discretization.Grid
+        FloPy model grid object (StructuredGrid or VertexGrid).
+    model_top : numpy.ndarray
+        Model top elevation array. Shape depends on grid type:
+        - For DISV: 1D array of shape (ncpl,)
+        - For structured: 2D array of shape (nrow, ncol)
+    model_bottom : numpy.ndarray
+        Model bottom elevation array. Same shape as model_top.
+    idomain : numpy.ndarray, optional
+        IDOMAIN array for showing active domain. If None, all cells assumed active.
+    boundary_gdf : geopandas.GeoDataFrame, optional
+        Model boundary polygon for context.
+    riv_spd : list of tuple, optional
+        RIV stress period data for plotting river bottom. Each tuple contains:
+        ((layer, cell_id), stage, conductance, rbot)
+    buffer_m : float, optional
+        Buffer distance (meters) around CHD cells for zoom extent. Default is 100.
+    figsize : tuple, optional
+        Figure size (width, height) in inches. Default is (14, 6).
+    title : str, optional
+        Figure title. Default is "CHD Boundary Validation".
+
+    Returns
+    -------
+    fig, axes : matplotlib figure and axes tuple (ax_map, ax_xsec)
+        The figure and axes objects for further customization.
+
+    Examples
+    --------
+    >>> # After creating CHD stress period data
+    >>> chd_spd = [[(0, i), 390.0] for i in outflow_cell_ids]
+    >>> fig, axes = plot_chd_validation(
+    ...     chd_spd, modelgrid, model_top, model_bottom,
+    ...     idomain=idomain, boundary_gdf=boundary_gdf, riv_spd=riv_spd
+    ... )
+    >>> plt.show()
+    """
+    from flopy.discretization import VertexGrid
+
+    if len(chd_spd) == 0:
+        print("Warning: No CHD cells to validate")
+        return None, None
+
+    # Extract cell IDs and head values from stress period data
+    cell_ids = []
+    head_values = []
+
+    for entry in chd_spd:
+        cellid = entry[0]  # (layer, cell_id) or (layer, row, col)
+        head = entry[1]
+
+        if isinstance(modelgrid, VertexGrid):
+            # DISV: cellid is (layer, cell_index)
+            cell_idx = cellid[1]
+        else:
+            # Structured: cellid is (layer, row, col)
+            layer, row, col = cellid
+            cell_idx = row * modelgrid.ncol + col
+
+        cell_ids.append(cell_idx)
+        head_values.append(head)
+
+    cell_ids = np.array(cell_ids)
+    head_values = np.array(head_values)
+
+    # Get cell coordinates
+    xc = modelgrid.xcellcenters
+    yc = modelgrid.ycellcenters
+
+    if xc.ndim > 1:
+        xc = xc.flatten()
+        yc = yc.flatten()
+
+    # Get model top/bottom at CHD cells
+    top_flat = model_top.flatten() if model_top.ndim > 1 else model_top
+    bottom_flat = model_bottom.flatten() if model_bottom.ndim > 1 else model_bottom
+    top_at_chd = top_flat[cell_ids]
+    bottom_at_chd = bottom_flat[cell_ids]
+
+    # Calculate zoom extent based on CHD cell locations
+    chd_xmin, chd_xmax = xc[cell_ids].min(), xc[cell_ids].max()
+    chd_ymin, chd_ymax = yc[cell_ids].min(), yc[cell_ids].max()
+
+    # Add buffer
+    xlim = (chd_xmin - buffer_m, chd_xmax + buffer_m)
+    ylim = (chd_ymin - buffer_m, chd_ymax + buffer_m)
+
+    # Create figure with two panels
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+    ax_map, ax_xsec = axes
+
+    # --- Panel 1: Map view ---
+    # Create array for CHD visualization
+    if isinstance(modelgrid, VertexGrid):
+        ncells = modelgrid.ncpl
+    else:
+        ncells = modelgrid.nrow * modelgrid.ncol
+
+    chd_array = np.full(ncells, np.nan)
+    chd_array[cell_ids] = head_values
+
+    # Plot using PlotMapView for unstructured grid support
+    pmv = flopy.plot.PlotMapView(modelgrid=modelgrid, ax=ax_map)
+
+    # Plot grid
+    pmv.plot_grid(linewidth=0.3, color='gray', alpha=0.5)
+
+    # Plot CHD cells with continuous head values
+    vmin, vmax = head_values.min(), head_values.max()
+    # Add small buffer to color range if all values are the same
+    if vmin == vmax:
+        vmin -= 1
+        vmax += 1
+
+    im = pmv.plot_array(chd_array, cmap='Blues', alpha=0.9, vmin=vmin, vmax=vmax)
+
+    # Add boundary if provided
+    if boundary_gdf is not None:
+        boundary_gdf.boundary.plot(ax=ax_map, color='black', linewidth=1.5)
+
+    # Colorbar with continuous scale
+    cbar = plt.colorbar(im, ax=ax_map, shrink=0.7, pad=0.02)
+    cbar.set_label('CHD Head (m a.s.l.)', fontsize=10)
+
+    # Apply zoom to CHD area
+    ax_map.set_xlim(xlim)
+    ax_map.set_ylim(ylim)
+
+    ax_map.set_xlabel('Easting (m)')
+    ax_map.set_ylabel('Northing (m)')
+    ax_map.set_title('CHD Cell Locations', fontsize=11)
+    ax_map.set_aspect('equal')
+
+    # --- Panel 2: Cross-section along northing ---
+    # Sort CHD cells by northing (y coordinate)
+    chd_y = yc[cell_ids]
+    sort_idx = np.argsort(chd_y)
+
+    y_sorted = chd_y[sort_idx]
+    top_sorted = top_at_chd[sort_idx]
+    bottom_sorted = bottom_at_chd[sort_idx]
+    head_sorted = head_values[sort_idx]
+    cell_ids_sorted = cell_ids[sort_idx]
+
+    # Plot model top
+    ax_xsec.plot(y_sorted, top_sorted, 'k-', linewidth=2, label='Model top (land surface)')
+
+    # Plot model bottom
+    ax_xsec.plot(y_sorted, bottom_sorted, 'brown', linewidth=2, label='Model bottom')
+
+    # Plot CHD head
+    ax_xsec.plot(y_sorted, head_sorted, 'b-', linewidth=2, label='CHD head')
+
+    # Fill aquifer zone
+    ax_xsec.fill_between(y_sorted, bottom_sorted, top_sorted, alpha=0.2, color='lightblue', label='Aquifer')
+
+    # Plot river bottom if RIV data provided
+    if riv_spd is not None and len(riv_spd) > 0:
+        # Extract river cell info
+        riv_cell_ids = []
+        riv_rbot = []
+        riv_stage = []
+
+        for entry in riv_spd:
+            cellid = entry[0]
+            stage = entry[1]
+            rbot = entry[3]
+
+            if isinstance(modelgrid, VertexGrid):
+                cell_idx = cellid[1]
+            else:
+                layer, row, col = cellid
+                cell_idx = row * modelgrid.ncol + col
+
+            riv_cell_ids.append(cell_idx)
+            riv_rbot.append(rbot)
+            riv_stage.append(stage)
+
+        riv_cell_ids = np.array(riv_cell_ids)
+        riv_rbot = np.array(riv_rbot)
+        riv_stage = np.array(riv_stage)
+
+        # Find river cells near the CHD boundary (within x range of CHD cells)
+        riv_x = xc[riv_cell_ids]
+        riv_y = yc[riv_cell_ids]
+
+        # Filter to cells within the CHD x-range (+ small buffer)
+        x_tolerance = 150  # meters
+        near_chd_mask = (riv_x >= chd_xmin - x_tolerance) & (riv_x <= chd_xmax + x_tolerance)
+
+        if near_chd_mask.sum() > 0:
+            riv_y_near = riv_y[near_chd_mask]
+            riv_rbot_near = riv_rbot[near_chd_mask]
+            riv_stage_near = riv_stage[near_chd_mask]
+
+            # Sort by y
+            riv_sort_idx = np.argsort(riv_y_near)
+            ax_xsec.plot(riv_y_near[riv_sort_idx], riv_rbot_near[riv_sort_idx],
+                        'g--', linewidth=1.5, label='River bottom', marker='v', markersize=4)
+            ax_xsec.plot(riv_y_near[riv_sort_idx], riv_stage_near[riv_sort_idx],
+                        'c-', linewidth=1.5, label='River stage', marker='^', markersize=4)
+
+    ax_xsec.set_xlabel('Northing (m)')
+    ax_xsec.set_ylabel('Elevation (m a.s.l.)')
+    ax_xsec.set_title('Cross-section at Western Boundary', fontsize=11)
+    ax_xsec.legend(loc='upper right', fontsize=9)
+    ax_xsec.grid(True, alpha=0.3)
+
+    # Add stats text
+    depth_below_surface = top_at_chd - head_values
+    stats_text = (
+        f"CHD cells: {len(cell_ids)}\n"
+        f"Head: {head_values.min():.1f} - {head_values.max():.1f} m\n"
+        f"Depth below surface: {depth_below_surface.min():.1f} - {depth_below_surface.max():.1f} m"
+    )
+    ax_xsec.text(0.02, 0.02, stats_text, transform=ax_xsec.transAxes, fontsize=9,
+                verticalalignment='bottom', horizontalalignment='left',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.9))
+
+    fig.suptitle(title, fontsize=12, fontweight='bold')
+    plt.tight_layout()
+
+    # Print validation summary
+    print(f"CHD Validation Summary:")
+    print(f"  Total CHD cells: {len(cell_ids)}")
+    print(f"  Head values: {head_values.min():.1f} to {head_values.max():.1f} m a.s.l.")
+    print(f"  Land surface at CHD: {top_at_chd.min():.1f} to {top_at_chd.max():.1f} m a.s.l.")
+    print(f"  Depth below surface: {depth_below_surface.min():.1f} to {depth_below_surface.max():.1f} m")
+
+    valid_mask = depth_below_surface > 0
+    if (~valid_mask).sum() > 0:
+        print(f"  WARNING: {(~valid_mask).sum()} cells have head at or above land surface!")
+    else:
+        print(f"  All CHD heads are below land surface")
+
+    return fig, axes
 
