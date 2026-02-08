@@ -182,3 +182,6 @@ PLANNING/
 
 # Demo animations (generated GIFs)
 PROJECT/_demos/_animations/
+
+# Serena config
+/.serena

@@ -111,6 +111,44 @@ Use your understanding of the sediment types and typical K ranges for alluvial a
 - Zone 3 (Hardhof gravels): Coarse well-sorted gravels, high conductivity
 
 Fill in your K values (m/day) in the dictionary below, then run the check.
+""",
+
+# ============================================================================
+# NOTEBOOK 5 - CALIBRATION CHECKPOINTS
+# ============================================================================
+
+"task05_checkpoint_1": r"""
+## Checkpoint 1 - Observation Count
+After loading and combining observation data:
+- **How many total observation points do you have?**
+""",
+
+"task05_checkpoint_2": r"""
+## Checkpoint 2 - Initial Model Fit
+Before calibration, compare your simulated heads to observations:
+- **What is the initial RMSE (m)?**
+""",
+
+"task05_checkpoint_3": r"""
+## Checkpoint 3 - Calibrated Model Fit
+After manual calibration:
+- **What is your calibrated RMSE (m)?**
+""",
+
+"task05_checkpoint_4": r"""
+## Checkpoint 4 - Water Balance
+Verify your calibrated model's water balance:
+- **What is the water balance error (%)?**
+""",
+
+"task05_checkpoint_5": r"""
+## Conceptual Checkpoint - Residual Interpretation
+You observe that residuals in Zone 1 are predominantly positive (simulated > observed).
+- **What parameter adjustment would improve the fit?**
+  - A) Increase K in Zone 1
+  - B) Decrease K in Zone 1
+  - C) Increase recharge everywhere
+  - D) Decrease river conductance
 """
 
 }
@@ -131,7 +169,7 @@ solutions = {
     "task04_2": (25, 27),  # Correct solution 26
     "task04_checkpoint_1": (3000, 3500),  # Correct solution ~3235 active cells (50m Voronoi grid)
     "task04_checkpoint_2": (15, 20),  # Correct solution ~17.5 m (Limmat Valley default)
-    "task04_checkpoint_3": (6500, 8000),  # Correct solution ~7334 m³/day (depends on model area)
+    "task04_checkpoint_3": (2700, 3500),  # Correct solution ~3000 m³/day (10.4 km² × 110 mm/yr)
     "task04_checkpoint_4": (0, 0.1),  # Tolerance <0.1% - MF6 should converge to near-zero
     # Checkpoints 5 and 6 are conceptual/multiple choice - handled separately
     # K values task uses dict format for per-key tolerances
@@ -140,7 +178,12 @@ solutions = {
         "zone_2_downstream": (8, 15),     # Finer sediments: 8-15 m/day
         "zone_3_hardhof": (25, 40),       # Coarse gravels: 25-40 m/day
     },
-    # Add more tasks and their correct intervals here
+    # Notebook 5 checkpoints
+    "task05_checkpoint_1": (17, 22),      # 4 real AWEL + 15 synthetic = 19 obs points
+    "task05_checkpoint_2": (1.5, 4.0),    # Initial RMSE before calibration (depends on initial params)
+    "task05_checkpoint_3": (0.3, 2.0),    # Target calibrated RMSE < 2.0 m
+    "task05_checkpoint_4": (0, 1.0),      # Water balance error < 1%
+    # Checkpoint 5 is multiple choice - handled separately
 }
 
 
@@ -159,7 +202,7 @@ solutions_exact = {
     "task04_2": "26.0",
     "task04_checkpoint_1": "~3235",
     "task04_checkpoint_2": "17.5",
-    "task04_checkpoint_3": "~7334",
+    "task04_checkpoint_3": "~3000",
     "task04_checkpoint_4": "~0.0002",
     "task04_checkpoint_5": "B) Losing",
     "task04_checkpoint_6": "Head measurements, river discharge, spring discharge",
@@ -168,7 +211,12 @@ solutions_exact = {
         "zone_2_downstream": 12,  # Reference value for downstream alluvium
         "zone_3_hardhof": 32,     # Reference value for Hardhof gravels
     },
-    # Add more tasks and their correct intervals here
+    # Notebook 5 checkpoints
+    "task05_checkpoint_1": "19",
+    "task05_checkpoint_2": "~2.5",  # Depends on initial parameters
+    "task05_checkpoint_3": "~1.0",  # Target after calibration
+    "task05_checkpoint_4": "~0.001",
+    "task05_checkpoint_5": "A) Increase K in Zone 1",
 }
 
 
@@ -200,8 +248,12 @@ solution_unit = {
         "zone_2_downstream": "m/day",
         "zone_3_hardhof": "m/day",
     },
-    # Add more tasks and their correct intervals here
-
+    # Notebook 5 checkpoints
+    "task05_checkpoint_1": "points",
+    "task05_checkpoint_2": "m",
+    "task05_checkpoint_3": "m",
+    "task05_checkpoint_4": "%",
+    "task05_checkpoint_5": "multiple choice",
 }
 
 
@@ -214,7 +266,12 @@ multiple_choice_options = {
         ("B) Losing", "B) Losing (river loses water to aquifer)"),
         ("C) Varies", "C) Varies along reach (both gaining and losing sections)"),
     ],
-    # Add more multiple choice tasks here as needed
+    "task05_checkpoint_5": [
+        ("A) Increase K in Zone 1", "A) Increase K in Zone 1 (reduces simulated heads)"),
+        ("B) Decrease K in Zone 1", "B) Decrease K in Zone 1 (increases simulated heads)"),
+        ("C) Increase recharge everywhere", "C) Increase recharge everywhere (increases all heads)"),
+        ("D) Decrease river conductance", "D) Decrease river conductance (affects river-aquifer exchange)"),
+    ],
 }
 
 
@@ -368,21 +425,21 @@ The average thickness can be calculated by:
 "task04_checkpoint_3": r"""
 ## Solution - Total Recharge Flux
 
-The total recharge flux depends on your specific model setup and domain area. It is calculated as:
+The total recharge flux depends on your model domain area and recharge rate:
 
-$$Q_{recharge} = A_{recharge} \times R_{rate}$$
+$$Q_{recharge} = A_{active} \times R_{rate}$$
 
 Where:
-- $A_{recharge}$ is the model area with active recharge (in m²)
+- $A_{active}$ is the active model area (in m²)
 - $R_{rate}$ is the recharge rate (in m/day)
 
-For example, if your model area is ~20 km² (20 × 10⁶ m²) with a recharge rate of ~0.25 mm/day (0.00025 m/day):
-- $Q_{recharge} = 20 \times 10^6 \text{ m}^2 \times 0.00025 \text{ m/day} = 5000 \text{ m}^3/\text{day}$
+For the Limmat Valley model with ~10 km² active area and 110 mm/year recharge:
+- $R_{rate} = 110 \text{ mm/year} \div 365.25 \approx 3.01 \times 10^{-4} \text{ m/day}$
+- $Q_{recharge} = 10 \times 10^6 \text{ m}^2 \times 3.01 \times 10^{-4} \text{ m/day} \approx 3000 \text{ m}^3/\text{day}$
 
-To calculate from your model:
-- Sum all recharge flows from the RCH package (MODFLOW 6)
-- Or integrate recharge rate × cell area across all recharge cells
-- Check the water balance output for total inflow from recharge
+To verify from your model:
+- Check `total_recharge_m3_day` variable in the recharge calculation cell
+- Or check the water balance output for total inflow from RCH package
 <br>
 """,
 
@@ -480,6 +537,109 @@ The hydraulic conductivity (K) values for the Limmat Valley geological zones are
 - **Zone 3 (Hardhof gravels)**: Well-sorted coarse gravels from glacial outwash. High K due to large grain size and good sorting. This zone is the primary production aquifer.
 
 These are initial estimates. Calibration against observed heads will refine these values in Notebook 5.
+<br>
+""",
+
+# ============================================================================
+# NOTEBOOK 5 - CALIBRATION SOLUTIONS
+# ============================================================================
+
+"task05_checkpoint_1": r"""
+## Solution - Observation Count
+
+The observation dataset combines two sources:
+
+1. **Real AWEL observations**: 4 monitoring wells within the model domain
+   - Well 516 (Wiedikon/Letzigraben)
+   - Well 3601 (Aussersihl/Zweierplatz)
+   - Well 83-1
+   - Well 3625 (Lagerstrasse)
+
+2. **Synthetic observations**: 15 artificial points added for teaching purposes
+   - Generated from a reference model run with realistic noise (σ = 0.3 m)
+   - Distributed across the model domain for spatial coverage
+   - Clearly marked as synthetic in all visualizations
+
+**Total: 4 real + 15 synthetic = 19 observation points**
+
+The synthetic observations allow us to demonstrate calibration methods even with limited real data coverage.
+<br>
+""",
+
+"task05_checkpoint_2": r"""
+## Solution - Initial RMSE
+
+The initial Root Mean Square Error (RMSE) depends on how far the uncalibrated model parameters are from the "true" values.
+
+With the default initial parameters (K = 20 m/day uniform), you should see an RMSE in the range of **1.5-4.0 m**.
+
+The RMSE is calculated as:
+
+$$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(h_{sim,i} - h_{obs,i})^2}$$
+
+A higher initial RMSE indicates more room for improvement through calibration. The spatial pattern of residuals (shown in the residual map) guides which parameters to adjust.
+<br>
+""",
+
+"task05_checkpoint_3": r"""
+## Solution - Calibrated RMSE
+
+After manual calibration, you should achieve an RMSE of **< 2.0 m**, ideally around **1.0 m** or less.
+
+**Calibration quality guidelines:**
+- RMSE < 1 m: Excellent
+- RMSE 1-2 m: Good
+- RMSE 2-3 m: Acceptable
+- RMSE > 3 m: Needs improvement
+
+The corresponding NRMSE (Normalized RMSE) should be **< 10%** of the observed head range.
+
+If you cannot achieve RMSE < 2 m:
+1. Check for observation points in problematic locations (near boundaries, dry cells)
+2. Consider whether the conceptual model is appropriate
+3. Review boundary condition assumptions
+<br>
+""",
+
+"task05_checkpoint_4": r"""
+## Solution - Water Balance Error
+
+MODFLOW 6 should achieve excellent water balance closure. The error should be **< 1%**, typically around **0.001%** or less.
+
+The water balance error is:
+
+$$\text{Error (\%)} = \frac{|Q_{in} - Q_{out}|}{(Q_{in} + Q_{out})/2} \times 100$$
+
+**If your error is > 1%:**
+1. Check solver convergence (IMS settings)
+2. Verify all boundary conditions are correctly specified
+3. Ensure the model is running to completion
+4. Check for excessively dry cells
+
+A well-converged steady-state model should have near-zero balance error.
+<br>
+""",
+
+"task05_checkpoint_5": r"""
+## Solution - Residual Interpretation
+
+**Correct answer: A) Increase K in Zone 1**
+
+**Reasoning:**
+- Positive residuals mean simulated heads are **higher** than observed
+- Higher heads occur when water cannot drain away fast enough
+- Increasing K allows water to flow more easily, lowering heads
+
+**Physical interpretation:**
+- Simulated head = f(recharge/K) - higher K means lower equilibrium head
+- If sim > obs, the aquifer is "mounding" too much → increase K to let water escape
+
+**What the other options would do:**
+- B) Decrease K → Would raise heads further (wrong direction)
+- C) Increase recharge → Would raise heads everywhere (wrong direction)
+- D) Decrease river conductance → Would affect river exchange but not systematically lower heads in Zone 1
+
+This principle is key to manual calibration: use residual patterns to guide parameter adjustments in the correct direction.
 <br>
 """
 
