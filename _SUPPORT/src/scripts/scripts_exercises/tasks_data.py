@@ -99,19 +99,7 @@ Consider how you would assess your model's predictive quality:
   - Expected answers may include: head measurements at observation wells, river discharge/baseflow rates, spring discharge data, or other field measurements
 """,
 
-"task04_k_values": r"""
-## Exercise - Hydraulic Conductivity Assignment
-
-Based on the geological zones in the Limmat Valley, assign hydraulic conductivity (K) values to each zone.
-Use your understanding of the sediment types and typical K ranges for alluvial aquifers.
-
-**Guidelines:**
-- Zone 1 (Upstream alluvium): Sandy gravels, moderate conductivity
-- Zone 2 (Downstream alluvium): Finer sediments, lower conductivity
-- Zone 3 (Hardhof gravels): Coarse well-sorted gravels, high conductivity
-
-Fill in your K values (m/day) in the dictionary below, then run the check.
-""",
+# task04_k_values removed - simplified to uniform K in notebook revision
 
 # ============================================================================
 # NOTEBOOK 5 - CALIBRATION CHECKPOINTS
@@ -172,12 +160,7 @@ solutions = {
     "task04_checkpoint_3": (2700, 3500),  # Correct solution ~3000 m³/day (10.4 km² × 110 mm/yr)
     "task04_checkpoint_4": (0, 0.1),  # Tolerance <0.1% - MF6 should converge to near-zero
     # Checkpoints 5 and 6 are conceptual/multiple choice - handled separately
-    # K values task uses dict format for per-key tolerances
-    "task04_k_values": {
-        "zone_1_upstream": (15, 25),      # Sandy gravels: 15-25 m/day
-        "zone_2_downstream": (8, 15),     # Finer sediments: 8-15 m/day
-        "zone_3_hardhof": (25, 40),       # Coarse gravels: 25-40 m/day
-    },
+    # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
     "task05_checkpoint_1": (17, 22),      # 4 real AWEL + 15 synthetic = 19 obs points
     "task05_checkpoint_2": (1.5, 4.0),    # Initial RMSE before calibration (depends on initial params)
@@ -206,11 +189,7 @@ solutions_exact = {
     "task04_checkpoint_4": "~0.0002",
     "task04_checkpoint_5": "B) Losing",
     "task04_checkpoint_6": "Head measurements, river discharge, spring discharge",
-    "task04_k_values": {
-        "zone_1_upstream": 20,    # Reference value for upstream alluvium
-        "zone_2_downstream": 12,  # Reference value for downstream alluvium
-        "zone_3_hardhof": 32,     # Reference value for Hardhof gravels
-    },
+    # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
     "task05_checkpoint_1": "19",
     "task05_checkpoint_2": "~2.5",  # Depends on initial parameters
@@ -243,11 +222,7 @@ solution_unit = {
     "task04_checkpoint_4": "%",
     "task04_checkpoint_5": "multiple choice",
     "task04_checkpoint_6": "open-ended",
-    "task04_k_values": {
-        "zone_1_upstream": "m/day",
-        "zone_2_downstream": "m/day",
-        "zone_3_hardhof": "m/day",
-    },
+    # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
     "task05_checkpoint_1": "points",
     "task05_checkpoint_2": "m",
@@ -512,33 +487,7 @@ The quality of your model depends heavily on the availability and accuracy of fi
 <br>
 """,
 
-"task04_k_values": r"""
-## Solution - Hydraulic Conductivity Values
-
-The hydraulic conductivity (K) values for the Limmat Valley geological zones are based on:
-- Field measurements (pumping tests, slug tests)
-- Swiss cantonal guidelines (AWA Zurich)
-- Literature values for similar Alpine valley deposits
-
-**Recommended values:**
-
-| Zone | Sediment Type | K Range (m/day) | Reference Value |
-|------|---------------|-----------------|-----------------|
-| Zone 1 (Upstream) | Sandy gravels | 15-25 | 20 m/day |
-| Zone 2 (Downstream) | Finer alluvium | 8-15 | 12 m/day |
-| Zone 3 (Hardhof) | Coarse gravels | 25-40 | 32 m/day |
-
-**Why these values?**
-
-- **Zone 1 (Upstream alluvium)**: Mixed sandy gravels typical of upper valley deposits. Moderate sorting leads to intermediate K values.
-
-- **Zone 2 (Downstream alluvium)**: Contains more silt and clay from floodplain deposition. Lower K reflects finer grain sizes.
-
-- **Zone 3 (Hardhof gravels)**: Well-sorted coarse gravels from glacial outwash. High K due to large grain size and good sorting. This zone is the primary production aquifer.
-
-These are initial estimates. Calibration against observed heads will refine these values in Notebook 5.
-<br>
-""",
+# task04_k_values solution removed - simplified to uniform K
 
 # ============================================================================
 # NOTEBOOK 5 - CALIBRATION SOLUTIONS

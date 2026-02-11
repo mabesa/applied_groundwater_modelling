@@ -16,6 +16,7 @@ Functions:
     create_wel_package: Create MF6 WEL package from well geometries
     create_chd_package: Create MF6 CHD package from boundary geometries
     create_rch_package: Create MF6 RCH package with optional zone-based rates
+    build_lateral_inflow_wel: Build WEL data for lateral valley margin inflow
 """
 
 from __future__ import annotations
@@ -918,6 +919,169 @@ def create_rch_package(
     )
 
     return rch
+
+
+def build_lateral_inflow_wel(
+    boundary_segments: gpd.GeoDataFrame,
+    modelgrid: Union[VertexGrid, StructuredGrid],
+    idomain: np.ndarray,
+    catchment_params: Optional[Dict[str, float]] = None,
+    buffer_distance: float = 150.0,
+    x_bin_width: float = 50.0,
+) -> Tuple[List[Tuple], List[int], List[int]]:
+    """
+    Build WEL stress period data for lateral groundwater inflow from valley margins.
+
+    This function identifies cells along the north and south boundaries of the model
+    domain and assigns lateral inflow rates based on catchment water balance.
+
+    Parameters
+    ----------
+    boundary_segments : gpd.GeoDataFrame
+        GeoDataFrame with boundary segment geometries. Must have a 'desc' column
+        with values 'north' and 'south' identifying the lateral boundary segments.
+    modelgrid : VertexGrid or StructuredGrid
+        FloPy model grid object.
+    idomain : np.ndarray
+        IDOMAIN array with shape (nlay, ncpl) or (nlay, nrow, ncol).
+        Cells with idomain <= 0 are skipped.
+    catchment_params : dict, optional
+        Dictionary of catchment parameters for water balance calculation.
+        Keys: 'north_area_m2', 'south_area_m2', 'effective_recharge_m_per_year'
+        Defaults: north=11 km², south=15 km², recharge=0.11 m/year (110 mm/year)
+    buffer_distance : float, optional
+        Buffer distance (meters) around boundary segments for candidate cell
+        selection. Default: 150.0 m.
+    x_bin_width : float, optional
+        Width of x-coordinate bins (meters) for edge detection. Within each bin,
+        only the northernmost (for north boundary) or southernmost (for south
+        boundary) cell is selected. Default: 50.0 m.
+
+    Returns
+    -------
+    tuple of (list, list, list)
+        - wel_spd: List of WEL stress period data tuples [((layer, cellid), Q), ...]
+        - north_cell_ids: List of cell IDs along north boundary
+        - south_cell_ids: List of cell IDs along south boundary
+
+    Notes
+    -----
+    Water balance approach:
+        Q_lateral = catchment_area × effective_recharge / 365.25
+
+    where effective_recharge represents the fraction of precipitation on surrounding
+    hillslopes that becomes groundwater recharge to the valley aquifer.
+
+    Edge detection strategy:
+        1. Buffer the boundary segments to get candidate cells
+        2. Group candidates by x-coordinate bins
+        3. Select the northernmost cell (north boundary) or southernmost cell
+           (south boundary) in each bin
+        4. This ensures exactly one row of cells along each boundary
+
+    Examples
+    --------
+    >>> wel_spd, north_ids, south_ids = build_lateral_inflow_wel(
+    ...     boundary_segments, modelgrid, idomain
+    ... )
+    >>> print(f"North: {len(north_ids)} cells, South: {len(south_ids)} cells")
+    """
+    # Default catchment parameters (from Limmat Valley perceptual model)
+    default_params = {
+        'north_area_m2': 11_000_000,  # 11 km²
+        'south_area_m2': 15_000_000,  # 15 km²
+        'effective_recharge_m_per_year': 0.11,  # 10% of 1100 mm/year
+    }
+    params = {**default_params, **(catchment_params or {})}
+
+    # Get cell centers
+    xc = modelgrid.xcellcenters
+    yc = modelgrid.ycellcenters
+    if hasattr(xc, 'flatten'):
+        xc = xc.flatten()
+        yc = yc.flatten()
+
+    # Determine number of cells
+    if isinstance(modelgrid, VertexGrid):
+        ncpl = modelgrid.ncpl
+    else:
+        ncpl = modelgrid.nrow * modelgrid.ncol
+
+    # Extract north and south boundary segments
+    north_line = boundary_segments[boundary_segments['desc'] == 'north'].union_all()
+    south_line = boundary_segments[boundary_segments['desc'] == 'south'].union_all()
+
+    # Create buffers around boundary segments
+    north_buffer = north_line.buffer(buffer_distance)
+    south_buffer = south_line.buffer(buffer_distance)
+
+    # Build list of active cells with coordinates
+    active_cells = []
+    for cell_id in range(ncpl):
+        if idomain[0, cell_id] > 0:
+            active_cells.append({
+                'cell_id': cell_id,
+                'x': xc[cell_id],
+                'y': yc[cell_id],
+                'point': Point(xc[cell_id], yc[cell_id])
+            })
+
+    import pandas as pd
+    cells_df = pd.DataFrame(active_cells)
+
+    # Identify candidate cells near each boundary
+    cells_df['near_north'] = cells_df['point'].apply(lambda p: north_buffer.contains(p))
+    cells_df['near_south'] = cells_df['point'].apply(lambda p: south_buffer.contains(p))
+
+    north_candidates = cells_df[cells_df['near_north']].copy()
+    south_candidates = cells_df[cells_df['near_south']].copy()
+
+    # Edge detection: for each x-bin, select outermost cell
+    north_cell_ids = []
+    if len(north_candidates) > 0:
+        north_candidates['x_bin'] = (
+            (north_candidates['x'] - north_candidates['x'].min()) // x_bin_width
+        ).astype(int)
+        for x_bin, group in north_candidates.groupby('x_bin'):
+            north_idx = group['y'].idxmax()  # Highest y = northernmost
+            north_cell_ids.append(group.loc[north_idx, 'cell_id'])
+        north_cell_ids = list(set(north_cell_ids))
+
+    south_cell_ids = []
+    if len(south_candidates) > 0:
+        south_candidates['x_bin'] = (
+            (south_candidates['x'] - south_candidates['x'].min()) // x_bin_width
+        ).astype(int)
+        for x_bin, group in south_candidates.groupby('x_bin'):
+            south_idx = group['y'].idxmin()  # Lowest y = southernmost
+            south_cell_ids.append(group.loc[south_idx, 'cell_id'])
+        south_cell_ids = list(set(south_cell_ids))
+
+    # Remove any cells that might be in both lists
+    south_cell_ids = [c for c in south_cell_ids if c not in north_cell_ids]
+
+    # Calculate total lateral inflow (m³/day) using water balance
+    Q_north_total = (
+        params['north_area_m2'] * params['effective_recharge_m_per_year'] / 365.25
+    )
+    Q_south_total = (
+        params['south_area_m2'] * params['effective_recharge_m_per_year'] / 365.25
+    )
+
+    # Create WEL stress period data - distribute inflow evenly among boundary cells
+    wel_spd = []
+
+    if len(north_cell_ids) > 0:
+        q_per_cell_north = Q_north_total / len(north_cell_ids)
+        for cell_id in north_cell_ids:
+            wel_spd.append([(0, cell_id), q_per_cell_north])
+
+    if len(south_cell_ids) > 0:
+        q_per_cell_south = Q_south_total / len(south_cell_ids)
+        for cell_id in south_cell_ids:
+            wel_spd.append([(0, cell_id), q_per_cell_south])
+
+    return wel_spd, north_cell_ids, south_cell_ids
 
 
 # Utility functions for validation and debugging
