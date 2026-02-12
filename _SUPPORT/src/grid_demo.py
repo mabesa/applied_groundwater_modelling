@@ -12,13 +12,63 @@ Usage:
 import numpy as np
 import tempfile
 import shutil
+import os
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
 from matplotlib.collections import PatchCollection
 import ipywidgets as widgets
+from IPython.display import display, Image
+import io
 
+import flopy
 from flopy.utils.triangle import Triangle
 from flopy.utils.voronoi import VoronoiGrid
+from flopy.utils.gridgen import Gridgen
+
+
+def _find_gridgen_executable():
+    """Find the gridgen executable on the system.
+
+    Checks in order:
+    1. System PATH (via shutil.which)
+    2. FloPy's default binary directory (~/.local/share/flopy/bin/)
+
+    Returns
+    -------
+    str or None
+        Path to gridgen executable, or None if not found.
+    """
+    # Check PATH first
+    path = shutil.which("gridgen")
+    if path is not None:
+        return path
+
+    # Check FloPy's binary directory
+    flopy_bin = os.path.join(os.path.expanduser("~"), ".local", "share", "flopy", "bin", "gridgen")
+    if os.path.isfile(flopy_bin):
+        return flopy_bin
+
+    return None
+
+
+def _setup_gridgen_env():
+    """Set environment variables needed for the gridgen executable.
+
+    On macOS with Homebrew, the gridgen binary may be linked against a gcc
+    library path that no longer exists after formula updates. This sets
+    DYLD_LIBRARY_PATH to include the correct gcc library directories.
+    """
+    import platform
+    if platform.system() != "Darwin":
+        return
+
+    import glob
+    gcc_lib_dirs = glob.glob("/opt/homebrew/opt/gcc@*/lib/gcc/current") + \
+                   glob.glob("/opt/homebrew/opt/gcc@*/lib/gcc/[0-9]*")
+    if gcc_lib_dirs:
+        existing = os.environ.get("DYLD_LIBRARY_PATH", "")
+        new_path = ":".join(gcc_lib_dirs)
+        os.environ["DYLD_LIBRARY_PATH"] = f"{new_path}:{existing}" if existing else new_path
 
 
 def create_structured_grid(nrows=10, ncols=10, extent=(0, 10, 0, 10)):
@@ -50,7 +100,10 @@ def create_structured_grid(nrows=10, ncols=10, extent=(0, 10, 0, 10)):
 
 
 def create_quadtree_grid(base_size=8, extent=(0, 10, 0, 10), center=(5, 5)):
-    """Create a quadtree-refined grid with finer cells near center.
+    """Create a quadtree-refined grid using FloPy's Gridgen utility.
+
+    Uses the MODFLOW 6 gridgen program to build a proper quadtree grid
+    with adaptive refinement near the center point.
 
     Parameters
     ----------
@@ -66,37 +119,72 @@ def create_quadtree_grid(base_size=8, extent=(0, 10, 0, 10), center=(5, 5)):
     list
         List of cell vertex coordinate lists
     """
+    gridgen_exe = _find_gridgen_executable()
+    if gridgen_exe is None:
+        raise RuntimeError(
+            "gridgen executable not found. Install it with:\n"
+            "  python -c \"import flopy; flopy.utils.get_modflow(bindir='~/.local/share/flopy/bin')\""
+        )
+
+    _setup_gridgen_env()
+
     xmin, xmax, ymin, ymax = extent
     cx, cy = center
-    cells = []
-    cell_size = (xmax - xmin) / base_size
+    dx = (xmax - xmin) / base_size
+    dy = (ymax - ymin) / base_size
 
-    for i in range(base_size):
-        for j in range(base_size):
-            x0 = xmin + j * cell_size
-            y0 = ymin + i * cell_size
-            cell_cx = x0 + cell_size / 2
-            cell_cy = y0 + cell_size / 2
-            dist = np.sqrt((cell_cx - cx)**2 + (cell_cy - cy)**2)
+    ws = tempfile.mkdtemp()
 
-            if dist < 2.0:  # Inner zone - subdivide twice
-                quarter = cell_size / 4
-                for di in range(4):
-                    for dj in range(4):
-                        sx, sy = x0 + dj * quarter, y0 + di * quarter
-                        cells.append([(sx, sy), (sx + quarter, sy),
-                                     (sx + quarter, sy + quarter), (sx, sy + quarter)])
-            elif dist < 3.5:  # Middle zone - subdivide once
-                half = cell_size / 2
-                for di in range(2):
-                    for dj in range(2):
-                        sx, sy = x0 + dj * half, y0 + di * half
-                        cells.append([(sx, sy), (sx + half, sy),
-                                     (sx + half, sy + half), (sx, sy + half)])
-            else:  # Outer zone - no subdivision
-                cells.append([(x0, y0), (x0 + cell_size, y0),
-                             (x0 + cell_size, y0 + cell_size), (x0, y0 + cell_size)])
-    return cells
+    try:
+        # Create a dummy MF6 simulation with a base structured grid
+        sim = flopy.mf6.MFSimulation(sim_name="gridgen_base", sim_ws=ws, exe_name="mf6")
+        gwf = flopy.mf6.ModflowGwf(sim, modelname="gridgen_base")
+        flopy.mf6.ModflowGwfdis(
+            gwf,
+            nlay=1,
+            nrow=base_size,
+            ncol=base_size,
+            delr=dx,
+            delc=dy,
+            top=1.0,
+            botm=[0.0],
+            xorigin=xmin,
+            yorigin=ymin,
+        )
+
+        # Create Gridgen object and add refinement near center
+        g = Gridgen(gwf.modelgrid, model_ws=ws, exe_name=gridgen_exe)
+
+        # Inner refinement zone (level 2 = subdivide twice)
+        from flopy.utils.geometry import Polygon as FpPolygon
+        inner_poly = [FpPolygon([(cx - 1.5, cy - 1.5), (cx + 1.5, cy - 1.5),
+                                 (cx + 1.5, cy + 1.5), (cx - 1.5, cy + 1.5),
+                                 (cx - 1.5, cy - 1.5)])]
+        g.add_refinement_features(inner_poly, "polygon", 2, [0])
+
+        # Middle refinement zone (level 1 = subdivide once)
+        middle_poly = [FpPolygon([(cx - 3.0, cy - 3.0), (cx + 3.0, cy - 3.0),
+                                  (cx + 3.0, cy + 3.0), (cx - 3.0, cy + 3.0),
+                                  (cx - 3.0, cy - 3.0)])]
+        g.add_refinement_features(middle_poly, "polygon", 1, [0])
+
+        # Build quadtree grid
+        g.build(verbose=False)
+
+        # Extract cell vertices from DISV grid properties
+        gridprops = g.get_gridprops_disv()
+        vertices = gridprops['vertices']
+
+        cells = []
+        for cell in gridprops['cell2d']:
+            ncvert = cell[3]
+            vert_indices = list(cell[4:4 + ncvert])
+            cell_verts = [(vertices[vi][1], vertices[vi][2]) for vi in vert_indices]
+            cells.append(cell_verts)
+
+        return cells
+    finally:
+        shutil.rmtree(ws)
 
 
 def create_triangular_grid(extent=(0, 10, 0, 10), center=(5, 5)):
@@ -230,10 +318,10 @@ def create_voronoi_grid(extent=(0, 10, 0, 10), center=(5, 5)):
         shutil.rmtree(ws)
 
 
-def _plot_grid(grid_type='Structured (rectangles)', show_well=True):
-    """Plot different grid types with optional well location.
+def _create_grid_figure(grid_type, show_well):
+    """Create and return a matplotlib figure for the specified grid type.
 
-    Internal function called by the interactive widget.
+    Internal function that creates the plot without displaying it.
     """
     fig, ax = plt.subplots(1, 1, figsize=(4, 4), dpi=100)
     extent = (0, 10, 0, 10)
@@ -269,7 +357,7 @@ def _plot_grid(grid_type='Structured (rectangles)', show_well=True):
     ax.set_title(f"{title} ({len(cells)} cells)", fontsize=9)
     ax.tick_params(labelsize=7)
     plt.tight_layout()
-    plt.show()
+    return fig
 
 
 def show_grid_comparison():
@@ -277,9 +365,9 @@ def show_grid_comparison():
 
     Creates a dropdown widget to select between:
     - Structured (rectangles) - DIS package
-    - Quadtree (quadrilaterals) - DISV package
-    - Triangular - DISV package
-    - Voronoi - DISV package
+    - Quadtree (quadrilaterals) - DISV package (via Gridgen)
+    - Triangular - DISV package (via Triangle)
+    - Voronoi - DISV package (via VoronoiGrid)
 
     All unstructured types show local refinement around a central well location.
 
@@ -288,6 +376,8 @@ def show_grid_comparison():
     >>> from grid_demo import show_grid_comparison
     >>> show_grid_comparison()
     """
+    from IPython.display import clear_output
+
     grid_selector = widgets.Dropdown(
         options=['Structured (rectangles)', 'Quadtree (quadrilaterals)', 'Triangular', 'Voronoi'],
         value='Structured (rectangles)',
@@ -297,8 +387,34 @@ def show_grid_comparison():
 
     well_toggle = widgets.Checkbox(value=True, description='Show well location')
 
-    print("Figure 1: Interactive comparison of MODFLOW 6 grid types.")
-    print("Triangular and Voronoi grids use FloPy's Triangle and VoronoiGrid utilities.")
-    print("All unstructured types (DISV) show refinement near the well.")
+    output = widgets.Output()
 
-    widgets.interact(_plot_grid, grid_type=grid_selector, show_well=well_toggle)
+    def update_plot(_=None):
+        plt.close('all')
+        with output:
+            clear_output(wait=True)
+            fig = _create_grid_figure(grid_selector.value, well_toggle.value)
+            buf = io.BytesIO()
+            fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+            buf.seek(0)
+            display(Image(data=buf.getvalue()))
+            buf.close()
+            plt.close('all')
+
+    grid_selector.observe(update_plot, names='value')
+    well_toggle.observe(update_plot, names='value')
+
+    ui = widgets.VBox([
+        widgets.HTML("<b>Figure 1:</b> Interactive comparison of MODFLOW 6 grid types.<br>"
+                     "All grid types use FloPy utilities (Gridgen, Triangle, VoronoiGrid).<br>"
+                     "All unstructured types (DISV) show refinement near the well."),
+        grid_selector,
+        well_toggle,
+        output
+    ])
+
+    # Generate initial plot BEFORE displaying UI
+    update_plot()
+
+    # Return widget instead of displaying - let notebook cell handle display
+    return ui

@@ -846,6 +846,254 @@ def get_and_display_river_water_level_data(
     return river_data_path, summary
 
 
+def build_riv_stress_period_data(
+    river_cells: List[int],
+    modelgrid,
+    model_top: np.ndarray,
+    model_bottom: np.ndarray,
+    rivers_gdf: gpd.GeoDataFrame,
+    idomain: np.ndarray,
+    river_params: Optional[Dict[str, Any]] = None,
+    bin_width: float = 100.0,
+) -> Tuple[List, 'pd.DataFrame']:
+    """
+    Build RIV stress period data with river-specific parameters and rbot homogenization.
+
+    This function classifies river cells by river (Sihl vs Limmat), applies river-specific
+    parameters (width, depth, riverbed K), and homogenizes riverbed bottom elevations
+    within cross-sectional bins to prevent numerical instabilities.
+
+    Parameters
+    ----------
+    river_cells : list of int
+        Cell IDs identified as river cells during grid creation.
+    modelgrid : flopy.discretization.VertexGrid
+        FloPy model grid object (DISV VertexGrid).
+    model_top : np.ndarray
+        1D array of model top elevations (land surface) at cell centers.
+    model_bottom : np.ndarray
+        1D array of model bottom elevations (aquifer base) at cell centers.
+    rivers_gdf : gpd.GeoDataFrame
+        GeoDataFrame with river polygon geometries. Must contain 'GEWAESSERNAME'
+        column with values 'Sihl' and/or 'Limmat'.
+    idomain : np.ndarray
+        IDOMAIN array with shape (nlay, ncpl). Cells with idomain <= 0 are skipped.
+    river_params : dict, optional
+        Dictionary of river-specific parameters. If None, uses defaults.
+        Keys: 'sihl_leakage_coeff', 'limmat_leakage_coeff', 'riverbed_thickness',
+              'sihl_depth', 'limmat_depth', 'sihl_width', 'limmat_width',
+              'min_stage_clearance'
+    bin_width : float, optional
+        Width of cross-sectional bins (meters) for rbot homogenization. Default: 100.0.
+
+    Returns
+    -------
+    tuple of (list, pd.DataFrame)
+        - riv_spd: List of RIV stress period data tuples [(cellid, stage, cond, rbot), ...]
+        - cell_df: DataFrame with cell-level details for visualization and debugging.
+          Columns: cell_id, x, y, river, river_depth, riverbed_k, river_width,
+                   raw_rbot, homogenized_rbot, bin, stage, conductance
+
+    Notes
+    -----
+    Rbot homogenization strategy:
+    - Sihl flows roughly N-S: cells are binned by y-coordinate
+    - Limmat flows roughly E-W: cells are binned by x-coordinate
+    - Within each bin, rbot is set to the minimum raw_rbot value
+    - This ensures consistent water levels across river cross-sections
+
+    The conductance calculation uses:
+        C = K_riverbed × width × reach_length / riverbed_thickness
+
+    Examples
+    --------
+    >>> riv_spd, riv_df = build_riv_stress_period_data(
+    ...     river_cells, modelgrid, model_top, model_bottom,
+    ...     rivers_gdf, idomain
+    ... )
+    >>> print(f"Created {len(riv_spd)} RIV cells")
+    """
+    import pandas as pd
+    from shapely.geometry import Point, Polygon
+
+    # Default river parameters (from perceptual model analysis)
+    default_params = {
+        'sihl_leakage_coeff': 1.3e-6 * 86400,    # 1/day (converted from 1/s)
+        'limmat_leakage_coeff': 3.5e-6 * 86400,  # 1/day
+        'riverbed_thickness': 0.05,               # m (clogging layer, typically a few cm)
+        'sihl_depth': 0.4,                        # m (mean depth)
+        'limmat_depth': 1.0,                      # m (mean depth)
+        'sihl_width': 15.0,                       # m
+        'limmat_width': 30.0,                     # m
+        'min_stage_clearance': 0.05,              # m
+    }
+
+    # Merge with user-provided parameters
+    params = {**default_params, **(river_params or {})}
+
+    # Calculate riverbed K from leakage coefficients
+    riverbed_k_sihl = params['sihl_leakage_coeff'] * params['riverbed_thickness']
+    riverbed_k_limmat = params['limmat_leakage_coeff'] * params['riverbed_thickness']
+
+    # Get cell centers
+    xc = modelgrid.xcellcenters
+    yc = modelgrid.ycellcenters
+    if hasattr(xc, 'flatten'):
+        xc = xc.flatten()
+        yc = yc.flatten()
+
+    # Return empty results if no river cells
+    if len(river_cells) == 0:
+        return [], pd.DataFrame()
+
+    # Separate river geometries
+    sihl_geom = rivers_gdf[rivers_gdf['GEWAESSERNAME'] == 'Sihl'].union_all()
+    limmat_geom = rivers_gdf[rivers_gdf['GEWAESSERNAME'] == 'Limmat'].union_all()
+
+    # Helper function to get cell area from vertex connectivity
+    def get_cell_area(modelgrid, cell_id):
+        """Calculate cell area from vertex geometry."""
+        cell_data = modelgrid.cell2d[cell_id]
+        nvert = cell_data[3]
+        vert_ids = cell_data[4:4+nvert]
+        vertices = modelgrid._vertices
+        vert_dict = {v[0]: (v[1], v[2]) for v in vertices}
+        coords = [vert_dict[vid] for vid in vert_ids]
+        return Polygon(coords).area
+
+    # =========================================================================
+    # STEP 1: Classify cells by river and compute initial (raw) rbot values
+    # =========================================================================
+    cell_data = []
+
+    for cell_id in river_cells:
+        if idomain[0, cell_id] <= 0:
+            continue
+
+        cell_x = xc[cell_id]
+        cell_y = yc[cell_id]
+        cell_point = Point(cell_x, cell_y)
+
+        # Classify by river
+        if sihl_geom is not None and not sihl_geom.is_empty and sihl_geom.contains(cell_point):
+            river_name = 'Sihl'
+            river_depth = params['sihl_depth']
+            riverbed_k = riverbed_k_sihl
+            river_width = params['sihl_width']
+        elif limmat_geom is not None and not limmat_geom.is_empty and limmat_geom.contains(cell_point):
+            river_name = 'Limmat'
+            river_depth = params['limmat_depth']
+            riverbed_k = riverbed_k_limmat
+            river_width = params['limmat_width']
+        else:
+            river_name = 'Unknown'
+            river_depth = params['limmat_depth']
+            riverbed_k = riverbed_k_limmat
+            river_width = params['limmat_width']
+
+        # Compute raw rbot from DEM (land surface - depth - safety margin)
+        raw_rbot = model_top[cell_id] - river_depth - 0.5
+
+        # Ensure rbot is above aquifer bottom
+        if raw_rbot < model_bottom[cell_id]:
+            raw_rbot = model_bottom[cell_id] + 0.1
+
+        cell_data.append({
+            'cell_id': cell_id,
+            'x': cell_x,
+            'y': cell_y,
+            'river': river_name,
+            'river_depth': river_depth,
+            'riverbed_k': riverbed_k,
+            'river_width': river_width,
+            'raw_rbot': raw_rbot,
+        })
+
+    # Convert to DataFrame for processing
+    cell_df = pd.DataFrame(cell_data)
+
+    if len(cell_df) == 0:
+        return [], pd.DataFrame()
+
+    # =========================================================================
+    # STEP 2: Bin cells into cross-sections and compute minimum rbot per bin
+    # =========================================================================
+    def assign_bins(df, coord_col, bin_width):
+        """Assign bin indices based on coordinate."""
+        coord_min = df[coord_col].min()
+        bins = ((df[coord_col] - coord_min) // bin_width).astype(int)
+        return bins
+
+    cell_df['bin'] = -1
+    cell_df['homogenized_rbot'] = cell_df['raw_rbot']  # Default to raw
+
+    # Process Sihl (bin by y-coordinate - perpendicular to N-S flow)
+    sihl_mask = cell_df['river'] == 'Sihl'
+    if sihl_mask.sum() > 0:
+        sihl_bins = assign_bins(cell_df.loc[sihl_mask], 'y', bin_width)
+        cell_df.loc[sihl_mask, 'bin'] = sihl_bins
+
+        # Compute minimum rbot per Sihl bin
+        for bin_id in sihl_bins.unique():
+            bin_mask = sihl_mask & (cell_df['bin'] == bin_id)
+            min_rbot = cell_df.loc[bin_mask, 'raw_rbot'].min()
+            cell_df.loc[bin_mask, 'homogenized_rbot'] = min_rbot
+
+    # Process Limmat (bin by x-coordinate - perpendicular to E-W flow)
+    limmat_mask = cell_df['river'] == 'Limmat'
+    if limmat_mask.sum() > 0:
+        limmat_bins = assign_bins(cell_df.loc[limmat_mask], 'x', bin_width)
+        # Offset bin IDs to avoid collision with Sihl bins
+        limmat_bins = limmat_bins + 10000
+        cell_df.loc[limmat_mask, 'bin'] = limmat_bins
+
+        # Compute minimum rbot per Limmat bin
+        for bin_id in limmat_bins.unique():
+            bin_mask = limmat_mask & (cell_df['bin'] == bin_id)
+            min_rbot = cell_df.loc[bin_mask, 'raw_rbot'].min()
+            cell_df.loc[bin_mask, 'homogenized_rbot'] = min_rbot
+
+    # =========================================================================
+    # STEP 3: Build RIV stress period data with homogenized rbot
+    # =========================================================================
+    riv_spd = []
+    stages = []
+    conductances = []
+
+    for idx, row in cell_df.iterrows():
+        cell_id = row['cell_id']
+        rbot = row['homogenized_rbot']
+        river_depth = row['river_depth']
+        riverbed_k = row['riverbed_k']
+        river_width = row['river_width']
+
+        # Stage: water surface elevation
+        stage = rbot + river_depth
+
+        # Ensure stage is below land surface
+        if stage >= model_top[cell_id]:
+            stage = model_top[cell_id] - 0.1
+
+        # Ensure minimum clearance between stage and rbot
+        if stage - rbot < params['min_stage_clearance']:
+            stage = rbot + params['min_stage_clearance']
+
+        # Conductance calculation: C = K × W × L / M
+        cell_area = get_cell_area(modelgrid, cell_id)
+        reach_length = np.sqrt(cell_area)
+        conductance = riverbed_k * river_width * reach_length / params['riverbed_thickness']
+
+        riv_spd.append([(0, cell_id), stage, conductance, rbot])
+        stages.append(stage)
+        conductances.append(conductance)
+
+    # Add computed values to DataFrame for visualization
+    cell_df['stage'] = stages
+    cell_df['conductance'] = conductances
+
+    return riv_spd, cell_df
+
+
 def get_river_area(
     gw_map_path: str = None,
     show_figures: bool = False

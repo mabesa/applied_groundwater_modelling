@@ -177,8 +177,13 @@ _SUPPORT/src/scripts/scripts_limmat_data_preprocessing/groundwater_visualization
 PROJECT/workspace/*/
 !PROJECT/workspace/template/
 
-# Planning folder (internal use only)
+# Planning folders (internal use only)
 PLANNING/
+planning/ARCHIVE/
+DESIGN_DOCS/
 
 # Demo animations (generated GIFs)
 PROJECT/_demos/_animations/
+
+# Serena config
+/.serena

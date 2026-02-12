@@ -1275,21 +1275,638 @@ Changes:
     return fig, axes, budget_comparison_df
 
 
+# =============================================================================
+# DISV Grid Support Functions (MODFLOW 6 / Unstructured Grids)
+# =============================================================================
+
+def quick_model_plot(
+    modelgrid,
+    array,
+    boundary_gdf=None,
+    title="",
+    cmap='viridis',
+    colorbar_label="",
+    vmin=None,
+    vmax=None,
+    figsize=(10, 10),
+    show_grid=True,
+    grid_alpha=0.3,
+    grid_linewidth=0.5,
+    ax=None,
+):
+    """
+    Standard model array visualization with consistent styling.
+
+    Works with both StructuredGrid and VertexGrid (DISV) grids from FloPy.
+    Provides a simple, consistent interface for visualizing model arrays.
+
+    Parameters
+    ----------
+    modelgrid : flopy.discretization.StructuredGrid or VertexGrid
+        FloPy model grid object. Supports both structured and DISV grids.
+    array : numpy.ndarray
+        Array of values to plot. Shape should match the grid:
+        - For VertexGrid: 1D array of length ncpl, or 2D (nlay, ncpl)
+        - For StructuredGrid: 2D (nrow, ncol) or 3D (nlay, nrow, ncol)
+    boundary_gdf : geopandas.GeoDataFrame, optional
+        Optional boundary polygon to overlay on the plot.
+    title : str, optional
+        Plot title. Default: "".
+    cmap : str or matplotlib.colors.Colormap, optional
+        Colormap for the array values. Default: 'viridis'.
+    colorbar_label : str, optional
+        Label for the colorbar. Default: "".
+    vmin : float, optional
+        Minimum value for color scaling. If None, uses array minimum.
+    vmax : float, optional
+        Maximum value for color scaling. If None, uses array maximum.
+    figsize : tuple, optional
+        Figure size (width, height) in inches. Default: (10, 10).
+    show_grid : bool, optional
+        Whether to show grid lines. Default: True.
+    grid_alpha : float, optional
+        Transparency of grid lines. Default: 0.3.
+    grid_linewidth : float, optional
+        Width of grid lines. Default: 0.5.
+    ax : matplotlib.axes.Axes, optional
+        Existing axes to plot on. If None, creates new figure/axes.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure object.
+    ax : matplotlib.axes.Axes
+        The axes object.
+
+    Examples
+    --------
+    >>> # Plot hydraulic conductivity on DISV grid
+    >>> fig, ax = quick_model_plot(
+    ...     modelgrid, hk_array,
+    ...     title="Hydraulic Conductivity",
+    ...     colorbar_label="K (m/day)",
+    ...     cmap='YlOrBr'
+    ... )
+
+    >>> # Plot heads with custom range
+    >>> fig, ax = quick_model_plot(
+    ...     modelgrid, heads,
+    ...     title="Simulated Heads",
+    ...     colorbar_label="Head (m a.s.l.)",
+    ...     vmin=380, vmax=420
+    ... )
+    """
+    from flopy.discretization import VertexGrid, StructuredGrid
+
+    # Create figure if needed
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = ax.get_figure()
+
+    # Flatten array if needed
+    array = np.asarray(array)
+    if array.ndim > 2:
+        array = array[0]  # Take first layer for 3D arrays
+    if array.ndim == 2 and isinstance(modelgrid, VertexGrid):
+        array = array.flatten()
+
+    # Create PlotMapView
+    pmv = flopy.plot.PlotMapView(modelgrid=modelgrid, ax=ax)
+
+    # Plot the array
+    plot_kwargs = {'cmap': cmap}
+    if vmin is not None:
+        plot_kwargs['vmin'] = vmin
+    if vmax is not None:
+        plot_kwargs['vmax'] = vmax
+
+    # Use plot_array which works for both grid types
+    im = pmv.plot_array(array, **plot_kwargs)
+
+    # Plot grid if requested
+    if show_grid:
+        pmv.plot_grid(alpha=grid_alpha, linewidth=grid_linewidth, color='gray')
+
+    # Plot boundary if provided
+    if boundary_gdf is not None:
+        boundary_gdf.boundary.plot(ax=ax, color='black', linewidth=1.5)
+
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax, shrink=0.7, pad=0.02)
+    if colorbar_label:
+        cbar.set_label(colorbar_label)
+
+    # Set title and labels
+    if title:
+        ax.set_title(title, fontweight='bold')
+    ax.set_xlabel('Easting (m)')
+    ax.set_ylabel('Northing (m)')
+    ax.set_aspect('equal')
+
+    return fig, ax
+
+
+def plot_model_results_summary(
+    gwf,
+    sim,
+    boundary_gdf=None,
+    figsize=(16, 14),
+    head_cmap='Blues',
+    save_path=None,
+):
+    """
+    Create 4-panel summary of MODFLOW 6 model results.
+
+    Displays heads, water budget, flow vectors, and a combined view.
+    Works with both structured and DISV (unstructured) grids.
+
+    Parameters
+    ----------
+    gwf : flopy.mf6.ModflowGwf
+        MODFLOW 6 groundwater flow model object.
+    sim : flopy.mf6.MFSimulation
+        MODFLOW 6 simulation object.
+    boundary_gdf : geopandas.GeoDataFrame, optional
+        Optional boundary polygon to overlay on plots.
+    figsize : tuple, optional
+        Figure size (width, height) in inches. Default: (16, 14).
+    head_cmap : str, optional
+        Colormap for head distribution. Default: 'Blues'.
+    save_path : str, optional
+        Path to save the figure. If None, figure is not saved.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure object.
+    axes : numpy.ndarray
+        Array of axes objects.
+
+    Notes
+    -----
+    The four panels show:
+    1. Head distribution with contours
+    2. Water budget summary (bar chart)
+    3. Flow vectors (quiver plot)
+    4. Combined heads + vectors view
+
+    Requires the model to have been run successfully before calling.
+
+    Examples
+    --------
+    >>> # Run simulation first
+    >>> sim.run_simulation()
+    >>>
+    >>> # Create summary plot
+    >>> fig, axes = plot_model_results_summary(gwf, sim)
+    """
+    from flopy.discretization import VertexGrid
+
+    # Get model grid
+    modelgrid = gwf.modelgrid
+    is_disv = isinstance(modelgrid, VertexGrid)
+
+    # Create figure with subplots
+    fig, axes = plt.subplots(2, 2, figsize=figsize)
+
+    # --- Panel 1: Head distribution ---
+    ax1 = axes[0, 0]
+
+    try:
+        # Get head data
+        head = gwf.output.head().get_data()
+        if head.ndim == 3:
+            head = head[0]  # First layer
+
+        # Mask inactive cells
+        try:
+            idomain = gwf.dis.idomain.array if hasattr(gwf.dis, 'idomain') else None
+            if idomain is None and hasattr(gwf, 'disv'):
+                idomain = gwf.disv.idomain.array
+            if idomain is not None:
+                if idomain.ndim == 3:
+                    idomain = idomain[0]
+                head = np.where(idomain <= 0, np.nan, head)
+        except Exception:
+            pass
+
+        # Plot heads
+        pmv1 = flopy.plot.PlotMapView(modelgrid=modelgrid, ax=ax1)
+        im1 = pmv1.plot_array(head, cmap=head_cmap)
+        pmv1.plot_grid(alpha=0.2, linewidth=0.3)
+
+        # Add contours
+        try:
+            levels = np.linspace(np.nanmin(head), np.nanmax(head), 10)
+            cont1 = pmv1.contour_array(head, levels=levels, colors='darkblue', linewidths=0.8)
+            ax1.clabel(cont1, inline=True, fontsize=8, fmt='%.1f')
+        except Exception:
+            pass
+
+        cbar1 = plt.colorbar(im1, ax=ax1, shrink=0.6, pad=0.02)
+        cbar1.set_label('Head (m a.s.l.)')
+        ax1.set_title('(a) Head Distribution', fontweight='bold')
+        ax1.set_xlabel('Easting (m)')
+        ax1.set_ylabel('Northing (m)')
+        ax1.set_aspect('equal')
+
+    except Exception as e:
+        ax1.text(0.5, 0.5, f'Could not load heads:\n{e}',
+                ha='center', va='center', transform=ax1.transAxes)
+        ax1.set_title('(a) Head Distribution', fontweight='bold')
+
+    # --- Panel 2: Water budget ---
+    ax2 = axes[0, 1]
+
+    try:
+        # Get budget data
+        budget = gwf.output.budget()
+
+        # Get unique record names
+        records = budget.get_unique_record_names()
+
+        # Extract budget terms
+        budget_data = {}
+        for rec in records:
+            rec_name = rec.decode('utf-8').strip() if isinstance(rec, bytes) else rec.strip()
+            data = budget.get_data(text=rec_name)
+            if len(data) > 0:
+                # Sum all values for this term
+                total = np.sum(data[-1]['q'])  # Last time step
+                budget_data[rec_name] = total
+
+        # Separate inflows and outflows
+        inflows = {k: v for k, v in budget_data.items() if v > 0}
+        outflows = {k: -v for k, v in budget_data.items() if v < 0}  # Make positive for plotting
+
+        # Create bar chart
+        all_terms = list(inflows.keys()) + list(outflows.keys())
+        all_values = list(inflows.values()) + [-v for v in outflows.values()]
+        colors = ['green'] * len(inflows) + ['red'] * len(outflows)
+
+        if all_terms:
+            y_pos = np.arange(len(all_terms))
+            bars = ax2.barh(y_pos, all_values, color=colors, alpha=0.7)
+            ax2.set_yticks(y_pos)
+            ax2.set_yticklabels(all_terms, fontsize=9)
+            ax2.axvline(x=0, color='black', linewidth=1)
+            ax2.set_xlabel('Flow Rate (m³/day)')
+
+            # Add value labels
+            for bar, val in zip(bars, all_values):
+                width = bar.get_width()
+                ax2.annotate(f'{val:,.0f}',
+                           xy=(width, bar.get_y() + bar.get_height()/2),
+                           xytext=(3 if width > 0 else -3, 0),
+                           textcoords="offset points",
+                           ha='left' if width > 0 else 'right',
+                           va='center', fontsize=8)
+        else:
+            ax2.text(0.5, 0.5, 'No budget data available',
+                    ha='center', va='center', transform=ax2.transAxes)
+
+        ax2.set_title('(b) Water Budget', fontweight='bold')
+        ax2.grid(True, alpha=0.3, axis='x')
+
+    except Exception as e:
+        ax2.text(0.5, 0.5, f'Could not load budget:\n{e}',
+                ha='center', va='center', transform=ax2.transAxes)
+        ax2.set_title('(b) Water Budget', fontweight='bold')
+
+    # --- Panel 3: Flow vectors ---
+    ax3 = axes[1, 0]
+
+    try:
+        pmv3 = flopy.plot.PlotMapView(modelgrid=modelgrid, ax=ax3)
+
+        # Plot grid background
+        pmv3.plot_grid(alpha=0.3, linewidth=0.3, color='gray')
+
+        # Try to get specific discharge if available
+        try:
+            spdis = budget.get_data(text='DATA-SPDIS')
+            if len(spdis) > 0:
+                qx = spdis[-1]['qx']
+                qy = spdis[-1]['qy']
+                if qx.ndim == 3:
+                    qx = qx[0]
+                    qy = qy[0]
+
+                # Plot vectors using quiver
+                pmv3.plot_vector(qx, qy, normalize=True, color='blue', alpha=0.7)
+                ax3.set_title('(c) Flow Vectors (Specific Discharge)', fontweight='bold')
+            else:
+                ax3.text(0.5, 0.5, 'No specific discharge data\n(enable SAVE_SPECIFIC_DISCHARGE)',
+                        ha='center', va='center', transform=ax3.transAxes)
+                ax3.set_title('(c) Flow Vectors', fontweight='bold')
+        except Exception:
+            ax3.text(0.5, 0.5, 'Flow vectors not available',
+                    ha='center', va='center', transform=ax3.transAxes)
+            ax3.set_title('(c) Flow Vectors', fontweight='bold')
+
+        ax3.set_xlabel('Easting (m)')
+        ax3.set_ylabel('Northing (m)')
+        ax3.set_aspect('equal')
+
+    except Exception as e:
+        ax3.text(0.5, 0.5, f'Could not plot vectors:\n{e}',
+                ha='center', va='center', transform=ax3.transAxes)
+        ax3.set_title('(c) Flow Vectors', fontweight='bold')
+
+    # --- Panel 4: Combined view ---
+    ax4 = axes[1, 1]
+
+    try:
+        pmv4 = flopy.plot.PlotMapView(modelgrid=modelgrid, ax=ax4)
+
+        # Plot heads
+        im4 = pmv4.plot_array(head, cmap=head_cmap, alpha=0.7)
+
+        # Add contours
+        try:
+            cont4 = pmv4.contour_array(head, levels=levels, colors='darkblue', linewidths=0.8)
+            ax4.clabel(cont4, inline=True, fontsize=8, fmt='%.1f')
+        except Exception:
+            pass
+
+        # Add boundary if provided
+        if boundary_gdf is not None:
+            boundary_gdf.boundary.plot(ax=ax4, color='black', linewidth=1.5)
+
+        cbar4 = plt.colorbar(im4, ax=ax4, shrink=0.6, pad=0.02)
+        cbar4.set_label('Head (m a.s.l.)')
+        ax4.set_title('(d) Heads with Boundary', fontweight='bold')
+        ax4.set_xlabel('Easting (m)')
+        ax4.set_ylabel('Northing (m)')
+        ax4.set_aspect('equal')
+
+    except Exception as e:
+        ax4.text(0.5, 0.5, f'Could not create combined plot:\n{e}',
+                ha='center', va='center', transform=ax4.transAxes)
+        ax4.set_title('(d) Combined View', fontweight='bold')
+
+    plt.tight_layout()
+
+    # Save if requested
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Figure saved to: {save_path}")
+
+    return fig, axes
+
+
+def plot_grid_refinement(
+    modelgrid,
+    refinement_gdf=None,
+    boundary_gdf=None,
+    highlight_color='red',
+    base_color='lightblue',
+    figsize=(12, 10),
+    title="DISV Grid with Refinement",
+    show_cell_count=True,
+    ax=None,
+):
+    """
+    Visualize DISV grid with optional refinement zones highlighted.
+
+    Useful for students to verify their local grid refinement in case
+    study notebooks. Shows cell structure and highlights refinement areas.
+
+    Parameters
+    ----------
+    modelgrid : flopy.discretization.VertexGrid
+        FloPy VertexGrid object (DISV grid).
+    refinement_gdf : geopandas.GeoDataFrame, optional
+        GeoDataFrame with polygon(s) defining the refinement area.
+        Cells within this area will be highlighted.
+    boundary_gdf : geopandas.GeoDataFrame, optional
+        Model boundary polygon to overlay.
+    highlight_color : str, optional
+        Color for cells in refinement area. Default: 'red'.
+    base_color : str, optional
+        Color for cells outside refinement area. Default: 'lightblue'.
+    figsize : tuple, optional
+        Figure size (width, height) in inches. Default: (12, 10).
+    title : str, optional
+        Plot title. Default: "DISV Grid with Refinement".
+    show_cell_count : bool, optional
+        Whether to show cell count statistics. Default: True.
+    ax : matplotlib.axes.Axes, optional
+        Existing axes to plot on. If None, creates new figure/axes.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure object.
+    ax : matplotlib.axes.Axes
+        The axes object.
+
+    Examples
+    --------
+    >>> # Visualize base grid
+    >>> fig, ax = plot_grid_refinement(modelgrid)
+
+    >>> # Visualize with refinement area highlighted
+    >>> study_area = gpd.read_file("my_study_area.gpkg")
+    >>> fig, ax = plot_grid_refinement(
+    ...     modelgrid,
+    ...     refinement_gdf=study_area,
+    ...     title="Grid with Local Refinement"
+    ... )
+    """
+    from flopy.discretization import VertexGrid
+    from shapely.geometry import Point, Polygon
+    from shapely.ops import unary_union
+
+    # Validate grid type
+    if not isinstance(modelgrid, VertexGrid):
+        raise TypeError(
+            f"modelgrid must be a VertexGrid (DISV), got {type(modelgrid)}. "
+            "For structured grids, use plot_grid() directly."
+        )
+
+    # Create figure if needed
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = ax.get_figure()
+
+    # Get cell information
+    ncpl = modelgrid.ncpl
+    vertices = modelgrid._vertices
+    cell2d = modelgrid.cell2d
+
+    # Build vertex dictionary
+    vert_dict = {v[0]: (v[1], v[2]) for v in vertices}
+
+    # Determine which cells are in refinement area
+    refined_cells = set()
+    if refinement_gdf is not None:
+        refine_union = unary_union(refinement_gdf.geometry)
+
+        for cell in cell2d:
+            cell_id = cell[0]
+            xc, yc = cell[1], cell[2]
+            if refine_union.contains(Point(xc, yc)):
+                refined_cells.add(cell_id)
+
+    # Build cell polygons and plot
+    from matplotlib.patches import Polygon as MplPolygon
+    from matplotlib.collections import PatchCollection
+
+    base_patches = []
+    refined_patches = []
+
+    for cell in cell2d:
+        cell_id = cell[0]
+        nvert = cell[3]
+        vert_ids = cell[4:4+nvert]
+
+        coords = [vert_dict[vid] for vid in vert_ids]
+
+        if cell_id in refined_cells:
+            refined_patches.append(MplPolygon(coords, closed=True))
+        else:
+            base_patches.append(MplPolygon(coords, closed=True))
+
+    # Plot base cells
+    if base_patches:
+        base_collection = PatchCollection(
+            base_patches,
+            facecolor=base_color,
+            edgecolor='gray',
+            linewidth=0.3,
+            alpha=0.7
+        )
+        ax.add_collection(base_collection)
+
+    # Plot refined cells
+    if refined_patches:
+        refined_collection = PatchCollection(
+            refined_patches,
+            facecolor=highlight_color,
+            edgecolor='darkred',
+            linewidth=0.5,
+            alpha=0.6
+        )
+        ax.add_collection(refined_collection)
+
+    # Plot refinement area boundary if provided
+    if refinement_gdf is not None:
+        refinement_gdf.boundary.plot(
+            ax=ax, color='darkred', linewidth=2,
+            linestyle='--', label='Refinement Area'
+        )
+
+    # Plot model boundary if provided
+    if boundary_gdf is not None:
+        boundary_gdf.boundary.plot(
+            ax=ax, color='black', linewidth=2, label='Model Boundary'
+        )
+
+    # Set axis limits
+    xc = modelgrid.xcellcenters
+    yc = modelgrid.ycellcenters
+    if xc.ndim > 1:
+        xc = xc.flatten()
+        yc = yc.flatten()
+
+    buffer = (xc.max() - xc.min()) * 0.02
+    ax.set_xlim(xc.min() - buffer, xc.max() + buffer)
+    ax.set_ylim(yc.min() - buffer, yc.max() + buffer)
+
+    # Add cell count statistics
+    if show_cell_count:
+        n_refined = len(refined_cells)
+        n_base = ncpl - n_refined
+
+        stats_text = f"Total cells: {ncpl:,}"
+        if n_refined > 0:
+            stats_text += f"\nRefined area: {n_refined:,} cells"
+            stats_text += f"\nBase area: {n_base:,} cells"
+
+        ax.text(
+            0.02, 0.98, stats_text,
+            transform=ax.transAxes,
+            fontsize=10,
+            verticalalignment='top',
+            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
+        )
+
+    # Set labels
+    ax.set_title(title, fontweight='bold')
+    ax.set_xlabel('Easting (m)')
+    ax.set_ylabel('Northing (m)')
+    ax.set_aspect('equal')
+
+    # Add legend if we have boundaries
+    if refinement_gdf is not None or boundary_gdf is not None:
+        ax.legend(loc='upper right')
+
+    plt.tight_layout()
+
+    return fig, ax
+
+
+def get_idomain_cmap():
+    """
+    Return standard IDOMAIN discrete colormap and normalizer.
+
+    Creates a colormap suitable for visualizing IDOMAIN arrays with three
+    categories: inactive (0), active (1), and vertical pass-through (-1).
+
+    Returns
+    -------
+    cmap : matplotlib.colors.ListedColormap
+        Discrete colormap with 3 colors.
+    norm : matplotlib.colors.BoundaryNorm
+        Normalizer for discrete boundaries.
+    tick_labels : list
+        Labels for colorbar ticks.
+
+    Examples
+    --------
+    >>> cmap, norm, labels = get_idomain_cmap()
+    >>> fig, ax = plt.subplots()
+    >>> im = ax.imshow(idomain, cmap=cmap, norm=norm)
+    >>> cbar = plt.colorbar(im, ax=ax, ticks=[-1, 0, 1])
+    >>> cbar.ax.set_yticklabels(labels)
+    """
+    from matplotlib.colors import ListedColormap, BoundaryNorm
+
+    # Colors for: -1 (pass-through), 0 (inactive), 1 (active)
+    colors = ['lightgray', 'white', 'lightblue']
+    cmap = ListedColormap(colors)
+
+    # Boundaries: -1.5 to -0.5 (=-1), -0.5 to 0.5 (=0), 0.5 to 1.5 (=1)
+    bounds = [-1.5, -0.5, 0.5, 1.5]
+    norm = BoundaryNorm(bounds, cmap.N)
+
+    tick_labels = ['Pass-through (-1)', 'Inactive (0)', 'Active (1)']
+
+    return cmap, norm, tick_labels
+
+
+# =============================================================================
+# Legacy Functions (Structured Grids / MODFLOW 2005/NWT)
+# =============================================================================
+
 def plot_chd_comparison(model_base, model_scenario, figsize=(15, 6), buffer_cells=5):
     """
     Plot CHD boundary values for base and scenario models side by side.
-    
+
     Parameters:
     -----------
     model_base : flopy.modflow.Modflow
         Base model with original CHD conditions
-    model_scenario : flopy.modflow.Modflow  
+    model_scenario : flopy.modflow.Modflow
         Scenario model with modified CHD conditions
     figsize : tuple, optional
         Figure size (width, height) in inches
     buffer_cells : int, optional
         Number of cells to add as buffer around CHD extent for zooming
-        
+
     Returns:
     --------
     fig, axes : matplotlib figure and axes objects
@@ -1410,9 +2027,271 @@ def plot_chd_comparison(model_base, model_scenario, figsize=(15, 6), buffer_cell
     cbar.set_label('Head Value [m]', fontsize=12)
     
     fig.suptitle('CHD Boundary Conditions Comparison', fontsize=14, fontweight='bold')
-    
+
     plt.tight_layout()
-    
+
     return fig, axes
 
+
+def plot_chd_validation(
+    chd_spd,
+    modelgrid,
+    model_top,
+    model_bottom,
+    idomain=None,
+    boundary_gdf=None,
+    riv_spd=None,
+    buffer_m=100,
+    figsize=(14, 6),
+    title="CHD Boundary Validation"
+):
+    """
+    Create validation figure for CHD (Constant Head) boundary estimation.
+
+    Shows two panels:
+    1. Map view zoomed to the CHD boundary area with continuous head values
+    2. Cross-section along northing showing model top, CHD head, river bottom, and model bottom
+
+    Parameters
+    ----------
+    chd_spd : list of tuple
+        CHD stress period data. Each tuple contains:
+        - For DISV grids: ((layer, cell_id), head)
+        - For structured grids: ((layer, row, col), head)
+    modelgrid : flopy.discretization.Grid
+        FloPy model grid object (StructuredGrid or VertexGrid).
+    model_top : numpy.ndarray
+        Model top elevation array. Shape depends on grid type:
+        - For DISV: 1D array of shape (ncpl,)
+        - For structured: 2D array of shape (nrow, ncol)
+    model_bottom : numpy.ndarray
+        Model bottom elevation array. Same shape as model_top.
+    idomain : numpy.ndarray, optional
+        IDOMAIN array for showing active domain. If None, all cells assumed active.
+    boundary_gdf : geopandas.GeoDataFrame, optional
+        Model boundary polygon for context.
+    riv_spd : list of tuple, optional
+        RIV stress period data for plotting river bottom. Each tuple contains:
+        ((layer, cell_id), stage, conductance, rbot)
+    buffer_m : float, optional
+        Buffer distance (meters) around CHD cells for zoom extent. Default is 100.
+    figsize : tuple, optional
+        Figure size (width, height) in inches. Default is (14, 6).
+    title : str, optional
+        Figure title. Default is "CHD Boundary Validation".
+
+    Returns
+    -------
+    fig, axes : matplotlib figure and axes tuple (ax_map, ax_xsec)
+        The figure and axes objects for further customization.
+
+    Examples
+    --------
+    >>> # After creating CHD stress period data
+    >>> chd_spd = [[(0, i), 390.0] for i in outflow_cell_ids]
+    >>> fig, axes = plot_chd_validation(
+    ...     chd_spd, modelgrid, model_top, model_bottom,
+    ...     idomain=idomain, boundary_gdf=boundary_gdf, riv_spd=riv_spd
+    ... )
+    >>> plt.show()
+    """
+    from flopy.discretization import VertexGrid
+
+    if len(chd_spd) == 0:
+        print("Warning: No CHD cells to validate")
+        return None, None
+
+    # Extract cell IDs and head values from stress period data
+    cell_ids = []
+    head_values = []
+
+    for entry in chd_spd:
+        cellid = entry[0]  # (layer, cell_id) or (layer, row, col)
+        head = entry[1]
+
+        if isinstance(modelgrid, VertexGrid):
+            # DISV: cellid is (layer, cell_index)
+            cell_idx = cellid[1]
+        else:
+            # Structured: cellid is (layer, row, col)
+            layer, row, col = cellid
+            cell_idx = row * modelgrid.ncol + col
+
+        cell_ids.append(cell_idx)
+        head_values.append(head)
+
+    cell_ids = np.array(cell_ids)
+    head_values = np.array(head_values)
+
+    # Get cell coordinates
+    xc = modelgrid.xcellcenters
+    yc = modelgrid.ycellcenters
+
+    if xc.ndim > 1:
+        xc = xc.flatten()
+        yc = yc.flatten()
+
+    # Get model top/bottom at CHD cells
+    top_flat = model_top.flatten() if model_top.ndim > 1 else model_top
+    bottom_flat = model_bottom.flatten() if model_bottom.ndim > 1 else model_bottom
+    top_at_chd = top_flat[cell_ids]
+    bottom_at_chd = bottom_flat[cell_ids]
+
+    # Calculate zoom extent based on CHD cell locations
+    chd_xmin, chd_xmax = xc[cell_ids].min(), xc[cell_ids].max()
+    chd_ymin, chd_ymax = yc[cell_ids].min(), yc[cell_ids].max()
+
+    # Add buffer
+    xlim = (chd_xmin - buffer_m, chd_xmax + buffer_m)
+    ylim = (chd_ymin - buffer_m, chd_ymax + buffer_m)
+
+    # Create figure with two panels
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+    ax_map, ax_xsec = axes
+
+    # --- Panel 1: Map view ---
+    # Create array for CHD visualization
+    if isinstance(modelgrid, VertexGrid):
+        ncells = modelgrid.ncpl
+    else:
+        ncells = modelgrid.nrow * modelgrid.ncol
+
+    chd_array = np.full(ncells, np.nan)
+    chd_array[cell_ids] = head_values
+
+    # Plot using PlotMapView for unstructured grid support
+    pmv = flopy.plot.PlotMapView(modelgrid=modelgrid, ax=ax_map)
+
+    # Plot grid
+    pmv.plot_grid(linewidth=0.3, color='gray', alpha=0.5)
+
+    # Plot CHD cells with continuous head values
+    vmin, vmax = head_values.min(), head_values.max()
+    # Add small buffer to color range if all values are the same
+    if vmin == vmax:
+        vmin -= 1
+        vmax += 1
+
+    im = pmv.plot_array(chd_array, cmap='Blues', alpha=0.9, vmin=vmin, vmax=vmax)
+
+    # Add boundary if provided
+    if boundary_gdf is not None:
+        boundary_gdf.boundary.plot(ax=ax_map, color='black', linewidth=1.5)
+
+    # Colorbar with continuous scale
+    cbar = plt.colorbar(im, ax=ax_map, shrink=0.7, pad=0.02)
+    cbar.set_label('CHD Head (m a.s.l.)', fontsize=10)
+
+    # Apply zoom to CHD area
+    ax_map.set_xlim(xlim)
+    ax_map.set_ylim(ylim)
+
+    ax_map.set_xlabel('Easting (m)')
+    ax_map.set_ylabel('Northing (m)')
+    ax_map.set_title('CHD Cell Locations', fontsize=11)
+    ax_map.set_aspect('equal')
+
+    # --- Panel 2: Cross-section along northing ---
+    # Sort CHD cells by northing (y coordinate)
+    chd_y = yc[cell_ids]
+    sort_idx = np.argsort(chd_y)
+
+    y_sorted = chd_y[sort_idx]
+    top_sorted = top_at_chd[sort_idx]
+    bottom_sorted = bottom_at_chd[sort_idx]
+    head_sorted = head_values[sort_idx]
+    cell_ids_sorted = cell_ids[sort_idx]
+
+    # Plot model top
+    ax_xsec.plot(y_sorted, top_sorted, 'k-', linewidth=2, label='Model top (land surface)')
+
+    # Plot model bottom
+    ax_xsec.plot(y_sorted, bottom_sorted, 'brown', linewidth=2, label='Model bottom')
+
+    # Plot CHD head
+    ax_xsec.plot(y_sorted, head_sorted, 'b-', linewidth=2, label='CHD head')
+
+    # Fill aquifer zone
+    ax_xsec.fill_between(y_sorted, bottom_sorted, top_sorted, alpha=0.2, color='lightblue', label='Aquifer')
+
+    # Plot river bottom if RIV data provided
+    if riv_spd is not None and len(riv_spd) > 0:
+        # Extract river cell info
+        riv_cell_ids = []
+        riv_rbot = []
+        riv_stage = []
+
+        for entry in riv_spd:
+            cellid = entry[0]
+            stage = entry[1]
+            rbot = entry[3]
+
+            if isinstance(modelgrid, VertexGrid):
+                cell_idx = cellid[1]
+            else:
+                layer, row, col = cellid
+                cell_idx = row * modelgrid.ncol + col
+
+            riv_cell_ids.append(cell_idx)
+            riv_rbot.append(rbot)
+            riv_stage.append(stage)
+
+        riv_cell_ids = np.array(riv_cell_ids)
+        riv_rbot = np.array(riv_rbot)
+        riv_stage = np.array(riv_stage)
+
+        # Find river cells near the CHD boundary (within x range of CHD cells)
+        riv_x = xc[riv_cell_ids]
+        riv_y = yc[riv_cell_ids]
+
+        # Filter to cells within the CHD x-range (+ small buffer)
+        x_tolerance = 150  # meters
+        near_chd_mask = (riv_x >= chd_xmin - x_tolerance) & (riv_x <= chd_xmax + x_tolerance)
+
+        if near_chd_mask.sum() > 0:
+            riv_y_near = riv_y[near_chd_mask]
+            riv_rbot_near = riv_rbot[near_chd_mask]
+            riv_stage_near = riv_stage[near_chd_mask]
+
+            # Sort by y
+            riv_sort_idx = np.argsort(riv_y_near)
+            ax_xsec.plot(riv_y_near[riv_sort_idx], riv_rbot_near[riv_sort_idx],
+                        'g--', linewidth=1.5, label='River bottom', marker='v', markersize=4)
+            ax_xsec.plot(riv_y_near[riv_sort_idx], riv_stage_near[riv_sort_idx],
+                        'c-', linewidth=1.5, label='River stage', marker='^', markersize=4)
+
+    ax_xsec.set_xlabel('Northing (m)')
+    ax_xsec.set_ylabel('Elevation (m a.s.l.)')
+    ax_xsec.set_title('Cross-section at Western Boundary', fontsize=11)
+    ax_xsec.legend(loc='upper right', fontsize=9)
+    ax_xsec.grid(True, alpha=0.3)
+
+    # Add stats text
+    depth_below_surface = top_at_chd - head_values
+    stats_text = (
+        f"CHD cells: {len(cell_ids)}\n"
+        f"Head: {head_values.min():.1f} - {head_values.max():.1f} m\n"
+        f"Depth below surface: {depth_below_surface.min():.1f} - {depth_below_surface.max():.1f} m"
+    )
+    ax_xsec.text(0.02, 0.02, stats_text, transform=ax_xsec.transAxes, fontsize=9,
+                verticalalignment='bottom', horizontalalignment='left',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.9))
+
+    fig.suptitle(title, fontsize=12, fontweight='bold')
+    plt.tight_layout()
+
+    # Print validation summary
+    print(f"CHD Validation Summary:")
+    print(f"  Total CHD cells: {len(cell_ids)}")
+    print(f"  Head values: {head_values.min():.1f} to {head_values.max():.1f} m a.s.l.")
+    print(f"  Land surface at CHD: {top_at_chd.min():.1f} to {top_at_chd.max():.1f} m a.s.l.")
+    print(f"  Depth below surface: {depth_below_surface.min():.1f} to {depth_below_surface.max():.1f} m")
+
+    valid_mask = depth_below_surface > 0
+    if (~valid_mask).sum() > 0:
+        print(f"  WARNING: {(~valid_mask).sum()} cells have head at or above land surface!")
+    else:
+        print(f"  All CHD heads are below land surface")
+
+    return fig, axes
 

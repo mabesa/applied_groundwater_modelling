@@ -1390,15 +1390,24 @@ def _extract_points_from_contours(contour_gdf, thickness_column):
             
         thickness_value = row[thickness_column]
         
-        if row.geometry.geom_type == 'MultiLineString':
+        if row.geometry.geom_type == 'Point':
+            # Handle Point geometries (e.g., from shallow zone sampling)
+            points_for_interp.append((row.geometry.x, row.geometry.y, thickness_value))
+
+        elif row.geometry.geom_type == 'MultiPoint':
+            # Handle MultiPoint geometries
+            for point in row.geometry.geoms:
+                points_for_interp.append((point.x, point.y, thickness_value))
+
+        elif row.geometry.geom_type == 'MultiLineString':
             for line in row.geometry.geoms:
                 for x, y in line.coords:
                     points_for_interp.append((x, y, thickness_value))
-                    
+
         elif row.geometry.geom_type == 'LineString':
             for x, y in row.geometry.coords:
                 points_for_interp.append((x, y, thickness_value))
-    
+
     return points_for_interp
 
 
@@ -1584,17 +1593,26 @@ def _extract_dense_points_from_contours(contour_gdf, thickness_column, point_spa
             
         thickness_value = row[thickness_column]
         
-        if row.geometry.geom_type == 'MultiLineString':
+        if row.geometry.geom_type == 'Point':
+            # Handle Point geometries (e.g., from shallow zone sampling)
+            points_for_interp.append((row.geometry.x, row.geometry.y, thickness_value))
+
+        elif row.geometry.geom_type == 'MultiPoint':
+            # Handle MultiPoint geometries
+            for point in row.geometry.geoms:
+                points_for_interp.append((point.x, point.y, thickness_value))
+
+        elif row.geometry.geom_type == 'MultiLineString':
             for line in row.geometry.geoms:
                 dense_points = _densify_linestring(line, point_spacing)
                 for x, y in dense_points:
                     points_for_interp.append((x, y, thickness_value))
-                    
+
         elif row.geometry.geom_type == 'LineString':
             dense_points = _densify_linestring(row.geometry, point_spacing)
             for x, y in dense_points:
                 points_for_interp.append((x, y, thickness_value))
-    
+
     return points_for_interp
 
 
@@ -1925,17 +1943,26 @@ def _extract_dense_points_from_contours_improved(contour_gdf, thickness_column, 
             print(f"Warning: Skipping invalid thickness value: {thickness_value}")
             continue
         
-        if row.geometry.geom_type == 'MultiLineString':
+        if row.geometry.geom_type == 'Point':
+            # Handle Point geometries (e.g., from shallow zone sampling)
+            points_for_interp.append((row.geometry.x, row.geometry.y, thickness_value))
+
+        elif row.geometry.geom_type == 'MultiPoint':
+            # Handle MultiPoint geometries
+            for point in row.geometry.geoms:
+                points_for_interp.append((point.x, point.y, thickness_value))
+
+        elif row.geometry.geom_type == 'MultiLineString':
             for line in row.geometry.geoms:
                 dense_points = _densify_linestring_improved(line, point_spacing)
                 for x, y in dense_points:
                     points_for_interp.append((x, y, thickness_value))
-                    
+
         elif row.geometry.geom_type == 'LineString':
             dense_points = _densify_linestring_improved(row.geometry, point_spacing)
             for x, y in dense_points:
                 points_for_interp.append((x, y, thickness_value))
-    
+
     return points_for_interp
 
 
@@ -2591,18 +2618,27 @@ def _extract_points_from_dense_contours(contour_gdf, thickness_column, point_spa
         thickness_value = row[thickness_column]
         geom = row.geometry
         
-        if geom.geom_type == 'LineString':
+        if geom.geom_type == 'Point':
+            # Handle Point geometries (e.g., from shallow zone sampling)
+            points_for_interp.append((geom.x, geom.y, thickness_value))
+
+        elif geom.geom_type == 'MultiPoint':
+            # Handle MultiPoint geometries
+            for point in geom.geoms:
+                points_for_interp.append((point.x, point.y, thickness_value))
+
+        elif geom.geom_type == 'LineString':
             # Sample points along line at specified spacing
             coords = _sample_line_at_spacing(geom, point_spacing)
             for x, y in coords:
                 points_for_interp.append((x, y, thickness_value))
-                
+
         elif geom.geom_type == 'MultiLineString':
             for line in geom.geoms:
                 coords = _sample_line_at_spacing(line, point_spacing)
                 for x, y in coords:
                     points_for_interp.append((x, y, thickness_value))
-    
+
     return points_for_interp
 
 
