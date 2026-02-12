@@ -920,9 +920,9 @@ def build_riv_stress_period_data(
     default_params = {
         'sihl_leakage_coeff': 1.3e-6 * 86400,    # 1/day (converted from 1/s)
         'limmat_leakage_coeff': 3.5e-6 * 86400,  # 1/day
-        'riverbed_thickness': 0.5,                # m
-        'sihl_depth': 0.3,                        # m (mean depth)
-        'limmat_depth': 0.7,                      # m (mean depth)
+        'riverbed_thickness': 0.05,               # m (clogging layer, typically a few cm)
+        'sihl_depth': 0.4,                        # m (mean depth)
+        'limmat_depth': 1.0,                      # m (mean depth)
         'sihl_width': 15.0,                       # m
         'limmat_width': 30.0,                     # m
         'min_stage_clearance': 0.05,              # m
