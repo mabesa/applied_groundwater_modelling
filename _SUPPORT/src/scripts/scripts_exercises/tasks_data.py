@@ -60,21 +60,15 @@ Based on given data, **estimate the water table level at $x$ = 400m** :
 """,
 
 "task04_checkpoint_1": r"""
-## Numerical Checkpoint 1 - Model Discretization
-Running your groundwater model with a 50m Voronoi grid discretization:
-- **How many active cells does the model have?**
-""",
-
-"task04_checkpoint_2": r"""
-## Checkpoint 2 - Aquifer Volume
+## Checkpoint 1 - Aquifer Volume
 Using the model domain area (~10.4 km²) and the average aquifer thickness from your model:
 - **Calculate the total aquifer volume in million m³**
 
 **Hint:** $V = A \times \bar{b}$. Convert your answer to million m³.
 """,
 
-"task04_checkpoint_3": r"""
-## Checkpoint 3 - Calculate Areal Recharge Flux
+"task04_checkpoint_2": r"""
+## Checkpoint 2 - Areal Recharge Flux
 Using the daily recharge rate and the active model domain area, calculate the total areal recharge flux.
 
 **Given:**
@@ -84,14 +78,14 @@ Using the daily recharge rate and the active model domain area, calculate the to
 **Calculate** the total recharge flux in m³/day:
 """,
 
-"task04_checkpoint_4": r"""
-## Numerical Checkpoint 4 - Model Convergence
+"task04_checkpoint_3": r"""
+## Checkpoint 3 - Model Convergence
 Examining your simulation results:
 - **What is the water balance error (%)?**
 """,
 
-"task04_checkpoint_5": r"""
-## Conceptual Checkpoint 1 - River-Aquifer Interaction
+"task04_checkpoint_4": r"""
+## Checkpoint 4 - River-Aquifer Interaction
 In the Hardhof area of the Limmat Valley:
 - **Is the Limmat River gaining or losing water from the aquifer?**
   - A) Gaining (river receives discharge from aquifer)
@@ -99,8 +93,8 @@ In the Hardhof area of the Limmat Valley:
   - C) Varies along reach (both gaining and losing sections)
 """,
 
-"task04_checkpoint_6": r"""
-## Conceptual Checkpoint 2 - Model Calibration and Validation
+"task04_checkpoint_5": r"""
+## Checkpoint 5 - Model Calibration and Validation
 Consider how you would assess your model's predictive quality:
 - **What observations would you compare to simulated values to assess model quality?**
   - Expected answers may include: head measurements at observation wells, river discharge/baseflow rates, spring discharge data, or other field measurements
@@ -172,11 +166,10 @@ solutions = {
     "task03_4": (0.25, 0.35),  # Correct solution 0.3
     "task04_1": (43, 44),  # Correct solution 38
     "task04_2": (25, 27),  # Correct solution 26
-    "task04_checkpoint_1": (17000, 20000),  # Correct solution ~18030 active cells (50m Voronoi grid with 25m river refinement)
-    "task04_checkpoint_2": (100, 160),  # Correct solution ~126 million m³ (10.4 km² × ~12 m avg thickness)
-    "task04_checkpoint_3": (2700, 3500),  # Correct solution ~3000 m³/day (10.4 km² × 110 mm/yr)
-    "task04_checkpoint_4": (0, 0.1),  # Tolerance <0.1% - MF6 should converge to near-zero
-    # Checkpoints 5, 6, and k_sensitivity are conceptual/multiple choice - handled separately
+    "task04_checkpoint_1": (100, 160),  # Correct solution ~126 million m³ (10.4 km² × ~12 m avg thickness)
+    "task04_checkpoint_2": (2700, 3500),  # Correct solution ~3000 m³/day (10.4 km² × 110 mm/yr)
+    "task04_checkpoint_3": (0, 0.1),  # Tolerance <0.1% - MF6 should converge to near-zero
+    # Checkpoints 4, 5, and k_sensitivity are conceptual/multiple choice - handled separately
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
     "task05_checkpoint_1": (17, 22),      # 4 real AWEL + 15 synthetic = 19 obs points
@@ -200,12 +193,11 @@ solutions_exact = {
     "task03_4": "0.30",
     "task04_1": "43.3",
     "task04_2": "26.0",
-    "task04_checkpoint_1": "~18030",
-    "task04_checkpoint_2": "~125",
-    "task04_checkpoint_3": "~3000",
-    "task04_checkpoint_4": "~0.0002",
-    "task04_checkpoint_5": "B) Losing",
-    "task04_checkpoint_6": "Head measurements, river discharge, spring discharge",
+    "task04_checkpoint_1": "~125",
+    "task04_checkpoint_2": "~3000",
+    "task04_checkpoint_3": "~0.0002",
+    "task04_checkpoint_4": "B) Losing",
+    "task04_checkpoint_5": "Head measurements, river discharge, spring discharge",
     "task04_checkpoint_k_sensitivity": "B) K = 5-50 m/day",
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
@@ -234,12 +226,11 @@ solution_unit = {
     "task03_4": "mm/s",
     "task04_1": "m",
     "task04_2": "m",
-    "task04_checkpoint_1": "cells",
-    "task04_checkpoint_2": "million m³",
-    "task04_checkpoint_3": "m³/day",
-    "task04_checkpoint_4": "%",
-    "task04_checkpoint_5": "multiple choice",
-    "task04_checkpoint_6": "open-ended",
+    "task04_checkpoint_1": "million m³",
+    "task04_checkpoint_2": "m³/day",
+    "task04_checkpoint_3": "%",
+    "task04_checkpoint_4": "multiple choice",
+    "task04_checkpoint_5": "open-ended",
     "task04_checkpoint_k_sensitivity": "multiple choice",
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
@@ -255,7 +246,7 @@ solution_unit = {
 # Format: task_id -> list of (value, label) tuples
 # The 'value' is what gets compared against solutions_exact[task_id]
 multiple_choice_options = {
-    "task04_checkpoint_5": [
+    "task04_checkpoint_4": [
         ("A) Gaining", "A) Gaining (river receives discharge from aquifer)"),
         ("B) Losing", "B) Losing (river loses water to aquifer)"),
         ("C) Varies", "C) Varies along reach (both gaining and losing sections)"),
@@ -390,21 +381,6 @@ As a result, $h(400)$ = $-\frac{0.000003}{0.00005}(400 - 0)$ + 50 = 26.0 $\text{
 """,
 
 "task04_checkpoint_1": r"""
-## Solution - Model Discretization
-
-The number of active cells depends on your model discretization. For a 50m Voronoi grid with 25m river refinement applied to the ~10.4 km² Limmat Valley model domain:
-
-- **Total cells:** ~18,785 (general 50m cells + finer 25m cells near rivers)
-- **Active cells:** ~18,030 (cells with centroids inside the model boundary)
-- River refinement roughly doubles the cell count compared to a uniform 50m grid
-
-The large number of cells reflects the river-aligned refinement: cells along the Sihl and Limmat have ~625 m² area (25m × 25m) instead of ~2,500 m² (50m × 50m).
-
-To check: `n_active = np.sum(idomain > 0)` or look at the grid creation output.
-<br>
-""",
-
-"task04_checkpoint_2": r"""
 ## Solution - Aquifer Volume
 
 The aquifer volume is calculated as:
@@ -421,7 +397,7 @@ This volume represents the total aquifer material (pore space + solid matrix). T
 <br>
 """,
 
-"task04_checkpoint_3": r"""
+"task04_checkpoint_2": r"""
 ## Solution - Total Recharge Flux
 
 **Step-by-step calculation:**
@@ -441,7 +417,7 @@ This is consistent with the perceptual model estimate from Notebook 2 (~3,000 m�
 <br>
 """,
 
-"task04_checkpoint_4": r"""
+"task04_checkpoint_3": r"""
 ## Solution - Water Balance Error
 
 MODFLOW 6 provides excellent numerical stability. The water balance error should be very small:
@@ -463,7 +439,7 @@ For your MF6 model:
 <br>
 """,
 
-"task04_checkpoint_5": r"""
+"task04_checkpoint_4": r"""
 ## Solution - River-Aquifer Interaction
 
 In the Hardhof area of the Limmat Valley, the Limmat River is **losing water to the aquifer**.
@@ -480,7 +456,7 @@ When interpreting RIV package results:
 <br>
 """,
 
-"task04_checkpoint_6": r"""
+"task04_checkpoint_5": r"""
 ## Solution - Model Calibration and Validation
 
 To assess your model's predictive quality, compare simulated values to observed field data:
