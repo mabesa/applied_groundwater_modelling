@@ -102,9 +102,35 @@ Consider how you would assess your model's predictive quality:
 
 # task04_k_values removed - simplified to uniform K in notebook revision
 
+"task03_unit_conversion": r"""
+## Unit Conversion Exercise
+A laboratory measurement reports hydraulic conductivity as $K = 2.5 \times 10^{-3}$ m/s.
+- **Convert this value to m/day for use in your MODFLOW model.**
+""",
+
+"task03_steady_state": r"""
+## Steady-State Comprehension
+What does **steady state** mean for the groundwater flow equation?
+""",
+
 "task03_k_averaging_1": r"""
 ## K Averaging Checkpoint
-You're modeling the Limmat riverbed (K = 0.1 m/d, thickness = 0.5 m) overlying the gravel aquifer (K = 864 m/d). Which K-averaging method best represents flow through this system?
+Consider flow through two layers in series: a low-K layer (K = 0.1 m/d) overlying a high-K layer (K = 30 m/d). Which K-averaging method best represents the effective conductivity for flow perpendicular to the layers?
+""",
+
+"task03_conductance": r"""
+## Conductance Calculation
+Given K = 500 m/day, a shared face area A = 100 m², and distance between cell centers L = 50 m, calculate the conductance C = K × A / L.
+""",
+
+"task03_riv_vs_chd": r"""
+## River vs. Constant Head
+Why do we use a RIV package for the Limmat and Sihl, rather than a CHD boundary?
+""",
+
+"task03_grid_choice": r"""
+## Grid Type Selection
+Which grid type allows local refinement near wells and rivers while keeping the rest of the domain coarser?
 """,
 
 "task04_checkpoint_k_sensitivity": r"""
@@ -174,6 +200,11 @@ solutions = {
     "task04_checkpoint_1": (100, 160),  # Correct solution ~126 million m³ (10.4 km² × ~12 m avg thickness)
     "task04_checkpoint_2": (2700, 3500),  # Correct solution ~3000 m³/day (10.4 km² × 110 mm/yr)
     "task04_checkpoint_3": (0, 0.1),  # Tolerance <0.1% - MF6 should converge to near-zero
+    "task03_unit_conversion": (210, 222),  # Correct solution 216 m/d (2.5e-3 * 86400)
+    "task03_conductance": (950, 1050),  # Correct solution 1000 m²/d (500 * 100 / 50)
+    # task03_steady_state is multiple choice - handled separately
+    # task03_riv_vs_chd is multiple choice - handled separately
+    # task03_grid_choice is multiple choice - handled separately
     # Checkpoints 4, 5, and k_sensitivity are conceptual/multiple choice - handled separately
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
@@ -203,7 +234,12 @@ solutions_exact = {
     "task04_checkpoint_3": "~0.0002",
     "task04_checkpoint_4": "B) Losing",
     "task04_checkpoint_5": "Head measurements, river discharge, spring discharge",
+    "task03_unit_conversion": "216",
+    "task03_conductance": "1000",
+    "task03_steady_state": "B) dh/dt = 0 but water still flows",
     "task03_k_averaging_1": "B) Harmonic mean",
+    "task03_riv_vs_chd": "A) RIV allows head-dependent two-way exchange",
+    "task03_grid_choice": "B) Voronoi (DISV)",
     "task04_checkpoint_k_sensitivity": "B) K = 5-50 m/day",
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
@@ -237,7 +273,12 @@ solution_unit = {
     "task04_checkpoint_3": "%",
     "task04_checkpoint_4": "multiple choice",
     "task04_checkpoint_5": "open-ended",
+    "task03_unit_conversion": "m/day",
+    "task03_conductance": "m²/d",
+    "task03_steady_state": "multiple choice",
     "task03_k_averaging_1": "multiple choice",
+    "task03_riv_vs_chd": "multiple choice",
+    "task03_grid_choice": "multiple choice",
     "task04_checkpoint_k_sensitivity": "multiple choice",
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
@@ -253,11 +294,29 @@ solution_unit = {
 # Format: task_id -> list of (value, label) tuples
 # The 'value' is what gets compared against solutions_exact[task_id]
 multiple_choice_options = {
+    "task03_steady_state": [
+        ("A) No water flows", "A) No water flows through the aquifer"),
+        ("B) dh/dt = 0 but water still flows", "B) dh/dt = 0 but water still flows (heads constant, flow continues)"),
+        ("C) K is constant", "C) Hydraulic conductivity is constant everywhere"),
+        ("D) No sources or sinks", "D) There are no sources or sinks in the system"),
+    ],
     "task03_k_averaging_1": [
         ("A) Arithmetic mean", "A) Arithmetic mean — gives equal weight to both K values"),
         ("B) Harmonic mean", "B) Harmonic mean — low-K layer controls flow (resistors in series)"),
         ("C) Geometric mean", "C) Geometric mean — a balanced middle ground"),
         ("D) Doesn't matter", "D) It doesn't matter — all methods give similar results at this contrast"),
+    ],
+    "task03_riv_vs_chd": [
+        ("A) RIV allows head-dependent two-way exchange", "A) RIV allows head-dependent two-way exchange based on conductance and head difference"),
+        ("B) CHD is more physically realistic", "B) CHD is more physically realistic for river boundaries"),
+        ("C) RIV is computationally faster", "C) RIV is computationally faster than CHD"),
+        ("D) No practical difference", "D) No practical difference between the two approaches"),
+    ],
+    "task03_grid_choice": [
+        ("A) Structured (DIS)", "A) Structured (DIS) — uniform rows and columns"),
+        ("B) Voronoi (DISV)", "B) Voronoi (DISV) — add generating points where detail is needed"),
+        ("C) Both equally", "C) Both equally — both support local refinement"),
+        ("D) Neither", "D) Neither — use uniform spacing everywhere"),
     ],
     "task04_checkpoint_4": [
         ("A) Gaining", "A) Gaining (river receives discharge from aquifer)"),
@@ -498,25 +557,93 @@ The quality of your model depends heavily on the availability and accuracy of fi
 
 # task04_k_values solution removed - simplified to uniform K
 
+"task03_conductance": r"""
+## Solution — Conductance Calculation
+
+$$C = K \cdot \frac{A}{L} = 500 \, \text{m/d} \cdot \frac{100 \, \text{m}^2}{50 \, \text{m}} = 500 \times 2 = 1000 \, \text{m}^2/\text{d}$$
+
+**Interpretation:** This conductance value means that for every **1 m of head difference** between the two cells, **1000 m³/day** of water will flow across their shared face. Conductance combines the material property (K) with the geometry (face area and distance) into a single coefficient.
+
+This same conductance concept appears in the RIV, GHB, and DRN packages — everywhere MODFLOW computes head-dependent flow.
+<br>
+""",
+
+"task03_riv_vs_chd": r"""
+## Solution — RIV vs. CHD
+
+**Correct answer: A) RIV allows head-dependent two-way exchange**
+
+The RIV package computes river-aquifer exchange based on:
+
+$$Q_{riv} = C_{riv} \cdot (h_{riv} - h_{aquifer})$$
+
+where $C_{riv}$ is the riverbed conductance (from the leakage coefficients estimated in Notebook 2). Water can flow **from river to aquifer** (losing stream, when $h_{riv} > h_{aquifer}$) or **from aquifer to river** (gaining stream, when $h_{aquifer} > h_{riv}$), depending on conditions.
+
+A **CHD boundary** would force a specific head at those cells regardless of aquifer conditions — it cannot represent the physical reality where exchange depends on riverbed properties and the head gradient.
+
+**Key insight:** The leakage coefficients from Notebook 2 translate directly to RIV conductance values, preserving the physics of the river-aquifer interaction.
+<br>
+""",
+
+"task03_grid_choice": r"""
+## Solution — Grid Type Selection
+
+**Correct answer: B) Voronoi (DISV)**
+
+Voronoi grids achieve local refinement simply by adding more **generating points** where detail is needed (near wells, rivers, or geological contacts) while keeping the rest of the domain coarser. Each cell is defined by proximity to its generating point.
+
+**Structured grids (DIS)** cannot refine locally — making one cell smaller in a row forces the entire row to be smaller, leading to unnecessary cells and wasted computation. Note that quadtree grids, despite using quadrilateral cells, are also classified as DISV (not DIS) because their cells do not follow a regular row/column structure.
+
+This is why we use DISV for the Limmat Valley model: we need fine resolution along the Limmat and Sihl rivers and near the Hardhof wells, but coarser cells suffice in the rest of the domain.
+<br>
+""",
+
+"task03_unit_conversion": r"""
+## Solution — Unit Conversion
+
+$$K = 2.5 \times 10^{-3} \text{ m/s} \times 86{,}400 \text{ s/day} = 216 \text{ m/day}$$
+
+The conversion factor from m/s to m/day is **86,400** (the number of seconds in a day: 60 × 60 × 24).
+
+**Common pitfall:** Forgetting this conversion when entering literature values (often in m/s) into a MODFLOW model using m/day units. Always check the units of your input data!
+<br>
+""",
+
+"task03_steady_state": r"""
+## Solution — Steady State
+
+**Correct answer: B) dh/dt = 0 but water still flows**
+
+Steady state means the **time derivative of head is zero** — heads are not changing over time. However, water still flows through the system! Recharge enters, wells pump, rivers exchange water — all these fluxes are in balance so that no net change in storage occurs.
+
+Think of it like a bathtub with the tap on and the drain open: if the water level is constant, the system is at steady state even though water is continuously flowing through.
+
+The governing equation simplifies from:
+$$\nabla \cdot (K \nabla h) + W = S_s \frac{\partial h}{\partial t}$$
+to:
+$$\nabla \cdot (K \nabla h) + W = 0$$
+<br>
+""",
+
 "task03_k_averaging_1": r"""
-## Solution — K Averaging for the Limmat Riverbed
+## Solution — K Averaging for Layered Flow
 
 **Correct answer: B) Harmonic mean**
 
-The harmonic mean is correct because water must flow **through** the low-K riverbed to reach the aquifer — like resistors in series, the highest resistance controls the total flow.
+The harmonic mean is correct because water must flow **through** both layers in sequence — like resistors in series, the lowest-K layer controls the overall flow rate.
 
-At this contrast (K ratio = 864 / 0.1 = 8640x), the choice matters enormously:
+At this contrast (K ratio = 30 / 0.1 = 300×), the choice matters enormously:
 
 | Method | $K_{eff}$ (m/d) |
 |--------|-----------------|
 | Harmonic | 0.2 |
-| Geometric | 9.3 |
-| Logarithmic | 95 |
-| Arithmetic | 432 |
+| Geometric | 1.7 |
+| Logarithmic | 5.2 |
+| Arithmetic | 15.1 |
 
-Using the arithmetic mean instead of harmonic would overestimate river-aquifer exchange by a factor of ~2000. This is exactly why MODFLOW 6 uses the harmonic mean as the default in the NPF package.
+Using the arithmetic mean instead of harmonic would overestimate flow by a factor of ~75×. This is why MODFLOW 6 uses the harmonic mean as the default in the NPF package for inter-cell conductance.
 
-**Physical insight:** The streambed acts as a thin, low-permeability barrier. No matter how permeable the aquifer below, water can only enter as fast as it can seep through the streambed — just like the narrowest pipe segment limits total flow.
+**Physical insight:** For flow perpendicular to layering (series flow), the least permeable layer acts as the bottleneck — just like the narrowest pipe segment limits total flow. This principle applies whenever water must pass through a low-K barrier, such as a streambed overlying an aquifer.
 <br>
 """,
 
