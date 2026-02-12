@@ -23,7 +23,7 @@ This is an educational groundwater modeling course for Master-level students at 
 - **Error Handling**: Provide clear, educational error messages that guide learning
 
 ## Notebook Structure Standards
-- Start notebooks with standardized imports from SUPPORT_REPO/src
+- Start notebooks with standardized imports from _SUPPORT/src
 - Use consistent markdown formatting with > for boxes. Below you find examples of the different boxes we use. 
 - Include clear section headers and learning objectives
 - Provide context and motivation before technical content

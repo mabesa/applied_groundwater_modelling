@@ -1,638 +1,263 @@
-[![Package Dependencies](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml) 
+[![Package Dependencies](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml)
 
-# Applied Groundwater Modeling - Exercises and Case Study
+# Applied Groundwater Modeling
 
-![Groundwater Model Visualization](SUPPORT_REPO/static/figures/0_readme/Groundwater_course.jpg)
+![Groundwater Model Visualization](_SUPPORT/static/figures/0_readme/Groundwater_course.jpg)
 
 ## 1 Overview
-Project-based course materials for Master-level groundwater modeling (4 ECTS) at ETH Zurich. Focuses on practical modeling skills using MODFLOW and FloPy through a real-world case study of the Limmat valley aquifer.
 
-## 2 Learning Objectives
-- Deepen your understanding of basic hydrogeological concepts and principles
+Course materials for Master-level groundwater modeling (4 ECTS) at ETH Zurich. Combines theoretical exercises with a practical project using MODFLOW and FloPy, applied to the Limmat Valley aquifer case study.
+
+## 2 Quick Start for Students
+
+Choose your preferred way to work with the course materials:
+
+### Option A: Local Setup (Recommended)
+
+Working locally with VS Code gives you the best development experience, version control, and prepares you for professional workflows.
+
+**New to Python?** Follow the [Python for Water Modellers](https://mabesa.github.io/python-for-water-modellers/) tutorial first - it covers VS Code installation, uv setup, and Python basics.
+
+**Already comfortable with Python?** Quick setup:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/mabesa/applied_groundwater_modelling.git
+cd applied_groundwater_modelling
+
+# 2. Install dependencies
+uv sync
+source .venv/bin/activate  # macOS/Linux
+# .venv\Scripts\activate   # Windows
+
+# 3. Install MODFLOW
+get-modflow :flopy
+
+# 4. Verify setup (optional)
+# Open 0_diagnostics.ipynb and run all cells
+# Confirm: overall_ready = True
+
+# 5. Start working
+code .  # Open in VS Code
+```
+
+<details>
+<summary><strong>For group work: Fork the repository</strong></summary>
+
+For case study collaboration, fork the repository to your own GitHub account:
+
+1. **Fork** this repository on GitHub (instead of cloning directly)
+2. **Clone** your fork locally
+3. **Add group members** as collaborators (Settings → Collaborators)
+4. Work together using branches and pull requests
+
+This mirrors professional workflows and gives your group a shared workspace with full version control.
+
+</details>
+
+### Option B: JupyterHub (ETH Students)
+
+Access the pre-configured environment via the link on Moodle. No installation required.
+
+<details>
+<summary>JupyterHub details</summary>
+
+**First time:**
+1. Access JupyterHub via Moodle (don't bookmark - URL may change)
+2. Run `0_diagnostics.ipynb` to verify your environment
+3. Confirm `overall_ready = True`
+
+**Getting updates:**
+- Run `0_sync_repo.ipynb` when instructors announce updates
+
+**Scrolling fix:**
+If notebooks scroll erratically: `Settings → Settings Editor → Notebook → Windowing mode → none`
+
+</details>
+
+### Tips for Working with Notebooks
+
+**Navigation in long notebooks:**
+- **VS Code:** Use the Outline panel (View → Open View → Outline) to jump between sections
+- **JupyterHub:** Use the Table of Contents panel in the left sidebar
+
+**Recommended workflow:**
+1. Clear all outputs: `Kernel → Restart Kernel and Clear Outputs`
+2. Run cells sequentially from the top, or run the entire notebook
+3. This ensures variables are properly initialized and avoids stale state
+
+## 3 Course Structure
+
+The course is organized into two main phases:
+
+### Phase 1: Theory (Weeks 1-8)
+
+Lectures and exercises covering flow and transport fundamentals.
+
+**Materials in `THEORY/`:**
+- `exercises/` - 6 exercises reinforcing key concepts
+- `_demos/` - Lecture demonstrations (e.g., porosity and REV)
+
+### Phase 2: Project (Weeks 9-14)
+
+Apply concepts to the Limmat Valley aquifer case study.
+
+**Materials in `PROJECT/`:**
+- `flow/` and `transport/` - Step-by-step modeling notebooks
+- `workspace/` - Your working area
+- `_demos/` - Calibration, sensitivity, and uncertainty demonstrations (for lectures)
+
+The project follows a 10-step modeling methodology:
+
+| Step | Topic | Flow Track | Transport Track |
+|------|-------|------------|-----------------|
+| 0 | Introduction | `0_start_here.ipynb` | `0_start_here.ipynb` |
+| 1 | Model Goal | `flow/1_model_goal.ipynb` | `transport/1_model_goal.ipynb` |
+| 2 | Perceptual Model | `flow/2_perceptual_model.ipynb` | `transport/2_perceptual_model.ipynb` |
+| 3 | Conceptual Model | `flow/3_modflow_fundamentals.ipynb` | — |
+| 4 | Model Implementation | `flow/4_model_implementation.ipynb` | `transport/4_model_implementation.ipynb` |
+| 5 | Calibration | `flow/5_calibration.ipynb` | — |
+| 6 | Validation | `flow/6_validation.ipynb` | — |
+| 7 | Sensitivity & Uncertainty | `flow/7_sensitivity_uncertainty.ipynb` | — |
+| 8 | Model Application | `flow/8_model_application.ipynb` | — |
+| 9 | Documentation | `flow/9_documentation.ipynb` | — |
+| 10 | Communication | `flow/10_communication.ipynb` | — |
+
+The transport track builds on the calibrated flow model. Steps marked with "—" use the flow model results.
+
+### Repository Structure
+
+```
+applied_groundwater_modelling/
+├── THEORY/                   # Phase 1: Theory materials (Weeks 1-8)
+│   ├── exercises/            # Exercises aligned with lectures
+│   └── _demos/               # Lecture demonstrations
+├── PROJECT/                  # Phase 2: Case study (Weeks 9-14)
+│   ├── 0_start_here.ipynb    # Course intro & 10-step framework
+│   ├── flow/                 # Flow modeling track (steps 1-10)
+│   ├── transport/            # Transport track (steps 1, 2, 4)
+│   ├── workspace/            # Your working area
+│   └── _demos/               # Calibration & uncertainty demos
+├── _SUPPORT/                 # Helper code and static files
+├── 0_diagnostics.ipynb       # Environment check
+└── 0_sync_repo.ipynb         # Update from upstream
+```
+
+> **Note:** Folders starting with `_` contain internal/instructor materials - you can ignore them.
+
+## 4 Learning Objectives
+
 - Apply numerical methods to solve groundwater flow and transport problems
-- Apply groundwater flow and transport principles to practical modeling scenarios
 - Construct and adapt models to address real-world hydrogeological challenges
 - Implement and analyze numerical solutions using MODFLOW, MT3D and FloPy
 - Critically evaluate modeling results and their implications
 
-## 3 Prerequisites
+## 5 Prerequisites
+
 - Basic understanding of hydrogeology (Darcy's Law, hydraulic conductivity, aquifer properties)
 - Groundwater flow concepts and boundary conditions
-- Basic Python programming skills
+- Basic Python programming skills (see [Python for Water Modellers](https://mabesa.github.io/python-for-water-modellers/) if needed)
 
-## 4 Accessibility Features
+## 6 Data Management
 
-This course includes comprehensive accessibility features designed to support diverse learning needs and preferences. Over time, all materials will be designed to work well both with and without accessibility enhancements.
-
-<details>
-<summary><strong>🎓 For Students: Current accessibility features</strong></summary>
-
-### 4.1 Current Accessibility Features
-
-✅ **Screen Reader Compatibility**
-- All content boxes use standard Markdown blockquotes that screen readers can process naturally
-- Interactive elements use proper `ipywidgets` with descriptive labels
-- Images include alternative text descriptions where applicable
-
-✅ **Simple, Portable Design**
-- Minimal HTML and CSS to ensure consistent rendering across platforms
-- Standard Markdown formatting for maximum compatibility
-- No complex custom styling that might interfere with assistive technologies
-
-✅ **Keyboard Navigation**
-- All interactive elements (checkboxes, widgets) are keyboard accessible
-- Progress tracking uses standard Jupyter widgets with full keyboard support
-
-✅ **Clear Structure**
-- Consistent heading hierarchy for easy navigation
-- Descriptive section titles and clear content organization
-- Logical flow from concept to application
-
-### 4.2 Platform Compatibility
-
-The course materials are designed to work across multiple environments:
-- **JupyterLab/JupyterHub**: Full interactive experience with widgets
-- **VS Code**: Markdown content displays properly, with fallback options for interactive elements
-- **Screen Readers**: Content structure and labels designed for accessibility
-
-### 4.3 Ongoing Accessibility Improvements
-
-🔄 **We continuously work to improve accessibility by:**
-- Simplifying complex visualizations and providing text alternatives
-- Testing with screen readers when possible
-- Using semantic HTML and proper ARIA labels
-- Maintaining clean, logical document structure
-- Seeking feedback from users with accessibility needs
-
-### 4.4 Current Limitations
-
-⚠️ **Areas we're still working on:**
-- Some complex diagrams may not have comprehensive text alternatives
-- Interactive visualizations may have limited screen reader support
-- Color-dependent information (we're working to add text/pattern alternatives)
-
-### 4.5 Reporting Accessibility Issues
-
-If you encounter accessibility barriers while using this course:
-
-1. **Open an issue** on our GitHub repository describing the specific problem
-2. **Include details** about your assistive technology setup
-3. **Suggest improvements** if you have ideas for better accessibility
-
-We welcome feedback and contributions to improve accessibility for all learners.
-
-### 4.6 Alternative Formats
-
-If you need course materials in alternative formats:
-- The Markdown source files can be converted to various formats using tools like Pandoc
-- All text content is available in plain text format
-- Contact the instructors if you need specific accommodations
-
----
-
-*We believe that accessible education benefits everyone. While we're not perfect, we're committed to continuous improvement and welcome your feedback on how we can make this course more inclusive.*
-
-</details>
+Course data is downloaded automatically and stored in `~/applied_groundwater_modelling_data/`.
 
 <details>
-<summary><strong>👩‍💻 For Developers: Implementing Accessibility</strong></summary>
+<summary>Data configuration details</summary>
 
-### 4.7 🎯 Core Design Principles
+The data system uses `config.py` for data source configuration. For public data (default), copy `config_template.py` to `config.py`:
 
-#### 4.7.1 Keep It Simple
-- **Minimal layouts**: Avoid complex HTML structures or custom CSS
-- **Standard Markdown**: Use native Markdown features whenever possible
-- **Portable design**: Ensure content works across VS Code, JupyterLab, and JupyterHub
-- **Screen reader first**: Design with screen readers in mind, not as an afterthought
-
-#### 4.7.2 Accessibility-First Development
-Every contribution should consider accessibility from the start, not as a retrofit.
-
-### 4.8 📝 Content Guidelines
-
-#### 4.8.1 Markdown Content Boxes
-**✅ DO:**
-```markdown
-> 💡 **Example: Clear Title**
-> 
-> Content goes here with clear, descriptive text.
-> Mathematical expressions should include text explanations.
+```bash
+cp config_template.py config.py
 ```
 
-**❌ DON'T:**
-```html
-<div class="custom-box fancy-styling">
-  <h4>Example</h4>
-  <p>Content without clear structure</p>
-</div>
-```
+Workshop participants receive a `config.py` with additional private datasets - don't commit this file.
 
-#### 4.8.2 Headings and Structure
-**✅ DO:**
-- Use logical heading hierarchy (H1 → H2 → H3)
-- Make headings descriptive and meaningful
-- Include section numbers when appropriate
-
-```markdown
-# 1. Introduction to Groundwater Flow
-## 1.1 Basic Principles
-### 1.1.1 Darcy's Law
-```
-
-**❌ DON'T:**
-- Skip heading levels
-- Use headings for styling only
-- Make vague headings like "More Info"
-
-### 4.9 🖼️ Images and Visual Content
-
-#### 4.9.1 Alt Text Requirements
-**All images MUST include descriptive alt text:**
-
-```markdown
-![Graph showing groundwater head decline over time from 2010 to 2020, starting at 15m and declining to 8m with steepest decline between 2015-2017](path/to/image.png)
-```
-
-#### 4.9.2 Alt Text Guidelines
-**✅ Good alt text:**
-- Describes the content and purpose of the image
-- Includes key data points for graphs/charts
-- Explains relationships shown in diagrams
-- Mentions relevant colors/patterns when they convey information
-
-**❌ Poor alt text:**
-- "Graph" or "Image" (too vague)
-- "See image above" (not descriptive)
-- Overly long descriptions (keep under 125 characters for simple images)
-
-#### 4.9.3 Complex Figures
-For complex diagrams or multi-panel figures:
-
-```markdown
-![Conceptual model of the Limmat Valley aquifer showing three main layers: unconfined gravel aquifer (top, 0-10m depth), confining clay layer (middle, 10-15m), and confined sandstone aquifer (bottom, 15-30m). Arrows indicate groundwater flow from recharge areas in the east toward discharge at the Limmat River in the west.](path/to/figure.png)
-
-**Figure description:** This conceptual cross-section illustrates...
-[Provide detailed text description in following paragraph]
-```
-
-### 4.10 🧩 Interactive Elements
-
-#### 4.10.1 Progress Trackers and Widgets
-**✅ DO:**
-- Use standard `ipywidgets` with proper labels
-- Include descriptive text for all interactive elements
-- Provide fallback text versions for non-interactive environments
-
-```python
-checkbox = widgets.Checkbox(
-    value=False,
-    description="Step 1: Problem Definition - Mark complete when you understand how to define modeling objectives",
-    style={'description_width': 'initial'},
-    layout=widgets.Layout(width='100%')
-)
-```
-
-**❌ DON'T:**
-- Create custom widgets without accessibility testing
-- Use unlabeled interactive elements
-- Rely solely on color to convey information
-
-#### 4.10.2 Forms and Input
-- Always provide clear labels for input fields
-- Include help text or examples when needed
-- Use logical tab order for keyboard navigation
-
-### 4.11 🎨 Visual Design
-
-#### 4.11.1 Color and Contrast
-**✅ DO:**
-- Ensure sufficient color contrast (4.5:1 minimum for normal text)
-- Use color plus another indicator (icons, patterns, text) to convey information
-- Test with color blindness simulators
-
-**❌ DON'T:**
-- Use color alone to distinguish important information
-- Use low-contrast color combinations
-- Assume all users can perceive color differences
-
-#### 4.11.2 Layout and Spacing
-**✅ DO:**
-- Use consistent spacing and alignment
-- Keep line lengths readable (45-75 characters)
-- Provide white space for visual breathing room
-
-```markdown
-> 📚 **Theory: Groundwater Flow Equation**
-> 
-> The groundwater flow equation combines Darcy's law with the principle of mass conservation:
-> 
-> ∇ · (K∇h) = S ∂h/∂t + Q
-> 
-> Where K is hydraulic conductivity, h is hydraulic head, S is specific storage, and Q represents sources/sinks.
-```
-
-### 4.12 💻 Code and Technical Content
-
-#### 4.12.1 Code Blocks
-**✅ DO:**
-- Use syntax highlighting with language specification
-- Include comments explaining complex sections
-- Provide context for code examples
-
-```python
-# Calculate hydraulic conductivity from pumping test data
-# Using the Theis method for confined aquifers
-def theis_analysis(time, drawdown, pumping_rate, distance):
-    """
-    Analyze pumping test data using the Theis method.
-    
-    Args:
-        time (array): Time since pumping started (days)
-        drawdown (array): Observed drawdown (meters)
-        pumping_rate (float): Constant pumping rate (m³/day)
-        distance (float): Distance from pumping well (meters)
-    
-    Returns:
-        dict: Calculated aquifer properties
-    """
-    # Implementation here...
-```
-
-#### 4.12.2 Mathematical Content
-**✅ DO:**
-- Provide text explanations alongside equations
-- Define all variables and symbols
-- Use consistent mathematical notation
-
-```markdown
-The Darcy velocity (v) is calculated as:
-
-v = Ki
-
-Where:
-- v = Darcy velocity (m/day)
-- K = hydraulic conductivity (m/day)  
-- i = hydraulic gradient (dimensionless)
-```
-
-### 4.13 🚀 Quick Reference
-
-#### 4.13.1 Standard Content Box Format
-```markdown
-> [EMOJI] **[TYPE]: [TITLE]**
-> 
-> Content goes here. Keep it clear and concise.
-> 
-> For complex content, break into multiple paragraphs.
-```
-
-#### 4.13.2 Image with Alt Text
-```markdown
-![Descriptive alt text explaining what the image shows, including key data points and relationships](path/to/image.png)
-```
-
-#### 4.13.3 Interactive Widget Template
-```python
-widget = widgets.WidgetType(
-    value=default_value,
-    description="Clear, descriptive label explaining the widget's purpose",
-    style={'description_width': 'initial'},
-    layout=widgets.Layout(width='100%')
-)
-```
-
-### 4.14 🤝 Getting Help
-
-- **Accessibility questions**: Open an issue with the `accessibility` label
-- **Design consistency**: Check existing notebooks for patterns
-- **Technical issues**: Use the `developer-support` label
-
----
-
-*Remember: Accessible design benefits everyone. When in doubt, choose the simpler, more accessible option.*
-
-</details>
-
-## 5 Data Management
-
-This course uses external datasets that are automatically downloaded when needed and stored to the folder `appplied_groundwater_modelling_data` in your home directory. The data download system is configured through a `config.py` file that specifies data sources and repository links.
-
-Please look at `config_template.py` for a template of the configuration file, containing publicly available data for the Limmat valley aquifer model. You can copy this file to `config.py` and modify it according to your needs.
-
-### 5.1 Default Public Data Access
-
-By default, the course uses publicly available data for the Limmat valley aquifer case study. No additional configuration is required for most users.
-
-### 5.2 Private Data Access (Workshop Participants)
-
-Workshop participants will receive a `config.py` file with links to additional private datasets and repositories. Place this file in the root directory of the repository (same level as `README.md`).
-
-**Important:** The `config.py` file contains links to private repositories and should not be shared or committed to version control. It is automatically ignored by git.
-
-### 5.3 Data Configuration
-
-The data system supports multiple case studies and data sources. Currently, only one of each is supported:
-
-- **Case Studies**: `limmat` 
-- **Data Sources**: `dropbox`
-
-To modify data sources, edit your `config.py` file:
-
-```python
-# Choose case study
-CASE_STUDY = "limmat"  
-
-# Choose data source
-DATA_SOURCE = "dropbox"  
-```
-
-### 5.4 Data Download
-
-Data is automatically downloaded when needed using functions like:
-
+Data downloads automatically when needed:
 ```python
 from data_utils import download_named_file
-
-# Download a specific dataset
-file_path = download_named_file(
-    name='groundwater_map_norm',
-    data_type='gis'
-)
+file_path = download_named_file(name='groundwater_map_norm', data_type='gis')
 ```
-
-Downloaded data is stored in `~/applied_groundwater_modelling_data/[case_study]/` and organized by data type (climate, rivers, gis, etc.).
-
-## 6 Repository Structure
-(to be refined)
-
-The applied groundwater modelling course uses data downloaded from sources configured in the file config.py (see config_template.py for a template). The downloaded data is stored in the `applied_groundwater_modelling_data` folder on the same hierarchical level as the course repository. 
-
-``` 
-applied_groundwater_modelling/   # Your local copy of the git repository
-├── ADDITIONAL_MATERIAL/         # Additional optional materials for the course 
-├── CASE_STUDY/                  # Case study materials
-│   ├── student_work/            # Student work area for case study
-│   │   ├── case_template.yaml   # Configuration template for student work 
-│   │   ├── case_study_template.ipynb # Template notebook for student work
-│   ├── 0_introduction.ipynb     # Introduction to the case study
-│   ├── 1_perceptual_model.ipynb  # Perceptual model development
-│   ├── 2_modflow_fundamentals.ipynb # Introduction to MODFLOW & FloPy
-├── EXERCISES/                   # Exercises for the course
-│   ├── exercise01.ipynb         # Exercise 1: Groundwater balance
-│   ├── ...
-├── SUPPORT_REPO/                # Support files for the course
-│   ├── src/                     # Support code for the course
-│   ├── static/                  # Static files (images, figures, etc.)
-├── 0_diagnostics.ipynb          # Diagnostics notebook to check environment
-├── config_template.py           # Template for configuration file
-├── environment_development.yml  # Conda environment for development
-├── environment_students.yml     # Conda environment for students
-├── README.md                    # This file
-└── LICENSE                      # License file
-
-applied_groundwater_modelling_data/ (will be created automatically)
-├── limmat/
-│   ├── gis/                     # GIS data files for the Limmat case study
-│   ├── limmat_valley_model/     # Model files for the Limmat case study
-│   ├── time_series/             # Time series data files for the Limmat case study
-```
-
-## 7 Planning Documents (For Course Development)
-
-**Important for instructors and AI assistants working on this course:**
-
-This repository contains planning documents that guide the development and structure of course materials:
-
-- **[transport_planning.md](transport_planning.md)**: Complete planning document for the transport case study
-  - Design decisions (wells included, mandatory analytical comparison, etc.)
-  - Deliverables structure (notebook + 3-4 page report + config)
-  - Grading rubric (50% technical, 50% report)
-  - Timeline estimates (10 hours total for students)
-  - Implementation phases and checklists
-  - **Always refer to this document when working on transport-related materials**
-
-### When to Reference Planning Documents
-
-- Before creating new notebooks or materials: Check if planning document exists
-- During implementation: Follow structure and decisions outlined in planning docs
-- When making changes: Update planning document to reflect any design changes
-- For AI assistants: Always read relevant planning document at start of session
-
-## 8 How to Use this Repository as a Student
-
-### 7.1 JupyterHub (ETH Students)
-ETH students can access these materials through the course JupyterHub environment linked in Moodle. The JupyterHub provides a pre-configured environment with all necessary dependencies installed. 
-
-#### 7.1.1 First time run
-
-There are now two separate maintenance notebooks:
-
-1. `0_sync_repo.ipynb` – run this when instructors announce an update or you suspect your local copy is out of date. It performs git fetch/reset (optionally destructive) and can deep-clean untracked & ignored files. Adjust flags before forcing a reset; copy personal work elsewhere first.
-2. `0_diagnostics.ipynb` – run this once at course start (after an initial sync) to validate your Python environment (packages, geospatial stack, MODFLOW executable, visualization). Re-run only if you change the environment or after a sync that adds new dependencies.
-
-Quick decision guide:
-- Want latest teaching materials? → Run `0_sync_repo.ipynb` (dry run first).
-- Installed / removed packages or something breaks? → Re-run `0_diagnostics.ipynb`.
-- Just working on exercises/case study normally? → No need to run either.
-
-If a sync introduces new packages, re-run diagnostics to confirm readiness (final summary should report `overall_ready = True`).
-
-1. Open 0_diagnostics.ipynb.  
-2. (Optional) Open and run `0_sync_repo.ipynb` (dry run first) if instructors announced an update.  
-3. Run all cells.  
-4. Confirm final summary → overall_ready = True.  
-5. If not ready: copy summary + failing section output and contact support.  
-
-**Access your JupyterHub instance**
-Please access your JupyterHub instance via the link on Moodle. Do not save a Bookmark as the url may change.
-
-**Change your scrolling settings**
-You are strongly encouraged to modify your jupyter notebook scrolling setting as follows (due to a Jupyter issue which can be fixed by configuring it globally by the ETH support) :
-“Settings → Settings Editor → Notebook → Windowing mode → none” 
-See https://discourse.jupyter.org/t/scrolling-bug-makes-my-screen-shake-erratically/32421/2 
-
-#### 7.1.2 Daily use
-- Only re-run full diagnostics if environment changed or something breaks.  
-- Avoid resetting unless instructed.
-
-### 7.2 Local Installation
-
-<details>
-<summary><strong>💻 Local Installation Setup</strong></summary>
-
-We recommend Visual Studio Code as an IDE (available for free [here](https://code.visualstudio.com/)) but any other Python IDE will work. We further recommend using the Anaconda distribution of Python (available for free [here](https://www.anaconda.com/products/distribution)) to manage your Python environment.  
-
-To run these materials locally, follow these steps:
-
-1. **Navigate to your desired directory** in your terminal using the `cd` command:
-   ```bash
-   cd path/to/your/folder
-   ```
-   Replace `path/to/your/folder` with the actual path to your desired folder.
-
-2. **Clone this repository:**  
-   ```bash
-   git clone https://github.com/mabesa/applied-groundwater-modeling.git
-   ```
-   This will create a new folder called `applied-groundwater-modeling` in your current directory.
-
-3. **Navigate into the cloned repository:**
-   ```bash
-   cd applied-groundwater-modeling
-   ```
-
-4. **Set up your Python environment using conda:**
-   - Update conda (may take a while):  
-     ```bash
-     conda update -n base -c conda-forge conda
-     ```
-   - Create a new environment with Python 3.12 and the required packages:  
-     ```bash
-     conda env create -f environment_students.yml
-     ```
-   - Activate the environment:  
-     ```bash
-     conda activate gw_course_students
-     ```
-
-5. **Get MODFLOW executables:**  
-   ```bash
-   get-modflow :flopy
-   ```
-
-6. **Install LaTeX support for notebooks** (optional):
-   In Visual Studio Code, install the `Markdown+Math` and `Markdown All in One` extensions or the `LaTeX Workshop` extension.
-
-### 7.3 Repository Branches
-- `main`: Contains the latest stable version of the course materials
-- `course_2025`: Contains the latest version for the 2025 course (displayed on course JupyterHub)
-- Other branches are used for development. Stale branches may be removed.
 
 </details>
 
+## 7 Troubleshooting
+
 <details>
-<summary><strong>🤝 How to Contribute</strong></summary>
+<summary>Common issues and solutions</summary>
 
-We welcome contributions to improve the course materials! 
+### JupyterHub Issues
 
-### 7.4 Setting up Your Environment
-Install the project dependencies using the following command:
+**Repository out of date:**
+Run `0_sync_repo.ipynb` or in terminal:
 ```bash
-conda env create -f environment_development.yml
+git fetch origin && git reset --hard origin/main
 ```
-This will create a new conda environment with the necessary packages. Activate the environment using:
+
+**405: Method Not Allowed:**
+Don't bookmark JupyterHub URLs - always access via Moodle.
+
+### Data Download Issues
+
+**"No URL configured":** Ensure `config.py` exists (copy from `config_template.py`)
+
+**Download failures:** Check internet connection and that Dropbox links are accessible
+
+**"Path does not exist":** The system creates directories automatically - check write permissions in home directory
+
+### Environment Issues
+
+**Package not found:** Run `uv sync` to reinstall dependencies
+
+**MODFLOW not found:** Run `get-modflow :flopy`
+
+**Wrong Python environment in Jupyter:** If you get numpy version errors or package conflicts when running `uv run jupyter lab`, register the uv environment as a kernel:
 ```bash
-conda activate gw_course_development
+uv run python -m ipykernel install --user --name=applied_gw_modelling --display-name="Applied GW Modelling (uv)"
 ```
-If, during development, you need to install additional packages, please add them to the `environment_development.yml` files and run the following command to update the environment:
-```bash
-conda env update -f environment_development.yml
-```
-Please also keep the `environment_students.yml` file up to date. 
+Then select "Applied GW Modelling (uv)" as your kernel in Jupyter.
 
-### 7.5 Git Workflow to Contribute
-Here's how you can contribute if you are not yet a collaborator in this repository:
+**Multiple figures accumulating in VS Code:** Use Command Palette (Cmd/Ctrl+Shift+P) → "Developer: Reload Window"
 
-- **Fork the repository**: Create your own fork of this repository (skip this step if you are a collaborator in this repository).
-- **Create a feature branch**: Base your work on the develop branch.  
-   ```bash
-   git checkout year_feature_name  
-   git checkout -b your-feature-name
-   ```
-- **Make your changes**: Implement your contribution, focusing on one specific improvement or addition.
-- **Test your changes**: Ensure your notebooks run without errors in the JupyterHub environment.
-- **Document your work**: Add clear comments and documentation to any code or notebooks.
-- **Submit a Pull Request**: Create a pull request to the develop branch with a clear description of what your changes accomplish. We will review your contribution and provide feedback.
+### MODFLOW or MT3D Model Issues
 
-### 7.6 Notebook Output Management (Required)
-To keep the repository clean and free of unnecessary output, notebook outputs should be cleared before committing. Contributors have two options:
+**Model changes not taking effect:**
+If you modify model settings, run the model, but results don't change:
+1. Delete the model workspace folder (e.g., `model_ws/`)
+2. Re-run the notebook cells that create and run the model
 
-#### Option 1: Manual Output Clearing (Simple)
-Before committing notebooks, manually clear all outputs:
-- **In Jupyter/JupyterLab**: `Kernel` → `Restart & Clear Output`
-- **In VS Code**: Use the "Clear All Outputs" button in the notebook toolbar
-- **Command line**: Use `jupyter nbconvert --clear-output --inplace your_notebook.ipynb`
-
-#### Option 2: Automated with nbstripout (Recommended for Regular Contributors)
-Set up `nbstripout` to automatically strip outputs during commits:
-
-1. **Activate the pre-commit hook** (installed with the `environment_development.yml` file):
-   ```bash
-   pre-commit install
-   ```
-2. **Install `nbstripout`** in your conda environment: 
-   ```bash
-   conda install nbstripout
-   ```
-3. **Enable `nbstripout`** for your repository:
-   ```bash
-   nbstripout --install
-   ```
-4. **Verify the setup** by checking the `.git/hooks/pre-commit` file. It should contain a line similar to:
-   ```bash
-   #!/bin/sh
-   nbstripout --strip
-   ```
-5. **Automatic stripping**: Once set up, `nbstripout` will automatically strip output from all Jupyter notebooks when you commit changes.
-6. **Skip specific notebooks** (if needed):
-   ```bash
-   nbstripout --skip-notebook your_notebook.ipynb
-   ```
-
-**Important**: Please ensure notebook outputs are cleared using either method before submitting pull requests to maintain clean repository history.
+MODFLOW and MT3D may reuse cached files from previous runs, causing your changes to be ignored.
 
 </details>
 
+## 8 Accessibility
 
-## 8 The Limmat Valley Aquifer Case Study
-Based on the real-world Limmat valley aquifer in Switzerland, this case study provides a practical context for applying groundwater modeling concepts. The case study follows a structured approach from problem definition to model implementation and analysis. After following a series of introductory notebooks, students will work on the case study using a provided template notebook and configuration file.
+This course is designed with accessibility in mind - screen reader compatibility, keyboard navigation, and clear structure.
 
+<details>
+<summary>Accessibility details</summary>
 
-## 9 Course Timeline
-(To be refined)
+**Features:**
+- Standard Markdown for screen reader compatibility
+- Keyboard-accessible interactive elements
+- Alt text for images
+- Consistent heading hierarchy
 
+**Limitations we're working on:**
+- Some complex diagrams lack comprehensive text alternatives
+- Color-dependent information being improved
 
-## 10 Troubleshooting
+**Report issues:** Open a GitHub issue with the `accessibility` label.
 
-### Troubleshooting Git repo on JupyterHub
-It may happen, that your repository on JupyterHub is not up to date with the latest version of the course repository. In this case, you can update your repository by running the following commands in a terminal on JupyterHub:
+</details>
 
-```bash
-# TODO: add this to the diagnostics script for Jupyter Hub
-# Navigate to the course repository
-cd ~/applied_groundwater_modelling.git
-# Fetch the latest changes from the remote repository
-git fetch origin
-# Check the status of your local repository
-git status
-# You cannot commit any changes. You need to reset your local repository to match the remote 'course_2025' branch
-# Reset your local repository to match the remote 'course_2025' branch
-git reset --hard origin/course_2025
-```
+## 9 For Developers
 
-### 405: Method Not Allowed on JupyterHub
-This error may occur if you try to access a resource or endpoint that is not allowed on the JupyterHub server. This error can happen when you store the link to your JupyterHub environment in a Bookmark. The url to your JupyterHub environment can change from time to time. 
+See [DEVELOPMENT.md](DEVELOPMENT.md) for:
+- Environment setup with uv
+- Pre-commit hooks (auto-strips notebook outputs)
+- Code style and contribution guidelines
 
-### Troubleshooting Data Downloads
+## 10 Acknowledgments
 
-**"No URL configured" error:**
-- Ensure you have a valid `config.py` file or that `config_template.py` contains the required dataset
-- Check that the dataset name matches exactly (case-sensitive)
-
-**Download failures:**
-- Check your internet connection
-- Verify that the repository links are accessible
-- For private repositories, ensure the links in your `config.py` are current
-
-**"Path does not exist" errors:**
-- The data download system creates directories automatically
-- Ensure you have write permissions in your home directory
-- Check that `~/applied_groundwater_modelling_data/` can be created
-
-**For workshop participants:**
-- Do not share your `config.py` file as it contains links to private repositories
-- If you lose your `config.py`, contact the instructors for a replacement
-- The `config.py` file should be placed in the root directory of the repository
-
-## 11 Acknowledgments
 Funded by the ETH Zurich Department of Earth and Planetary Sciences and the Rectors Innovendum Fund ([project link](https://ww2.lehrbetrieb.ethz.ch/id-workflows/faces/instances/Innovedum/ProzessInnovedum$1/197A35DA732E83F5/innovedumPublic.Details/Details.xhtml)).
