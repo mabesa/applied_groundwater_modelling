@@ -8,15 +8,13 @@ requires-python = ">=3.12"
 
 dependencies = [
     # Core scientific computing
-    "numpy>=1.26.4,<2.0",
+    "numpy>=2.0",
     "scipy>=1.15.2",
-    "pandas>=2.2.3", 
+    "pandas>=2.2.3",
     "statsmodels>=0.14.4",
-
     # Groundwater modeling
     "flopy>=3.9.2",
     "pyemu",
-
     # Geospatial
     "geopandas>=1.0.1",
     "rasterio>=1.4.3",
@@ -28,33 +26,44 @@ dependencies = [
     "affine>=2.4.0",
     "elevation",
     "pykrige>=1.7.2",
-
     # Visualization
     "matplotlib>=3.10.1",
     "matplotlib-scalebar>=0.9.0",
     "seaborn>=0.13.2",
     "plotly>=6.2.0",
     "graphviz>=0.20.3",
-
     # Jupyter and interactive
     "jupyterlab>=4.4.2",
     "ipython>=9.2.0",
     "ipywidgets>=8.1.5",
     "ipympl>=0.9.7",
-
     # Image processing
-    "scikit-image>=0.24.0,<0.25.0",
-    "porespy>=2.4.1",
-
+    "scikit-image>=0.25.0",
+    "porespy>=3.0.3",
+    "numba>=0.60",  # Explicit constraint for Python 3.12+ compatibility
     # Utilities
     "pyyaml>=6.0.2",
     "requests>=2.32.3",
     "psutil>=7.0.0",
+    "pyshp>=3.0.3",
 ]
 
 [dependency-groups]
 dev = [
     "pre-commit>=4.2.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["_SUPPORT/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
 ]
 
 # This is not a distributable package - it's course materials

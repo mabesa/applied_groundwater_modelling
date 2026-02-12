@@ -2261,7 +2261,62 @@ def visualize_boundary_segments(boundary_segments_gdf):
     southwest = [bounds[1], bounds[0]]  # [min_lat, min_lon]
     northeast = [bounds[3], bounds[2]]  # [max_lat, max_lon]
     m.fit_bounds([southwest, northeast], padding=(20, 20))
-    
+
+    return m
+
+
+def display_wel_map(modelgrid, north_cell_ids, south_cell_ids,
+                    q_per_cell_north, q_per_cell_south):
+    """Display a Folium map of WEL boundary cells (lateral hillslope inflow).
+
+    Parameters
+    ----------
+    modelgrid : flopy.discretization.VertexGrid
+        Model grid with cell center coordinates in EPSG:2056.
+    north_cell_ids, south_cell_ids : list[int]
+        Cell IDs for north and south WEL boundaries.
+    q_per_cell_north, q_per_cell_south : float
+        Injection rate per cell (m³/day).
+
+    Returns
+    -------
+    folium.Map
+    """
+    from pyproj import Transformer
+
+    xc = modelgrid.xcellcenters
+    yc = modelgrid.ycellcenters
+
+    all_ids = list(north_cell_ids) + list(south_cell_ids)
+    if not all_ids:
+        print("No WEL cells to visualize")
+        return None
+
+    transformer = Transformer.from_crs("EPSG:2056", "EPSG:4326", always_xy=True)
+    center_lon, center_lat = transformer.transform(
+        np.mean([xc[i] for i in all_ids]),
+        np.mean([yc[i] for i in all_ids]),
+    )
+
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=14)
+
+    for cid in north_cell_ids:
+        lon, lat = transformer.transform(xc[cid], yc[cid])
+        folium.CircleMarker(
+            location=[lat, lon], radius=5,
+            color='darkblue', fill=True, fillColor='blue', fillOpacity=0.7,
+            popup=f'North WEL cell {cid}<br>Q = {q_per_cell_north:.1f} m³/day',
+        ).add_to(m)
+
+    for cid in south_cell_ids:
+        lon, lat = transformer.transform(xc[cid], yc[cid])
+        folium.CircleMarker(
+            location=[lat, lon], radius=5,
+            color='darkred', fill=True, fillColor='red', fillOpacity=0.7,
+            popup=f'South WEL cell {cid}<br>Q = {q_per_cell_south:.1f} m³/day',
+        ).add_to(m)
+
+    print(f"WEL cells: North={len(north_cell_ids)} (blue), South={len(south_cell_ids)} (red)")
     return m
 
 

@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ipywidgets as widgets
 from IPython.display import display
+from ipywidgets.widgets.interaction import show_inline_matplotlib_plots
 
 def display_disc_area_interactive(Q_min=15, Q_max=25, P_min=0.9, P_max=1.1):
     """
@@ -70,7 +71,9 @@ def display_disc_area_interactive(Q_min=15, Q_max=25, P_min=0.9, P_max=1.1):
         ax.axis('off')  # Hide x and y axes
         ax.set_aspect('equal')  # Ensure the disc is circular
         ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1), fontsize=10, frameon=True)
-        plt.show()
+        plt.tight_layout()
+        show_inline_matplotlib_plots()
+        plt.close(fig)
 
     # Create sliders for Q and P
     Q_slider = widgets.FloatSlider(

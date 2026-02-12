@@ -1,5 +1,6 @@
 # ...existing imports...
 from ipywidgets import Output, VBox, FloatSlider, Button, RadioButtons
+from ipywidgets.widgets.interaction import show_inline_matplotlib_plots
 from IPython.display import Markdown, display, clear_output
 import matplotlib.pyplot as plt
 import numpy as np
@@ -73,7 +74,9 @@ def darcy_task_1_2():
                 x_fit = np.linspace(0, 1, 100)
                 y_fit = fit_line(x_fit)
                 ax.plot(x_fit, [y * 1000 for y in y_fit], color='red')
-            plt.show()
+            plt.tight_layout()
+            show_inline_matplotlib_plots()
+            plt.close(fig)
 
     def on_validate_point(button):
         nonlocal point_count
