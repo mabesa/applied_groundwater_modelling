@@ -102,6 +102,11 @@ Consider how you would assess your model's predictive quality:
 
 # task04_k_values removed - simplified to uniform K in notebook revision
 
+"task03_k_averaging_1": r"""
+## K Averaging Checkpoint
+You're modeling the Limmat riverbed (K = 0.1 m/d, thickness = 0.5 m) overlying the gravel aquifer (K = 864 m/d). Which K-averaging method best represents flow through this system?
+""",
+
 "task04_checkpoint_k_sensitivity": r"""
 ## Sensitivity Exercise - K and the Water Balance
 For the Limmat Valley base model (uniform K, steady state):
@@ -198,6 +203,7 @@ solutions_exact = {
     "task04_checkpoint_3": "~0.0002",
     "task04_checkpoint_4": "B) Losing",
     "task04_checkpoint_5": "Head measurements, river discharge, spring discharge",
+    "task03_k_averaging_1": "B) Harmonic mean",
     "task04_checkpoint_k_sensitivity": "B) K = 5-50 m/day",
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
@@ -231,6 +237,7 @@ solution_unit = {
     "task04_checkpoint_3": "%",
     "task04_checkpoint_4": "multiple choice",
     "task04_checkpoint_5": "open-ended",
+    "task03_k_averaging_1": "multiple choice",
     "task04_checkpoint_k_sensitivity": "multiple choice",
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
@@ -246,6 +253,12 @@ solution_unit = {
 # Format: task_id -> list of (value, label) tuples
 # The 'value' is what gets compared against solutions_exact[task_id]
 multiple_choice_options = {
+    "task03_k_averaging_1": [
+        ("A) Arithmetic mean", "A) Arithmetic mean — gives equal weight to both K values"),
+        ("B) Harmonic mean", "B) Harmonic mean — low-K layer controls flow (resistors in series)"),
+        ("C) Geometric mean", "C) Geometric mean — a balanced middle ground"),
+        ("D) Doesn't matter", "D) It doesn't matter — all methods give similar results at this contrast"),
+    ],
     "task04_checkpoint_4": [
         ("A) Gaining", "A) Gaining (river receives discharge from aquifer)"),
         ("B) Losing", "B) Losing (river loses water to aquifer)"),
@@ -484,6 +497,28 @@ The quality of your model depends heavily on the availability and accuracy of fi
 """,
 
 # task04_k_values solution removed - simplified to uniform K
+
+"task03_k_averaging_1": r"""
+## Solution — K Averaging for the Limmat Riverbed
+
+**Correct answer: B) Harmonic mean**
+
+The harmonic mean is correct because water must flow **through** the low-K riverbed to reach the aquifer — like resistors in series, the highest resistance controls the total flow.
+
+At this contrast (K ratio = 864 / 0.1 = 8640x), the choice matters enormously:
+
+| Method | $K_{eff}$ (m/d) |
+|--------|-----------------|
+| Harmonic | 0.2 |
+| Geometric | 9.3 |
+| Logarithmic | 95 |
+| Arithmetic | 432 |
+
+Using the arithmetic mean instead of harmonic would overestimate river-aquifer exchange by a factor of ~2000. This is exactly why MODFLOW 6 uses the harmonic mean as the default in the NPF package.
+
+**Physical insight:** The streambed acts as a thin, low-permeability barrier. No matter how permeable the aquifer below, water can only enter as fast as it can seep through the streambed — just like the narrowest pipe segment limits total flow.
+<br>
+""",
 
 "task04_checkpoint_k_sensitivity": r"""
 ## Solution - K Sensitivity
