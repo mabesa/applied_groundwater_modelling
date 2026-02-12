@@ -66,15 +66,22 @@ Running your groundwater model with a 50m Voronoi grid discretization:
 """,
 
 "task04_checkpoint_2": r"""
-## Numerical Checkpoint 2 - Aquifer Properties
-Based on your model setup:
-- **What is the average aquifer thickness (m)?**
+## Checkpoint 2 - Aquifer Volume
+Using the model domain area (~10.4 km²) and the average aquifer thickness from your model:
+- **Calculate the total aquifer volume in million m³**
+
+**Hint:** $V = A \times \bar{b}$. Convert your answer to million m³.
 """,
 
 "task04_checkpoint_3": r"""
-## Numerical Checkpoint 3 - Water Balance
-From your water balance analysis:
-- **What is the total recharge flux (m³/day)?**
+## Checkpoint 3 - Calculate Areal Recharge Flux
+Using the daily recharge rate and the active model domain area, calculate the total areal recharge flux.
+
+**Given:**
+- Daily recharge rate: 3.0 × 10⁻⁴ m/day (from 110 mm/year)
+- Active model domain area: ~10.4 km²
+
+**Calculate** the total recharge flux in m³/day:
 """,
 
 "task04_checkpoint_4": r"""
@@ -100,6 +107,16 @@ Consider how you would assess your model's predictive quality:
 """,
 
 # task04_k_values removed - simplified to uniform K in notebook revision
+
+"task04_checkpoint_k_sensitivity": r"""
+## Sensitivity Exercise - K and the Water Balance
+For the Limmat Valley base model (uniform K, steady state):
+- **Which K range produces a physically reasonable simulation (no widespread dry cells, heads within the domain)?**
+  - A) K = 0.1-1 m/day
+  - B) K = 5-50 m/day
+  - C) K = 100-500 m/day
+  - D) Any K value works equally well
+""",
 
 # ============================================================================
 # NOTEBOOK 5 - CALIBRATION CHECKPOINTS
@@ -155,11 +172,11 @@ solutions = {
     "task03_4": (0.25, 0.35),  # Correct solution 0.3
     "task04_1": (43, 44),  # Correct solution 38
     "task04_2": (25, 27),  # Correct solution 26
-    "task04_checkpoint_1": (3000, 3500),  # Correct solution ~3235 active cells (50m Voronoi grid)
-    "task04_checkpoint_2": (15, 20),  # Correct solution ~17.5 m (Limmat Valley default)
+    "task04_checkpoint_1": (17000, 20000),  # Correct solution ~18030 active cells (50m Voronoi grid with 25m river refinement)
+    "task04_checkpoint_2": (100, 160),  # Correct solution ~126 million m³ (10.4 km² × ~12 m avg thickness)
     "task04_checkpoint_3": (2700, 3500),  # Correct solution ~3000 m³/day (10.4 km² × 110 mm/yr)
     "task04_checkpoint_4": (0, 0.1),  # Tolerance <0.1% - MF6 should converge to near-zero
-    # Checkpoints 5 and 6 are conceptual/multiple choice - handled separately
+    # Checkpoints 5, 6, and k_sensitivity are conceptual/multiple choice - handled separately
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
     "task05_checkpoint_1": (17, 22),      # 4 real AWEL + 15 synthetic = 19 obs points
@@ -183,12 +200,13 @@ solutions_exact = {
     "task03_4": "0.30",
     "task04_1": "43.3",
     "task04_2": "26.0",
-    "task04_checkpoint_1": "~3235",
-    "task04_checkpoint_2": "17.5",
+    "task04_checkpoint_1": "~18030",
+    "task04_checkpoint_2": "~125",
     "task04_checkpoint_3": "~3000",
     "task04_checkpoint_4": "~0.0002",
     "task04_checkpoint_5": "B) Losing",
     "task04_checkpoint_6": "Head measurements, river discharge, spring discharge",
+    "task04_checkpoint_k_sensitivity": "B) K = 5-50 m/day",
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
     "task05_checkpoint_1": "19",
@@ -217,11 +235,12 @@ solution_unit = {
     "task04_1": "m",
     "task04_2": "m",
     "task04_checkpoint_1": "cells",
-    "task04_checkpoint_2": "m",
+    "task04_checkpoint_2": "million m³",
     "task04_checkpoint_3": "m³/day",
     "task04_checkpoint_4": "%",
     "task04_checkpoint_5": "multiple choice",
     "task04_checkpoint_6": "open-ended",
+    "task04_checkpoint_k_sensitivity": "multiple choice",
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
     "task05_checkpoint_1": "points",
@@ -240,6 +259,12 @@ multiple_choice_options = {
         ("A) Gaining", "A) Gaining (river receives discharge from aquifer)"),
         ("B) Losing", "B) Losing (river loses water to aquifer)"),
         ("C) Varies", "C) Varies along reach (both gaining and losing sections)"),
+    ],
+    "task04_checkpoint_k_sensitivity": [
+        ("A) K = 0.1-1 m/day", "A) K = 0.1-1 m/day (very low, typical of silts/clays)"),
+        ("B) K = 5-50 m/day", "B) K = 5-50 m/day (matches pumping test data for alluvial gravels)"),
+        ("C) K = 100-500 m/day", "C) K = 100-500 m/day (very high, clean gravel literature values)"),
+        ("D) Any K works", "D) Any K value works equally well"),
     ],
     "task05_checkpoint_5": [
         ("A) Increase K in Zone 1", "A) Increase K in Zone 1 (reduces simulated heads)"),
@@ -367,54 +392,52 @@ As a result, $h(400)$ = $-\frac{0.000003}{0.00005}(400 - 0)$ + 50 = 26.0 $\text{
 "task04_checkpoint_1": r"""
 ## Solution - Model Discretization
 
-The number of active cells depends on your model discretization. For a 50m Voronoi grid applied to the Limmat Valley model domain:
+The number of active cells depends on your model discretization. For a 50m Voronoi grid with 25m river refinement applied to the ~10.4 km² Limmat Valley model domain:
 
-- The Voronoi discretization creates a mesh with cell sizes around 50m
-- For the typical Limmat Valley study area (~30-35 km²), this results in approximately **5000 active cells**
-- The exact number depends on your model domain boundary and any inactive cells you may have defined
+- **Total cells:** ~18,785 (general 50m cells + finer 25m cells near rivers)
+- **Active cells:** ~18,030 (cells with centroids inside the model boundary)
+- River refinement roughly doubles the cell count compared to a uniform 50m grid
 
-To find this value in MODFLOW 6:
-- Check the summary output file or check the modulus output
-- Look for "Number of active cells" or query the model grid object
-- Or count non-zero entries in the IBOUND/IDOMAIN array
+The large number of cells reflects the river-aligned refinement: cells along the Sihl and Limmat have ~625 m² area (25m × 25m) instead of ~2,500 m² (50m × 50m).
+
+To check: `n_active = np.sum(idomain > 0)` or look at the grid creation output.
 <br>
 """,
 
 "task04_checkpoint_2": r"""
-## Solution - Aquifer Thickness
+## Solution - Aquifer Volume
 
-Based on the geological setup of the Limmat Valley model:
+The aquifer volume is calculated as:
 
-- The Limmat Valley contains primarily Quaternary alluvial and glacial deposits
-- Typical aquifer thickness in this region ranges from **15-20 m**
-- This represents the active saturated thickness of the main aquifer layer(s)
-- Local variations exist, but the area average is approximately **17.5 m**
+$$V = A \times \bar{b}$$
 
-The average thickness can be calculated by:
-- Taking the layer bottom elevation and subtracting the layer top elevation
-- Averaging across all active cells in the model
-- Or directly from your model layer definitions
+Where:
+- $A$ = model domain area ≈ 10.4 km² = 10.4 × 10⁶ m²
+- $\bar{b}$ = average aquifer thickness ≈ 12 m (from the model geometry summary printed above)
+
+$$V = 10.4 \times 10^6 \times 12 = 124.8 \times 10^6 \text{ m}^3 \approx 125 \text{ million m}^3$$
+
+This volume represents the total aquifer material (pore space + solid matrix). The actual **groundwater storage volume** would be $V \times S_y$ where $S_y$ is the specific yield (~0.15-0.25 for gravels), giving ~19-31 million m³ of extractable water.
 <br>
 """,
 
 "task04_checkpoint_3": r"""
 ## Solution - Total Recharge Flux
 
-The total recharge flux depends on your model domain area and recharge rate:
+**Step-by-step calculation:**
 
-$$Q_{recharge} = A_{active} \times R_{rate}$$
+1. Convert area: 10.4 km² = 10.4 × 10⁶ m²
+2. Multiply rate × area:
 
-Where:
-- $A_{active}$ is the active model area (in m²)
-- $R_{rate}$ is the recharge rate (in m/day)
+$$Q_{recharge} = R_{rate} \times A_{active} = 3.01 \times 10^{-4} \text{ m/day} \times 10.4 \times 10^6 \text{ m}^2 \approx 3{,}130 \text{ m}^3\text{/day}$$
 
-For the Limmat Valley model with ~10 km² active area and 110 mm/year recharge:
-- $R_{rate} = 110 \text{ mm/year} \div 365.25 \approx 3.01 \times 10^{-4} \text{ m/day}$
-- $Q_{recharge} = 10 \times 10^6 \text{ m}^2 \times 3.01 \times 10^{-4} \text{ m/day} \approx 3000 \text{ m}^3/\text{day}$
+This is consistent with the perceptual model estimate from Notebook 2 (~3,000 m³/day).
 
-To verify from your model:
-- Check `total_recharge_m3_day` variable in the recharge calculation cell
-- Or check the water balance output for total inflow from RCH package
+**Common mistakes:**
+- Forgetting to convert km² to m² (multiply by 10⁶)
+- Using annual recharge without converting to daily (divide by 365.25)
+
+**Verification:** After running the model, check the RCH package inflow in the water balance output.
 <br>
 """,
 
@@ -428,13 +451,13 @@ MODFLOW 6 provides excellent numerical stability. The water balance error should
 
 The water balance error is calculated as:
 
-$$\text{Error (\%)} = \frac{|Q_{in} - Q_{out}|}{|Q_{in}|} \times 100$$
+$$\text{Error (\%)} = 200 \times \frac{|Q_{in} - Q_{out}|}{Q_{in} + Q_{out}}$$
 
-Where $Q_{in}$ is total inflow and $Q_{out}$ is total outflow from all sources/sinks.
+This is the symmetric MODFLOW 6 standard formula ("Percent Difference" in the listing file), where $Q_{in}$ is total inflow and $Q_{out}$ is total outflow from all sources/sinks.
 
 For your MF6 model:
 - Check the summary output file for "Percent Difference"
-- Verify all packages are included (WEL, RCH, RIV, DRN, etc.)
+- Verify all packages are included (WEL, RCH, RIV, etc.)
 - Ensure stress periods are properly defined
 - If error > 1%, check for convergence issues or missing packages
 <br>
@@ -447,16 +470,13 @@ In the Hardhof area of the Limmat Valley, the Limmat River is **losing water to 
 
 **Answer: B) Losing**
 
-This conclusion is based on:
-- The natural gradient in the Limmat Valley generally flows toward the river
-- The river elevation is lower than the regional water table in many areas
-- Regional groundwater flow patterns indicate convergence toward the river in some reaches and divergence in others
-- In the Hardhof area specifically, historical data and typical Alpine valley hydrology show the river typically loses infiltrated water to recharge the aquifer below
-- However, during high water stages or in gaining reaches, the relationship may reverse
+**In your model:** The RIV package acts as a net water source (inflow to aquifer), meaning simulated aquifer heads are generally below river stage. The river loses water to the aquifer even in the base model — you can verify this in the water balance summary (Section 7.1).
 
-When setting up river boundary conditions (RIV package in MODFLOW):
-- A losing river has river elevation > modeled head (head draws down toward river)
-- A gaining river has river elevation < modeled head (river receives groundwater discharge)
+**In reality:** The losing regime is reinforced by the Hardhof pumping well field, which creates a cone of depression that draws the water table further below river level. Artificial recharge operations at Hardhof are specifically designed to infiltrate river water into the aquifer, confirming this losing condition.
+
+When interpreting RIV package results:
+- A **losing** river has river stage > aquifer head → water flows from river to aquifer
+- A **gaining** river has river stage < aquifer head → groundwater discharges into the river
 <br>
 """,
 
@@ -488,6 +508,22 @@ The quality of your model depends heavily on the availability and accuracy of fi
 """,
 
 # task04_k_values solution removed - simplified to uniform K
+
+"task04_checkpoint_k_sensitivity": r"""
+## Solution - K Sensitivity
+
+**Correct answer: B) K = 5-50 m/day**
+
+This range matches pumping test data for the Limmat Valley alluvial gravels and produces physically reasonable simulations.
+
+**What happens at the extremes:**
+- **K too low (< 1 m/day):** The aquifer cannot transmit enough water to the CHD outflow. Heads build up excessively — water "backs up" behind the low-K material, potentially exceeding the land surface or creating unrealistic mounding.
+- **K too high (> 100 m/day):** The aquifer drains too efficiently. Heads drop to near the river/CHD levels, the aquifer may partially dewater (dry cells), and lateral gradients become unrealistically flat.
+- **K = 5-50 m/day:** Heads remain below the land surface, above the aquifer bottom, and show a realistic west-to-east gradient consistent with the valley topography and boundary conditions.
+
+**Key insight:** The "right" K is not just a material property — it must be consistent with the boundary conditions and recharge rates to produce a balanced water budget with realistic heads. This is why calibration against observed heads (Notebook 5) is essential.
+<br>
+""",
 
 # ============================================================================
 # NOTEBOOK 5 - CALIBRATION SOLUTIONS
@@ -557,7 +593,7 @@ MODFLOW 6 should achieve excellent water balance closure. The error should be **
 
 The water balance error is:
 
-$$\text{Error (\%)} = \frac{|Q_{in} - Q_{out}|}{(Q_{in} + Q_{out})/2} \times 100$$
+$$\text{Error (\%)} = 200 \times \frac{|Q_{in} - Q_{out}|}{Q_{in} + Q_{out}}$$
 
 **If your error is > 1%:**
 1. Check solver convergence (IMS settings)
