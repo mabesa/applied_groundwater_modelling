@@ -208,9 +208,9 @@ solutions = {
     # Checkpoints 4, 5, and k_sensitivity are conceptual/multiple choice - handled separately
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
-    "task05_checkpoint_1": (17, 22),      # 4 real AWEL + 15 synthetic = 19 obs points
-    "task05_checkpoint_2": (1.5, 4.0),    # Initial RMSE before calibration (depends on initial params)
-    "task05_checkpoint_3": (0.3, 2.0),    # Target calibrated RMSE < 2.0 m
+    "task05_checkpoint_1": (8, 10),       # 4 real AWEL + 5 synthetic = 9 obs points
+    "task05_checkpoint_2": (2.5, 4.0),    # Initial RMSE before calibration (~3.2 m)
+    "task05_checkpoint_3": (1.5, 3.5),    # Calibrated RMSE (~2.6 m)
     "task05_checkpoint_4": (0, 1.0),      # Water balance error < 1%
     # Checkpoint 5 is multiple choice - handled separately
 }
@@ -243,9 +243,9 @@ solutions_exact = {
     "task04_checkpoint_k_sensitivity": "B) K = 5-50 m/day",
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
-    "task05_checkpoint_1": "19",
-    "task05_checkpoint_2": "~2.5",  # Depends on initial parameters
-    "task05_checkpoint_3": "~1.0",  # Target after calibration
+    "task05_checkpoint_1": "9",
+    "task05_checkpoint_2": "~3.2",  # Initial RMSE with reference K synthetic obs
+    "task05_checkpoint_3": "~2.6",  # Calibrated RMSE after PEST++
     "task05_checkpoint_4": "~0.001",
     "task05_checkpoint_5": "A) Increase K in that area",
 }
@@ -678,36 +678,38 @@ The observation dataset combines two sources:
    - Well 83-1
    - Well 3625 (Lagerstrasse)
 
-2. **Synthetic observations**: 15 artificial points added for teaching purposes
-   - Generated from a reference model run with realistic noise (σ = 0.3 m)
-   - Distributed across the model domain for spatial coverage
+2. **Synthetic observations**: 5 artificial points added for teaching purposes
+   - Generated from a reference model with thickness-dependent K and realistic noise (σ = 0.3 m)
+   - Restricted to the aquifer south of the river, away from model boundaries
    - Clearly marked as synthetic in all visualizations
 
-**Total: 4 real + 15 synthetic = 19 observation points**
+**Total: 4 real + 5 synthetic = 9 observation points**
 
-The synthetic observations allow us to demonstrate calibration methods even with limited real data coverage.
+The synthetic observations come from a reference K field that varies with aquifer thickness (deeper zones = coarser gravels = higher K). This produces head patterns more realistic than a uniform-K model.
 <br>
 """,
 
 "task05_checkpoint_2": r"""
 ## Solution - Initial RMSE
 
-The initial Root Mean Square Error (RMSE) depends on how far the uncalibrated model parameters are from the "true" values.
+The initial Root Mean Square Error (RMSE) measures how well the uncalibrated model (uniform K = 20 m/d) matches the observations.
 
-With the default initial parameters (K = 20 m/day uniform), you should see an RMSE in the range of **1.5-4.0 m**.
-
-The RMSE is calculated as:
+You should see an RMSE of approximately **3.2 m**. This relatively large misfit occurs because:
+- The synthetic observations come from a reference model with spatially varying K (8–30 m/d)
+- The uniform K = 20 model produces different head patterns, especially in the western domain where the reference K is lower (~8 m/d)
 
 $$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(h_{sim,i} - h_{obs,i})^2}$$
 
-A higher initial RMSE indicates more room for improvement through calibration. The spatial pattern of residuals (shown in the residual map) guides which parameters to adjust.
+This large initial misfit motivates the calibration — the model clearly needs spatially varying K to match the observations.
 <br>
 """,
 
 "task05_checkpoint_3": r"""
 ## Solution - Calibrated RMSE
 
-After PEST++ calibration, you should achieve an RMSE of **< 2.0 m**, ideally around **1.0 m** or less.
+After PEST++ calibration with pilot points, you should see the RMSE improve to approximately **2.6 m** (down from ~3.2 m uncalibrated — a ~20% improvement).
+
+**Why isn't the improvement larger?** With only 9 observations and 20 pilot points, the inverse problem is severely underdetermined. The regularization and prior information help constrain the solution, but there simply isn't enough observation data to fully recover the spatially varying K field.
 
 **Calibration quality guidelines:**
 - RMSE < 1 m: Excellent
@@ -715,12 +717,7 @@ After PEST++ calibration, you should achieve an RMSE of **< 2.0 m**, ideally aro
 - RMSE 2-3 m: Acceptable
 - RMSE > 3 m: Needs improvement
 
-The corresponding NRMSE (Normalized RMSE) should be **< 10%** of the observed head range.
-
-If you cannot achieve RMSE < 2 m:
-1. Check for observation points in problematic locations (near boundaries, dry cells)
-2. Consider whether the conceptual model is appropriate
-3. Review boundary condition assumptions
+**Key takeaway:** Calibration quality is limited by observation data coverage. More wells distributed across the domain would dramatically improve the result.
 <br>
 """,
 

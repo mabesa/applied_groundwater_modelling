@@ -279,6 +279,94 @@ def load_awel_observations(
 # SYNTHETIC OBSERVATION GENERATION
 # =============================================================================
 
+def generate_reference_k_field(
+    modelgrid, idomain, top, bottom,
+    n_pilot_points=30, seed=42,
+    noise_std=0.15,
+    variogram_range=3000.0,
+    k_bounds=(1.0, 300.0),
+):
+    """
+    Generate a stochastic reference K field correlated with aquifer thickness.
+
+    K follows a log-linear relationship with thickness, reflecting the geology
+    of alluvial aquifers where deeper sections contain coarser gravels:
+
+        log10(K) = 0.764 + 0.014 × thickness
+
+    This gives K ≈ 8 m/d at 10 m thickness, ≈ 13 m/d at 25 m (matching the
+    pumping test), and ≈ 29 m/d at 50 m.
+
+    Parameters
+    ----------
+    modelgrid : flopy grid
+        Model grid object with cell centres.
+    idomain : np.ndarray
+        Active-cell indicator (1=active).
+    top : np.ndarray
+        Top elevation of the aquifer (1-D or 2-D).
+    bottom : np.ndarray
+        Bottom elevation of the aquifer (1-D or 2-D).
+    n_pilot_points : int
+        Number of pilot points for the stochastic field.
+    seed : int
+        Random seed for reproducibility.
+    noise_std : float
+        Standard deviation of Gaussian noise in log10(K) space (~±40% at 0.15).
+    variogram_range : float
+        Kriging variogram range [m] controlling spatial correlation.
+    k_bounds : tuple
+        (min, max) K bounds [m/d] for clipping.
+
+    Returns
+    -------
+    k_field : np.ndarray (ncells,)
+        Hydraulic conductivity array [m/d].
+    """
+    from setup_pest_calibration import _distribute_pilot_points, _interpolate_pp_to_grid
+
+    rng = np.random.default_rng(seed)
+
+    # Distribute pilot points across active domain
+    pp_xy = _distribute_pilot_points(
+        modelgrid, n_target=n_pilot_points, seed=seed, idomain=idomain,
+    )
+
+    # Cell centroids
+    if hasattr(modelgrid, 'nrow'):
+        xc = modelgrid.xcellcenters.ravel()
+        yc = modelgrid.ycellcenters.ravel()
+    else:
+        xc = modelgrid.xcellcenters
+        yc = modelgrid.ycellcenters
+
+    # Thickness at all cells
+    thickness = (np.asarray(top) - np.asarray(bottom)).flatten()
+
+    # At each pilot point, find the nearest cell and compute log10(K)
+    pp_log_k = np.zeros(len(pp_xy))
+    for i in range(len(pp_xy)):
+        dx = xc - pp_xy[i, 0]
+        dy = yc - pp_xy[i, 1]
+        nearest = int(np.argmin(dx**2 + dy**2))
+        b = thickness[nearest]
+        pp_log_k[i] = 0.764 + 0.014 * b
+
+    # Add Gaussian noise in log10 space for spatial variability
+    pp_log_k += rng.normal(0, noise_std, len(pp_log_k))
+
+    # Interpolate to full grid via kriging
+    k_field = _interpolate_pp_to_grid(
+        pp_xy, pp_log_k, modelgrid,
+        method="ordinary_kriging", variogram_range=variogram_range,
+    )
+
+    # Clip to physical bounds
+    k_field = np.clip(np.asarray(k_field).flatten(), k_bounds[0], k_bounds[1])
+
+    return k_field
+
+
 def generate_synthetic_observations(
     model_grid,
     true_heads: np.ndarray,
