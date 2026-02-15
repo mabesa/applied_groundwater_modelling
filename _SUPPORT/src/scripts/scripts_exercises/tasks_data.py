@@ -161,7 +161,7 @@ Before calibration, compare your simulated heads to observations:
 
 "task05_checkpoint_3": r"""
 ## Checkpoint 3 - Calibrated Model Fit
-After manual calibration:
+After PEST++ calibration:
 - **What is your calibrated RMSE (m)?**
 """,
 
@@ -173,10 +173,10 @@ Verify your calibrated model's water balance:
 
 "task05_checkpoint_5": r"""
 ## Conceptual Checkpoint - Residual Interpretation
-You observe that residuals in Zone 1 are predominantly positive (simulated > observed).
+You observe that residuals in the upstream area are predominantly positive (simulated > observed).
 - **What parameter adjustment would improve the fit?**
-  - A) Increase K in Zone 1
-  - B) Decrease K in Zone 1
+  - A) Increase K in that area
+  - B) Decrease K in that area
   - C) Increase recharge everywhere
   - D) Decrease river conductance
 """
@@ -247,7 +247,7 @@ solutions_exact = {
     "task05_checkpoint_2": "~2.5",  # Depends on initial parameters
     "task05_checkpoint_3": "~1.0",  # Target after calibration
     "task05_checkpoint_4": "~0.001",
-    "task05_checkpoint_5": "A) Increase K in Zone 1",
+    "task05_checkpoint_5": "A) Increase K in that area",
 }
 
 
@@ -330,8 +330,8 @@ multiple_choice_options = {
         ("D) Any K works", "D) Any K value works equally well"),
     ],
     "task05_checkpoint_5": [
-        ("A) Increase K in Zone 1", "A) Increase K in Zone 1 (reduces simulated heads)"),
-        ("B) Decrease K in Zone 1", "B) Decrease K in Zone 1 (increases simulated heads)"),
+        ("A) Increase K in that area", "A) Increase K in that area (reduces simulated heads)"),
+        ("B) Decrease K in that area", "B) Decrease K in that area (increases simulated heads)"),
         ("C) Increase recharge everywhere", "C) Increase recharge everywhere (increases all heads)"),
         ("D) Decrease river conductance", "D) Decrease river conductance (affects river-aquifer exchange)"),
     ],
@@ -707,7 +707,7 @@ A higher initial RMSE indicates more room for improvement through calibration. T
 "task05_checkpoint_3": r"""
 ## Solution - Calibrated RMSE
 
-After manual calibration, you should achieve an RMSE of **< 2.0 m**, ideally around **1.0 m** or less.
+After PEST++ calibration, you should achieve an RMSE of **< 2.0 m**, ideally around **1.0 m** or less.
 
 **Calibration quality guidelines:**
 - RMSE < 1 m: Excellent
@@ -746,7 +746,7 @@ A well-converged steady-state model should have near-zero balance error.
 "task05_checkpoint_5": r"""
 ## Solution - Residual Interpretation
 
-**Correct answer: A) Increase K in Zone 1**
+**Correct answer: A) Increase K in that area**
 
 **Reasoning:**
 - Positive residuals mean simulated heads are **higher** than observed
@@ -754,15 +754,15 @@ A well-converged steady-state model should have near-zero balance error.
 - Increasing K allows water to flow more easily, lowering heads
 
 **Physical interpretation:**
-- Simulated head = f(recharge/K) - higher K means lower equilibrium head
+- Simulated head = f(recharge/K) — higher K means lower equilibrium head
 - If sim > obs, the aquifer is "mounding" too much → increase K to let water escape
 
 **What the other options would do:**
 - B) Decrease K → Would raise heads further (wrong direction)
 - C) Increase recharge → Would raise heads everywhere (wrong direction)
-- D) Decrease river conductance → Would affect river exchange but not systematically lower heads in Zone 1
+- D) Decrease river conductance → Would affect river exchange but not systematically lower heads in the upstream area
 
-This principle is key to manual calibration: use residual patterns to guide parameter adjustments in the correct direction.
+This principle is key to calibration: use residual patterns to guide parameter adjustments in the correct direction. With pilot points, PEST++ does this automatically by adjusting K at each point.
 <br>
 """
 

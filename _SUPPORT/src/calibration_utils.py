@@ -128,6 +128,51 @@ def format_metrics_table(metrics: Dict[str, float]) -> str:
     return "\n".join(lines)
 
 
+def compare_metrics(
+    before: Dict[str, float],
+    after: Dict[str, float],
+    labels: Tuple[str, str] = ("Before", "After"),
+) -> str:
+    """
+    Format a side-by-side comparison of two sets of calibration metrics.
+
+    Parameters
+    ----------
+    before : dict
+        Metrics dictionary from calculate_calibration_metrics() (first set).
+    after : dict
+        Metrics dictionary from calculate_calibration_metrics() (second set).
+    labels : tuple of str
+        Labels for the two columns.
+
+    Returns
+    -------
+    str
+        Formatted comparison table string.
+    """
+    header = f"{'Metric':<22} {labels[0]:>10} {labels[1]:>10} {'Change':>10}"
+    sep = "-" * len(header)
+    lines = [
+        "Calibration Metrics Comparison",
+        sep,
+        header,
+        sep,
+    ]
+    for key, unit in [("ME", "m"), ("MAE", "m"), ("RMSE", "m"),
+                       ("NRMSE", "%"), ("R2", "")]:
+        v1 = before[key]
+        v2 = after[key]
+        diff = v2 - v1
+        fmt = ".3f" if key != "NRMSE" else ".1f"
+        u = f" {unit}" if unit else "  "
+        sign = "+" if diff > 0 else ""
+        lines.append(
+            f"  {key:<20} {v1:>8{fmt}}{u} {v2:>8{fmt}}{u} {sign}{diff:>7{fmt}}{u}"
+        )
+    lines.append(sep)
+    return "\n".join(lines)
+
+
 # =============================================================================
 # OBSERVATION DATA LOADING
 # =============================================================================
@@ -195,6 +240,12 @@ def load_awel_observations(
             'y_coord': 'first',
             'value': 'mean'
         }).reset_index()
+
+    # Convert LV03 (6-digit) coordinates to LV95 (7-digit) if needed
+    lv03_mask = df['x_coord'] < 1_000_000
+    if lv03_mask.any():
+        df.loc[lv03_mask, 'x_coord'] += 2_000_000
+        df.loc[lv03_mask, 'y_coord'] += 1_000_000
 
     # Create GeoDataFrame
     geometry = [Point(x, y) for x, y in zip(df['x_coord'], df['y_coord'])]
