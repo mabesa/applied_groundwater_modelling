@@ -292,10 +292,10 @@ def generate_reference_k_field(
     K follows a log-linear relationship with thickness, reflecting the geology
     of alluvial aquifers where deeper sections contain coarser gravels:
 
-        log10(K) = 0.764 + 0.014 × thickness
+        log10(K) = 0.855 + 0.022 × thickness
 
-    This gives K ≈ 8 m/d at 10 m thickness, ≈ 13 m/d at 25 m (matching the
-    pumping test), and ≈ 29 m/d at 50 m.
+    This gives K ≈ 12 m/d at 10 m thickness, ≈ 25 m/d at 25 m (matching the
+    pumping test), and ≈ 90 m/d at 50 m.
 
     Parameters
     ----------
@@ -350,7 +350,7 @@ def generate_reference_k_field(
         dy = yc - pp_xy[i, 1]
         nearest = int(np.argmin(dx**2 + dy**2))
         b = thickness[nearest]
-        pp_log_k[i] = 0.764 + 0.014 * b
+        pp_log_k[i] = 0.855 + 0.022 * b
 
     # Add Gaussian noise in log10 space for spatial variability
     pp_log_k += rng.normal(0, noise_std, len(pp_log_k))
@@ -1192,6 +1192,8 @@ def get_observation_summary(obs_gdf: gpd.GeoDataFrame) -> str:
         n_real = total
         n_synth = 0
 
+    head_vals = obs_gdf['head_m'].round(2)
+
     lines = [
         "=" * 50,
         "OBSERVATION DATA SUMMARY",
@@ -1200,8 +1202,8 @@ def get_observation_summary(obs_gdf: gpd.GeoDataFrame) -> str:
         f"  - Real (AWEL):   {n_real}",
         f"  - Synthetic:     {n_synth}",
         "",
-        f"Head range: {obs_gdf['head_m'].min():.2f} - {obs_gdf['head_m'].max():.2f} m a.s.l.",
-        f"Mean head:  {obs_gdf['head_m'].mean():.2f} m a.s.l.",
+        f"Head range: {head_vals.min():.2f} - {head_vals.max():.2f} m a.s.l.",
+        f"Mean head:  {head_vals.mean():.2f} m a.s.l.",
         "=" * 50,
     ]
 
