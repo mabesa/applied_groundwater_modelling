@@ -2,33 +2,16 @@
 
 This folder contains design and planning documents for course development.
 
-## Current Status
-
-**Notebook 4 Implementation:** Complete (2026-02-07)
-
-All design documents for Notebook 4 have been implemented and moved to `ARCHIVE/`.
-
-## Folder Structure
-
-```
-DESIGN_DOCS/
-├── README.md           # This file
-└── ARCHIVE/            # Completed design documents
-    ├── README.md       # Archive index with implementation summary
-    └── *.md            # Archived design docs
-```
-
 ## Creating New Design Documents
 
 When planning new features or notebooks:
 
 1. Create design documents in this folder
-2. Use descriptive names: `notebook5_calibration_design.md`
-3. After implementation, move to `ARCHIVE/` with a note in the archive README
+2. Use descriptive names: `notebook6_validation_design.md`
+3. Delete after implementation is complete and committed
 
-## Archive Contents
+## Completed
 
-See `ARCHIVE/README.md` for a complete index of archived documents including:
-- Notebook 4 Sections 6-8 design (pedagogical framework, code specifications)
-- Implementation checklists and status tracking
-- Technical plans (aquifer thickness integration)
+- Notebook 4 (model implementation) — implemented 2026-02-07
+- Notebook 5 (calibration) — implemented 2026-02-17
+- K averaging exercise design — incorporated into NB5
