@@ -285,6 +285,8 @@ def generate_reference_k_field(
     noise_std=0.15,
     variogram_range=3000.0,
     k_bounds=(1.0, 300.0),
+    anisotropy_angle=0.0,
+    anisotropy_scaling=1.0,
 ):
     """
     Generate a stochastic reference K field correlated with aquifer thickness.
@@ -317,6 +319,10 @@ def generate_reference_k_field(
         Kriging variogram range [m] controlling spatial correlation.
     k_bounds : tuple
         (min, max) K bounds [m/d] for clipping.
+    anisotropy_angle : float
+        Angle of major anisotropy axis, CCW from east [degrees].
+    anisotropy_scaling : float
+        Ratio of major to minor variogram range.
 
     Returns
     -------
@@ -359,12 +365,282 @@ def generate_reference_k_field(
     k_field = _interpolate_pp_to_grid(
         pp_xy, pp_log_k, modelgrid,
         method="ordinary_kriging", variogram_range=variogram_range,
+        anisotropy_angle=anisotropy_angle,
+        anisotropy_scaling=anisotropy_scaling,
     )
 
     # Clip to physical bounds
     k_field = np.clip(np.asarray(k_field).flatten(), k_bounds[0], k_bounds[1])
 
     return k_field
+
+
+def generate_conditioned_k_field(
+    sim, gwf, modelgrid, idomain, top, bottom,
+    obs_gdf,
+    *,
+    n_pilot_points=15,
+    seed=42,
+    noise_std=0.10,
+    variogram_range=3000.0,
+    anisotropy_angle=0.0,
+    anisotropy_scaling=1.0,
+    k_bounds=(1.0, 300.0),
+    delta_log_k=0.02,
+    lambda_reg=1.0,
+    max_iterations=3,
+    convergence_tol=0.5,
+    verbose=True,
+):
+    """
+    Generate a thickness-dependent K field conditioned on real AWEL head
+    observations using in-memory Gauss-Newton inversion.
+
+    This function:
+    1. Distributes pilot points and assigns thickness-based log10(K)
+    2. Iteratively adjusts pilot-point K values so that the model reproduces
+       observed heads at real AWEL wells (Jacobian-based least-squares)
+    3. Adds spatially correlated stochastic noise for realistic heterogeneity
+    4. Returns the final K field for synthetic observation generation
+
+    Parameters
+    ----------
+    sim : flopy.mf6.MFSimulation
+        The loaded MODFLOW 6 simulation.
+    gwf : flopy.mf6.MFModel
+        The groundwater flow model.
+    modelgrid : flopy grid
+        Model grid with cell centres.
+    idomain : np.ndarray
+        Active-cell indicator (1=active).
+    top, bottom : np.ndarray
+        Top and bottom elevations of the aquifer.
+    obs_gdf : gpd.GeoDataFrame
+        Observation wells. Must contain ``is_synthetic`` column; only wells
+        with ``is_synthetic == False`` are used for conditioning.
+    n_pilot_points : int
+        Number of pilot points (fewer than PEST calibration since we only
+        condition on ~4 real observations).
+    seed : int
+        Random seed for reproducibility.
+    noise_std : float
+        Standard deviation of post-conditioning Gaussian noise in log10(K)
+        space. Smaller than unconditioned (0.15) because the trend already
+        captures the main spatial structure.
+    variogram_range : float
+        Kriging variogram range [m].
+    anisotropy_angle : float
+        Angle of major anisotropy axis, CCW from east [degrees].
+    anisotropy_scaling : float
+        Ratio of major to minor variogram range.
+    k_bounds : tuple
+        (min, max) K bounds [m/d] for clipping.
+    delta_log_k : float
+        Finite-difference step for Jacobian computation [log10(m/d)].
+    lambda_reg : float
+        Tikhonov regularisation weight for the Gauss-Newton update.
+    max_iterations : int
+        Maximum Gauss-Newton iterations.
+    convergence_tol : float
+        Stop when max |residual| < this threshold [m].
+    verbose : bool
+        Print progress messages.
+
+    Returns
+    -------
+    k_field : np.ndarray (ncells,)
+        Final K with stochastic perturbation [m/d].
+    k_conditioned : np.ndarray (ncells,)
+        K after conditioning but before noise [m/d] (for diagnostics).
+    conditioning_info : dict
+        Diagnostics: iteration count, residuals, pilot-point values,
+        model run count.
+
+    Raises
+    ------
+    ValueError
+        If no real (non-synthetic) observations are found in obs_gdf.
+    """
+    from setup_pest_calibration import _distribute_pilot_points, _interpolate_pp_to_grid
+    from flopy.utils import GridIntersect
+    from shapely.geometry import Point
+
+    # --- Filter to real observations only ---
+    if 'is_synthetic' not in obs_gdf.columns:
+        raise ValueError("obs_gdf must have an 'is_synthetic' column")
+    real_obs = obs_gdf[~obs_gdf['is_synthetic']].copy()
+    if len(real_obs) == 0:
+        raise ValueError("No real (non-synthetic) observations for conditioning")
+
+    n_obs = len(real_obs)
+    obs_heads = real_obs['head_m'].values.copy()
+    if verbose:
+        print(f"Conditioning on {n_obs} real AWEL observations")
+
+    rng = np.random.default_rng(seed)
+
+    # --- Cell centroids and thickness ---
+    if hasattr(modelgrid, 'nrow'):
+        xc = modelgrid.xcellcenters.ravel()
+        yc = modelgrid.ycellcenters.ravel()
+    else:
+        xc = modelgrid.xcellcenters
+        yc = modelgrid.ycellcenters
+
+    thickness = (np.asarray(top) - np.asarray(bottom)).flatten()
+
+    # --- Distribute pilot points ---
+    pp_xy = _distribute_pilot_points(
+        modelgrid, n_target=n_pilot_points, seed=seed, idomain=idomain,
+    )
+    n_pp = len(pp_xy)
+
+    # --- Thickness-based initial log10(K) at each pilot point ---
+    pp_log_k = np.zeros(n_pp)
+    for i in range(n_pp):
+        dx = xc - pp_xy[i, 0]
+        dy = yc - pp_xy[i, 1]
+        nearest = int(np.argmin(dx**2 + dy**2))
+        b = thickness[nearest]
+        pp_log_k[i] = 0.855 + 0.022 * b
+
+    log_k_lower, log_k_upper = np.log10(k_bounds[0]), np.log10(k_bounds[1])
+    pp_log_k_init = pp_log_k.copy()
+
+    # --- Pre-compute observation cell indices ---
+    ix = GridIntersect(modelgrid, method='vertex')
+    obs_cell_ids = []
+    for _, row in real_obs.iterrows():
+        result = ix.intersect(Point(row['x'], row['y']))
+        if len(result) > 0:
+            cid = result.cellids[0]
+            obs_cell_ids.append(cid[-1] if isinstance(cid, tuple) else cid)
+        else:
+            obs_cell_ids.append(None)
+    obs_cell_ids = np.array(obs_cell_ids, dtype=object)
+
+    # --- Helper: run model with given pp values and extract heads ---
+    model_run_count = 0
+
+    def _run_and_extract(log_k_vals):
+        nonlocal model_run_count
+        k_full = _interpolate_pp_to_grid(
+            pp_xy, log_k_vals, modelgrid,
+            method="ordinary_kriging", variogram_range=variogram_range,
+            anisotropy_angle=anisotropy_angle,
+            anisotropy_scaling=anisotropy_scaling,
+        )
+        k_full = np.clip(np.asarray(k_full).flatten(), k_bounds[0], k_bounds[1])
+        gwf.npf.k.set_data(k_full)
+        sim.write_simulation()
+        success, _ = sim.run_simulation(silent=True)
+        model_run_count += 1
+        if not success:
+            return None
+        head = gwf.output.head().get_data()
+        heads_flat = head.flatten() if head.ndim > 1 else head
+        h_obs = np.full(n_obs, np.nan)
+        for j in range(n_obs):
+            if obs_cell_ids[j] is not None:
+                h_obs[j] = heads_flat[int(obs_cell_ids[j])]
+        return h_obs
+
+    # --- Gauss-Newton iteration ---
+    damping = 0.7
+    residuals_history = []
+
+    for iteration in range(max_iterations):
+        # Base run
+        h_sim = _run_and_extract(pp_log_k)
+        if h_sim is None:
+            if verbose:
+                print(f"  Iteration {iteration+1}: base model run FAILED, stopping")
+            break
+
+        # Filter to valid observations
+        valid = ~np.isnan(h_sim) & ~np.isnan(obs_heads)
+        residuals = obs_heads[valid] - h_sim[valid]
+        max_res = np.max(np.abs(residuals)) if len(residuals) > 0 else 0.0
+        residuals_history.append(residuals.copy())
+
+        if verbose:
+            print(f"  Iteration {iteration+1}: max|residual| = {max_res:.3f} m, "
+                  f"RMSE = {np.sqrt(np.mean(residuals**2)):.3f} m  "
+                  f"({model_run_count} model runs so far)")
+
+        if max_res < convergence_tol:
+            if verbose:
+                print(f"  Converged (max|residual| < {convergence_tol} m)")
+            break
+
+        # Compute Jacobian by finite differences
+        n_valid = int(valid.sum())
+        J = np.zeros((n_valid, n_pp))
+        for p in range(n_pp):
+            pp_pert = pp_log_k.copy()
+            pp_pert[p] += delta_log_k
+            h_pert = _run_and_extract(pp_pert)
+            if h_pert is not None:
+                h_pert_valid = h_pert[valid]
+                valid_pert = ~np.isnan(h_pert_valid)
+                if valid_pert.all():
+                    J[:, p] = (h_pert_valid - h_sim[valid]) / delta_log_k
+                # else: column stays 0 (no sensitivity)
+
+        # Solve regularised least squares: (J^T J + λI) δk = J^T r
+        JtJ = J.T @ J
+        Jtr = J.T @ residuals
+        A = JtJ + lambda_reg * np.eye(n_pp)
+        try:
+            delta_k = np.linalg.solve(A, Jtr)
+        except np.linalg.LinAlgError:
+            if verbose:
+                print(f"  Singular matrix at iteration {iteration+1}, stopping")
+            break
+
+        # Damped update with clipping
+        pp_log_k = pp_log_k + damping * delta_k
+        pp_log_k = np.clip(pp_log_k, log_k_lower, log_k_upper)
+
+    # --- Build conditioned K field (before noise) ---
+    k_conditioned = _interpolate_pp_to_grid(
+        pp_xy, pp_log_k, modelgrid,
+        method="ordinary_kriging", variogram_range=variogram_range,
+        anisotropy_angle=anisotropy_angle,
+        anisotropy_scaling=anisotropy_scaling,
+    )
+    k_conditioned = np.clip(np.asarray(k_conditioned).flatten(), k_bounds[0], k_bounds[1])
+
+    # --- Add spatially correlated noise ---
+    pp_log_k_noisy = pp_log_k + rng.normal(0, noise_std, n_pp)
+    pp_log_k_noisy = np.clip(pp_log_k_noisy, log_k_lower, log_k_upper)
+
+    k_field = _interpolate_pp_to_grid(
+        pp_xy, pp_log_k_noisy, modelgrid,
+        method="ordinary_kriging", variogram_range=variogram_range,
+        anisotropy_angle=anisotropy_angle,
+        anisotropy_scaling=anisotropy_scaling,
+    )
+    k_field = np.clip(np.asarray(k_field).flatten(), k_bounds[0], k_bounds[1])
+
+    # --- Restore model state with final K ---
+    gwf.npf.k.set_data(k_field)
+
+    conditioning_info = {
+        'n_iterations': len(residuals_history),
+        'residuals_final': residuals_history[-1] if residuals_history else np.array([]),
+        'max_residual_final': float(np.max(np.abs(residuals_history[-1]))) if residuals_history else np.nan,
+        'pp_xy': pp_xy,
+        'pp_log_k_conditioned': pp_log_k.copy(),
+        'pp_log_k_final': pp_log_k_noisy.copy(),
+        'model_run_count': model_run_count,
+    }
+
+    if verbose:
+        print(f"  Done: {model_run_count} model runs, "
+              f"final max|residual| = {conditioning_info['max_residual_final']:.3f} m")
+
+    return k_field, k_conditioned, conditioning_info
 
 
 def generate_synthetic_observations(
@@ -1002,9 +1278,10 @@ def run_calibration_trial(
     """
     Run the model with modified parameters and return heads.
 
-    This function modifies parameters using multipliers, runs the model,
-    and returns the resulting head array. It's designed for manual
-    calibration trials.
+    This function applies multipliers relative to the *current* parameter
+    values, runs the model, and then **restores all modified parameters**
+    to their pre-trial state.  This makes the function safe to call in a
+    loop without cumulative drift.
 
     Parameters
     ----------
@@ -1028,21 +1305,21 @@ def run_calibration_trial(
     -------
     np.ndarray
         Simulated head array, or None if model failed
-
-    Notes
-    -----
-    This function modifies the simulation in-place. For multiple trials,
-    consider reloading the base simulation or implementing parameter
-    reset functionality.
     """
-    import flopy
+    import copy
 
     gwf = sim.get_model(gwf_name)
+
+    # --- Save current state so we can restore after the trial ---
+    saved_k = None
+    saved_rch = None
+    saved_riv = None
 
     # Modify hydraulic conductivity
     if k_global_multiplier != 1.0:
         npf = gwf.get_package('NPF')
         if npf is not None:
+            saved_k = copy.deepcopy(npf.k.get_data())
             original_k = npf.k.get_data()
             if isinstance(original_k, list):
                 new_k = [arr * k_global_multiplier for arr in original_k]
@@ -1056,7 +1333,7 @@ def run_calibration_trial(
         if rch is not None:
             original_rch = rch.recharge.get_data()
             if original_rch is not None:
-                # Handle stress period data
+                saved_rch = copy.deepcopy(original_rch)
                 if isinstance(original_rch, dict):
                     new_rch = {k: v * rch_multiplier for k, v in original_rch.items()}
                 else:
@@ -1069,26 +1346,33 @@ def run_calibration_trial(
         if riv is not None:
             stress_period_data = riv.stress_period_data.get_data()
             if stress_period_data is not None:
+                saved_riv = copy.deepcopy(stress_period_data)
                 for per, spd in stress_period_data.items():
                     if spd is not None:
-                        # Conductance is typically the 3rd column (index 2)
                         spd['cond'] = spd['cond'] * riv_multiplier
                 riv.stress_period_data.set_data(stress_period_data)
 
     # Write and run model
+    heads = None
     if run_model:
         sim.write_simulation()
         success, _ = sim.run_simulation(silent=True)
 
         if not success:
             print("Model run failed!")
-            return None
+        else:
+            head_file = gwf.output.head()
+            heads = head_file.get_data()
 
-        # Read heads
-        head_file = gwf.output.head()
-        heads = head_file.get_data()
+    # --- Restore parameters to pre-trial state ---
+    if saved_k is not None:
+        gwf.get_package('NPF').k.set_data(saved_k)
+    if saved_rch is not None:
+        gwf.get_package('RCHA').recharge.set_data(saved_rch)
+    if saved_riv is not None:
+        gwf.get_package('RIV').stress_period_data.set_data(saved_riv)
 
-        return heads
+    return heads
 
     return None
 

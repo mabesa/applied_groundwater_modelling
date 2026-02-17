@@ -8,9 +8,9 @@ supporting template/instruction files.
 
 Key components
 --------------
-* **Pilot points** (~25) distributed across the active model domain,
+* **Pilot points** (~20) distributed across the active model domain,
   log-transformed K with bounds appropriate for a gravel aquifer (1–300 m/d).
-* **Observations** — 3 AWEL mean-head measurements from the observation wells.
+* **Observations** — 4 AWEL mean-head measurements plus synthetic observations.
 * **Prior information** — K at the pilot point nearest the pumping-test
   location, weighted by the PT-derived uncertainty.
 * **Regularisation** — preferred-value (Tikhonov) regularisation on every
@@ -113,7 +113,8 @@ def _nearest_pilot_point(pp_xy, target_xy):
 
 
 def _interpolate_pp_to_grid(pp_xy, pp_values, modelgrid, method="ordinary_kriging",
-                            variogram_range=1500.0):
+                            variogram_range=1500.0,
+                            anisotropy_angle=0.0, anisotropy_scaling=1.0):
     """
     Interpolate pilot-point values to every active grid cell using
     simple inverse-distance weighting (IDW) or kriging when pykrige
@@ -128,6 +129,13 @@ def _interpolate_pp_to_grid(pp_xy, pp_values, modelgrid, method="ordinary_krigin
         'idw' or 'ordinary_kriging'
     variogram_range : float
         Range parameter for the exponential variogram [m].
+    anisotropy_angle : float
+        Angle of the major axis of anisotropy, measured CCW from east [degrees].
+        For the Limmat Valley (~30°), this aligns the long correlation axis
+        along the valley.
+    anisotropy_scaling : float
+        Ratio of major to minor variogram range (e.g. 3.0 means the range
+        along the minor axis is 1/3 of the major axis).
 
     Returns
     -------
@@ -150,6 +158,8 @@ def _interpolate_pp_to_grid(pp_xy, pp_values, modelgrid, method="ordinary_krigin
                 pp_xy[:, 0], pp_xy[:, 1], pp_values,
                 variogram_model="exponential",
                 variogram_parameters={"sill": 0.5, "range": variogram_range, "nugget": 0.01},
+                anisotropy_angle=anisotropy_angle,
+                anisotropy_scaling=anisotropy_scaling,
                 verbose=False, enable_plotting=False,
             )
             z, _ = ok.execute("points", xc, yc)
@@ -158,12 +168,17 @@ def _interpolate_pp_to_grid(pp_xy, pp_values, modelgrid, method="ordinary_krigin
         except ImportError:
             pass
 
-    # Fallback: IDW (power=2)
+    # Fallback: IDW (power=2) with anisotropic distance
+    theta = np.radians(anisotropy_angle)
+    cos_t, sin_t = np.cos(theta), np.sin(theta)
     field = np.zeros(len(xc))
     for i in range(len(xc)):
         dx = xc[i] - pp_xy[:, 0]
         dy = yc[i] - pp_xy[:, 1]
-        d2 = dx ** 2 + dy ** 2
+        # Rotate into anisotropy frame, stretch minor axis
+        dx_rot = dx * cos_t + dy * sin_t
+        dy_rot = (-dx * sin_t + dy * cos_t) * anisotropy_scaling
+        d2 = dx_rot ** 2 + dy_rot ** 2
         d2[d2 == 0] = 1e-10
         w = 1.0 / d2
         field[i] = np.sum(w * pp_values) / np.sum(w)
@@ -191,6 +206,8 @@ def build_pest_setup(
     variogram_range=3000.0,
     idomain=None,
     sihl_cell_ids=None,
+    anisotropy_angle=0.0,
+    anisotropy_scaling=1.0,
 ):
     """
     Build a PEST++ (pestpp-glm) calibration directory.
@@ -326,6 +343,8 @@ def build_pest_setup(
         obs_x_col=obs_x_col, obs_y_col=obs_y_col,
         obs_id_col=obs_id_col, obs_head_col=obs_head_col,
         sihl_cell_ids=sihl_cell_ids,
+        anisotropy_angle=anisotropy_angle,
+        anisotropy_scaling=anisotropy_scaling,
     )
 
     # Write a shell wrapper so PEST++ doesn't mangle the Python path
@@ -348,6 +367,8 @@ def build_pest_setup(
     print(f"  K bounds           : [{k_lower}, {k_upper}] m/d")
     print(f"  Regularisation     : preferred-value weight = {reg_weight}")
     print(f"  Variogram range    : {variogram_range} m")
+    if anisotropy_scaling != 1.0:
+        print(f"  Anisotropy         : angle={anisotropy_angle}°, scaling={anisotropy_scaling}")
     if sihl_cell_ids is not None:
         print(f"  Sihl RIV cells     : {len(sihl_cell_ids)} (leakance multiplier enabled)")
 
@@ -448,7 +469,8 @@ def _write_pst_file(path, n_pp, k_initial, k_lower, k_upper,
 
 def _write_forward_run_script(pest_ws, model_ws, modelgrid, obs_df, pp_xy,
                               variogram_range, obs_x_col, obs_y_col,
-                              obs_id_col, obs_head_col, sihl_cell_ids=None):
+                              obs_id_col, obs_head_col, sihl_cell_ids=None,
+                              anisotropy_angle=0.0, anisotropy_scaling=1.0):
     """
     Write ``forward_run.py`` inside *pest_ws*.
 
@@ -487,17 +509,23 @@ PEST_WS  = r"{os.path.abspath(pest_ws)}"
 SUPPORT_SRC = r"{support_src_abs}"
 PP_XY_FILE = os.path.join(PEST_WS, "pp_xy.npy")
 VARIOGRAM_RANGE = {variogram_range}
+ANISOTROPY_ANGLE = {anisotropy_angle}
+ANISOTROPY_SCALING = {anisotropy_scaling}
 SIM_NAME = "limmat_valley"
 OBS_XY = {obs_xy!r}
 
 
 def _idw_interpolate(pp_xy, pp_values, xc, yc):
     """Inverse-distance weighting fallback for pilot-point interpolation."""
+    theta = np.radians(ANISOTROPY_ANGLE)
+    cos_t, sin_t = np.cos(theta), np.sin(theta)
     field = np.zeros(len(xc))
     for i in range(len(xc)):
         dx = xc[i] - pp_xy[:, 0]
         dy = yc[i] - pp_xy[:, 1]
-        d2 = dx ** 2 + dy ** 2
+        dx_rot = dx * cos_t + dy * sin_t
+        dy_rot = (-dx * sin_t + dy * cos_t) * ANISOTROPY_SCALING
+        d2 = dx_rot ** 2 + dy_rot ** 2
         d2[d2 == 0] = 1e-10
         w = 1.0 / d2
         field[i] = np.sum(w * pp_values) / np.sum(w)
@@ -530,6 +558,8 @@ def run():
         k_field = _interpolate_pp_to_grid(
             pp_xy, pp_vals, modelgrid,
             method="ordinary_kriging", variogram_range=VARIOGRAM_RANGE,
+            anisotropy_angle=ANISOTROPY_ANGLE,
+            anisotropy_scaling=ANISOTROPY_SCALING,
         )
     else:
         # IDW fallback
@@ -691,7 +721,49 @@ def load_pest_results(pest_ws, pst_file="calibration.pst"):
     return par, res_df
 
 
-def get_calibrated_k_field(pest_ws, modelgrid, variogram_range=1500.0):
+def read_pest_phi_progress(pest_ws, pst_file="calibration.pst"):
+    """
+    Read the PEST++ objective-function history from the ``.iobj`` file.
+
+    Parameters
+    ----------
+    pest_ws : str
+        PEST++ working directory.
+    pst_file : str
+        Name of the PST file (used to derive the .iobj filename).
+
+    Returns
+    -------
+    pd.DataFrame with columns: iteration, total_phi, meas_phi, reg_phi
+        Returns ``None`` if the file does not exist or cannot be parsed.
+    """
+    iobj_path = os.path.join(pest_ws, pst_file.replace(".pst", ".iobj"))
+    if not os.path.exists(iobj_path):
+        return None
+    try:
+        df = pd.read_csv(iobj_path, skipinitialspace=True)
+        # pestpp-glm .iobj has columns like:
+        #   iteration, total_phi, model_runs_completed, ...
+        # Rename for convenience
+        col_map = {}
+        for c in df.columns:
+            cl = c.strip().lower()
+            if cl == "iteration":
+                col_map[c] = "iteration"
+            elif cl == "total_phi":
+                col_map[c] = "total_phi"
+            elif cl in ("measurement_phi", "meas_phi"):
+                col_map[c] = "meas_phi"
+            elif cl in ("regularization_phi", "reg_phi", "regul_phi"):
+                col_map[c] = "reg_phi"
+        df.rename(columns=col_map, inplace=True)
+        return df
+    except Exception:
+        return None
+
+
+def get_calibrated_k_field(pest_ws, modelgrid, variogram_range=1500.0,
+                           anisotropy_angle=0.0, anisotropy_scaling=1.0):
     """
     Read optimised pilot-point values and interpolate to the model grid.
 
@@ -700,6 +772,10 @@ def get_calibrated_k_field(pest_ws, modelgrid, variogram_range=1500.0):
     pest_ws : str
     modelgrid : flopy grid
     variogram_range : float
+    anisotropy_angle : float
+        Angle of major anisotropy axis, CCW from east [degrees].
+    anisotropy_scaling : float
+        Ratio of major to minor variogram range.
 
     Returns
     -------
@@ -726,5 +802,7 @@ def get_calibrated_k_field(pest_ws, modelgrid, variogram_range=1500.0):
     k_field = _interpolate_pp_to_grid(
         pp_xy, pp_log_vals, modelgrid,
         method="ordinary_kriging", variogram_range=variogram_range,
+        anisotropy_angle=anisotropy_angle,
+        anisotropy_scaling=anisotropy_scaling,
     )
     return k_field, pp_df

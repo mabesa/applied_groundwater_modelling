@@ -210,6 +210,20 @@ After running the Cooper-Jacob analysis on all 4 observation wells:
 ## Pumping Test — Checkpoint 5: Consistency Check
 The transmissivity estimates from the 4 wells are similar but not identical.
 - **What is the most likely reason for the small differences in $T$?**
+""",
+
+# Notebook 5 - Manual trial checkpoint
+"task05_checkpoint_manual": r"""
+## Manual Trial — Which K Direction Improves the Fit?
+You ran the model with three different K values (15, 20, 30 m/d).
+- **Which K multiplier gave the lowest RMSE?**
+""",
+
+# Notebook 5 - Non-uniqueness checkpoint
+"task05_checkpoint_nonunique": r"""
+## Non-Uniqueness — Reducing the K–Recharge Trade-off
+You saw that different K and recharge combinations can produce similar head fits.
+- **What additional data type would most reduce this K–recharge non-uniqueness?**
 """
 
 }
@@ -250,6 +264,7 @@ solutions = {
     "task05_pt_checkpoint_3": (23.0, 30.0),    # K = T/b ~26 m/d
     "task05_pt_checkpoint_4": (23.0, 30.0),    # Mean K from all 4 wells ~26 m/d
     # PT Checkpoint 5 is multiple choice - handled separately
+    # Manual trial and non-uniqueness checkpoints are multiple choice - handled separately
 }
 
 
@@ -291,6 +306,9 @@ solutions_exact = {
     "task05_pt_checkpoint_3": "~26",
     "task05_pt_checkpoint_4": "~26",
     "task05_pt_checkpoint_5": "B) Measurement noise and the Cooper-Jacob approximation",
+    # Manual trial and non-uniqueness checkpoints
+    "task05_checkpoint_manual": "C) K = 30 m/d (multiplier 1.5)",
+    "task05_checkpoint_nonunique": "B) River baseflow measurements",
 }
 
 
@@ -336,6 +354,9 @@ solution_unit = {
     "task05_pt_checkpoint_3": "m/d",
     "task05_pt_checkpoint_4": "m/d",
     "task05_pt_checkpoint_5": "multiple choice",
+    # Manual trial and non-uniqueness checkpoints
+    "task05_checkpoint_manual": "multiple choice",
+    "task05_checkpoint_nonunique": "multiple choice",
 }
 
 
@@ -389,6 +410,17 @@ multiple_choice_options = {
         ("B) Measurement noise and the Cooper-Jacob approximation", "B) Measurement noise + the Cooper-Jacob late-time approximation introduce small variability"),
         ("C) Leaky aquifer", "C) The aquifer is leaky, violating the confined-aquifer assumption"),
         ("D) Well skin effects", "D) Each well has a different skin factor that biases the slope"),
+    ],
+    "task05_checkpoint_manual": [
+        ("A) K = 15 m/d (multiplier 0.75)", "A) K = 15 m/d — lower K raises heads"),
+        ("B) K = 20 m/d (multiplier 1.0)", "B) K = 20 m/d — the baseline from Notebook 4"),
+        ("C) K = 30 m/d (multiplier 1.5)", "C) K = 30 m/d — higher K lowers heads"),
+    ],
+    "task05_checkpoint_nonunique": [
+        ("A) More head observations", "A) More head observations — better spatial coverage of the same data type"),
+        ("B) River baseflow measurements", "B) River baseflow measurements — constrain the water balance independently of heads"),
+        ("C) Soil type mapping", "C) Soil type mapping — better knowledge of surface geology"),
+        ("D) Longer pumping tests", "D) Longer pumping tests — more accurate T estimates"),
     ],
 }
 
@@ -734,7 +766,7 @@ The observation dataset combines two sources:
    - Well 3625 (Lagerstrasse)
 
 2. **Synthetic observations**: 5 artificial points added for teaching purposes
-   - Generated from a reference model with thickness-dependent K and realistic noise (σ = 0.3 m)
+   - Generated from a reference model with thickness-dependent K and realistic noise (σ = 1.3 m)
    - Restricted to the aquifer south of the river, away from model boundaries
    - Clearly marked as synthetic in all visualizations
 
@@ -879,6 +911,41 @@ The pumping test data is generated from a **homogeneous** Theis solution with ad
 **Why not C (leaky)?** Leakage would cause the semi-log plot to curve and flatten at late times — not simply shift the slope.
 
 **Why not D (skin)?** Well skin affects early-time data but not the late-time slope that Cooper-Jacob uses.
+<br>
+""",
+
+# ============================================================================
+# NOTEBOOK 5 - MANUAL TRIAL & NON-UNIQUENESS SOLUTIONS
+# ============================================================================
+
+"task05_checkpoint_manual": r"""
+## Solution — Which K Direction Improves the Fit?
+
+**Correct answer: C) K = 30 m/d (multiplier 1.5)**
+
+**Reasoning:**
+- The reference K field (used to generate synthetic observations) has higher K values in many areas than the uniform 20 m/d baseline
+- Increasing K lowers simulated heads, which better matches observations in areas where the baseline overpredicts
+- The RMSE decreases when moving from 20 → 30 m/d, confirming that the baseline K is too low on average
+
+This is exactly the intuition that automated calibration (PEST++) formalises: it adjusts parameters in the direction that reduces the objective function.
+<br>
+""",
+
+"task05_checkpoint_nonunique": r"""
+## Solution — Reducing K–Recharge Non-Uniqueness
+
+**Correct answer: B) River baseflow measurements**
+
+**Reasoning:**
+- Head observations alone cannot distinguish between K and recharge because both affect the water table height (higher recharge ≈ lower K → similar heads)
+- **River baseflow** constrains the **water balance** independently: it tells you how much water leaves the aquifer via the river, which depends differently on K and recharge
+- With both head and flux observations, the K–recharge trade-off is broken because each parameter combination produces a different flux even if heads are similar
+
+**Why not the other options?**
+- A) More head observations improve spatial coverage but don't break the K–recharge trade-off
+- C) Soil mapping gives qualitative constraints but doesn't quantitatively constrain the water balance
+- D) Longer pumping tests improve local T estimates but don't constrain recharge
 <br>
 """
 
