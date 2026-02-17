@@ -6,7 +6,7 @@ realistic time-drawdown data from multiple observation wells at different
 distances from the pumping well.
 
 Parameters are consistent with a Limmat Valley gravel aquifer:
-    - K_true = 12 m/d, b = 25 m  =>  T_true = 300 m²/d
+    - K_true = 26 m/d, b = 25 m  =>  T_true = 650 m²/d
     - S_true = 1.0e-3 (early-time elastic storage)
     - Q = 2000 m³/d (~23 L/s)
     - Observation wells at r = 10, 30, 60, 100 m
@@ -65,9 +65,9 @@ def theis_drawdown(r, t, Q, T, S):
 # Aquifer parameters  (Limmat Valley gravel aquifer)
 # ---------------------------------------------------------------------------
 
-K_TRUE = 12.0       # hydraulic conductivity [m/d]
+K_TRUE = 26.0       # hydraulic conductivity [m/d]
 B_AQUIFER = 25.0    # aquifer thickness [m]
-T_TRUE = K_TRUE * B_AQUIFER   # transmissivity [m²/d]  => 300
+T_TRUE = K_TRUE * B_AQUIFER   # transmissivity [m²/d]  => 650
 S_TRUE = 1.0e-3     # storativity [-]
 Q_PUMP = 2000.0     # pumping rate [m³/d]  (~23 L/s)
 

@@ -30,4 +30,4 @@ Dependencies are managed in `pyproject.toml` with `uv.lock` for reproducibility.
 - Observation well data has mixed CRS (LV03 6-digit and LV95 7-digit coordinates)
 - Current model: MODFLOW-NWT with structured grid (model_name = `limmat_valley_model_nwt`)
 - Grid is rotated 30 degrees; modelgrid pickle must be loaded to restore transformation
-- Notebooks follow pattern: banner → imports → progress tracker → sections with completion markers
+- Notebooks follow pattern: banner → imports → sections with completion markers
