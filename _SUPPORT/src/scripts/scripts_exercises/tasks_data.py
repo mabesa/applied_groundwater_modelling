@@ -270,6 +270,52 @@ After running 4 LOO folds and computing the prediction error at each held-out re
 ## Checkpoint 7 — Interpreting LOO Results
 Consider a model where the LOO-RMSE is much larger than the calibration RMSE.
 - **What does this suggest about the model?**
+""",
+
+# ============================================================================
+# NOTEBOOK 7 - SENSITIVITY & UNCERTAINTY CHECKPOINTS
+# ============================================================================
+
+"task07_checkpoint_1": r"""
+## Checkpoint 1 — Parameter Sensitivity
+Looking at the CSS bar chart and map:
+- **Which pilot point has the highest Composite Scaled Sensitivity?**
+""",
+
+"task07_checkpoint_2": r"""
+## Checkpoint 2 — Identifiable Parameters
+From the identifiability analysis:
+- **How many parameters have identifiability > 0.5?**
+""",
+
+"task07_checkpoint_3": r"""
+## Checkpoint 3 — Uncertainty Reduction
+From the prior vs posterior uncertainty comparison:
+- **Which parameter has the largest uncertainty reduction from calibration?**
+""",
+
+"task07_checkpoint_4": r"""
+## Checkpoint 4 — Prediction Uncertainty
+From the FOSM prediction uncertainty at the 4 real wells:
+- **What is the posterior standard deviation (m) of the head prediction at well 516?**
+""",
+
+"task07_checkpoint_5": r"""
+## Checkpoint 5 — FOSM vs LOO-RMSE
+Compare the FOSM prediction uncertainty (mean posterior σ across real wells) with the LOO-RMSE from Notebook 6.
+- **How do they compare?**
+""",
+
+"task07_checkpoint_6": r"""
+## Checkpoint 6 — Data Worth
+From the removed-observation importance analysis, the synthetic observations have different data worth.
+- **Why is syn_005 the most valuable synthetic observation?**
+""",
+
+"task07_checkpoint_7": r"""
+## Checkpoint 7 — Monitoring Recommendation
+The western domain has low identifiability, low uncertainty reduction, and no observation wells.
+- **What single action would most improve predictions in the data-sparse western domain?**
 """
 
 }
@@ -319,6 +365,12 @@ solutions = {
     "task05_pt_checkpoint_4": (23.0, 30.0),    # Mean K from all 4 wells ~26 m/d
     # PT Checkpoint 5 is multiple choice - handled separately
     # Manual trial and non-uniqueness checkpoints are multiple choice - handled separately
+    # Notebook 7 checkpoints
+    # Checkpoint 1 is multiple choice - handled separately
+    "task07_checkpoint_2": (5, 12),         # Number of params with identifiability > 0.5 (~8)
+    # Checkpoint 3 is multiple choice - handled separately
+    "task07_checkpoint_4": (1.0, 2.5),      # Posterior std dev at well 516 (~1.60 m)
+    # Checkpoints 5, 6, 7 are multiple choice - handled separately
 }
 
 
@@ -371,6 +423,14 @@ solutions_exact = {
     # Manual trial and non-uniqueness checkpoints
     "task05_checkpoint_manual": "C) K = 30 m/d (multiplier 1.5)",
     "task05_checkpoint_nonunique": "B) River baseflow measurements",
+    # Notebook 7 checkpoints
+    "task07_checkpoint_1": "A) The pilot point nearest the observation wells",
+    "task07_checkpoint_2": "~8",
+    "task07_checkpoint_3": "B) The pilot point nearest the observation well cluster",
+    "task07_checkpoint_4": "~1.60",
+    "task07_checkpoint_5": "B) FOSM σ is smaller — it captures only parameter uncertainty",
+    "task07_checkpoint_6": "A) It fills a spatial gap",
+    "task07_checkpoint_7": "B) Install an observation well in the western domain",
 }
 
 
@@ -427,6 +487,14 @@ solution_unit = {
     # Manual trial and non-uniqueness checkpoints
     "task05_checkpoint_manual": "multiple choice",
     "task05_checkpoint_nonunique": "multiple choice",
+    # Notebook 7 checkpoints
+    "task07_checkpoint_1": "multiple choice",
+    "task07_checkpoint_2": "parameters",
+    "task07_checkpoint_3": "multiple choice",
+    "task07_checkpoint_4": "m",
+    "task07_checkpoint_5": "multiple choice",
+    "task07_checkpoint_6": "multiple choice",
+    "task07_checkpoint_7": "multiple choice",
 }
 
 
@@ -515,6 +583,37 @@ multiple_choice_options = {
         ("B) The observations have errors", "B) The observation data contains large measurement errors"),
         ("C) The model is underfitting", "C) The model is too simple and underfitting the data"),
         ("D) More pilot points are needed", "D) More pilot points would fix the problem"),
+    ],
+    # Notebook 7 - Sensitivity & Uncertainty checkpoints
+    "task07_checkpoint_1": [
+        ("A) The pilot point nearest the observation wells", "A) The pilot point nearest the observation wells — observations constrain nearby parameters most"),
+        ("B) The pilot point farthest from boundaries", "B) The pilot point farthest from model boundaries"),
+        ("C) The Sihl leakance multiplier", "C) The Sihl leakance multiplier — river parameters dominate"),
+        ("D) All pilot points have equal CSS", "D) All pilot points have equal CSS — they're evenly distributed"),
+    ],
+    "task07_checkpoint_3": [
+        ("A) The pilot point farthest from any well", "A) The pilot point farthest from any observation well"),
+        ("B) The pilot point nearest the observation well cluster", "B) The pilot point nearest the observation well cluster — calibration reduces uncertainty where it has data"),
+        ("C) The Sihl leakance multiplier", "C) The Sihl leakance multiplier — river parameters are most constrained"),
+        ("D) All parameters reduce equally", "D) All parameters show similar uncertainty reduction"),
+    ],
+    "task07_checkpoint_5": [
+        ("A) They are approximately equal", "A) They are approximately equal — FOSM captures the same error sources as LOO"),
+        ("B) FOSM σ is smaller — it captures only parameter uncertainty", "B) FOSM σ is smaller — it captures only parameter uncertainty, while LOO-RMSE also includes structural error"),
+        ("C) FOSM σ is larger — it overestimates uncertainty", "C) FOSM σ is larger — the linear assumption overestimates uncertainty"),
+        ("D) They cannot be compared", "D) They cannot be compared — they measure different things entirely"),
+    ],
+    "task07_checkpoint_6": [
+        ("A) It fills a spatial gap", "A) It fills a spatial gap — it provides unique information that no other observation covers"),
+        ("B) It has the smallest residual", "B) It has the smallest calibration residual — better-fit observations are more informative"),
+        ("C) It is closest to the model boundary", "C) It is closest to the model boundary — boundary conditions need the most constraint"),
+        ("D) All synthetic obs are equally valuable", "D) All synthetic observations contribute equally to prediction uncertainty"),
+    ],
+    "task07_checkpoint_7": [
+        ("A) Increase regularisation strength", "A) Increase regularisation strength — constrain parameters more tightly"),
+        ("B) Install an observation well in the western domain", "B) Install an observation well in the western domain — provide data where identifiability is lowest"),
+        ("C) Add more pilot points everywhere", "C) Add more pilot points — increase parameter flexibility"),
+        ("D) Re-run calibration with a different algorithm", "D) Re-run calibration with a different algorithm"),
     ],
 }
 
@@ -1140,6 +1239,131 @@ When LOO-RMSE >> calibration RMSE, it means the model fits the calibration data 
 - D) More pilot points could actually make overfitting worse by increasing model flexibility
 
 **Remedies for overfitting:** Stronger regularisation, fewer pilot points, more observations, independent data constraints.
+<br>
+""",
+
+# ============================================================================
+# NOTEBOOK 7 - SENSITIVITY & UNCERTAINTY SOLUTIONS
+# ============================================================================
+
+"task07_checkpoint_1": r"""
+## Solution — Parameter Sensitivity
+
+**Correct answer: A) The pilot point nearest the observation wells**
+
+Composite Scaled Sensitivity (CSS) measures how much each parameter affects the observations, weighted by observation weights and parameter scale. Pilot points near the 4 real AWEL wells and 5 synthetic observations naturally have the highest CSS because:
+
+1. The Jacobian elements $\partial h_i / \partial p_j$ are largest when observation $i$ and parameter $j$ are close
+2. Hydraulic conductivity changes have a local effect — they primarily affect heads in the surrounding area
+3. Distant pilot points produce negligible head changes at the observation locations
+
+**Key insight:** High CSS does not mean the parameter is "important" in general — it means the *current observation network* can detect changes in that parameter. A parameter in the data-sparse west might be physically critical but have low CSS because no observations can see it.
+<br>
+""",
+
+"task07_checkpoint_2": r"""
+## Solution — Identifiable Parameters
+
+The number of parameters with identifiability > 0.5 depends on the Jacobian structure. With 9 observations and 21 parameters, at most 9 singular values can carry information — most parameters will be in or near the null space.
+
+Identifiability analysis uses SVD to decompose the parameter space:
+- **Solution space** (identifiability → 1): combinations that observations can resolve
+- **Null space** (identifiability → 0): combinations invisible to observations
+
+The severely underdetermined nature of our problem (21 parameters, 9 observations) means most parameters cannot be uniquely determined — this is why regularisation and prior information are essential in calibration.
+<br>
+""",
+
+"task07_checkpoint_3": r"""
+## Solution — Uncertainty Reduction
+
+**Correct answer: B) The pilot point nearest the observation well cluster**
+
+Calibration can only reduce uncertainty where it has data. The pilot points clustered near the 4 AWEL wells (eastern domain) show the largest decrease in posterior standard deviation because:
+
+1. Multiple observations constrain the K values in that area
+2. The Jacobian entries are large for nearby parameter–observation pairs
+3. The Schur complement subtracts the information matrix from the prior covariance
+
+Pilot points in the western domain show minimal uncertainty reduction — calibration barely "touches" them because no observations provide constraining information.
+
+**Practical implication:** Our model's predictions in the western domain carry essentially the same uncertainty as before calibration.
+<br>
+""",
+
+"task07_checkpoint_4": r"""
+## Solution — Prediction Uncertainty
+
+The posterior standard deviation at well 516 comes from the FOSM (Schur complement) analysis, which propagates parameter uncertainty through the Jacobian to give prediction uncertainty.
+
+The exact value depends on the PEST++ calibration outcome. The posterior σ is typically smaller than the prior σ because calibration reduced parameter uncertainty — but it's not zero because:
+1. Parameters are not perfectly determined (underdetermined problem)
+2. Multiple parameter combinations can produce similar heads (non-uniqueness)
+3. The observation network has limited spatial coverage
+
+**Important caveat:** FOSM captures only *parameter uncertainty* under a *linear approximation*. The actual prediction error (LOO-RMSE) is typically larger because it also includes model structural error and nonlinear effects.
+<br>
+""",
+
+"task07_checkpoint_5": r"""
+## Solution — FOSM vs LOO-RMSE
+
+**Correct answer: B) FOSM σ is smaller — it captures only parameter uncertainty**
+
+FOSM and LOO-RMSE both estimate prediction error, but from different perspectives:
+
+| Method | Captures | Assumes |
+|--------|----------|---------|
+| **FOSM** | Parameter uncertainty only | Linear model, correct structure |
+| **LOO-RMSE** | Parameter + structural + nonlinear error | Nothing (empirical) |
+
+FOSM is typically an *underestimate* of total prediction error because it ignores:
+- Model structural error (wrong K zonation, missing processes)
+- Nonlinear effects (the Jacobian is a local linear approximation)
+- Observation noise effects on calibration
+
+When LOO-RMSE >> FOSM σ, the gap is dominated by **structural error** — improving the model structure (more layers, transient, better boundaries) would help more than collecting more head observations.
+<br>
+""",
+
+"task07_checkpoint_6": r"""
+## Solution — Data Worth
+
+**Correct answer: A) It fills a spatial gap**
+
+syn_005 is the most valuable synthetic observation because removing it causes the largest increase in prediction variance across all 4 real-well forecasts. This happens because syn_005 occupies a unique spatial position — it provides information about parameter values in an area that no other observation covers.
+
+When an observation fills a spatial gap:
+1. Its Jacobian row constrains parameter combinations that no other observation can
+2. Removing it leaves those parameters entirely in the null space
+3. The resulting uncertainty increase propagates to all predictions
+
+Observations clustered near other data points have lower data worth because neighbouring observations provide redundant (overlapping) information.
+
+**Practical use:** Data worth analysis helps plan monitoring networks. Observations that fill spatial gaps provide the most new information per well drilled.
+<br>
+""",
+
+"task07_checkpoint_7": r"""
+## Solution — Monitoring Recommendation
+
+**Correct answer: B) Install an observation well in the western domain**
+
+The western domain has:
+- **Low CSS** — no observations can detect parameter changes there
+- **Low identifiability** — parameters are in the null space
+- **Low uncertainty reduction** — calibration didn't help there
+- **No observations at all** — it's a data void
+
+Installing a well there would:
+1. Move western pilot points out of the null space into the solution space
+2. Provide direct constraint on K values in the data-sparse area
+3. Dramatically reduce prediction uncertainty for that part of the domain
+
+**Why not the other options?**
+- A) More regularisation constrains parameters but doesn't add information
+- C) More pilot points would make the problem even more underdetermined
+- D) A different algorithm cannot extract information that isn't in the data
 <br>
 """
 
