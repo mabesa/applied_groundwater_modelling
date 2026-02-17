@@ -806,3 +806,282 @@ def get_calibrated_k_field(pest_ws, modelgrid, variogram_range=1500.0,
         anisotropy_scaling=anisotropy_scaling,
     )
     return k_field, pp_df
+
+
+def run_loo_cross_validation(
+    nb4_workspace,
+    val_workspace,
+    sim_name,
+    modelgrid,
+    obs_gdf,
+    real_well_ids,
+    K_pumping_test,
+    pt_location,
+    idomain,
+    sihl_cell_ids=None,
+    n_pilot_points=20,
+    k_initial=20.0,
+    k_lower=1.0,
+    k_upper=300.0,
+    pt_weight=3.0,
+    reg_weight=1.5,
+    variogram_range=6000.0,
+    anisotropy_angle=-45.0,
+    anisotropy_scaling=3.0,
+    verbose=True,
+):
+    """
+    Run leave-one-out cross-validation on the real observation wells.
+
+    For each of the N real wells, this function:
+    1. Creates a fresh copy of the NB4 model
+    2. Drops one real well from the observation set (keeps all synthetic)
+    3. Builds and runs a PEST++ calibration
+    4. Predicts the head at the held-out well
+    5. Records the prediction error
+
+    Parameters
+    ----------
+    nb4_workspace : str
+        Path to the base NB4 model directory (copied fresh per fold).
+    val_workspace : str
+        Parent directory for fold workspaces (fold_0/, fold_1/, ...).
+    sim_name : str
+        MF6 simulation name (e.g. 'limmat_valley').
+    modelgrid : flopy grid
+        Model grid object.
+    obs_gdf : gpd.GeoDataFrame
+        Full observation set (real + synthetic) with columns:
+        obs_id, x, y, head_m, is_synthetic, geometry.
+    real_well_ids : list of str
+        obs_id values of the real wells to hold out one at a time.
+    K_pumping_test : float
+        Pumping-test K for prior information [m/d].
+    pt_location : tuple (x, y)
+        Pumping-test location coordinates.
+    idomain : np.ndarray
+        Active-cell indicator (1=active).
+    sihl_cell_ids : np.ndarray, optional
+        Cell IDs belonging to the Sihl river (for leakance multiplier).
+    n_pilot_points : int
+        Number of pilot points (default 20).
+    k_initial, k_lower, k_upper : float
+        Initial K and bounds [m/d].
+    pt_weight, reg_weight : float
+        PEST prior-information and regularisation weights.
+    variogram_range : float
+        Kriging variogram range [m].
+    anisotropy_angle, anisotropy_scaling : float
+        Variogram anisotropy parameters.
+    verbose : bool
+        Print progress messages.
+
+    Returns
+    -------
+    list of dict
+        One dict per fold containing:
+        - fold : int
+        - held_out_well : str (obs_id)
+        - obs_head : float (observed head at held-out well)
+        - predicted_head : float (predicted head, or NaN on failure)
+        - prediction_error : float (predicted - observed, or NaN)
+        - k_field : np.ndarray (calibrated K for this fold)
+        - calib_rmse : float (training RMSE at calibration wells)
+        - pest_success : bool
+    """
+    import flopy
+    from flopy.utils import GridIntersect
+    from shapely.geometry import Point
+    import numpy.lib.recfunctions as rfn
+
+    # Lazy import for calibration utilities
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+    import calibration_utils as cu
+
+    os.makedirs(val_workspace, exist_ok=True)
+    results = []
+
+    for fold_idx, held_out_id in enumerate(real_well_ids):
+        fold_ws = os.path.join(val_workspace, f"fold_{fold_idx}")
+
+        if verbose:
+            print(f"\n{'='*60}")
+            print(f"LOO Fold {fold_idx + 1}/{len(real_well_ids)}: "
+                  f"holding out well {held_out_id}")
+            print(f"{'='*60}")
+
+        # --- 1. Fresh copy of NB4 model ---
+        if os.path.exists(fold_ws):
+            shutil.rmtree(fold_ws)
+        shutil.copytree(nb4_workspace, fold_ws)
+
+        # --- 2. Load fresh simulation ---
+        try:
+            sim = flopy.mf6.MFSimulation.load(sim_ws=fold_ws, verbosity_level=0)
+            gwf = sim.get_model(sim_name)
+        except Exception as e:
+            if verbose:
+                print(f"  Failed to load simulation: {e}")
+            results.append(_loo_failure_result(fold_idx, held_out_id, obs_gdf))
+            continue
+
+        # --- 3. Clean WEL entries in inactive cells ---
+        wel = gwf.get_package('WEL')
+        if wel is not None:
+            wd = wel.stress_period_data.get_data(0)
+            if wd is not None and len(wd) > 0:
+                id_flat = idomain.flatten()
+                keep = [r for r in wd if id_flat[r['cellid'][-1]] > 0]
+                if len(keep) < len(wd):
+                    wel.stress_period_data.set_data(keep, key=0)
+
+        # --- 4. Drop the held-out well ---
+        obs_fold = obs_gdf[obs_gdf['obs_id'] != held_out_id].copy()
+        held_out_row = obs_gdf[obs_gdf['obs_id'] == held_out_id].iloc[0]
+        obs_head = float(held_out_row['head_m'])
+
+        if verbose:
+            n_real = (~obs_fold['is_synthetic']).sum()
+            n_synth = obs_fold['is_synthetic'].sum()
+            print(f"  Training obs: {len(obs_fold)} ({n_real} real + {n_synth} synthetic)")
+
+        # --- 5. Build PEST setup ---
+        try:
+            pest_ws, pp_xy = build_pest_setup(
+                model_ws=fold_ws,
+                modelgrid=modelgrid,
+                obs_df=obs_fold,
+                pt_K=K_pumping_test,
+                pt_location=pt_location,
+                n_pilot_points=n_pilot_points,
+                k_initial=k_initial,
+                k_lower=k_lower,
+                k_upper=k_upper,
+                pt_weight=pt_weight,
+                reg_weight=reg_weight,
+                variogram_range=variogram_range,
+                idomain=idomain,
+                sihl_cell_ids=sihl_cell_ids,
+                anisotropy_angle=anisotropy_angle,
+                anisotropy_scaling=anisotropy_scaling,
+            )
+        except Exception as e:
+            if verbose:
+                print(f"  PEST setup failed: {e}")
+            results.append(_loo_failure_result(fold_idx, held_out_id, obs_gdf))
+            continue
+
+        # --- 6. Run PEST++ calibration ---
+        pest_success = run_pestpp_glm(pest_ws)
+        if not pest_success:
+            if verbose:
+                print(f"  PEST++ failed for fold {fold_idx}")
+            results.append(_loo_failure_result(
+                fold_idx, held_out_id, obs_gdf, pest_success=False,
+            ))
+            continue
+
+        # --- 7. Load calibrated K field ---
+        try:
+            k_field, pp_df = get_calibrated_k_field(
+                pest_ws, modelgrid,
+                variogram_range=variogram_range,
+                anisotropy_angle=anisotropy_angle,
+                anisotropy_scaling=anisotropy_scaling,
+            )
+        except Exception as e:
+            if verbose:
+                print(f"  Could not load calibrated K: {e}")
+            results.append(_loo_failure_result(
+                fold_idx, held_out_id, obs_gdf, pest_success=True,
+            ))
+            continue
+
+        # --- 8. Apply Sihl leakance multiplier if present ---
+        try:
+            par_df, _ = load_pest_results(pest_ws)
+            if 'sihl_leakance_mult' in par_df.index:
+                sihl_mult_log = par_df.loc['sihl_leakance_mult', 'optimised']
+                if not np.isnan(sihl_mult_log):
+                    sihl_mult = 10.0 ** sihl_mult_log
+                    riv = gwf.get_package('RIV')
+                    if riv is not None and sihl_cell_ids is not None:
+                        spd = riv.stress_period_data.get_data(0)
+                        sihl_set = set(sihl_cell_ids.tolist())
+                        for i in range(len(spd)):
+                            cid = spd[i]['cellid']
+                            cell_idx = cid[-1] if isinstance(cid, tuple) else cid
+                            if cell_idx in sihl_set:
+                                spd[i]['cond'] *= sihl_mult
+                        riv.stress_period_data.set_data(spd, key=0)
+        except Exception:
+            pass  # Non-critical: proceed without Sihl adjustment
+
+        # --- 9. Set K, write, run ---
+        gwf.npf.k.set_data(k_field)
+        sim.write_simulation()
+        run_success, _ = sim.run_simulation(silent=True)
+
+        if not run_success:
+            if verbose:
+                print(f"  Model run failed for fold {fold_idx}")
+            results.append(_loo_failure_result(
+                fold_idx, held_out_id, obs_gdf,
+                pest_success=True, k_field=k_field,
+            ))
+            continue
+
+        # --- 10. Predict at held-out well ---
+        head = gwf.output.head().get_data()
+        held_out_gdf = obs_gdf[obs_gdf['obs_id'] == held_out_id].copy()
+        pred_heads = cu.extract_heads_at_observations(head, held_out_gdf, modelgrid)
+        predicted_head = float(pred_heads[0]) if len(pred_heads) > 0 else np.nan
+
+        prediction_error = predicted_head - obs_head
+
+        # --- 11. Training RMSE at calibration wells ---
+        train_sim_heads = cu.extract_heads_at_observations(head, obs_fold, modelgrid)
+        valid = ~np.isnan(train_sim_heads)
+        if valid.any():
+            train_metrics = cu.calculate_calibration_metrics(
+                obs_fold.loc[valid, 'head_m'].values,
+                train_sim_heads[valid],
+            )
+            calib_rmse = train_metrics['RMSE']
+        else:
+            calib_rmse = np.nan
+
+        if verbose:
+            print(f"  Observed: {obs_head:.2f} m, "
+                  f"Predicted: {predicted_head:.2f} m, "
+                  f"Error: {prediction_error:+.2f} m, "
+                  f"Training RMSE: {calib_rmse:.2f} m")
+
+        results.append({
+            'fold': fold_idx,
+            'held_out_well': held_out_id,
+            'obs_head': obs_head,
+            'predicted_head': predicted_head,
+            'prediction_error': prediction_error,
+            'k_field': k_field,
+            'calib_rmse': calib_rmse,
+            'pest_success': True,
+        })
+
+    return results
+
+
+def _loo_failure_result(fold_idx, held_out_id, obs_gdf,
+                        pest_success=False, k_field=None):
+    """Return a NaN-filled result dict for a failed LOO fold."""
+    held_out_row = obs_gdf[obs_gdf['obs_id'] == held_out_id].iloc[0]
+    return {
+        'fold': fold_idx,
+        'held_out_well': held_out_id,
+        'obs_head': float(held_out_row['head_m']),
+        'predicted_head': np.nan,
+        'prediction_error': np.nan,
+        'k_field': k_field,
+        'calib_rmse': np.nan,
+        'pest_success': pest_success,
+    }
