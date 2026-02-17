@@ -161,7 +161,7 @@ Before calibration, compare your simulated heads to observations:
 
 "task05_checkpoint_3": r"""
 ## Checkpoint 3 - Calibrated Model Fit
-After manual calibration:
+After PEST++ calibration:
 - **What is your calibrated RMSE (m)?**
 """,
 
@@ -173,12 +173,57 @@ Verify your calibrated model's water balance:
 
 "task05_checkpoint_5": r"""
 ## Conceptual Checkpoint - Residual Interpretation
-You observe that residuals in Zone 1 are predominantly positive (simulated > observed).
+You observe that residuals in the upstream area are predominantly positive (simulated > observed).
 - **What parameter adjustment would improve the fit?**
-  - A) Increase K in Zone 1
-  - B) Decrease K in Zone 1
+  - A) Increase K in that area
+  - B) Decrease K in that area
   - C) Increase recharge everywhere
   - D) Decrease river conductance
+""",
+
+# Notebook 5 - Pumping Test checkpoints
+"task05_pt_checkpoint_1": r"""
+## Pumping Test — Checkpoint 1: Cooper-Jacob Slope
+From your semi-log fit for OW-2:
+- **What is the slope $\Delta s$ (drawdown per log cycle) in metres?**
+""",
+
+"task05_pt_checkpoint_2": r"""
+## Pumping Test — Checkpoint 2: Transmissivity
+Using the Cooper-Jacob formula $T = \frac{2.3\,Q}{4\pi\,\Delta s}$:
+- **What is the transmissivity $T$ (m²/d) for OW-2?**
+""",
+
+"task05_pt_checkpoint_3": r"""
+## Pumping Test — Checkpoint 3: Hydraulic Conductivity
+Using $K = T / b$:
+- **What is the hydraulic conductivity $K$ (m/d) for OW-2?**
+""",
+
+"task05_pt_checkpoint_4": r"""
+## Pumping Test — Checkpoint 4: Mean K from All Wells
+After running the Cooper-Jacob analysis on all 4 observation wells:
+- **What is the mean $K$ (m/d) across all wells?**
+""",
+
+"task05_pt_checkpoint_5": r"""
+## Pumping Test — Checkpoint 5: Consistency Check
+The transmissivity estimates from the 4 wells are similar but not identical.
+- **What is the most likely reason for the small differences in $T$?**
+""",
+
+# Notebook 5 - Manual trial checkpoint
+"task05_checkpoint_manual": r"""
+## Manual Trial — Which K Direction Improves the Fit?
+You ran the model with three different K values (15, 20, 30 m/d).
+- **Which K multiplier gave the lowest RMSE?**
+""",
+
+# Notebook 5 - Non-uniqueness checkpoint
+"task05_checkpoint_nonunique": r"""
+## Non-Uniqueness — Reducing the K–Recharge Trade-off
+You saw that different K and recharge combinations can produce similar head fits.
+- **What additional data type would most reduce this K–recharge non-uniqueness?**
 """
 
 }
@@ -208,11 +253,18 @@ solutions = {
     # Checkpoints 4, 5, and k_sensitivity are conceptual/multiple choice - handled separately
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
-    "task05_checkpoint_1": (17, 22),      # 4 real AWEL + 15 synthetic = 19 obs points
-    "task05_checkpoint_2": (1.5, 4.0),    # Initial RMSE before calibration (depends on initial params)
-    "task05_checkpoint_3": (0.3, 2.0),    # Target calibrated RMSE < 2.0 m
+    "task05_checkpoint_1": (8, 10),       # 4 real AWEL + 5 synthetic = 9 obs points
+    "task05_checkpoint_2": (0.5, 6.0),    # Initial RMSE before calibration
+    "task05_checkpoint_3": (0.2, 5.0),    # Calibrated RMSE after PEST++
     "task05_checkpoint_4": (0, 1.0),      # Water balance error < 1%
     # Checkpoint 5 is multiple choice - handled separately
+    # Notebook 5 - Pumping Test checkpoints
+    "task05_pt_checkpoint_1": (0.50, 0.62),   # Cooper-Jacob slope ~0.56 m/log-cycle
+    "task05_pt_checkpoint_2": (580, 740),      # Transmissivity T ~650 m²/d
+    "task05_pt_checkpoint_3": (23.0, 30.0),    # K = T/b ~26 m/d
+    "task05_pt_checkpoint_4": (23.0, 30.0),    # Mean K from all 4 wells ~26 m/d
+    # PT Checkpoint 5 is multiple choice - handled separately
+    # Manual trial and non-uniqueness checkpoints are multiple choice - handled separately
 }
 
 
@@ -243,11 +295,20 @@ solutions_exact = {
     "task04_checkpoint_k_sensitivity": "B) K = 5-50 m/day",
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
-    "task05_checkpoint_1": "19",
-    "task05_checkpoint_2": "~2.5",  # Depends on initial parameters
-    "task05_checkpoint_3": "~1.0",  # Target after calibration
+    "task05_checkpoint_1": "9",
+    "task05_checkpoint_2": "See output",  # Initial RMSE depends on reference K field
+    "task05_checkpoint_3": "See output",  # Calibrated RMSE after PEST++
     "task05_checkpoint_4": "~0.001",
-    "task05_checkpoint_5": "A) Increase K in Zone 1",
+    "task05_checkpoint_5": "A) Increase K in that area",
+    # Notebook 5 - Pumping Test checkpoints
+    "task05_pt_checkpoint_1": "~0.56",
+    "task05_pt_checkpoint_2": "~650",
+    "task05_pt_checkpoint_3": "~26",
+    "task05_pt_checkpoint_4": "~26",
+    "task05_pt_checkpoint_5": "B) Measurement noise and the Cooper-Jacob approximation",
+    # Manual trial and non-uniqueness checkpoints
+    "task05_checkpoint_manual": "C) K = 30 m/d (multiplier 1.5)",
+    "task05_checkpoint_nonunique": "B) River baseflow measurements",
 }
 
 
@@ -287,6 +348,15 @@ solution_unit = {
     "task05_checkpoint_3": "m",
     "task05_checkpoint_4": "%",
     "task05_checkpoint_5": "multiple choice",
+    # Notebook 5 - Pumping Test checkpoints
+    "task05_pt_checkpoint_1": "m",
+    "task05_pt_checkpoint_2": "m\u00b2/d",
+    "task05_pt_checkpoint_3": "m/d",
+    "task05_pt_checkpoint_4": "m/d",
+    "task05_pt_checkpoint_5": "multiple choice",
+    # Manual trial and non-uniqueness checkpoints
+    "task05_checkpoint_manual": "multiple choice",
+    "task05_checkpoint_nonunique": "multiple choice",
 }
 
 
@@ -330,10 +400,27 @@ multiple_choice_options = {
         ("D) Any K works", "D) Any K value works equally well"),
     ],
     "task05_checkpoint_5": [
-        ("A) Increase K in Zone 1", "A) Increase K in Zone 1 (reduces simulated heads)"),
-        ("B) Decrease K in Zone 1", "B) Decrease K in Zone 1 (increases simulated heads)"),
+        ("A) Increase K in that area", "A) Increase K in that area (reduces simulated heads)"),
+        ("B) Decrease K in that area", "B) Decrease K in that area (increases simulated heads)"),
         ("C) Increase recharge everywhere", "C) Increase recharge everywhere (increases all heads)"),
         ("D) Decrease river conductance", "D) Decrease river conductance (affects river-aquifer exchange)"),
+    ],
+    "task05_pt_checkpoint_5": [
+        ("A) Aquifer heterogeneity", "A) The aquifer is heterogeneous — each well samples a different K zone"),
+        ("B) Measurement noise and the Cooper-Jacob approximation", "B) Measurement noise + the Cooper-Jacob late-time approximation introduce small variability"),
+        ("C) Leaky aquifer", "C) The aquifer is leaky, violating the confined-aquifer assumption"),
+        ("D) Well skin effects", "D) Each well has a different skin factor that biases the slope"),
+    ],
+    "task05_checkpoint_manual": [
+        ("A) K = 15 m/d (multiplier 0.75)", "A) K = 15 m/d — lower K raises heads"),
+        ("B) K = 20 m/d (multiplier 1.0)", "B) K = 20 m/d — the baseline from Notebook 4"),
+        ("C) K = 30 m/d (multiplier 1.5)", "C) K = 30 m/d — higher K lowers heads"),
+    ],
+    "task05_checkpoint_nonunique": [
+        ("A) More head observations", "A) More head observations — better spatial coverage of the same data type"),
+        ("B) River baseflow measurements", "B) River baseflow measurements — constrain the water balance independently of heads"),
+        ("C) Soil type mapping", "C) Soil type mapping — better knowledge of surface geology"),
+        ("D) Longer pumping tests", "D) Longer pumping tests — more accurate T estimates"),
     ],
 }
 
@@ -678,49 +765,40 @@ The observation dataset combines two sources:
    - Well 83-1
    - Well 3625 (Lagerstrasse)
 
-2. **Synthetic observations**: 15 artificial points added for teaching purposes
-   - Generated from a reference model run with realistic noise (σ = 0.3 m)
-   - Distributed across the model domain for spatial coverage
+2. **Synthetic observations**: 5 artificial points added for teaching purposes
+   - Generated from a reference model with thickness-dependent K and realistic noise (σ = 1.3 m)
+   - Restricted to the aquifer south of the river, away from model boundaries
    - Clearly marked as synthetic in all visualizations
 
-**Total: 4 real + 15 synthetic = 19 observation points**
+**Total: 4 real + 5 synthetic = 9 observation points**
 
-The synthetic observations allow us to demonstrate calibration methods even with limited real data coverage.
+The synthetic observations come from a reference K field that varies with aquifer thickness (deeper zones = coarser gravels = higher K). This produces head patterns more realistic than a uniform-K model.
 <br>
 """,
 
 "task05_checkpoint_2": r"""
 ## Solution - Initial RMSE
 
-The initial Root Mean Square Error (RMSE) depends on how far the uncalibrated model parameters are from the "true" values.
-
-With the default initial parameters (K = 20 m/day uniform), you should see an RMSE in the range of **1.5-4.0 m**.
-
-The RMSE is calculated as:
+The initial Root Mean Square Error (RMSE) measures how well the uncalibrated model (uniform K = 20 m/d) matches the observations.
 
 $$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(h_{sim,i} - h_{obs,i})^2}$$
 
-A higher initial RMSE indicates more room for improvement through calibration. The spatial pattern of residuals (shown in the residual map) guides which parameters to adjust.
+The misfit occurs because:
+- The synthetic observations come from a reference model with spatially varying K (12–90 m/d depending on aquifer thickness)
+- The uniform K = 20 model produces different head patterns wherever the true K deviates significantly
+
+This initial misfit motivates the calibration — the model needs spatially varying K to match the observations.
 <br>
 """,
 
 "task05_checkpoint_3": r"""
 ## Solution - Calibrated RMSE
 
-After manual calibration, you should achieve an RMSE of **< 2.0 m**, ideally around **1.0 m** or less.
+After PEST++ calibration with pilot points, the RMSE should improve over the uncalibrated value.
 
-**Calibration quality guidelines:**
-- RMSE < 1 m: Excellent
-- RMSE 1-2 m: Good
-- RMSE 2-3 m: Acceptable
-- RMSE > 3 m: Needs improvement
+**Why is the improvement modest?** With only 9 observations (4 real + 5 noisy synthetic) and 20 pilot points, the inverse problem is severely underdetermined. The regularization and prior information help constrain the solution, but there simply isn't enough observation data to fully recover the spatially varying K field. This is typical for real-world calibration problems and illustrates why observation network design matters.
 
-The corresponding NRMSE (Normalized RMSE) should be **< 10%** of the observed head range.
-
-If you cannot achieve RMSE < 2 m:
-1. Check for observation points in problematic locations (near boundaries, dry cells)
-2. Consider whether the conceptual model is appropriate
-3. Review boundary condition assumptions
+**Key takeaway:** Calibration quality is limited by observation data coverage. More wells distributed across the domain would dramatically improve the result.
 <br>
 """,
 
@@ -746,7 +824,7 @@ A well-converged steady-state model should have near-zero balance error.
 "task05_checkpoint_5": r"""
 ## Solution - Residual Interpretation
 
-**Correct answer: A) Increase K in Zone 1**
+**Correct answer: A) Increase K in that area**
 
 **Reasoning:**
 - Positive residuals mean simulated heads are **higher** than observed
@@ -754,15 +832,120 @@ A well-converged steady-state model should have near-zero balance error.
 - Increasing K allows water to flow more easily, lowering heads
 
 **Physical interpretation:**
-- Simulated head = f(recharge/K) - higher K means lower equilibrium head
+- Simulated head = f(recharge/K) — higher K means lower equilibrium head
 - If sim > obs, the aquifer is "mounding" too much → increase K to let water escape
 
 **What the other options would do:**
 - B) Decrease K → Would raise heads further (wrong direction)
 - C) Increase recharge → Would raise heads everywhere (wrong direction)
-- D) Decrease river conductance → Would affect river exchange but not systematically lower heads in Zone 1
+- D) Decrease river conductance → Would affect river exchange but not systematically lower heads in the upstream area
 
-This principle is key to manual calibration: use residual patterns to guide parameter adjustments in the correct direction.
+This principle is key to calibration: use residual patterns to guide parameter adjustments in the correct direction. With pilot points, PEST++ does this automatically by adjusting K at each point.
+<br>
+""",
+
+# ============================================================================
+# NOTEBOOK 5 - PUMPING TEST SOLUTIONS
+# ============================================================================
+
+"task05_pt_checkpoint_1": r"""
+## Solution — Cooper-Jacob Slope
+
+The slope $\Delta s$ is the drawdown change per log$_{10}$ cycle on the semi-log plot. The `cooper_jacob_fit` function performs this regression automatically on the late-time data.
+
+From the Theis solution with $T$ = 650 m²/d and $Q$ = 2000 m³/d:
+
+$$\Delta s = \frac{2.3\,Q}{4\pi\,T} = \frac{2.3 \times 2000}{4\pi \times 650} \approx 0.56 \text{ m}$$
+
+The fitted value may differ slightly due to measurement noise.
+<br>
+""",
+
+"task05_pt_checkpoint_2": r"""
+## Solution — Transmissivity
+
+Rearranging the Cooper-Jacob slope equation:
+
+$$T = \frac{2.3\,Q}{4\pi\,\Delta s} = \frac{2.3 \times 2000}{4\pi \times 0.56} \approx 654 \text{ m}^2\text{/d}$$
+
+**Common mistakes:**
+- Forgetting the 2.3 factor → $T \approx 284$ (too low by ~2.3×)
+- Using $2\pi$ instead of $4\pi$ → $T \approx 1310$ (too high by 2×)
+- Omitting $\pi$ entirely → $T \approx 2050$ (too high by ~$\pi$×)
+<br>
+""",
+
+"task05_pt_checkpoint_3": r"""
+## Solution — Hydraulic Conductivity
+
+$$K = \frac{T}{b} = \frac{654}{25} \approx 26 \text{ m/d}$$
+
+This is somewhat higher than the uniform K = 20 m/d used in Notebook 4, suggesting the aquifer at the pumping test site is more permeable than the domain average.
+
+**Common mistake:** Reporting $T$ instead of $K$ (off by a factor of $b$ = 25).
+<br>
+""",
+
+"task05_pt_checkpoint_4": r"""
+## Solution — Mean K from All Wells
+
+All four wells should give similar $T$ (and thus $K$) values because the Cooper-Jacob slope depends only on $Q$ and $T$, not on distance $r$. The mean K $\approx$ 26 m/d confirms this consistency.
+
+Small differences arise from measurement noise and the fact that the Cooper-Jacob approximation is not exact at early times (which affects the fit window selection differently for each well).
+<br>
+""",
+
+"task05_pt_checkpoint_5": r"""
+## Solution — Why T Varies Across Wells
+
+**Correct answer: B) Measurement noise and the Cooper-Jacob approximation**
+
+The pumping test data is generated from a **homogeneous** Theis solution with added noise. The small $T$ differences come from:
+
+1. **Measurement noise** — pressure transducers have finite precision ($\sigma \approx$ 0.02–0.03 m)
+2. **Fit-window selection** — each well's late-time regime starts at a different time, affecting which data points are included in the regression
+3. **Cooper-Jacob approximation** — the straight-line assumption ($u < 0.01$) is better satisfied at larger times and closer distances
+
+**Why not A (heterogeneity)?** In a real aquifer, heterogeneity would cause $T$ variations, but here the spread is small (~5%) and consistent with noise alone.
+
+**Why not C (leaky)?** Leakage would cause the semi-log plot to curve and flatten at late times — not simply shift the slope.
+
+**Why not D (skin)?** Well skin affects early-time data but not the late-time slope that Cooper-Jacob uses.
+<br>
+""",
+
+# ============================================================================
+# NOTEBOOK 5 - MANUAL TRIAL & NON-UNIQUENESS SOLUTIONS
+# ============================================================================
+
+"task05_checkpoint_manual": r"""
+## Solution — Which K Direction Improves the Fit?
+
+**Correct answer: C) K = 30 m/d (multiplier 1.5)**
+
+**Reasoning:**
+- The reference K field (used to generate synthetic observations) has higher K values in many areas than the uniform 20 m/d baseline
+- Increasing K lowers simulated heads, which better matches observations in areas where the baseline overpredicts
+- The RMSE decreases when moving from 20 → 30 m/d, confirming that the baseline K is too low on average
+
+This is exactly the intuition that automated calibration (PEST++) formalises: it adjusts parameters in the direction that reduces the objective function.
+<br>
+""",
+
+"task05_checkpoint_nonunique": r"""
+## Solution — Reducing K–Recharge Non-Uniqueness
+
+**Correct answer: B) River baseflow measurements**
+
+**Reasoning:**
+- Head observations alone cannot distinguish between K and recharge because both affect the water table height (higher recharge ≈ lower K → similar heads)
+- **River baseflow** constrains the **water balance** independently: it tells you how much water leaves the aquifer via the river, which depends differently on K and recharge
+- With both head and flux observations, the K–recharge trade-off is broken because each parameter combination produces a different flux even if heads are similar
+
+**Why not the other options?**
+- A) More head observations improve spatial coverage but don't break the K–recharge trade-off
+- C) Soil mapping gives qualitative constraints but doesn't quantitatively constrain the water balance
+- D) Longer pumping tests improve local T estimates but don't constrain recharge
 <br>
 """
 

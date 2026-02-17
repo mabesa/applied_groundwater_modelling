@@ -882,7 +882,7 @@ def build_riv_stress_period_data(
         Dictionary of river-specific parameters. If None, uses defaults.
         Keys: 'sihl_leakage_coeff', 'limmat_leakage_coeff', 'riverbed_thickness',
               'sihl_depth', 'limmat_depth', 'sihl_width', 'limmat_width',
-              'min_stage_clearance'
+              'min_stage_clearance', 'rbot_safety_margin'
     bin_width : float, optional
         Width of cross-sectional bins (meters) for rbot homogenization. Default: 100.0.
 
@@ -926,6 +926,7 @@ def build_riv_stress_period_data(
         'sihl_width': 15.0,                       # m
         'limmat_width': 30.0,                     # m
         'min_stage_clearance': 0.05,              # m
+        'rbot_safety_margin': 0.50,               # m (clearance below land surface for rbot)
     }
 
     # Merge with user-provided parameters
@@ -974,25 +975,29 @@ def build_riv_stress_period_data(
         cell_y = yc[cell_id]
         cell_point = Point(cell_x, cell_y)
 
-        # Classify by river
+        # Classify by river — try contains first, then fall back to nearest
         if sihl_geom is not None and not sihl_geom.is_empty and sihl_geom.contains(cell_point):
             river_name = 'Sihl'
+        elif limmat_geom is not None and not limmat_geom.is_empty and limmat_geom.contains(cell_point):
+            river_name = 'Limmat'
+        else:
+            # Cell center outside both polygons (e.g. cell straddles river
+            # bank, or polygon gap at tunnel).  Classify by nearest river.
+            d_sihl = sihl_geom.distance(cell_point) if (sihl_geom is not None and not sihl_geom.is_empty) else float('inf')
+            d_limmat = limmat_geom.distance(cell_point) if (limmat_geom is not None and not limmat_geom.is_empty) else float('inf')
+            river_name = 'Sihl' if d_sihl <= d_limmat else 'Limmat'
+
+        if river_name == 'Sihl':
             river_depth = params['sihl_depth']
             riverbed_k = riverbed_k_sihl
             river_width = params['sihl_width']
-        elif limmat_geom is not None and not limmat_geom.is_empty and limmat_geom.contains(cell_point):
-            river_name = 'Limmat'
-            river_depth = params['limmat_depth']
-            riverbed_k = riverbed_k_limmat
-            river_width = params['limmat_width']
         else:
-            river_name = 'Unknown'
             river_depth = params['limmat_depth']
             riverbed_k = riverbed_k_limmat
             river_width = params['limmat_width']
 
         # Compute raw rbot from DEM (land surface - depth - safety margin)
-        raw_rbot = model_top[cell_id] - river_depth - 0.5
+        raw_rbot = model_top[cell_id] - river_depth - params['rbot_safety_margin']
 
         # Ensure rbot is above aquifer bottom
         if raw_rbot < model_bottom[cell_id]:
