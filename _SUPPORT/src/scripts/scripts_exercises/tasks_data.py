@@ -179,6 +179,37 @@ You observe that residuals in the upstream area are predominantly positive (simu
   - B) Decrease K in that area
   - C) Increase recharge everywhere
   - D) Decrease river conductance
+""",
+
+# Notebook 5 - Pumping Test checkpoints
+"task05_pt_checkpoint_1": r"""
+## Pumping Test — Checkpoint 1: Cooper-Jacob Slope
+From your semi-log fit for OW-2:
+- **What is the slope $\Delta s$ (drawdown per log cycle) in metres?**
+""",
+
+"task05_pt_checkpoint_2": r"""
+## Pumping Test — Checkpoint 2: Transmissivity
+Using the Cooper-Jacob formula $T = \frac{2.3\,Q}{4\pi\,\Delta s}$:
+- **What is the transmissivity $T$ (m²/d) for OW-2?**
+""",
+
+"task05_pt_checkpoint_3": r"""
+## Pumping Test — Checkpoint 3: Hydraulic Conductivity
+Using $K = T / b$:
+- **What is the hydraulic conductivity $K$ (m/d) for OW-2?**
+""",
+
+"task05_pt_checkpoint_4": r"""
+## Pumping Test — Checkpoint 4: Mean K from All Wells
+After running the Cooper-Jacob analysis on all 4 observation wells:
+- **What is the mean $K$ (m/d) across all wells?**
+""",
+
+"task05_pt_checkpoint_5": r"""
+## Pumping Test — Checkpoint 5: Consistency Check
+The transmissivity estimates from the 4 wells are similar but not identical.
+- **What is the most likely reason for the small differences in $T$?**
 """
 
 }
@@ -209,10 +240,16 @@ solutions = {
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
     "task05_checkpoint_1": (8, 10),       # 4 real AWEL + 5 synthetic = 9 obs points
-    "task05_checkpoint_2": (2.5, 4.0),    # Initial RMSE before calibration (~3.2 m)
-    "task05_checkpoint_3": (1.5, 3.5),    # Calibrated RMSE (~2.6 m)
+    "task05_checkpoint_2": (0.5, 6.0),    # Initial RMSE before calibration
+    "task05_checkpoint_3": (0.2, 5.0),    # Calibrated RMSE after PEST++
     "task05_checkpoint_4": (0, 1.0),      # Water balance error < 1%
     # Checkpoint 5 is multiple choice - handled separately
+    # Notebook 5 - Pumping Test checkpoints
+    "task05_pt_checkpoint_1": (0.50, 0.62),   # Cooper-Jacob slope ~0.56 m/log-cycle
+    "task05_pt_checkpoint_2": (580, 740),      # Transmissivity T ~650 m²/d
+    "task05_pt_checkpoint_3": (23.0, 30.0),    # K = T/b ~26 m/d
+    "task05_pt_checkpoint_4": (23.0, 30.0),    # Mean K from all 4 wells ~26 m/d
+    # PT Checkpoint 5 is multiple choice - handled separately
 }
 
 
@@ -244,10 +281,16 @@ solutions_exact = {
     # task04_k_values removed - simplified to uniform K
     # Notebook 5 checkpoints
     "task05_checkpoint_1": "9",
-    "task05_checkpoint_2": "~3.2",  # Initial RMSE with reference K synthetic obs
-    "task05_checkpoint_3": "~2.6",  # Calibrated RMSE after PEST++
+    "task05_checkpoint_2": "See output",  # Initial RMSE depends on reference K field
+    "task05_checkpoint_3": "See output",  # Calibrated RMSE after PEST++
     "task05_checkpoint_4": "~0.001",
     "task05_checkpoint_5": "A) Increase K in that area",
+    # Notebook 5 - Pumping Test checkpoints
+    "task05_pt_checkpoint_1": "~0.56",
+    "task05_pt_checkpoint_2": "~650",
+    "task05_pt_checkpoint_3": "~26",
+    "task05_pt_checkpoint_4": "~26",
+    "task05_pt_checkpoint_5": "B) Measurement noise and the Cooper-Jacob approximation",
 }
 
 
@@ -287,6 +330,12 @@ solution_unit = {
     "task05_checkpoint_3": "m",
     "task05_checkpoint_4": "%",
     "task05_checkpoint_5": "multiple choice",
+    # Notebook 5 - Pumping Test checkpoints
+    "task05_pt_checkpoint_1": "m",
+    "task05_pt_checkpoint_2": "m\u00b2/d",
+    "task05_pt_checkpoint_3": "m/d",
+    "task05_pt_checkpoint_4": "m/d",
+    "task05_pt_checkpoint_5": "multiple choice",
 }
 
 
@@ -334,6 +383,12 @@ multiple_choice_options = {
         ("B) Decrease K in that area", "B) Decrease K in that area (increases simulated heads)"),
         ("C) Increase recharge everywhere", "C) Increase recharge everywhere (increases all heads)"),
         ("D) Decrease river conductance", "D) Decrease river conductance (affects river-aquifer exchange)"),
+    ],
+    "task05_pt_checkpoint_5": [
+        ("A) Aquifer heterogeneity", "A) The aquifer is heterogeneous — each well samples a different K zone"),
+        ("B) Measurement noise and the Cooper-Jacob approximation", "B) Measurement noise + the Cooper-Jacob late-time approximation introduce small variability"),
+        ("C) Leaky aquifer", "C) The aquifer is leaky, violating the confined-aquifer assumption"),
+        ("D) Well skin effects", "D) Each well has a different skin factor that biases the slope"),
     ],
 }
 
@@ -694,28 +749,22 @@ The synthetic observations come from a reference K field that varies with aquife
 
 The initial Root Mean Square Error (RMSE) measures how well the uncalibrated model (uniform K = 20 m/d) matches the observations.
 
-You should see an RMSE of approximately **3.2 m**. This relatively large misfit occurs because:
-- The synthetic observations come from a reference model with spatially varying K (8–30 m/d)
-- The uniform K = 20 model produces different head patterns, especially in the western domain where the reference K is lower (~8 m/d)
-
 $$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(h_{sim,i} - h_{obs,i})^2}$$
 
-This large initial misfit motivates the calibration — the model clearly needs spatially varying K to match the observations.
+The misfit occurs because:
+- The synthetic observations come from a reference model with spatially varying K (12–90 m/d depending on aquifer thickness)
+- The uniform K = 20 model produces different head patterns wherever the true K deviates significantly
+
+This initial misfit motivates the calibration — the model needs spatially varying K to match the observations.
 <br>
 """,
 
 "task05_checkpoint_3": r"""
 ## Solution - Calibrated RMSE
 
-After PEST++ calibration with pilot points, you should see the RMSE improve to approximately **2.6 m** (down from ~3.2 m uncalibrated — a ~20% improvement).
+After PEST++ calibration with pilot points, the RMSE should improve over the uncalibrated value.
 
-**Why isn't the improvement larger?** With only 9 observations and 20 pilot points, the inverse problem is severely underdetermined. The regularization and prior information help constrain the solution, but there simply isn't enough observation data to fully recover the spatially varying K field.
-
-**Calibration quality guidelines:**
-- RMSE < 1 m: Excellent
-- RMSE 1-2 m: Good
-- RMSE 2-3 m: Acceptable
-- RMSE > 3 m: Needs improvement
+**Why is the improvement modest?** With only 9 observations (4 real + 5 noisy synthetic) and 20 pilot points, the inverse problem is severely underdetermined. The regularization and prior information help constrain the solution, but there simply isn't enough observation data to fully recover the spatially varying K field. This is typical for real-world calibration problems and illustrates why observation network design matters.
 
 **Key takeaway:** Calibration quality is limited by observation data coverage. More wells distributed across the domain would dramatically improve the result.
 <br>
@@ -760,6 +809,76 @@ A well-converged steady-state model should have near-zero balance error.
 - D) Decrease river conductance → Would affect river exchange but not systematically lower heads in the upstream area
 
 This principle is key to calibration: use residual patterns to guide parameter adjustments in the correct direction. With pilot points, PEST++ does this automatically by adjusting K at each point.
+<br>
+""",
+
+# ============================================================================
+# NOTEBOOK 5 - PUMPING TEST SOLUTIONS
+# ============================================================================
+
+"task05_pt_checkpoint_1": r"""
+## Solution — Cooper-Jacob Slope
+
+The slope $\Delta s$ is the drawdown change per log$_{10}$ cycle on the semi-log plot. The `cooper_jacob_fit` function performs this regression automatically on the late-time data.
+
+From the Theis solution with $T$ = 650 m²/d and $Q$ = 2000 m³/d:
+
+$$\Delta s = \frac{2.3\,Q}{4\pi\,T} = \frac{2.3 \times 2000}{4\pi \times 650} \approx 0.56 \text{ m}$$
+
+The fitted value may differ slightly due to measurement noise.
+<br>
+""",
+
+"task05_pt_checkpoint_2": r"""
+## Solution — Transmissivity
+
+Rearranging the Cooper-Jacob slope equation:
+
+$$T = \frac{2.3\,Q}{4\pi\,\Delta s} = \frac{2.3 \times 2000}{4\pi \times 0.56} \approx 654 \text{ m}^2\text{/d}$$
+
+**Common mistakes:**
+- Forgetting the 2.3 factor → $T \approx 284$ (too low by ~2.3×)
+- Using $2\pi$ instead of $4\pi$ → $T \approx 1310$ (too high by 2×)
+- Omitting $\pi$ entirely → $T \approx 2050$ (too high by ~$\pi$×)
+<br>
+""",
+
+"task05_pt_checkpoint_3": r"""
+## Solution — Hydraulic Conductivity
+
+$$K = \frac{T}{b} = \frac{654}{25} \approx 26 \text{ m/d}$$
+
+This is somewhat higher than the uniform K = 20 m/d used in Notebook 4, suggesting the aquifer at the pumping test site is more permeable than the domain average.
+
+**Common mistake:** Reporting $T$ instead of $K$ (off by a factor of $b$ = 25).
+<br>
+""",
+
+"task05_pt_checkpoint_4": r"""
+## Solution — Mean K from All Wells
+
+All four wells should give similar $T$ (and thus $K$) values because the Cooper-Jacob slope depends only on $Q$ and $T$, not on distance $r$. The mean K $\approx$ 26 m/d confirms this consistency.
+
+Small differences arise from measurement noise and the fact that the Cooper-Jacob approximation is not exact at early times (which affects the fit window selection differently for each well).
+<br>
+""",
+
+"task05_pt_checkpoint_5": r"""
+## Solution — Why T Varies Across Wells
+
+**Correct answer: B) Measurement noise and the Cooper-Jacob approximation**
+
+The pumping test data is generated from a **homogeneous** Theis solution with added noise. The small $T$ differences come from:
+
+1. **Measurement noise** — pressure transducers have finite precision ($\sigma \approx$ 0.02–0.03 m)
+2. **Fit-window selection** — each well's late-time regime starts at a different time, affecting which data points are included in the regression
+3. **Cooper-Jacob approximation** — the straight-line assumption ($u < 0.01$) is better satisfied at larger times and closer distances
+
+**Why not A (heterogeneity)?** In a real aquifer, heterogeneity would cause $T$ variations, but here the spread is small (~5%) and consistent with noise alone.
+
+**Why not C (leaky)?** Leakage would cause the semi-log plot to curve and flatten at late times — not simply shift the slope.
+
+**Why not D (skin)?** Well skin affects early-time data but not the late-time slope that Cooper-Jacob uses.
 <br>
 """
 
