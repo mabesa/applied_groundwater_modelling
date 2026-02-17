@@ -224,6 +224,52 @@ You ran the model with three different K values (15, 20, 30 m/d).
 ## Non-Uniqueness — Reducing the K–Recharge Trade-off
 You saw that different K and recharge combinations can produce similar head fits.
 - **What additional data type would most reduce this K–recharge non-uniqueness?**
+""",
+
+# ============================================================================
+# NOTEBOOK 6 - VALIDATION CHECKPOINTS
+# ============================================================================
+
+"task06_checkpoint_1": r"""
+## Checkpoint 1 — Temporal Split
+We calibrated our model to time-averaged (steady-state) head observations.
+- **Why can't we do a temporal train/test split for validation?**
+""",
+
+"task06_checkpoint_2": r"""
+## Checkpoint 2 — Calibration RMSE at Real Wells
+After loading the calibrated model and computing metrics at real AWEL wells only:
+- **What is the full-calibration RMSE (m) at the 4 real wells?**
+""",
+
+"task06_checkpoint_3": r"""
+## Checkpoint 3 — Water Balance Error
+From the water balance summary of your calibrated model:
+- **What is the water balance error (%)?**
+""",
+
+"task06_checkpoint_4": r"""
+## Checkpoint 4 — Verification vs Validation
+Your model passes verification (mass balance OK) and plausibility checks (K and gradients in reasonable ranges).
+- **Does this mean its predictions are reliable?**
+""",
+
+"task06_checkpoint_5": r"""
+## Checkpoint 5 — Synthetic Observations in LOO
+In leave-one-out cross-validation, we hold out one real well per fold.
+- **Should the synthetic observations also be held out?**
+""",
+
+"task06_checkpoint_6": r"""
+## Checkpoint 6 — LOO-RMSE
+After running 4 LOO folds and computing the prediction error at each held-out real well:
+- **What is the LOO-RMSE (m)?**
+""",
+
+"task06_checkpoint_7": r"""
+## Checkpoint 7 — Interpreting LOO Results
+Consider a model where the LOO-RMSE is much larger than the calibration RMSE.
+- **What does this suggest about the model?**
 """
 
 }
@@ -258,6 +304,14 @@ solutions = {
     "task05_checkpoint_3": (0.2, 5.0),    # Calibrated RMSE after PEST++
     "task05_checkpoint_4": (0, 1.0),      # Water balance error < 1%
     # Checkpoint 5 is multiple choice - handled separately
+    # Notebook 6 checkpoints
+    # Checkpoint 1 is multiple choice - handled separately
+    "task06_checkpoint_2": (0.2, 5.0),        # Full-calibration RMSE at real wells only
+    "task06_checkpoint_3": (0, 1.0),          # Water balance error < 1%
+    # Checkpoint 4 is multiple choice - handled separately
+    # Checkpoint 5 is multiple choice - handled separately
+    "task06_checkpoint_6": (0.3, 8.0),        # LOO-RMSE (wide range, depends on PEST++ convergence)
+    # Checkpoint 7 is multiple choice - handled separately
     # Notebook 5 - Pumping Test checkpoints
     "task05_pt_checkpoint_1": (0.50, 0.62),   # Cooper-Jacob slope ~0.56 m/log-cycle
     "task05_pt_checkpoint_2": (580, 740),      # Transmissivity T ~650 m²/d
@@ -300,6 +354,14 @@ solutions_exact = {
     "task05_checkpoint_3": "See output",  # Calibrated RMSE after PEST++
     "task05_checkpoint_4": "~0.001",
     "task05_checkpoint_5": "A) Increase K in that area",
+    # Notebook 6 checkpoints
+    "task06_checkpoint_1": "B) We calibrated to time-averaged heads",
+    "task06_checkpoint_2": "See output",
+    "task06_checkpoint_3": "~0.001",
+    "task06_checkpoint_4": "C) No — plausibility confirms physics, not predictive power",
+    "task06_checkpoint_5": "B) No — synthetic obs stay in all folds",
+    "task06_checkpoint_6": "See output",
+    "task06_checkpoint_7": "A) The model may be overfitting",
     # Notebook 5 - Pumping Test checkpoints
     "task05_pt_checkpoint_1": "~0.56",
     "task05_pt_checkpoint_2": "~650",
@@ -348,6 +410,14 @@ solution_unit = {
     "task05_checkpoint_3": "m",
     "task05_checkpoint_4": "%",
     "task05_checkpoint_5": "multiple choice",
+    # Notebook 6 checkpoints
+    "task06_checkpoint_1": "multiple choice",
+    "task06_checkpoint_2": "m",
+    "task06_checkpoint_3": "%",
+    "task06_checkpoint_4": "multiple choice",
+    "task06_checkpoint_5": "multiple choice",
+    "task06_checkpoint_6": "m",
+    "task06_checkpoint_7": "multiple choice",
     # Notebook 5 - Pumping Test checkpoints
     "task05_pt_checkpoint_1": "m",
     "task05_pt_checkpoint_2": "m\u00b2/d",
@@ -421,6 +491,30 @@ multiple_choice_options = {
         ("B) River baseflow measurements", "B) River baseflow measurements — constrain the water balance independently of heads"),
         ("C) Soil type mapping", "C) Soil type mapping — better knowledge of surface geology"),
         ("D) Longer pumping tests", "D) Longer pumping tests — more accurate T estimates"),
+    ],
+    # Notebook 6 - Validation checkpoints
+    "task06_checkpoint_1": [
+        ("A) We only have 4 wells", "A) We only have 4 wells — not enough data for a split"),
+        ("B) We calibrated to time-averaged heads", "B) We calibrated to time-averaged (steady-state) heads — there is no temporal dimension to split"),
+        ("C) PEST++ doesn't support it", "C) PEST++ doesn't support temporal splitting"),
+        ("D) Transient data is unreliable", "D) Transient head measurements are too noisy to use"),
+    ],
+    "task06_checkpoint_4": [
+        ("A) Yes — verification proves correctness", "A) Yes — if verification and plausibility pass, the model is validated"),
+        ("B) Only if RMSE < 1 m", "B) Only if the calibration RMSE is below 1 m"),
+        ("C) No — plausibility confirms physics, not predictive power", "C) No — plausibility confirms physics are reasonable, but validation requires testing against independent data"),
+        ("D) It depends on the model purpose", "D) It depends entirely on the intended application"),
+    ],
+    "task06_checkpoint_5": [
+        ("A) Yes — hold out all observations", "A) Yes — hold out both real and synthetic observations for a fair test"),
+        ("B) No — synthetic obs stay in all folds", "B) No — with only 3 real wells per fold, removing synthetic obs would leave the calibration wildly underdetermined"),
+        ("C) Only in some folds", "C) Only in some folds — alternate between holding out real and synthetic"),
+    ],
+    "task06_checkpoint_7": [
+        ("A) The model may be overfitting", "A) The model may be overfitting — it fits calibration data well but predicts poorly at unseen locations"),
+        ("B) The observations have errors", "B) The observation data contains large measurement errors"),
+        ("C) The model is underfitting", "C) The model is too simple and underfitting the data"),
+        ("D) More pilot points are needed", "D) More pilot points would fix the problem"),
     ],
 }
 
@@ -946,6 +1040,106 @@ This is exactly the intuition that automated calibration (PEST++) formalises: it
 - A) More head observations improve spatial coverage but don't break the K–recharge trade-off
 - C) Soil mapping gives qualitative constraints but doesn't quantitatively constrain the water balance
 - D) Longer pumping tests improve local T estimates but don't constrain recharge
+<br>
+""",
+
+# ============================================================================
+# NOTEBOOK 6 - VALIDATION SOLUTIONS
+# ============================================================================
+
+"task06_checkpoint_1": r"""
+## Solution — Temporal Split
+
+**Correct answer: B) We calibrated to time-averaged heads**
+
+Our steady-state model was calibrated to **long-term mean** head values — there is no time series to split into calibration and validation periods. A temporal train/test split requires transient data (e.g., calibrate on 2010–2015, validate on 2016–2020).
+
+**Why not the other options?**
+- A) While 4 wells is few, temporal splitting is about time periods, not well count
+- C) PEST++ fully supports temporal splitting for transient models
+- D) Transient data quality is not the issue — the issue is that we don't use transient data at all
+
+**Key insight:** For steady-state models, validation must rely on **spatial** approaches (hold-out wells, cross-validation) or **independent data types** (flux measurements, tracer tests).
+<br>
+""",
+
+"task06_checkpoint_2": r"""
+## Solution — Calibration RMSE at Real Wells
+
+This RMSE measures how well the **full calibration** (using all 9 observations) reproduces heads at the 4 real AWEL wells. It provides the baseline "best-case" fit — the LOO-RMSE will typically be larger because each fold uses fewer constraints.
+
+The exact value depends on the PEST++ calibration outcome.
+<br>
+""",
+
+"task06_checkpoint_3": r"""
+## Solution — Water Balance Error
+
+MODFLOW 6 should achieve near-perfect water balance closure for a well-converged steady-state model. The error should be **< 1%**, typically around **0.001%** or less.
+
+$$\text{Error (\%)} = 200 \times \frac{|Q_{in} - Q_{out}|}{Q_{in} + Q_{out}}$$
+
+This is a **verification** check (mathematical correctness), not a validation check (predictive capability).
+<br>
+""",
+
+"task06_checkpoint_4": r"""
+## Solution — Verification vs Validation
+
+**Correct answer: C) No — plausibility confirms physics are reasonable, but validation requires testing against independent data**
+
+Verification (mass balance) confirms the **equations are solved correctly**. Plausibility checks confirm the **physics are reasonable**. But neither tells us whether the model can **predict at locations it hasn't seen**.
+
+A model can pass both checks and still be:
+- Overfitting to calibration data
+- Missing important geological features
+- Unreliable outside the calibrated area
+
+**Only validation against independent data** (data not used in calibration) can test predictive capability.
+<br>
+""",
+
+"task06_checkpoint_5": r"""
+## Solution — Synthetic Observations in LOO
+
+**Correct answer: B) No — synthetic obs stay in all folds**
+
+With only 3 real wells remaining per fold (one is held out), the pilot-point calibration would be **wildly underdetermined** without the 5 synthetic observations providing spatial coverage.
+
+The synthetic observations serve as spatial constraints that prevent the calibration from producing physically unreasonable K fields. The LOO test is **exclusively on real data** — we only compute prediction errors at held-out real wells.
+
+This is a pragmatic compromise: we test predictive skill at real locations while maintaining calibration stability.
+<br>
+""",
+
+"task06_checkpoint_6": r"""
+## Solution — LOO-RMSE
+
+$$\text{LOO-RMSE} = \sqrt{\frac{1}{N}\sum_{i=1}^{N} e_i^2}$$
+
+where $e_i = h_{predicted}(\text{calibrated without } i) - h_{observed,i}$ and $N = 4$ (one per real well).
+
+The LOO-RMSE is typically **larger** than the calibration RMSE because each fold predicts at a location that was not used for parameter estimation. The exact value depends on PEST++ convergence in each fold.
+
+**Interpretation:**
+- LOO-RMSE ≈ calibration RMSE → model generalises well
+- LOO-RMSE >> calibration RMSE → possible overfitting
+<br>
+""",
+
+"task06_checkpoint_7": r"""
+## Solution — Interpreting LOO Results
+
+**Correct answer: A) The model may be overfitting**
+
+When LOO-RMSE >> calibration RMSE, it means the model fits the calibration data much better than it predicts at unseen locations. This is the classic signature of **overfitting**: the calibration found parameter values that work well for the specific observations used, but those values don't generalise.
+
+**Why not the other options?**
+- B) Observation errors would affect both calibration and LOO equally
+- C) Underfitting would show poor calibration RMSE too, not just poor LOO-RMSE
+- D) More pilot points could actually make overfitting worse by increasing model flexibility
+
+**Remedies for overfitting:** Stronger regularisation, fewer pilot points, more observations, independent data constraints.
 <br>
 """
 
