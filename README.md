@@ -211,6 +211,14 @@ Don't bookmark JupyterHub URLs - always access via Moodle.
 
 **MODFLOW not found:** Run `get-modflow :flopy`
 
+**Wrong Python environment in Jupyter:** If you get numpy version errors or package conflicts when running `uv run jupyter lab`, register the uv environment as a kernel:
+```bash
+uv run python -m ipykernel install --user --name=applied_gw_modelling --display-name="Applied GW Modelling (uv)"
+```
+Then select "Applied GW Modelling (uv)" as your kernel in Jupyter.
+
+**Multiple figures accumulating in VS Code:** Use Command Palette (Cmd/Ctrl+Shift+P) → "Developer: Reload Window"
+
 ### MODFLOW or MT3D Model Issues
 
 **Model changes not taking effect:**
