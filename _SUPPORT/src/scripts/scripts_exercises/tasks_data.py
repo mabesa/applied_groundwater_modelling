@@ -316,6 +316,58 @@ From the removed-observation importance analysis, the synthetic observations hav
 ## Checkpoint 7 — Monitoring Recommendation
 The western domain has low identifiability, low uncertainty reduction, and no observation wells.
 - **What single action would most improve predictions in the data-sparse western domain?**
+""",
+
+# ============================================================================
+# NOTEBOOK 8 - MODEL APPLICATION CHECKPOINTS
+# ============================================================================
+
+"task08_checkpoint_1": r"""
+## Checkpoint 1 — Scenario Design
+Our Limmat Valley model is steady-state, single-layer, with spatially varying K calibrated via PEST++.
+- **Can this model predict how quickly a new well reaches its maximum drawdown?**
+""",
+
+"task08_checkpoint_2": r"""
+## Checkpoint 2 — Maximum Drawdown
+After running the pumping well scenario (-500 m³/d):
+- **What is the maximum drawdown (m) at the well cell?**
+""",
+
+"task08_checkpoint_3": r"""
+## Checkpoint 3 — Water Source
+Comparing the baseline and pumping-well water balances:
+- **Where does the pumped water primarily come from?**
+""",
+
+"task08_checkpoint_4": r"""
+## Checkpoint 4 — Linearity
+You doubled the pumping rate from -500 to -1000 m³/d. The maximum drawdown also approximately doubled.
+- **Why does drawdown scale linearly with pumping rate in this model?**
+""",
+
+"task08_checkpoint_5": r"""
+## Checkpoint 5 — Protection Zone Classification
+The 10-day isochrone extends upstream of the well. A dairy farm with manure storage sits inside the 10-day isochrone.
+- **Under Swiss regulations, which protection zone does the farm fall in?**
+""",
+
+"task08_checkpoint_6": r"""
+## Checkpoint 6 — Non-Stationarity
+We delineated protection zones from a single steady-state simulation.
+- **Why should protection zones not be based on a single steady-state model run?**
+""",
+
+"task08_checkpoint_7": r"""
+## Checkpoint 7 — Drought Impact
+After reducing recharge by 30% (climate drought scenario):
+- **What is the mean head decline (m) across the active domain?**
+""",
+
+"task08_checkpoint_8": r"""
+## Checkpoint 8 — Capture Zone Under Drought
+You re-ran MODPATH under the reduced-recharge scenario.
+- **How does the capture zone of the pumping well change under drought conditions?**
 """
 
 }
@@ -371,6 +423,10 @@ solutions = {
     # Checkpoint 3 is multiple choice - handled separately
     "task07_checkpoint_4": (1.0, 2.5),      # Posterior std dev at well 516 (~1.60 m)
     # Checkpoints 5, 6, 7 are multiple choice - handled separately
+    # Notebook 8 checkpoints
+    "task08_checkpoint_2": (1.0, 4.0),      # Max drawdown at well cell (~2.3 m)
+    "task08_checkpoint_7": (0.05, 0.5),    # Mean head decline under 30% recharge reduction (~0.18 m)
+    # Checkpoints 1, 3, 4, 5, 6, 8 are multiple choice - handled separately
 }
 
 
@@ -431,6 +487,15 @@ solutions_exact = {
     "task07_checkpoint_5": "B) FOSM σ is smaller — it captures only parameter uncertainty",
     "task07_checkpoint_6": "A) It fills a spatial gap",
     "task07_checkpoint_7": "B) Install an observation well in the western domain",
+    # Notebook 8 checkpoints
+    "task08_checkpoint_1": "A) No — a steady-state model cannot predict transient drawdown evolution",
+    "task08_checkpoint_2": "See output",
+    "task08_checkpoint_3": "B) Increased river leakage into the aquifer",
+    "task08_checkpoint_4": "A) The steady-state flow equation is linear in head",
+    "task08_checkpoint_5": "B) S2 (Engere Schutzzone)",
+    "task08_checkpoint_6": "C) Capture zones vary seasonally and with parameter uncertainty",
+    "task08_checkpoint_7": "See output",
+    "task08_checkpoint_8": "A) The capture zone expands",
 }
 
 
@@ -495,6 +560,15 @@ solution_unit = {
     "task07_checkpoint_5": "multiple choice",
     "task07_checkpoint_6": "multiple choice",
     "task07_checkpoint_7": "multiple choice",
+    # Notebook 8 checkpoints
+    "task08_checkpoint_1": "multiple choice",
+    "task08_checkpoint_2": "m",
+    "task08_checkpoint_3": "multiple choice",
+    "task08_checkpoint_4": "multiple choice",
+    "task08_checkpoint_5": "multiple choice",
+    "task08_checkpoint_6": "multiple choice",
+    "task08_checkpoint_7": "m",
+    "task08_checkpoint_8": "multiple choice",
 }
 
 
@@ -614,6 +688,43 @@ multiple_choice_options = {
         ("B) Install an observation well in the western domain", "B) Install an observation well in the western domain — provide data where identifiability is lowest"),
         ("C) Add more pilot points everywhere", "C) Add more pilot points — increase parameter flexibility"),
         ("D) Re-run calibration with a different algorithm", "D) Re-run calibration with a different algorithm"),
+    ],
+    # Notebook 8 - Model Application checkpoints
+    "task08_checkpoint_1": [
+        ("A) No — a steady-state model cannot predict transient drawdown evolution", "A) No — steady-state gives only the final equilibrium drawdown, not how quickly it develops"),
+        ("B) Yes — if K is well-calibrated", "B) Yes — accurate K values are sufficient for predicting response times"),
+        ("C) Only if the well is near an observation point", "C) Only near validated locations"),
+        ("D) Yes — MODFLOW 6 handles this automatically", "D) Yes — the solver handles transient effects internally"),
+    ],
+    "task08_checkpoint_3": [
+        ("A) Reduced lateral inflow from the valley margins", "A) Reduced lateral inflow from the valley margins"),
+        ("B) Increased river leakage into the aquifer", "B) Increased river leakage into the aquifer — drawdown lowers heads below river stage, inducing more infiltration"),
+        ("C) Decreased recharge from the surface", "C) Recharge decreases in response to pumping"),
+        ("D) The water comes from storage depletion", "D) Storage depletion — the aquifer releases water from storage"),
+    ],
+    "task08_checkpoint_4": [
+        ("A) The steady-state flow equation is linear in head", "A) The steady-state flow equation is linear in head — doubling the pumping rate doubles the drawdown everywhere"),
+        ("B) The aquifer is homogeneous", "B) The aquifer is homogeneous — heterogeneous aquifers would not behave linearly"),
+        ("C) The river boundary absorbs the extra pumping", "C) The river boundary absorbs extra stress, preventing nonlinearity"),
+        ("D) Linearity only holds near the well", "D) Linearity is a coincidence that only holds near the well cell"),
+    ],
+    "task08_checkpoint_5": [
+        ("A) S1 (Fassungsbereich)", "A) S1 — the immediate well area (typically 10 m radius)"),
+        ("B) S2 (Engere Schutzzone)", "B) S2 — inside the 10-day travel time isochrone, where hazardous substance restrictions apply"),
+        ("C) S3 (Weitere Schutzzone)", "C) S3 — within the full capture zone but outside the 10-day isochrone"),
+        ("D) Outside all protection zones", "D) Outside all protection zones — no restrictions apply"),
+    ],
+    "task08_checkpoint_6": [
+        ("A) The model hasn't been validated in this area", "A) The model hasn't been validated near the well — predictions are unreliable"),
+        ("B) Steady-state overestimates drawdown", "B) Steady-state always overestimates drawdown, so zones are too conservative already"),
+        ("C) Capture zones vary seasonally and with parameter uncertainty", "C) Capture zones vary seasonally and with parameter uncertainty — a single run may underestimate zone extent during dry periods"),
+        ("D) Protection zones are defined by law, not by models", "D) Swiss law defines fixed distances, so models are unnecessary"),
+    ],
+    "task08_checkpoint_8": [
+        ("A) The capture zone expands", "A) It expands — lower hydraulic gradients mean the well draws water from a larger area"),
+        ("B) The capture zone shrinks", "B) It shrinks — lower water table means less water is available"),
+        ("C) The capture zone stays the same", "C) It stays the same — the pumping rate hasn't changed"),
+        ("D) The capture zone shifts laterally", "D) It shifts to one side due to asymmetric recharge reduction"),
     ],
 }
 
@@ -1364,6 +1475,166 @@ Installing a well there would:
 - A) More regularisation constrains parameters but doesn't add information
 - C) More pilot points would make the problem even more underdetermined
 - D) A different algorithm cannot extract information that isn't in the data
+<br>
+""",
+
+# ============================================================================
+# NOTEBOOK 8 - MODEL APPLICATION SOLUTIONS
+# ============================================================================
+
+"task08_checkpoint_1": r"""
+## Solution — Scenario Design
+
+**Correct answer: A) No — a steady-state model cannot predict transient drawdown evolution**
+
+A steady-state model computes the **equilibrium** (final) head distribution — the state after all transients have died out. It cannot tell you:
+- How quickly drawdown develops after pumping starts
+- How long recovery takes after pumping stops
+- Whether maximum drawdown is reached in days, weeks, or months
+
+To predict **timing**, you need a **transient model** with storage parameters ($S_s$ or $S_y$).
+
+**What our model *can* predict:** The final (long-term) drawdown under sustained pumping — useful for assessing steady-state impacts but not short-term dynamics.
+
+**Key insight:** Always match your model's temporal capabilities to the question being asked. "How much drawdown?" is a steady-state question; "How fast does drawdown develop?" is a transient question.
+<br>
+""",
+
+"task08_checkpoint_2": r"""
+## Solution — Maximum Drawdown
+
+The maximum drawdown occurs at the well cell itself. The exact value depends on:
+- The **local K** at the well location (from the calibrated pilot-point field)
+- The **aquifer thickness** at that location
+- The **proximity to river boundaries** (which limit drawdown by providing induced recharge)
+- The **cell size** (DISV cell area controls the effective well radius)
+
+For a pumping rate of -500 m³/d in an alluvial gravel aquifer with T ≈ 200–400 m²/d, typical drawdown at the well cell is on the order of **0.5–2 m**.
+
+**Quick analytical check** (Thiem equation for confined steady-state radial flow):
+
+$$s = \frac{Q}{2\pi T} \ln\left(\frac{R}{r_w}\right)$$
+
+With Q = 500 m³/d, T = 300 m²/d, R = 1000 m, $r_w$ = 50 m (effective cell radius):
+
+$$s \approx \frac{500}{2\pi \times 300} \ln(20) \approx 0.27 \times 3.0 \approx 0.8 \text{ m}$$
+<br>
+""",
+
+"task08_checkpoint_3": r"""
+## Solution — Water Source
+
+**Correct answer: B) Increased river leakage into the aquifer**
+
+In the Limmat Valley, the river is the dominant hydraulic boundary. When a pumping well lowers the water table:
+1. The head difference between river stage and aquifer head **increases**
+2. This drives more water from the river into the aquifer (induced recharge)
+3. The river effectively supplies the pumped water
+
+You can verify this by comparing the RIV inflow between baseline and pumping scenarios — the increase in RIV inflow should approximately equal the pumping rate.
+
+**Why not the other options?**
+- A) Lateral inflow is from CHD boundaries — their flux changes somewhat but is not the primary source
+- C) Recharge is specified and doesn't change with pumping
+- D) There is no storage in a steady-state model ($\partial h / \partial t = 0$)
+
+**Key insight:** In steady state, all pumped water must come from increased inflow or decreased outflow at boundaries. The boundary with the most responsive head-dependent flux (RIV) dominates.
+<br>
+""",
+
+"task08_checkpoint_4": r"""
+## Solution — Linearity
+
+**Correct answer: A) The steady-state flow equation is linear in head**
+
+The steady-state groundwater flow equation for a confined aquifer is:
+
+$$\nabla \cdot (T \nabla h) + W = 0$$
+
+This is a **linear** equation in $h$. If you double the source term $W$ (pumping rate), the head change (drawdown) exactly doubles everywhere. This is the **superposition principle**.
+
+**Important caveats:**
+- Linearity holds exactly for **confined** aquifers where $T$ is constant
+- For **unconfined** aquifers, $T = K \times h$ depends on head, making the equation nonlinear
+- In our single-layer model, if drawdown is small relative to saturated thickness, the system behaves approximately linearly
+- Near boundaries where cells might go dry, linearity breaks down
+
+**Practical use:** Linearity means you can compute drawdown for any pumping rate by scaling — no need to rerun the model for each rate.
+<br>
+""",
+
+"task08_checkpoint_5": r"""
+## Solution — Protection Zone Classification
+
+**Correct answer: B) S2 (Engere Schutzzone)**
+
+The Swiss protection zone system (GSchV Art. 29):
+
+| Zone | Definition | Farm at 150 m upstream? |
+|------|-----------|------------------------|
+| **S1** | ~10 m around well | No (too far) |
+| **S2** | 10-day travel time isochrone | **Yes** — inside the 10-day isochrone |
+| **S3** | Full capture zone | Also yes, but S2 takes precedence |
+
+Since the farm (150 m) is inside the 10-day isochrone (200 m), it falls within **S2**. This means:
+- No storage of liquid hazardous substances (including manure lagoons)
+- Restrictions on agricultural practices
+- The farm would need to modify or relocate its manure storage
+
+**Key insight:** The 10-day isochrone is the critical boundary for practical land-use decisions. Computing it accurately — including uncertainty — has real regulatory and economic consequences.
+<br>
+""",
+
+"task08_checkpoint_6": r"""
+## Solution — Non-Stationarity
+
+**Correct answer: C) Capture zones vary seasonally and with parameter uncertainty**
+
+A single steady-state model gives **one** snapshot of the capture zone under average conditions. In reality:
+
+1. **Seasonal variation:** During summer low-flow periods, river recharge decreases and regional gradients change, potentially enlarging the capture zone. During winter high-flow, the capture zone may shrink.
+
+2. **Parameter uncertainty:** From NB7 (FOSM), we know that K is uncertain — especially in the western domain. Different plausible K fields produce different capture zones. An ensemble of K realisations (e.g., from PEST++ IES) would give a **probabilistic** capture zone boundary.
+
+3. **Regulatory implication:** Swiss guidelines recommend basing protection zones on the **most conservative** (largest) capture zone, typically the dry-season scenario or the upper bound of a Monte Carlo ensemble.
+
+**Why not the other options?**
+- A) Validation status affects confidence but doesn't explain why one run is insufficient
+- B) Steady-state doesn't systematically overestimate — it may underestimate during droughts
+- D) Swiss law uses model-based delineation for S2 and S3; only S1 is defined by fixed distance
+<br>
+""",
+
+"task08_checkpoint_7": r"""
+## Solution — Drought Impact
+
+Reducing recharge by 30% simulates a sustained drought. The mean head decline depends on:
+- The fraction of total inflow from recharge vs river boundaries
+- How much the river compensates (increased losing or reduced gaining)
+- The spatial distribution of recharge and active cells
+
+The exact value comes from computing the difference between baseline and drought heads across all active cells.
+
+**Physical interpretation:** The head decline is modest because river boundaries are head-dependent — as aquifer heads drop, the river provides more water, partially buffering the recharge loss. This illustrates the self-regulating nature of connected surface water–groundwater systems.
+<br>
+""",
+
+"task08_checkpoint_8": r"""
+## Solution — Capture Zone Under Drought
+
+**Correct answer: A) The capture zone expands**
+
+Under reduced recharge:
+1. The regional hydraulic gradient **decreases** (flatter water table)
+2. Ambient groundwater velocity **decreases** ($v = Ki/n_e$)
+3. The well must therefore draw water from a **larger area** to capture the same volume
+4. The capture zone boundary moves **outward** (wider and longer)
+
+This is exactly the non-stationarity effect discussed in Section 3: the drought-scenario capture zone is larger than the average-conditions zone.
+
+**Regulatory implication:** Protection zones based on dry-season conditions are more conservative (larger) than those based on average conditions. Swiss practice typically requires the more conservative delineation.
+
+**Analytical check:** The maximum half-width of the capture zone is $y_{max} = Q / (2Ti)$. If the gradient $i$ decreases under drought, $y_{max}$ increases.
 <br>
 """
 
