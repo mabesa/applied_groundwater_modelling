@@ -1273,7 +1273,8 @@ def run_calibration_trial(
     k_global_multiplier: float = 1.0,
     rch_multiplier: float = 1.0,
     riv_multiplier: float = 1.0,
-    run_model: bool = True
+    run_model: bool = True,
+    return_budget: bool = False,
 ) -> np.ndarray:
     """
     Run the model with modified parameters and return heads.
@@ -1300,11 +1301,15 @@ def run_calibration_trial(
         Multiplier for river conductance
     run_model : bool, default True
         If True, runs the model after modifying parameters
+    return_budget : bool, default False
+        If True, also compute the water balance summary and return a
+        ``(heads, budget_df)`` tuple instead of just heads.
 
     Returns
     -------
-    np.ndarray
-        Simulated head array, or None if model failed
+    np.ndarray or tuple
+        Simulated head array, or None if model failed.
+        When *return_budget* is True, returns ``(heads, budget_df)``.
     """
     import copy
 
@@ -1354,6 +1359,7 @@ def run_calibration_trial(
 
     # Write and run model
     heads = None
+    budget_df = None
     if run_model:
         sim.write_simulation()
         success, _ = sim.run_simulation(silent=True)
@@ -1364,6 +1370,10 @@ def run_calibration_trial(
             head_file = gwf.output.head()
             heads = head_file.get_data()
 
+            if return_budget and heads is not None:
+                from model_io_utils import format_budget_summary
+                budget_df = format_budget_summary(gwf, sim)
+
     # --- Restore parameters to pre-trial state ---
     if saved_k is not None:
         gwf.get_package('NPF').k.set_data(saved_k)
@@ -1372,9 +1382,9 @@ def run_calibration_trial(
     if saved_riv is not None:
         gwf.get_package('RIV').stress_period_data.set_data(saved_riv)
 
+    if return_budget:
+        return (heads, budget_df)
     return heads
-
-    return None
 
 
 def grid_search_calibration(

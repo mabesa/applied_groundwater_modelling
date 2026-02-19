@@ -1569,6 +1569,103 @@ def load_prt_results(
     }
 
 
+def delineate_protection_zones(
+    captured_df: pd.DataFrame,
+    terminal: pd.DataFrame,
+    well_xy: tuple,
+    s2_days: float = 10.0,
+    s1_radius: float = 10.0,
+    s3_ratio: float = 0.2,
+    well_zone: int = 1,
+) -> Dict[str, Any]:
+    """
+    Delineate Swiss groundwater protection zones from PRT results.
+
+    Computes S1 (fixed radius), S2 (travel-time isochrone), and S3
+    (full capture zone envelope) from forward-tracked particle pathlines.
+
+    Parameters
+    ----------
+    captured_df : pandas.DataFrame
+        Pathline records for particles captured by the well.  Must contain
+        ``irpt``, ``x_world``, ``y_world`` columns.
+    terminal : pandas.DataFrame
+        Terminal (last) record per particle, indexed by ``irpt``.  Must
+        contain ``izone`` and ``t`` columns.
+    well_xy : tuple of (float, float)
+        Well location in world coordinates (x, y).
+    s2_days : float, optional
+        Travel-time threshold for S2 zone (days).  Default 10.
+    s1_radius : float, optional
+        Radius for S1 zone (m).  Default 10.
+    s3_ratio : float, optional
+        Concavity ratio for concave hull of S3 zone.  Default 0.2.
+    well_zone : int, optional
+        izone value assigned to well cells in MIP.  Default 1.
+
+    Returns
+    -------
+    dict
+        ``s1_geometry``  – shapely Point buffer (circle)
+        ``s2_envelope``  – convex hull of S2 pathline points (or None)
+        ``s3_envelope``  – concave hull of all captured pathline points
+        ``s2_ids``       – set of particle IDs within S2
+        ``s2_max_extent``– maximum distance from well for S2 particles (m)
+        ``s2_area``      – area of S2 envelope (m²)
+        ``s3_area``      – area of S3 envelope (m²)
+    """
+    from shapely.geometry import Point as _Point
+    from shapely.geometry import MultiPoint as _MultiPoint
+    from shapely import concave_hull as _concave_hull
+
+    well_x, well_y = well_xy
+
+    # S1: fixed-radius buffer
+    s1_geometry = _Point(well_x, well_y).buffer(s1_radius)
+
+    # S2: particles reaching well within s2_days
+    travel_to_well = terminal.loc[terminal['izone'] == well_zone, 't']
+    s2_ids = set(travel_to_well[travel_to_well <= s2_days].index)
+
+    s2_envelope = None
+    s2_max_extent = 0.0
+    s2_area = 0.0
+
+    if len(s2_ids) > 0:
+        s2_pathlines = captured_df[captured_df['irpt'].isin(s2_ids)]
+        s2_pts_x = s2_pathlines['x_world'].values
+        s2_pts_y = s2_pathlines['y_world'].values
+        s2_dist = np.sqrt((s2_pts_x - well_x)**2 + (s2_pts_y - well_y)**2)
+        s2_max_extent = float(s2_dist.max())
+
+        s2_cloud = _MultiPoint(list(zip(s2_pts_x, s2_pts_y)))
+        s2_envelope = s2_cloud.convex_hull
+        s2_area = float(s2_envelope.area) if s2_envelope and not s2_envelope.is_empty else 0.0
+
+    # S3: concave envelope of full capture zone
+    s3_pts_x = captured_df['x_world'].values
+    s3_pts_y = captured_df['y_world'].values
+    s3_cloud = _MultiPoint(list(zip(s3_pts_x, s3_pts_y)))
+    s3_envelope = _concave_hull(s3_cloud, ratio=s3_ratio)
+    s3_area = float(s3_envelope.area) if s3_envelope and not s3_envelope.is_empty else 0.0
+
+    print(f"Protection zone delineation:")
+    print(f"  S1: {s1_radius:.0f} m radius")
+    print(f"  S2: {len(s2_ids)} particles within {s2_days:.0f} days"
+          f" (max extent {s2_max_extent:.0f} m, area {s2_area:.0f} m²)")
+    print(f"  S3: full capture zone (area {s3_area:.0f} m²)")
+
+    return {
+        's1_geometry': s1_geometry,
+        's2_envelope': s2_envelope,
+        's3_envelope': s3_envelope,
+        's2_ids': s2_ids,
+        's2_max_extent': s2_max_extent,
+        's2_area': s2_area,
+        's3_area': s3_area,
+    }
+
+
 def build_prt_model(
     gwf,
     porosity: float = 0.15,
@@ -1744,6 +1841,7 @@ def build_refined_gwf_model(
     refined_cell_size: float = 10.0,
     well_data: Optional[List[tuple]] = None,
     sim_name: str = "refined_model",
+    baseline_head_array: Optional[np.ndarray] = None,
 ) -> Dict[str, Any]:
     """
     Build and run a locally-refined GWF model from an existing coarse model.
@@ -1780,17 +1878,23 @@ def build_refined_gwf_model(
         Well locations and rates to add via WEL package.
     sim_name : str, optional
         MF6 simulation / model name.
+    baseline_head_array : numpy.ndarray, optional
+        Head array from the *coarse* baseline model (before scenario
+        changes).  When provided, it is interpolated onto the refined grid
+        via nearest-neighbour and returned as ``baseline_heads``.
 
     Returns
     -------
     dict
-        ``sim``        – MFSimulation
-        ``gwf``        – ModflowGwf (refined)
-        ``modelgrid``  – refined VertexGrid
-        ``gridprops``  – DISV grid properties dict
-        ``ncpl``       – cells per layer
-        ``heads``      – 1-D head array from the run
-        ``well_cells`` – list of flat cell indices (one per well_data entry)
+        ``sim``            – MFSimulation
+        ``gwf``            – ModflowGwf (refined)
+        ``modelgrid``      – refined VertexGrid
+        ``gridprops``      – DISV grid properties dict
+        ``ncpl``           – cells per layer
+        ``heads``          – 1-D head array from the run
+        ``well_cells``     – list of flat cell indices (one per well_data entry)
+        ``baseline_heads`` – 1-D head array on refined grid (only when
+                             *baseline_head_array* is given)
     """
     import shutil
     from scipy.interpolate import NearestNDInterpolator
@@ -1863,6 +1967,15 @@ def build_refined_gwf_model(
     head_flat = head_array.flatten() if head_array.ndim > 1 else head_array
     strt_ref = NearestNDInterpolator(src_pts, head_flat[active])(xc_ref, yc_ref)
     strt_ref = np.maximum(strt_ref, botm_ref + 0.01)
+
+    # Optional: interpolate baseline heads onto refined grid
+    bl_heads_ref = None
+    if baseline_head_array is not None:
+        bl_flat = (baseline_head_array.flatten()
+                   if baseline_head_array.ndim > 1 else baseline_head_array)
+        bl_heads_ref = NearestNDInterpolator(
+            src_pts, bl_flat[active],
+        )(xc_ref, yc_ref)
 
     rch_data = gwf.get_package('RCHA').recharge.get_data()
     rch_vals = (list(rch_data.values())[0] if isinstance(rch_data, dict)
@@ -2010,7 +2123,7 @@ def build_refined_gwf_model(
     print(f"Refined model completed. Head range: "
           f"{heads.min():.2f} – {heads.max():.2f} m")
 
-    return {
+    result = {
         'sim': ref_sim,
         'gwf': ref_gwf,
         'modelgrid': ref_gwf.modelgrid,
@@ -2019,3 +2132,101 @@ def build_refined_gwf_model(
         'heads': heads,
         'well_cells': well_cells_out,
     }
+    if bl_heads_ref is not None:
+        result['baseline_heads'] = bl_heads_ref
+    return result
+
+
+def run_scenario_prt(
+    ref_gwf,
+    ref_sim,
+    porosity: float,
+    well_cells: List[int],
+    rch_multiplier: float = 1.0,
+    tracking_time: float = 365.0,
+    workspace: Optional[Union[str, Path]] = None,
+    sim_name: str = "scenario_prt",
+) -> Optional[Dict[str, Any]]:
+    """
+    Run PRT particle tracking under a modified-recharge scenario.
+
+    Applies a recharge multiplier to the refined GWF model, reruns the
+    flow simulation, builds and runs PRT, loads results, and restores
+    the original recharge.  This is the workflow used in NB8's drought
+    stress-test.
+
+    Parameters
+    ----------
+    ref_gwf : flopy.mf6.ModflowGwf
+        Refined GWF model (already run once).
+    ref_sim : flopy.mf6.MFSimulation
+        Simulation containing *ref_gwf*.
+    porosity : float
+        Effective porosity for particle tracking.
+    well_cells : list of int
+        Flat cell indices for wells (izone = 1).
+    rch_multiplier : float, optional
+        Multiplier applied to recharge (e.g. 0.7 = −30 %).  Default 1.0.
+    tracking_time : float, optional
+        Maximum forward tracking time (days).  Default 365.
+    workspace : str or Path, optional
+        Directory for PRT files.  Defaults to ``<gwf_ws>/prt_scenario``.
+    sim_name : str, optional
+        PRT simulation name.  Default ``"scenario_prt"``.
+
+    Returns
+    -------
+    dict or None
+        Same structure as ``load_prt_results()`` output, or None on
+        failure.  The original recharge is always restored.
+    """
+    import copy as _copy
+
+    # --- Save and modify recharge ---
+    rch_pkg = ref_gwf.get_package('RCHA')
+    rch_data = rch_pkg.recharge.get_data()
+    original_rch = _copy.deepcopy(rch_data)
+
+    if rch_multiplier != 1.0:
+        if isinstance(rch_data, dict):
+            new_rch = {k: v * rch_multiplier for k, v in rch_data.items()}
+        else:
+            new_rch = rch_data * rch_multiplier
+        rch_pkg.recharge.set_data(new_rch)
+
+    results = None
+    try:
+        # --- Run GWF ---
+        ref_sim.write_simulation()
+        success_gwf, _ = ref_sim.run_simulation(silent=True)
+        if not success_gwf:
+            print("Scenario GWF run failed.")
+            return None
+
+        # --- Build and run PRT ---
+        if workspace is None:
+            workspace = os.path.join(ref_gwf.model_ws, 'prt_scenario')
+
+        prt_result = build_prt_model(
+            ref_gwf,
+            porosity=porosity,
+            well_cells=well_cells,
+            tracking_time=tracking_time,
+            workspace=workspace,
+            sim_name=sim_name,
+        )
+        success_prt, _ = prt_result['prt_sim'].run_simulation()
+        if not success_prt:
+            print("Scenario PRT run failed.")
+            return None
+
+        # --- Load results ---
+        results = load_prt_results(
+            prt_result['trackcsv_path'],
+            ref_gwf.modelgrid,
+        )
+    finally:
+        # --- Always restore recharge ---
+        rch_pkg.recharge.set_data(original_rch)
+
+    return results
