@@ -270,6 +270,104 @@ After running 4 LOO folds and computing the prediction error at each held-out re
 ## Checkpoint 7 — Interpreting LOO Results
 Consider a model where the LOO-RMSE is much larger than the calibration RMSE.
 - **What does this suggest about the model?**
+""",
+
+# ============================================================================
+# NOTEBOOK 7 - SENSITIVITY & UNCERTAINTY CHECKPOINTS
+# ============================================================================
+
+"task07_checkpoint_1": r"""
+## Checkpoint 1 — Parameter Sensitivity
+Looking at the CSS bar chart and map:
+- **Which pilot point has the highest Composite Scaled Sensitivity?**
+""",
+
+"task07_checkpoint_2": r"""
+## Checkpoint 2 — Identifiable Parameters
+From the identifiability analysis:
+- **How many parameters have identifiability > 0.5?**
+""",
+
+"task07_checkpoint_3": r"""
+## Checkpoint 3 — Uncertainty Reduction
+From the prior vs posterior uncertainty comparison:
+- **Which parameter has the largest uncertainty reduction from calibration?**
+""",
+
+"task07_checkpoint_4": r"""
+## Checkpoint 4 — Prediction Uncertainty
+From the FOSM prediction uncertainty at the 4 real wells:
+- **What is the posterior standard deviation (m) of the head prediction at well 516?**
+""",
+
+"task07_checkpoint_5": r"""
+## Checkpoint 5 — FOSM vs LOO-RMSE
+Compare the FOSM prediction uncertainty (mean posterior σ across real wells) with the LOO-RMSE from Notebook 6.
+- **How do they compare?**
+""",
+
+"task07_checkpoint_6": r"""
+## Checkpoint 6 — Data Worth
+From the removed-observation importance analysis, the synthetic observations have different data worth.
+- **Why is syn_005 the most valuable synthetic observation?**
+""",
+
+"task07_checkpoint_7": r"""
+## Checkpoint 7 — Monitoring Recommendation
+The western domain has low identifiability, low uncertainty reduction, and no observation wells.
+- **What single action would most improve predictions in the data-sparse western domain?**
+""",
+
+# ============================================================================
+# NOTEBOOK 8 - MODEL APPLICATION CHECKPOINTS
+# ============================================================================
+
+"task08_checkpoint_1": r"""
+## Checkpoint 1 — Scenario Design
+Our Limmat Valley model is steady-state, single-layer, with spatially varying K calibrated via PEST++.
+- **Can this model predict how quickly a new well reaches its maximum drawdown?**
+""",
+
+"task08_checkpoint_2": r"""
+## Checkpoint 2 — Maximum Drawdown
+After running the pumping well scenario (-500 m³/d):
+- **What is the maximum drawdown (m) at the well cell?**
+""",
+
+"task08_checkpoint_3": r"""
+## Checkpoint 3 — Water Source
+Comparing the baseline and pumping-well water balances:
+- **Where does the pumped water primarily come from?**
+""",
+
+"task08_checkpoint_4": r"""
+## Checkpoint 4 — Linearity
+You doubled the pumping rate from -500 to -1000 m³/d. The maximum drawdown also approximately doubled.
+- **Why does drawdown scale linearly with pumping rate in this model?**
+""",
+
+"task08_checkpoint_5": r"""
+## Checkpoint 5 — Protection Zone Classification
+The 10-day isochrone extends upstream of the well. A dairy farm with manure storage sits inside the 10-day isochrone.
+- **Under Swiss regulations, which protection zone does the farm fall in?**
+""",
+
+"task08_checkpoint_6": r"""
+## Checkpoint 6 — Non-Stationarity
+We delineated protection zones from a single steady-state simulation.
+- **Why should protection zones not be based on a single steady-state model run?**
+""",
+
+"task08_checkpoint_7": r"""
+## Checkpoint 7 — Drought Impact
+After reducing recharge by 30% (climate drought scenario):
+- **What is the mean head decline (m) across the active domain?**
+""",
+
+"task08_checkpoint_8": r"""
+## Checkpoint 8 — Capture Zone Under Drought
+You re-ran MODPATH under the reduced-recharge scenario.
+- **How does the capture zone of the pumping well change under drought conditions?**
 """
 
 }
@@ -319,6 +417,16 @@ solutions = {
     "task05_pt_checkpoint_4": (23.0, 30.0),    # Mean K from all 4 wells ~26 m/d
     # PT Checkpoint 5 is multiple choice - handled separately
     # Manual trial and non-uniqueness checkpoints are multiple choice - handled separately
+    # Notebook 7 checkpoints
+    # Checkpoint 1 is multiple choice - handled separately
+    "task07_checkpoint_2": (5, 12),         # Number of params with identifiability > 0.5 (~8)
+    # Checkpoint 3 is multiple choice - handled separately
+    "task07_checkpoint_4": (1.0, 2.5),      # Posterior std dev at well 516 (~1.60 m)
+    # Checkpoints 5, 6, 7 are multiple choice - handled separately
+    # Notebook 8 checkpoints
+    "task08_checkpoint_2": (1.0, 4.0),      # Max drawdown at well cell (~2.3 m)
+    "task08_checkpoint_7": (0.05, 0.5),    # Mean head decline under 30% recharge reduction (~0.18 m)
+    # Checkpoints 1, 3, 4, 5, 6, 8 are multiple choice - handled separately
 }
 
 
@@ -371,6 +479,23 @@ solutions_exact = {
     # Manual trial and non-uniqueness checkpoints
     "task05_checkpoint_manual": "C) K = 30 m/d (multiplier 1.5)",
     "task05_checkpoint_nonunique": "B) River baseflow measurements",
+    # Notebook 7 checkpoints
+    "task07_checkpoint_1": "A) The pilot point nearest the observation wells",
+    "task07_checkpoint_2": "~8",
+    "task07_checkpoint_3": "B) The pilot point nearest the observation well cluster",
+    "task07_checkpoint_4": "~1.60",
+    "task07_checkpoint_5": "B) FOSM σ is smaller — it captures only parameter uncertainty",
+    "task07_checkpoint_6": "A) It fills a spatial gap",
+    "task07_checkpoint_7": "B) Install an observation well in the western domain",
+    # Notebook 8 checkpoints
+    "task08_checkpoint_1": "A) No — a steady-state model cannot predict transient drawdown evolution",
+    "task08_checkpoint_2": "See output",
+    "task08_checkpoint_3": "B) Increased river leakage into the aquifer",
+    "task08_checkpoint_4": "A) The steady-state flow equation is linear in head",
+    "task08_checkpoint_5": "B) S2 (Engere Schutzzone)",
+    "task08_checkpoint_6": "C) Capture zones vary seasonally and with parameter uncertainty",
+    "task08_checkpoint_7": "See output",
+    "task08_checkpoint_8": "A) The capture zone expands",
 }
 
 
@@ -427,6 +552,23 @@ solution_unit = {
     # Manual trial and non-uniqueness checkpoints
     "task05_checkpoint_manual": "multiple choice",
     "task05_checkpoint_nonunique": "multiple choice",
+    # Notebook 7 checkpoints
+    "task07_checkpoint_1": "multiple choice",
+    "task07_checkpoint_2": "parameters",
+    "task07_checkpoint_3": "multiple choice",
+    "task07_checkpoint_4": "m",
+    "task07_checkpoint_5": "multiple choice",
+    "task07_checkpoint_6": "multiple choice",
+    "task07_checkpoint_7": "multiple choice",
+    # Notebook 8 checkpoints
+    "task08_checkpoint_1": "multiple choice",
+    "task08_checkpoint_2": "m",
+    "task08_checkpoint_3": "multiple choice",
+    "task08_checkpoint_4": "multiple choice",
+    "task08_checkpoint_5": "multiple choice",
+    "task08_checkpoint_6": "multiple choice",
+    "task08_checkpoint_7": "m",
+    "task08_checkpoint_8": "multiple choice",
 }
 
 
@@ -515,6 +657,74 @@ multiple_choice_options = {
         ("B) The observations have errors", "B) The observation data contains large measurement errors"),
         ("C) The model is underfitting", "C) The model is too simple and underfitting the data"),
         ("D) More pilot points are needed", "D) More pilot points would fix the problem"),
+    ],
+    # Notebook 7 - Sensitivity & Uncertainty checkpoints
+    "task07_checkpoint_1": [
+        ("A) The pilot point nearest the observation wells", "A) The pilot point nearest the observation wells — observations constrain nearby parameters most"),
+        ("B) The pilot point farthest from boundaries", "B) The pilot point farthest from model boundaries"),
+        ("C) The Sihl leakance multiplier", "C) The Sihl leakance multiplier — river parameters dominate"),
+        ("D) All pilot points have equal CSS", "D) All pilot points have equal CSS — they're evenly distributed"),
+    ],
+    "task07_checkpoint_3": [
+        ("A) The pilot point farthest from any well", "A) The pilot point farthest from any observation well"),
+        ("B) The pilot point nearest the observation well cluster", "B) The pilot point nearest the observation well cluster — calibration reduces uncertainty where it has data"),
+        ("C) The Sihl leakance multiplier", "C) The Sihl leakance multiplier — river parameters are most constrained"),
+        ("D) All parameters reduce equally", "D) All parameters show similar uncertainty reduction"),
+    ],
+    "task07_checkpoint_5": [
+        ("A) They are approximately equal", "A) They are approximately equal — FOSM captures the same error sources as LOO"),
+        ("B) FOSM σ is smaller — it captures only parameter uncertainty", "B) FOSM σ is smaller — it captures only parameter uncertainty, while LOO-RMSE also includes structural error"),
+        ("C) FOSM σ is larger — it overestimates uncertainty", "C) FOSM σ is larger — the linear assumption overestimates uncertainty"),
+        ("D) They cannot be compared", "D) They cannot be compared — they measure different things entirely"),
+    ],
+    "task07_checkpoint_6": [
+        ("A) It fills a spatial gap", "A) It fills a spatial gap — it provides unique information that no other observation covers"),
+        ("B) It has the smallest residual", "B) It has the smallest calibration residual — better-fit observations are more informative"),
+        ("C) It is closest to the model boundary", "C) It is closest to the model boundary — boundary conditions need the most constraint"),
+        ("D) All synthetic obs are equally valuable", "D) All synthetic observations contribute equally to prediction uncertainty"),
+    ],
+    "task07_checkpoint_7": [
+        ("A) Increase regularisation strength", "A) Increase regularisation strength — constrain parameters more tightly"),
+        ("B) Install an observation well in the western domain", "B) Install an observation well in the western domain — provide data where identifiability is lowest"),
+        ("C) Add more pilot points everywhere", "C) Add more pilot points — increase parameter flexibility"),
+        ("D) Re-run calibration with a different algorithm", "D) Re-run calibration with a different algorithm"),
+    ],
+    # Notebook 8 - Model Application checkpoints
+    "task08_checkpoint_1": [
+        ("A) No — a steady-state model cannot predict transient drawdown evolution", "A) No — steady-state gives only the final equilibrium drawdown, not how quickly it develops"),
+        ("B) Yes — if K is well-calibrated", "B) Yes — accurate K values are sufficient for predicting response times"),
+        ("C) Only if the well is near an observation point", "C) Only near validated locations"),
+        ("D) Yes — MODFLOW 6 handles this automatically", "D) Yes — the solver handles transient effects internally"),
+    ],
+    "task08_checkpoint_3": [
+        ("A) Reduced lateral inflow from the valley margins", "A) Reduced lateral inflow from the valley margins"),
+        ("B) Increased river leakage into the aquifer", "B) Increased river leakage into the aquifer — drawdown lowers heads below river stage, inducing more infiltration"),
+        ("C) Decreased recharge from the surface", "C) Recharge decreases in response to pumping"),
+        ("D) The water comes from storage depletion", "D) Storage depletion — the aquifer releases water from storage"),
+    ],
+    "task08_checkpoint_4": [
+        ("A) The steady-state flow equation is linear in head", "A) The steady-state flow equation is linear in head — doubling the pumping rate doubles the drawdown everywhere"),
+        ("B) The aquifer is homogeneous", "B) The aquifer is homogeneous — heterogeneous aquifers would not behave linearly"),
+        ("C) The river boundary absorbs the extra pumping", "C) The river boundary absorbs extra stress, preventing nonlinearity"),
+        ("D) Linearity only holds near the well", "D) Linearity is a coincidence that only holds near the well cell"),
+    ],
+    "task08_checkpoint_5": [
+        ("A) S1 (Fassungsbereich)", "A) S1 — the immediate well area (typically 10 m radius)"),
+        ("B) S2 (Engere Schutzzone)", "B) S2 — inside the 10-day travel time isochrone, where hazardous substance restrictions apply"),
+        ("C) S3 (Weitere Schutzzone)", "C) S3 — within the full capture zone but outside the 10-day isochrone"),
+        ("D) Outside all protection zones", "D) Outside all protection zones — no restrictions apply"),
+    ],
+    "task08_checkpoint_6": [
+        ("A) The model hasn't been validated in this area", "A) The model hasn't been validated near the well — predictions are unreliable"),
+        ("B) Steady-state overestimates drawdown", "B) Steady-state always overestimates drawdown, so zones are too conservative already"),
+        ("C) Capture zones vary seasonally and with parameter uncertainty", "C) Capture zones vary seasonally and with parameter uncertainty — a single run may underestimate zone extent during dry periods"),
+        ("D) Protection zones are defined by law, not by models", "D) Swiss law defines fixed distances, so models are unnecessary"),
+    ],
+    "task08_checkpoint_8": [
+        ("A) The capture zone expands", "A) It expands — lower hydraulic gradients mean the well draws water from a larger area"),
+        ("B) The capture zone shrinks", "B) It shrinks — lower water table means less water is available"),
+        ("C) The capture zone stays the same", "C) It stays the same — the pumping rate hasn't changed"),
+        ("D) The capture zone shifts laterally", "D) It shifts to one side due to asymmetric recharge reduction"),
     ],
 }
 
@@ -1140,6 +1350,291 @@ When LOO-RMSE >> calibration RMSE, it means the model fits the calibration data 
 - D) More pilot points could actually make overfitting worse by increasing model flexibility
 
 **Remedies for overfitting:** Stronger regularisation, fewer pilot points, more observations, independent data constraints.
+<br>
+""",
+
+# ============================================================================
+# NOTEBOOK 7 - SENSITIVITY & UNCERTAINTY SOLUTIONS
+# ============================================================================
+
+"task07_checkpoint_1": r"""
+## Solution — Parameter Sensitivity
+
+**Correct answer: A) The pilot point nearest the observation wells**
+
+Composite Scaled Sensitivity (CSS) measures how much each parameter affects the observations, weighted by observation weights and parameter scale. Pilot points near the 4 real AWEL wells and 5 synthetic observations naturally have the highest CSS because:
+
+1. The Jacobian elements $\partial h_i / \partial p_j$ are largest when observation $i$ and parameter $j$ are close
+2. Hydraulic conductivity changes have a local effect — they primarily affect heads in the surrounding area
+3. Distant pilot points produce negligible head changes at the observation locations
+
+**Key insight:** High CSS does not mean the parameter is "important" in general — it means the *current observation network* can detect changes in that parameter. A parameter in the data-sparse west might be physically critical but have low CSS because no observations can see it.
+<br>
+""",
+
+"task07_checkpoint_2": r"""
+## Solution — Identifiable Parameters
+
+The number of parameters with identifiability > 0.5 depends on the Jacobian structure. With 9 observations and 21 parameters, at most 9 singular values can carry information — most parameters will be in or near the null space.
+
+Identifiability analysis uses SVD to decompose the parameter space:
+- **Solution space** (identifiability → 1): combinations that observations can resolve
+- **Null space** (identifiability → 0): combinations invisible to observations
+
+The severely underdetermined nature of our problem (21 parameters, 9 observations) means most parameters cannot be uniquely determined — this is why regularisation and prior information are essential in calibration.
+<br>
+""",
+
+"task07_checkpoint_3": r"""
+## Solution — Uncertainty Reduction
+
+**Correct answer: B) The pilot point nearest the observation well cluster**
+
+Calibration can only reduce uncertainty where it has data. The pilot points clustered near the 4 AWEL wells (eastern domain) show the largest decrease in posterior standard deviation because:
+
+1. Multiple observations constrain the K values in that area
+2. The Jacobian entries are large for nearby parameter–observation pairs
+3. The Schur complement subtracts the information matrix from the prior covariance
+
+Pilot points in the western domain show minimal uncertainty reduction — calibration barely "touches" them because no observations provide constraining information.
+
+**Practical implication:** Our model's predictions in the western domain carry essentially the same uncertainty as before calibration.
+<br>
+""",
+
+"task07_checkpoint_4": r"""
+## Solution — Prediction Uncertainty
+
+The posterior standard deviation at well 516 comes from the FOSM (Schur complement) analysis, which propagates parameter uncertainty through the Jacobian to give prediction uncertainty.
+
+The exact value depends on the PEST++ calibration outcome. The posterior σ is typically smaller than the prior σ because calibration reduced parameter uncertainty — but it's not zero because:
+1. Parameters are not perfectly determined (underdetermined problem)
+2. Multiple parameter combinations can produce similar heads (non-uniqueness)
+3. The observation network has limited spatial coverage
+
+**Important caveat:** FOSM captures only *parameter uncertainty* under a *linear approximation*. The actual prediction error (LOO-RMSE) is typically larger because it also includes model structural error and nonlinear effects.
+<br>
+""",
+
+"task07_checkpoint_5": r"""
+## Solution — FOSM vs LOO-RMSE
+
+**Correct answer: B) FOSM σ is smaller — it captures only parameter uncertainty**
+
+FOSM and LOO-RMSE both estimate prediction error, but from different perspectives:
+
+| Method | Captures | Assumes |
+|--------|----------|---------|
+| **FOSM** | Parameter uncertainty only | Linear model, correct structure |
+| **LOO-RMSE** | Parameter + structural + nonlinear error | Nothing (empirical) |
+
+FOSM is typically an *underestimate* of total prediction error because it ignores:
+- Model structural error (wrong K zonation, missing processes)
+- Nonlinear effects (the Jacobian is a local linear approximation)
+- Observation noise effects on calibration
+
+When LOO-RMSE >> FOSM σ, the gap is dominated by **structural error** — improving the model structure (more layers, transient, better boundaries) would help more than collecting more head observations.
+<br>
+""",
+
+"task07_checkpoint_6": r"""
+## Solution — Data Worth
+
+**Correct answer: A) It fills a spatial gap**
+
+syn_005 is the most valuable synthetic observation because removing it causes the largest increase in prediction variance across all 4 real-well forecasts. This happens because syn_005 occupies a unique spatial position — it provides information about parameter values in an area that no other observation covers.
+
+When an observation fills a spatial gap:
+1. Its Jacobian row constrains parameter combinations that no other observation can
+2. Removing it leaves those parameters entirely in the null space
+3. The resulting uncertainty increase propagates to all predictions
+
+Observations clustered near other data points have lower data worth because neighbouring observations provide redundant (overlapping) information.
+
+**Practical use:** Data worth analysis helps plan monitoring networks. Observations that fill spatial gaps provide the most new information per well drilled.
+<br>
+""",
+
+"task07_checkpoint_7": r"""
+## Solution — Monitoring Recommendation
+
+**Correct answer: B) Install an observation well in the western domain**
+
+The western domain has:
+- **Low CSS** — no observations can detect parameter changes there
+- **Low identifiability** — parameters are in the null space
+- **Low uncertainty reduction** — calibration didn't help there
+- **No observations at all** — it's a data void
+
+Installing a well there would:
+1. Move western pilot points out of the null space into the solution space
+2. Provide direct constraint on K values in the data-sparse area
+3. Dramatically reduce prediction uncertainty for that part of the domain
+
+**Why not the other options?**
+- A) More regularisation constrains parameters but doesn't add information
+- C) More pilot points would make the problem even more underdetermined
+- D) A different algorithm cannot extract information that isn't in the data
+<br>
+""",
+
+# ============================================================================
+# NOTEBOOK 8 - MODEL APPLICATION SOLUTIONS
+# ============================================================================
+
+"task08_checkpoint_1": r"""
+## Solution — Scenario Design
+
+**Correct answer: A) No — a steady-state model cannot predict transient drawdown evolution**
+
+A steady-state model computes the **equilibrium** (final) head distribution — the state after all transients have died out. It cannot tell you:
+- How quickly drawdown develops after pumping starts
+- How long recovery takes after pumping stops
+- Whether maximum drawdown is reached in days, weeks, or months
+
+To predict **timing**, you need a **transient model** with storage parameters ($S_s$ or $S_y$).
+
+**What our model *can* predict:** The final (long-term) drawdown under sustained pumping — useful for assessing steady-state impacts but not short-term dynamics.
+
+**Key insight:** Always match your model's temporal capabilities to the question being asked. "How much drawdown?" is a steady-state question; "How fast does drawdown develop?" is a transient question.
+<br>
+""",
+
+"task08_checkpoint_2": r"""
+## Solution — Maximum Drawdown
+
+The maximum drawdown occurs at the well cell itself. The exact value depends on:
+- The **local K** at the well location (from the calibrated pilot-point field)
+- The **aquifer thickness** at that location
+- The **proximity to river boundaries** (which limit drawdown by providing induced recharge)
+- The **cell size** (DISV cell area controls the effective well radius)
+
+For a pumping rate of -500 m³/d in an alluvial gravel aquifer with T ≈ 200–400 m²/d, typical drawdown at the well cell is on the order of **0.5–2 m**.
+
+**Quick analytical check** (Thiem equation for confined steady-state radial flow):
+
+$$s = \frac{Q}{2\pi T} \ln\left(\frac{R}{r_w}\right)$$
+
+With Q = 500 m³/d, T = 300 m²/d, R = 1000 m, $r_w$ = 50 m (effective cell radius):
+
+$$s \approx \frac{500}{2\pi \times 300} \ln(20) \approx 0.27 \times 3.0 \approx 0.8 \text{ m}$$
+<br>
+""",
+
+"task08_checkpoint_3": r"""
+## Solution — Water Source
+
+**Correct answer: B) Increased river leakage into the aquifer**
+
+In the Limmat Valley, the river is the dominant hydraulic boundary. When a pumping well lowers the water table:
+1. The head difference between river stage and aquifer head **increases**
+2. This drives more water from the river into the aquifer (induced recharge)
+3. The river effectively supplies the pumped water
+
+You can verify this by comparing the RIV inflow between baseline and pumping scenarios — the increase in RIV inflow should approximately equal the pumping rate.
+
+**Why not the other options?**
+- A) Lateral inflow is from CHD boundaries — their flux changes somewhat but is not the primary source
+- C) Recharge is specified and doesn't change with pumping
+- D) There is no storage in a steady-state model ($\partial h / \partial t = 0$)
+
+**Key insight:** In steady state, all pumped water must come from increased inflow or decreased outflow at boundaries. The boundary with the most responsive head-dependent flux (RIV) dominates.
+<br>
+""",
+
+"task08_checkpoint_4": r"""
+## Solution — Linearity
+
+**Correct answer: A) The steady-state flow equation is linear in head**
+
+The steady-state groundwater flow equation for a confined aquifer is:
+
+$$\nabla \cdot (T \nabla h) + W = 0$$
+
+This is a **linear** equation in $h$. If you double the source term $W$ (pumping rate), the head change (drawdown) exactly doubles everywhere. This is the **superposition principle**.
+
+**Important caveats:**
+- Linearity holds exactly for **confined** aquifers where $T$ is constant
+- For **unconfined** aquifers, $T = K \times h$ depends on head, making the equation nonlinear
+- In our single-layer model, if drawdown is small relative to saturated thickness, the system behaves approximately linearly
+- Near boundaries where cells might go dry, linearity breaks down
+
+**Practical use:** Linearity means you can compute drawdown for any pumping rate by scaling — no need to rerun the model for each rate.
+<br>
+""",
+
+"task08_checkpoint_5": r"""
+## Solution — Protection Zone Classification
+
+**Correct answer: B) S2 (Engere Schutzzone)**
+
+The Swiss protection zone system (GSchV Art. 29):
+
+| Zone | Definition | Farm at 150 m upstream? |
+|------|-----------|------------------------|
+| **S1** | ~10 m around well | No (too far) |
+| **S2** | 10-day travel time isochrone | **Yes** — inside the 10-day isochrone |
+| **S3** | Full capture zone | Also yes, but S2 takes precedence |
+
+Since the farm (150 m) is inside the 10-day isochrone (200 m), it falls within **S2**. This means:
+- No storage of liquid hazardous substances (including manure lagoons)
+- Restrictions on agricultural practices
+- The farm would need to modify or relocate its manure storage
+
+**Key insight:** The 10-day isochrone is the critical boundary for practical land-use decisions. Computing it accurately — including uncertainty — has real regulatory and economic consequences.
+<br>
+""",
+
+"task08_checkpoint_6": r"""
+## Solution — Non-Stationarity
+
+**Correct answer: C) Capture zones vary seasonally and with parameter uncertainty**
+
+A single steady-state model gives **one** snapshot of the capture zone under average conditions. In reality:
+
+1. **Seasonal variation:** During summer low-flow periods, river recharge decreases and regional gradients change, potentially enlarging the capture zone. During winter high-flow, the capture zone may shrink.
+
+2. **Parameter uncertainty:** From NB7 (FOSM), we know that K is uncertain — especially in the western domain. Different plausible K fields produce different capture zones. An ensemble of K realisations (e.g., from PEST++ IES) would give a **probabilistic** capture zone boundary.
+
+3. **Regulatory implication:** Swiss guidelines recommend basing protection zones on the **most conservative** (largest) capture zone, typically the dry-season scenario or the upper bound of a Monte Carlo ensemble.
+
+**Why not the other options?**
+- A) Validation status affects confidence but doesn't explain why one run is insufficient
+- B) Steady-state doesn't systematically overestimate — it may underestimate during droughts
+- D) Swiss law uses model-based delineation for S2 and S3; only S1 is defined by fixed distance
+<br>
+""",
+
+"task08_checkpoint_7": r"""
+## Solution — Drought Impact
+
+Reducing recharge by 30% simulates a sustained drought. The mean head decline depends on:
+- The fraction of total inflow from recharge vs river boundaries
+- How much the river compensates (increased losing or reduced gaining)
+- The spatial distribution of recharge and active cells
+
+The exact value comes from computing the difference between baseline and drought heads across all active cells.
+
+**Physical interpretation:** The head decline is modest because river boundaries are head-dependent — as aquifer heads drop, the river provides more water, partially buffering the recharge loss. This illustrates the self-regulating nature of connected surface water–groundwater systems.
+<br>
+""",
+
+"task08_checkpoint_8": r"""
+## Solution — Capture Zone Under Drought
+
+**Correct answer: A) The capture zone expands**
+
+Under reduced recharge:
+1. The regional hydraulic gradient **decreases** (flatter water table)
+2. Ambient groundwater velocity **decreases** ($v = Ki/n_e$)
+3. The well must therefore draw water from a **larger area** to capture the same volume
+4. The capture zone boundary moves **outward** (wider and longer)
+
+This is exactly the non-stationarity effect discussed in Section 3: the drought-scenario capture zone is larger than the average-conditions zone.
+
+**Regulatory implication:** Protection zones based on dry-season conditions are more conservative (larger) than those based on average conditions. Swiss practice typically requires the more conservative delineation.
+
+**Analytical check:** The maximum half-width of the capture zone is $y_{max} = Q / (2Ti)$. If the gradient $i$ decreases under drought, $y_{max}$ increases.
 <br>
 """
 

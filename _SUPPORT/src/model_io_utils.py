@@ -19,6 +19,10 @@ Functions:
     load_preprocessed_model_data: Load all pre-computed model inputs as dict
     format_budget_summary: Read MF6 budget and format as DataFrame
     load_base_simulation: Load pre-built MF6 simulation
+    compare_water_balances: Compare two water balance DataFrames
+    build_refined_gwf_model: Build locally-refined GWF model from coarse model
+    build_prt_model: Build PRT particle-tracking simulation from GWF model
+    load_prt_results: Load and classify PRT tracking results
 
 Author: Applied Groundwater Modelling Course
 """
@@ -1414,3 +1418,815 @@ def _interpolate_thickness_inline(contour_gdf: gpd.GeoDataFrame, modelgrid) -> n
         interpolated[nan_mask] = nearest_values
 
     return interpolated
+
+
+# ---------------------------------------------------------------------------
+# Utility helpers for NB8 (model application)
+# ---------------------------------------------------------------------------
+
+def _cellid_to_flat(cellid):
+    """Extract flat cell index from an MF6 cellid (tuple or int)."""
+    return cellid[-1] if isinstance(cellid, tuple) else cellid
+
+
+def compare_water_balances(
+    budget_a: pd.DataFrame,
+    budget_b: pd.DataFrame,
+    label_a: str = "Baseline",
+    label_b: str = "Scenario",
+    threshold: float = 1.0,
+) -> pd.DataFrame:
+    """
+    Compare two water balance DataFrames produced by ``format_budget_summary``.
+
+    Iterates over shared budget components, skips TOTAL / DISCREPANCY /
+    PERCENT ERROR rows, and prints a formatted table of changes.
+
+    Parameters
+    ----------
+    budget_a, budget_b : pandas.DataFrame
+        Water-balance DataFrames (index = component name, columns include
+        'Inflow (m3/d)', 'Outflow (m3/d)', 'Net (m3/d)').
+    label_a, label_b : str, optional
+        Labels shown in the header.
+    threshold : float, optional
+        Only show components where |ΔInflow| or |ΔOutflow| exceeds this
+        value (m³/d).  Default 1.0.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with columns ΔInflow, ΔOutflow, ΔNet for every component
+        that exceeds the threshold.
+    """
+    skip = {'TOTAL', 'DISCREPANCY', 'PERCENT ERROR'}
+
+    print("\n" + "=" * 60)
+    print(f"Water Balance Comparison: {label_a} vs {label_b}")
+    print("=" * 60)
+
+    rows = []
+    for component in budget_a.index:
+        comp_str = component.decode() if isinstance(component, bytes) else str(component)
+        if comp_str.strip() in skip:
+            continue
+        if component not in budget_b.index:
+            continue
+
+        bl_in = budget_a.loc[component, 'Inflow (m3/d)']
+        bl_out = budget_a.loc[component, 'Outflow (m3/d)']
+        sc_in = budget_b.loc[component, 'Inflow (m3/d)']
+        sc_out = budget_b.loc[component, 'Outflow (m3/d)']
+
+        if not (isinstance(bl_in, (int, float)) and isinstance(sc_in, (int, float))):
+            continue
+
+        d_in = sc_in - bl_in
+        d_out = sc_out - bl_out
+        d_net = (sc_in - sc_out) - (bl_in - bl_out)
+
+        if abs(d_in) > threshold or abs(d_out) > threshold:
+            print(f"  {comp_str:20s}  ΔInflow: {d_in:+8.1f}"
+                  f"  ΔOutflow: {d_out:+8.1f}  ΔNet: {d_net:+8.1f} m³/d")
+            rows.append({
+                'Component': comp_str.strip(),
+                'ΔInflow (m3/d)': round(d_in, 1),
+                'ΔOutflow (m3/d)': round(d_out, 1),
+                'ΔNet (m3/d)': round(d_net, 1),
+            })
+
+    df = pd.DataFrame(rows)
+    if len(df) > 0:
+        df = df.set_index('Component')
+    return df
+
+
+def load_prt_results(
+    trackcsv_path: Union[str, Path],
+    modelgrid,
+    well_zone: int = 1,
+    river_zone: int = 2,
+) -> Dict[str, Any]:
+    """
+    Load PRT particle-tracking results and classify termination.
+
+    Parameters
+    ----------
+    trackcsv_path : str or Path
+        Absolute path to the ``*.trk.csv`` file written by PRT.
+    modelgrid : flopy.discretization.Grid
+        Model grid of the PRT model (needed for coordinate transform).
+    well_zone : int, optional
+        izone value for well cells (default 1).
+    river_zone : int, optional
+        izone value for river cells (default 2).
+
+    Returns
+    -------
+    dict
+        ``prt_df``       – full DataFrame with ``x_world``, ``y_world``
+        ``terminal``     – last record per particle (groupby irpt)
+        ``captured_ids`` – set of particle IDs captured by well
+        ``captured_df``  – pathlines of captured particles only
+        ``travel_times`` – Series of travel times for captured particles
+    """
+    trackcsv_path = Path(trackcsv_path)
+    prt_df = pd.read_csv(trackcsv_path)
+
+    # Transform model-local coordinates to world CRS
+    x_world, y_world = modelgrid.get_coords(
+        prt_df['x'].values, prt_df['y'].values,
+    )
+    prt_df['x_world'] = x_world
+    prt_df['y_world'] = y_world
+
+    # Terminal records (last per particle)
+    terminal = prt_df.groupby('irpt').last()
+    captured_ids = set(terminal.loc[terminal['izone'] == well_zone].index)
+    captured_df = prt_df[prt_df['irpt'].isin(captured_ids)].copy()
+
+    travel_times = terminal.loc[terminal['izone'] == well_zone, 't']
+
+    n_river = int((terminal['izone'] == river_zone).sum())
+    n_other = int((~terminal['izone'].isin([well_zone, river_zone])).sum())
+
+    print(f"PRT completed: {prt_df['irpt'].nunique()} particles tracked")
+    print(f"  Captured by well: {len(captured_ids)}")
+    print(f"  Reached river:    {n_river}")
+    print(f"  Other termination: {n_other}")
+    if len(captured_ids) > 0:
+        print(f"\nTravel times to well:")
+        print(f"  Min:    {travel_times.min():.1f} days")
+        print(f"  Median: {travel_times.median():.1f} days")
+        print(f"  Max:    {travel_times.max():.1f} days")
+
+    return {
+        'prt_df': prt_df,
+        'terminal': terminal,
+        'captured_ids': captured_ids,
+        'captured_df': captured_df,
+        'travel_times': travel_times,
+    }
+
+
+def delineate_protection_zones(
+    captured_df: pd.DataFrame,
+    terminal: pd.DataFrame,
+    well_xy: tuple,
+    s2_days: float = 10.0,
+    s1_radius: float = 10.0,
+    s3_ratio: float = 0.2,
+    well_zone: int = 1,
+) -> Dict[str, Any]:
+    """
+    Delineate Swiss groundwater protection zones from PRT results.
+
+    Computes S1 (fixed radius), S2 (travel-time isochrone), and S3
+    (full capture zone envelope) from forward-tracked particle pathlines.
+
+    Parameters
+    ----------
+    captured_df : pandas.DataFrame
+        Pathline records for particles captured by the well.  Must contain
+        ``irpt``, ``x_world``, ``y_world`` columns.
+    terminal : pandas.DataFrame
+        Terminal (last) record per particle, indexed by ``irpt``.  Must
+        contain ``izone`` and ``t`` columns.
+    well_xy : tuple of (float, float)
+        Well location in world coordinates (x, y).
+    s2_days : float, optional
+        Travel-time threshold for S2 zone (days).  Default 10.
+    s1_radius : float, optional
+        Radius for S1 zone (m).  Default 10.
+    s3_ratio : float, optional
+        Concavity ratio for concave hull of S3 zone.  Default 0.2.
+    well_zone : int, optional
+        izone value assigned to well cells in MIP.  Default 1.
+
+    Returns
+    -------
+    dict
+        ``s1_geometry``  – shapely Point buffer (circle)
+        ``s2_envelope``  – convex hull of S2 pathline points (or None)
+        ``s3_envelope``  – concave hull of all captured pathline points
+        ``s2_ids``       – set of particle IDs within S2
+        ``s2_max_extent``– maximum distance from well for S2 particles (m)
+        ``s2_area``      – area of S2 envelope (m²)
+        ``s3_area``      – area of S3 envelope (m²)
+    """
+    from shapely.geometry import Point as _Point
+    from shapely.geometry import MultiPoint as _MultiPoint
+    from shapely import concave_hull as _concave_hull
+
+    well_x, well_y = well_xy
+
+    # S1: fixed-radius buffer
+    s1_geometry = _Point(well_x, well_y).buffer(s1_radius)
+
+    # S2: particles reaching well within s2_days
+    travel_to_well = terminal.loc[terminal['izone'] == well_zone, 't']
+    s2_ids = set(travel_to_well[travel_to_well <= s2_days].index)
+
+    s2_envelope = None
+    s2_max_extent = 0.0
+    s2_area = 0.0
+
+    if len(s2_ids) > 0:
+        s2_pathlines = captured_df[captured_df['irpt'].isin(s2_ids)]
+        s2_pts_x = s2_pathlines['x_world'].values
+        s2_pts_y = s2_pathlines['y_world'].values
+        s2_dist = np.sqrt((s2_pts_x - well_x)**2 + (s2_pts_y - well_y)**2)
+        s2_max_extent = float(s2_dist.max())
+
+        s2_cloud = _MultiPoint(list(zip(s2_pts_x, s2_pts_y)))
+        s2_envelope = s2_cloud.convex_hull
+        s2_area = float(s2_envelope.area) if s2_envelope and not s2_envelope.is_empty else 0.0
+
+    # S3: concave envelope of full capture zone
+    s3_pts_x = captured_df['x_world'].values
+    s3_pts_y = captured_df['y_world'].values
+    s3_cloud = _MultiPoint(list(zip(s3_pts_x, s3_pts_y)))
+    s3_envelope = _concave_hull(s3_cloud, ratio=s3_ratio)
+    s3_area = float(s3_envelope.area) if s3_envelope and not s3_envelope.is_empty else 0.0
+
+    print(f"Protection zone delineation:")
+    print(f"  S1: {s1_radius:.0f} m radius")
+    print(f"  S2: {len(s2_ids)} particles within {s2_days:.0f} days"
+          f" (max extent {s2_max_extent:.0f} m, area {s2_area:.0f} m²)")
+    print(f"  S3: full capture zone (area {s3_area:.0f} m²)")
+
+    return {
+        's1_geometry': s1_geometry,
+        's2_envelope': s2_envelope,
+        's3_envelope': s3_envelope,
+        's2_ids': s2_ids,
+        's2_max_extent': s2_max_extent,
+        's2_area': s2_area,
+        's3_area': s3_area,
+    }
+
+
+def build_prt_model(
+    gwf,
+    porosity: float = 0.15,
+    well_cells: Optional[List[int]] = None,
+    tracking_time: float = 365.0,
+    workspace: Optional[Union[str, Path]] = None,
+    sim_name: str = "prt_model",
+) -> Dict[str, Any]:
+    """
+    Build a MODFLOW 6 PRT simulation linked to a GWF model.
+
+    Creates one particle per active cell using ``representative_point()``
+    to guarantee release points lie inside clipped Voronoi cells.  River
+    cells get izone = 2; well cells get izone = 1.
+
+    The simulation is written but **not** run — the caller should run it
+    so they can handle success / failure.
+
+    Parameters
+    ----------
+    gwf : flopy.mf6.ModflowGwf
+        Completed GWF model (must have been written and run, so that
+        ``.hds`` and ``.cbc`` files exist in ``gwf.sim_path``).
+    porosity : float, optional
+        Effective porosity for particle tracking.  Default 0.15.
+    well_cells : list of int, optional
+        Flat cell indices to assign izone = 1 (well termination zone).
+    tracking_time : float, optional
+        Maximum forward tracking time in days.  Default 365.
+    workspace : str or Path, optional
+        Directory for the PRT files.  If *None*, defaults to
+        ``<gwf.sim_path>/prt``.
+    sim_name : str, optional
+        MF6 simulation / model name.  Default ``"prt_model"``.
+
+    Returns
+    -------
+    dict
+        ``prt_sim``       – MFSimulation
+        ``prt``           – ModflowPrt model
+        ``trackcsv_path`` – Path to the track CSV (exists after run)
+        ``n_particles``   – number of release points
+    """
+    import shutil
+    from shapely.geometry import Polygon as ShapelyPolygon
+    import flopy as _flopy
+
+    gwf_ws = Path(gwf.model_ws)
+    if workspace is None:
+        workspace = gwf_ws / 'prt'
+    workspace = Path(workspace)
+
+    if workspace.exists():
+        shutil.rmtree(workspace)
+    workspace.mkdir(parents=True)
+
+    # --- Grid info from GWF ---
+    disv_pkg = gwf.get_package('DISV')
+    ncpl = int(disv_pkg.ncpl.data)
+    ref_modelgrid = gwf.modelgrid
+
+    # --- izone: well = 1, river = 2 ---
+    izone = np.zeros((1, ncpl), dtype=int)
+    if well_cells:
+        for wc in well_cells:
+            izone[0, wc] = 1
+    try:
+        riv_pkg = gwf.get_package('RIV')
+        for rec in riv_pkg.stress_period_data.get_data(0):
+            cell_idx = _cellid_to_flat(rec['cellid'])
+            izone[0, cell_idx] = 2
+    except Exception:
+        pass  # no RIV package — skip
+
+    # --- PRP: one particle per cell, using representative_point ---
+    release_x = np.zeros(ncpl)
+    release_y = np.zeros(ncpl)
+    for j in range(ncpl):
+        verts = ref_modelgrid.get_cell_vertices(j)
+        rp = ShapelyPolygon(verts).representative_point()
+        release_x[j] = rp.x
+        release_y[j] = rp.y
+
+    prt_data = [
+        (i, 0, i, float(release_x[i]), float(release_y[i]), 0.5)
+        for i in range(ncpl)
+    ]
+
+    trackcsv_file = f'{sim_name}.trk.csv'
+
+    # --- Build simulation ---
+    prt_sim = _flopy.mf6.MFSimulation(
+        sim_name=sim_name, exe_name='mf6', sim_ws=str(workspace),
+    )
+    _flopy.mf6.ModflowTdis(
+        prt_sim, time_units='DAYS', nper=1,
+        perioddata=[(tracking_time, 1, 1)],
+    )
+
+    prt = _flopy.mf6.ModflowPrt(prt_sim, modelname=sim_name)
+
+    _flopy.mf6.ModflowPrtdisv(
+        prt,
+        nlay=disv_pkg.nlay.data,
+        ncpl=disv_pkg.ncpl.data,
+        nvert=disv_pkg.nvert.data,
+        top=disv_pkg.top.array,
+        botm=disv_pkg.botm.array,
+        vertices=disv_pkg.vertices.array,
+        cell2d=disv_pkg.cell2d.array,
+    )
+    _flopy.mf6.ModflowPrtmip(prt, porosity=porosity, izone=izone)
+
+    _flopy.mf6.ModflowPrtprp(
+        prt,
+        nreleasepts=len(prt_data),
+        packagedata=prt_data,
+        local_z=True,
+        perioddata={0: ['FIRST']},
+        exit_solve_tolerance=1e-5,
+        extend_tracking=True,
+        stoptraveltime=tracking_time,
+    )
+
+    _flopy.mf6.ModflowPrtoc(
+        prt,
+        budget_filerecord=[f'{sim_name}.cbc'],
+        track_filerecord=[f'{sim_name}.trk'],
+        trackcsv_filerecord=[trackcsv_file],
+        saverecord=[('BUDGET', 'ALL')],
+    )
+
+    # FMI — relative paths to GWF head/budget files
+    gwf_sim_name = gwf.name
+    gwf_hds = gwf_ws / f'{gwf_sim_name}.hds'
+    gwf_cbc = gwf_ws / f'{gwf_sim_name}.cbc'
+    fmi_pd = [
+        ('GWFHEAD',   os.path.relpath(gwf_hds, workspace)),
+        ('GWFBUDGET', os.path.relpath(gwf_cbc, workspace)),
+    ]
+    _flopy.mf6.ModflowPrtfmi(prt, packagedata=fmi_pd)
+
+    # EMS
+    ems = _flopy.mf6.ModflowEms(prt_sim, filename=f'{sim_name}.ems')
+    prt_sim.register_solution_package(ems, [prt.name])
+
+    # Write (do NOT run)
+    prt_sim.write_simulation()
+
+    print(f"PRT model written to: {workspace}")
+    print(f"  Particles: {len(prt_data)} (one per cell)")
+    print(f"  Porosity: {porosity}")
+    print(f"  Max tracking time: {tracking_time} days")
+    print(f"  Zones: well = 1, river = 2")
+
+    return {
+        'prt_sim': prt_sim,
+        'prt': prt,
+        'trackcsv_path': workspace / trackcsv_file,
+        'n_particles': len(prt_data),
+    }
+
+
+def build_refined_gwf_model(
+    gwf,
+    boundary_gdf: gpd.GeoDataFrame,
+    river_gdf: gpd.GeoDataFrame,
+    refine_points: Union[List[tuple], gpd.GeoDataFrame],
+    head_array: np.ndarray,
+    workspace: Union[str, Path],
+    refine_radius: float = 200.0,
+    base_cell_size: float = 50.0,
+    refined_cell_size: float = 10.0,
+    well_data: Optional[List[tuple]] = None,
+    sim_name: str = "refined_model",
+    baseline_head_array: Optional[np.ndarray] = None,
+) -> Dict[str, Any]:
+    """
+    Build and run a locally-refined GWF model from an existing coarse model.
+
+    Creates a new Voronoi grid with refinement zones around each point in
+    *refine_points*, interpolates all properties from the coarse model via
+    nearest-neighbour, transfers CHD / RIV / WEL boundary conditions, and
+    runs the simulation.
+
+    Parameters
+    ----------
+    gwf : flopy.mf6.ModflowGwf
+        Source (coarse) GWF model — must have DISV, NPF, RCHA, CHD, RIV.
+    boundary_gdf : geopandas.GeoDataFrame
+        Model domain polygon (used for grid generation).
+    river_gdf : geopandas.GeoDataFrame
+        River polygons used to identify RIV cells in the refined grid.
+        Must intersect with ``boundary_gdf``.
+    refine_points : list of (x, y) tuples **or** GeoDataFrame with Points
+        Locations around which the grid is refined.  Each point gets a
+        circular buffer of *refine_radius*.
+    head_array : numpy.ndarray
+        Head array from the coarse model (used as starting heads on the
+        refined grid).  Shape must match the coarse DISV grid.
+    workspace : str or Path
+        Directory for the refined simulation files.
+    refine_radius : float, optional
+        Radius of refinement circle around each point (m).  Default 200.
+    base_cell_size : float, optional
+        Base Voronoi cell size (m).  Default 50.
+    refined_cell_size : float, optional
+        Cell size inside refinement zones (m).  Default 10.
+    well_data : list of (x, y, rate) tuples, optional
+        Well locations and rates to add via WEL package.
+    sim_name : str, optional
+        MF6 simulation / model name.
+    baseline_head_array : numpy.ndarray, optional
+        Head array from the *coarse* baseline model (before scenario
+        changes).  When provided, it is interpolated onto the refined grid
+        via nearest-neighbour and returned as ``baseline_heads``.
+
+    Returns
+    -------
+    dict
+        ``sim``            – MFSimulation
+        ``gwf``            – ModflowGwf (refined)
+        ``modelgrid``      – refined VertexGrid
+        ``gridprops``      – DISV grid properties dict
+        ``ncpl``           – cells per layer
+        ``heads``          – 1-D head array from the run
+        ``well_cells``     – list of flat cell indices (one per well_data entry)
+        ``baseline_heads`` – 1-D head array on refined grid (only when
+                             *baseline_head_array* is given)
+    """
+    import shutil
+    from scipy.interpolate import NearestNDInterpolator
+    from shapely.geometry import Point as ShapelyPoint
+    from shapely.geometry import Polygon as ShapelyPolygon
+    from shapely.prepared import prep as shapely_prep
+    import disv_grid_utils as dgu
+    import flopy as _flopy
+
+    workspace = Path(workspace)
+    if workspace.exists():
+        shutil.rmtree(workspace)
+    workspace.mkdir(parents=True)
+
+    # ------------------------------------------------------------------
+    # 1. Normalise refine_points → list of (x, y)
+    # ------------------------------------------------------------------
+    if isinstance(refine_points, gpd.GeoDataFrame):
+        pts = [(g.x, g.y) for g in refine_points.geometry]
+    else:
+        pts = list(refine_points)
+
+    circles = [ShapelyPoint(x, y).buffer(refine_radius) for x, y in pts]
+    refine_gdf = gpd.GeoDataFrame(
+        geometry=circles, crs=boundary_gdf.crs,
+    )
+
+    # ------------------------------------------------------------------
+    # 2. Create refined Voronoi grid
+    # ------------------------------------------------------------------
+    print("Building refined Voronoi grid...")
+    base_grid = dgu.create_disv_from_boundary(
+        boundary_gdf=boundary_gdf, cell_size=base_cell_size,
+        crs=str(boundary_gdf.crs),
+    )
+    refined = dgu.refine_grid_locally(
+        base_grid=base_grid,
+        refinement_gdf=refine_gdf,
+        refined_cell_size=refined_cell_size,
+        boundary_gdf=boundary_gdf,
+    )
+
+    gridprops = refined['disv_gridprops']
+    ncpl = refined['ncpl']
+    mg_ref = refined['modelgrid']
+    xc_ref = mg_ref.xcellcenters
+    yc_ref = mg_ref.ycellcenters
+    print(f"Refined grid: {ncpl} cells")
+
+    # ------------------------------------------------------------------
+    # 3. Interpolate properties from coarse grid
+    # ------------------------------------------------------------------
+    coarse_modelgrid = gwf.modelgrid
+    xc_orig = coarse_modelgrid.xcellcenters
+    yc_orig = coarse_modelgrid.ycellcenters
+
+    disv_orig = gwf.get_package('DISV')
+    idomain_orig = disv_orig.idomain.array.flatten()
+    top_orig = disv_orig.top.array.flatten()
+    botm_orig = disv_orig.botm.array.flatten()
+
+    active = idomain_orig > 0
+    src_pts = list(zip(xc_orig[active], yc_orig[active]))
+
+    k_orig = gwf.npf.k.array.flatten()
+    k_ref = NearestNDInterpolator(src_pts, k_orig[active])(xc_ref, yc_ref)
+    top_ref = NearestNDInterpolator(src_pts, top_orig[active])(xc_ref, yc_ref)
+    botm_ref = NearestNDInterpolator(src_pts, botm_orig[active])(xc_ref, yc_ref)
+
+    head_flat = head_array.flatten() if head_array.ndim > 1 else head_array
+    strt_ref = NearestNDInterpolator(src_pts, head_flat[active])(xc_ref, yc_ref)
+    strt_ref = np.maximum(strt_ref, botm_ref + 0.01)
+
+    # Optional: interpolate baseline heads onto refined grid
+    bl_heads_ref = None
+    if baseline_head_array is not None:
+        bl_flat = (baseline_head_array.flatten()
+                   if baseline_head_array.ndim > 1 else baseline_head_array)
+        bl_heads_ref = NearestNDInterpolator(
+            src_pts, bl_flat[active],
+        )(xc_ref, yc_ref)
+
+    rch_data = gwf.get_package('RCHA').recharge.get_data()
+    rch_vals = (list(rch_data.values())[0] if isinstance(rch_data, dict)
+                else rch_data)
+    rch_ref = NearestNDInterpolator(
+        src_pts, rch_vals.flatten()[active],
+    )(xc_ref, yc_ref)
+
+    # ------------------------------------------------------------------
+    # 4. Build GWF simulation
+    # ------------------------------------------------------------------
+    ref_sim = _flopy.mf6.MFSimulation(
+        sim_name=sim_name, exe_name='mf6', sim_ws=str(workspace),
+    )
+    _flopy.mf6.ModflowTdis(
+        ref_sim, time_units='DAYS', nper=1, perioddata=[(1.0, 1, 1)],
+    )
+    _flopy.mf6.ModflowIms(
+        ref_sim, complexity='MODERATE',
+        outer_maximum=200, inner_maximum=100,
+        outer_dvclose=1e-6, inner_dvclose=1e-9,
+    )
+
+    ref_gwf = _flopy.mf6.ModflowGwf(
+        ref_sim, modelname=sim_name, save_flows=True,
+    )
+    _flopy.mf6.ModflowGwfdisv(
+        ref_gwf, nlay=1, ncpl=ncpl, nvert=gridprops['nvert'],
+        top=top_ref, botm=[botm_ref],
+        vertices=gridprops['vertices'], cell2d=gridprops['cell2d'],
+    )
+    _flopy.mf6.ModflowGwfnpf(
+        ref_gwf, k=k_ref, save_flows=True,
+        save_specific_discharge=True, save_saturation=True,
+    )
+    _flopy.mf6.ModflowGwfic(ref_gwf, strt=strt_ref)
+    _flopy.mf6.ModflowGwfrcha(ref_gwf, recharge=rch_ref)
+
+    # ------------------------------------------------------------------
+    # 5. CHD transfer
+    # ------------------------------------------------------------------
+    chd_orig = gwf.get_package('CHD')
+    chd_data = chd_orig.stress_period_data.get_data(0)
+    chd_xy = np.array([
+        (xc_orig[_cellid_to_flat(r['cellid'])],
+         yc_orig[_cellid_to_flat(r['cellid'])])
+        for r in chd_data
+    ])
+    head_nn = NearestNDInterpolator(
+        chd_xy, [r['head'] for r in chd_data],
+    )
+
+    chd_spd = []
+    for r in chd_data:
+        ox, oy = xc_orig[_cellid_to_flat(r['cellid'])], yc_orig[_cellid_to_flat(r['cellid'])]
+        dists = np.sqrt((xc_ref - ox)**2 + (yc_ref - oy)**2)
+        near = np.where(dists < 30)[0]
+        for j in near:
+            chd_spd.append(((0, int(j)), float(head_nn(xc_ref[j], yc_ref[j]))))
+
+    seen = set()
+    chd_dedup = []
+    for rec in chd_spd:
+        if rec[0] not in seen:
+            seen.add(rec[0])
+            chd_dedup.append(rec)
+    _flopy.mf6.ModflowGwfchd(ref_gwf, stress_period_data=chd_dedup)
+    print(f"CHD cells: {len(chd_dedup)}")
+
+    # ------------------------------------------------------------------
+    # 6. RIV transfer
+    # ------------------------------------------------------------------
+    riv_orig = gwf.get_package('RIV').stress_period_data.get_data(0)
+    riv_xy = np.array([
+        (xc_orig[_cellid_to_flat(r['cellid'])],
+         yc_orig[_cellid_to_flat(r['cellid'])])
+        for r in riv_orig
+    ])
+    stage_nn = NearestNDInterpolator(riv_xy, [r['stage'] for r in riv_orig])
+    rbot_nn = NearestNDInterpolator(riv_xy, [r['rbot'] for r in riv_orig])
+    riv_cond = np.array([r['cond'] for r in riv_orig])
+
+    orig_riv_areas = np.array([
+        ShapelyPolygon(coarse_modelgrid.get_cell_vertices(
+            _cellid_to_flat(r['cellid'])
+        )).area
+        for r in riv_orig
+    ])
+
+    river_union = river_gdf[
+        river_gdf.intersects(boundary_gdf.geometry.iloc[0])
+    ].geometry.union_all()
+    river_prep = shapely_prep(river_union)
+
+    riv_spd = []
+    for i in range(ncpl):
+        if river_prep.contains(ShapelyPoint(xc_ref[i], yc_ref[i])):
+            dists = (riv_xy[:, 0] - xc_ref[i])**2 + (riv_xy[:, 1] - yc_ref[i])**2
+            j = np.argmin(dists)
+            area_new = ShapelyPolygon(mg_ref.get_cell_vertices(i)).area
+            cond_scaled = riv_cond[j] * area_new / orig_riv_areas[j]
+            riv_spd.append((
+                (0, i),
+                float(stage_nn(xc_ref[i], yc_ref[i])),
+                float(cond_scaled),
+                float(rbot_nn(xc_ref[i], yc_ref[i])),
+            ))
+    _flopy.mf6.ModflowGwfriv(ref_gwf, stress_period_data=riv_spd)
+    print(f"RIV cells: {len(riv_spd)}")
+
+    # ------------------------------------------------------------------
+    # 7. WEL
+    # ------------------------------------------------------------------
+    well_cells_out = []
+    if well_data:
+        wel_spd = []
+        for wx, wy, rate in well_data:
+            wc = int(np.argmin((xc_ref - wx)**2 + (yc_ref - wy)**2))
+            wel_spd.append(((0, wc), rate))
+            well_cells_out.append(wc)
+        _flopy.mf6.ModflowGwfwel(ref_gwf, stress_period_data=wel_spd)
+        print(f"WEL cells: {len(wel_spd)}")
+
+    # ------------------------------------------------------------------
+    # 8. OC, write, run
+    # ------------------------------------------------------------------
+    _flopy.mf6.ModflowGwfoc(
+        ref_gwf,
+        head_filerecord=[f'{sim_name}.hds'],
+        budget_filerecord=[f'{sim_name}.cbc'],
+        saverecord=[('HEAD', 'ALL'), ('BUDGET', 'ALL')],
+    )
+
+    print("Running refined GWF model...")
+    ref_sim.write_simulation()
+    success, _ = ref_sim.run_simulation(silent=True)
+    if not success:
+        raise RuntimeError(
+            "Refined GWF model failed — check listing file in "
+            f"{workspace}"
+        )
+
+    heads = ref_gwf.output.head().get_data().flatten()
+    ref_gwf.modelgrid.set_coord_info(crs=str(boundary_gdf.crs))
+    print(f"Refined model completed. Head range: "
+          f"{heads.min():.2f} – {heads.max():.2f} m")
+
+    result = {
+        'sim': ref_sim,
+        'gwf': ref_gwf,
+        'modelgrid': ref_gwf.modelgrid,
+        'gridprops': gridprops,
+        'ncpl': ncpl,
+        'heads': heads,
+        'well_cells': well_cells_out,
+    }
+    if bl_heads_ref is not None:
+        result['baseline_heads'] = bl_heads_ref
+    return result
+
+
+def run_scenario_prt(
+    ref_gwf,
+    ref_sim,
+    porosity: float,
+    well_cells: List[int],
+    rch_multiplier: float = 1.0,
+    tracking_time: float = 365.0,
+    workspace: Optional[Union[str, Path]] = None,
+    sim_name: str = "scenario_prt",
+) -> Optional[Dict[str, Any]]:
+    """
+    Run PRT particle tracking under a modified-recharge scenario.
+
+    Applies a recharge multiplier to the refined GWF model, reruns the
+    flow simulation, builds and runs PRT, loads results, and restores
+    the original recharge.  This is the workflow used in NB8's drought
+    stress-test.
+
+    Parameters
+    ----------
+    ref_gwf : flopy.mf6.ModflowGwf
+        Refined GWF model (already run once).
+    ref_sim : flopy.mf6.MFSimulation
+        Simulation containing *ref_gwf*.
+    porosity : float
+        Effective porosity for particle tracking.
+    well_cells : list of int
+        Flat cell indices for wells (izone = 1).
+    rch_multiplier : float, optional
+        Multiplier applied to recharge (e.g. 0.7 = −30 %).  Default 1.0.
+    tracking_time : float, optional
+        Maximum forward tracking time (days).  Default 365.
+    workspace : str or Path, optional
+        Directory for PRT files.  Defaults to ``<gwf_ws>/prt_scenario``.
+    sim_name : str, optional
+        PRT simulation name.  Default ``"scenario_prt"``.
+
+    Returns
+    -------
+    dict or None
+        Same structure as ``load_prt_results()`` output, or None on
+        failure.  The original recharge is always restored.
+    """
+    import copy as _copy
+
+    # --- Save and modify recharge ---
+    rch_pkg = ref_gwf.get_package('RCHA')
+    rch_data = rch_pkg.recharge.get_data()
+    original_rch = _copy.deepcopy(rch_data)
+
+    if rch_multiplier != 1.0:
+        if isinstance(rch_data, dict):
+            new_rch = {k: v * rch_multiplier for k, v in rch_data.items()}
+        else:
+            new_rch = rch_data * rch_multiplier
+        rch_pkg.recharge.set_data(new_rch)
+
+    results = None
+    try:
+        # --- Run GWF ---
+        ref_sim.write_simulation()
+        success_gwf, _ = ref_sim.run_simulation(silent=True)
+        if not success_gwf:
+            print("Scenario GWF run failed.")
+            return None
+
+        # --- Build and run PRT ---
+        if workspace is None:
+            workspace = os.path.join(ref_gwf.model_ws, 'prt_scenario')
+
+        prt_result = build_prt_model(
+            ref_gwf,
+            porosity=porosity,
+            well_cells=well_cells,
+            tracking_time=tracking_time,
+            workspace=workspace,
+            sim_name=sim_name,
+        )
+        success_prt, _ = prt_result['prt_sim'].run_simulation()
+        if not success_prt:
+            print("Scenario PRT run failed.")
+            return None
+
+        # --- Load results ---
+        results = load_prt_results(
+            prt_result['trackcsv_path'],
+            ref_gwf.modelgrid,
+        )
+    finally:
+        # --- Always restore recharge ---
+        rch_pkg.recharge.set_data(original_rch)
+
+    return results

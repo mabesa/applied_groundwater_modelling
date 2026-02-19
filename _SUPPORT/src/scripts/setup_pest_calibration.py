@@ -808,6 +808,105 @@ def get_calibrated_k_field(pest_ws, modelgrid, variogram_range=1500.0,
     return k_field, pp_df
 
 
+def apply_calibrated_parameters(
+    gwf, pest_ws, modelgrid, river_gdf, boundary_gdf,
+    variogram_range=6000.0, anisotropy_angle=-45.0, anisotropy_scaling=3.0,
+    set_npf_flags=True,
+):
+    """
+    Apply calibrated K field and Sihl leakance multiplier to a GWF model.
+
+    This encapsulates the boilerplate shared across NB5, NB6, and NB8:
+    kriging the pilot-point K field, loading the optimised Sihl multiplier,
+    and optionally enabling NPF output flags for particle tracking.
+
+    Parameters
+    ----------
+    gwf : flopy.mf6.ModflowGwf
+        Groundwater flow model to modify in-place.
+    pest_ws : str
+        Path to the PEST++ working directory.
+    modelgrid : flopy grid
+        Model grid object.
+    river_gdf : geopandas.GeoDataFrame
+        River polygons (must include Limmat and Sihl).
+    boundary_gdf : geopandas.GeoDataFrame
+        Model domain polygon.
+    variogram_range : float, optional
+        Kriging variogram range [m]. Default 6000.
+    anisotropy_angle : float, optional
+        Variogram anisotropy angle [degrees]. Default -45.
+    anisotropy_scaling : float, optional
+        Variogram anisotropy scaling. Default 3.
+    set_npf_flags : bool, optional
+        If True, enable ``save_specific_discharge``, ``save_flows``, and
+        ``save_saturation`` on the NPF package. Default True.
+
+    Returns
+    -------
+    dict
+        ``k_field``       – interpolated K array (same shape as grid)
+        ``par_df``        – optimised parameter DataFrame
+        ``sihl_mult``     – applied Sihl leakance multiplier (1.0 if not present)
+        ``sihl_cell_ids`` – array of cell indices belonging to the Sihl
+    """
+    from shapely.geometry import Point as _Point
+
+    # --- 1. Calibrated K field ---
+    k_field, pp_df = get_calibrated_k_field(
+        pest_ws, modelgrid,
+        variogram_range=variogram_range,
+        anisotropy_angle=anisotropy_angle,
+        anisotropy_scaling=anisotropy_scaling,
+    )
+    gwf.npf.k.set_data(k_field)
+
+    # --- 2. Load PEST results and identify Sihl cells ---
+    par_df, _ = load_pest_results(pest_ws)
+
+    xc = modelgrid.xcellcenters
+    yc = modelgrid.ycellcenters
+
+    sihl_poly = river_gdf[river_gdf['GEWAESSERNAME'] == 'Sihl'].union_all()
+    riv = gwf.get_package('RIV')
+    riv_data = riv.stress_period_data.get_data(0)
+    sihl_cell_ids = []
+    for rec in riv_data:
+        cid = rec['cellid']
+        cell_idx = cid[-1] if isinstance(cid, tuple) else cid
+        if sihl_poly.contains(_Point(xc[cell_idx], yc[cell_idx])):
+            sihl_cell_ids.append(cell_idx)
+
+    # --- 3. Apply Sihl leakance multiplier ---
+    sihl_mult = 1.0
+    if 'sihl_leakance_mult' in par_df.index:
+        mult_log = par_df.loc['sihl_leakance_mult', 'optimised']
+        if not np.isnan(mult_log):
+            sihl_mult = 10.0 ** mult_log
+            spd = riv.stress_period_data.get_data(0)
+            sihl_set = set(sihl_cell_ids)
+            for i in range(len(spd)):
+                cid = spd[i]['cellid']
+                cell_idx = cid[-1] if isinstance(cid, tuple) else cid
+                if cell_idx in sihl_set:
+                    spd[i]['cond'] *= sihl_mult
+            riv.stress_period_data.set_data(spd, key=0)
+            print(f"Sihl leakance multiplier applied: {sihl_mult:.1f}×")
+
+    # --- 4. NPF flags ---
+    if set_npf_flags:
+        gwf.npf.save_specific_discharge = True
+        gwf.npf.save_flows = True
+        gwf.npf.save_saturation = True
+
+    return {
+        'k_field': k_field,
+        'par_df': par_df,
+        'sihl_mult': sihl_mult,
+        'sihl_cell_ids': np.array(sihl_cell_ids),
+    }
+
+
 def run_loo_cross_validation(
     nb4_workspace,
     val_workspace,
