@@ -368,6 +368,45 @@ After reducing recharge by 30% (climate drought scenario):
 ## Checkpoint 8 — Capture Zone Under Drought
 You re-ran MODPATH under the reduced-recharge scenario.
 - **How does the capture zone of the pumping well change under drought conditions?**
+""",
+
+# Transport Track — Notebook 2: Perceptual Model
+"task_t02_checkpoint_1": r"""
+## Checkpoint 1 — Seepage Velocity
+Given:
+- Hydraulic conductivity $K = 864$ m/d
+- Hydraulic gradient $i = 0.0026$
+- Effective porosity $n_e = 0.20$
+
+**Calculate the seepage velocity $v$ in m/day.**
+""",
+
+"task_t02_checkpoint_2": r"""
+## Checkpoint 2 — Thermal Retardation Factor
+Given:
+- Effective porosity $n_e = 0.25$
+- Solid density $\rho_s = 2650$ kg/m³
+- Solid heat capacity $c_s = 880$ J/(kg·K)
+- Water density $\rho_w = 1000$ kg/m³
+- Water heat capacity $c_w = 4184$ J/(kg·K)
+
+The thermal retardation factor is:
+
+$$R = \frac{n_e \cdot \rho_w \cdot c_w + (1 - n_e) \cdot \rho_s \cdot c_s}{n_e \cdot \rho_w \cdot c_w}$$
+
+**Calculate $R$.**
+""",
+
+"task_t02_checkpoint_3": r"""
+## Checkpoint 3 — Thermal Well Distribution
+Based on the concession map you just generated:
+- **How are thermal groundwater concessions (WPG/KW) distributed in the model area?**
+""",
+
+"task_t02_checkpoint_4": r"""
+## Checkpoint 4 — Dominant Thermal Input
+Based on the thermal energy budget:
+- **Which flux component contributes the most thermal energy (warming) to the Limmat Valley aquifer?**
 """
 
 }
@@ -427,6 +466,11 @@ solutions = {
     "task08_checkpoint_2": (1.0, 4.0),      # Max drawdown at well cell (~2.3 m)
     "task08_checkpoint_7": (0.05, 0.5),    # Mean head decline under 30% recharge reduction (~0.18 m)
     # Checkpoints 1, 3, 4, 5, 6, 8 are multiple choice - handled separately
+    # Transport Track — Notebook 2 checkpoints
+    "task_t02_checkpoint_1": (10.0, 12.5),  # Correct solution 11.2 m/d (864 * 0.0026 / 0.20)
+    "task_t02_checkpoint_2": (2.5, 2.9),    # Correct solution 2.67
+    # task_t02_checkpoint_3 is multiple choice - handled separately
+    # task_t02_checkpoint_4 is multiple choice - handled separately
 }
 
 
@@ -496,6 +540,11 @@ solutions_exact = {
     "task08_checkpoint_6": "C) Capture zones vary seasonally and with parameter uncertainty",
     "task08_checkpoint_7": "See output",
     "task08_checkpoint_8": "A) The capture zone expands",
+    # Transport Track — Notebook 2 checkpoints
+    "task_t02_checkpoint_1": "11.2",
+    "task_t02_checkpoint_2": "2.67",
+    "task_t02_checkpoint_3": "B) Concentrated in the city centre",
+    "task_t02_checkpoint_4": "B) River Limmat / Hardhof recharge",
 }
 
 
@@ -569,6 +618,11 @@ solution_unit = {
     "task08_checkpoint_6": "multiple choice",
     "task08_checkpoint_7": "m",
     "task08_checkpoint_8": "multiple choice",
+    # Transport Track — Notebook 2 checkpoints
+    "task_t02_checkpoint_1": "m/d",
+    "task_t02_checkpoint_2": "—",
+    "task_t02_checkpoint_3": "multiple choice",
+    "task_t02_checkpoint_4": "multiple choice",
 }
 
 
@@ -725,6 +779,19 @@ multiple_choice_options = {
         ("B) The capture zone shrinks", "B) It shrinks — lower water table means less water is available"),
         ("C) The capture zone stays the same", "C) It stays the same — the pumping rate hasn't changed"),
         ("D) The capture zone shifts laterally", "D) It shifts to one side due to asymmetric recharge reduction"),
+    ],
+    # Transport Track — Notebook 2 checkpoints
+    "task_t02_checkpoint_3": [
+        ("A) Uniformly distributed", "A) Uniformly distributed across the model area"),
+        ("B) Concentrated in the city centre", "B) Concentrated in the city centre — high heating/cooling demand in urban core"),
+        ("C) Along the river banks only", "C) Along the river banks only — close to the recharge source"),
+        ("D) In the western outskirts", "D) In the western outskirts — industrial zone"),
+    ],
+    "task_t02_checkpoint_4": [
+        ("A) Areal recharge", "A) Areal recharge — largest area but low temperature anomaly"),
+        ("B) River Limmat / Hardhof recharge", "B) River Limmat / Hardhof recharge — large flux at +2 °C above background"),
+        ("C) River Sihl infiltration", "C) River Sihl infiltration — alpine water close to background temperature"),
+        ("D) Lateral inflow from hills", "D) Lateral inflow from hills — at background temperature"),
     ],
 }
 
@@ -1635,6 +1702,68 @@ This is exactly the non-stationarity effect discussed in Section 3: the drought-
 **Regulatory implication:** Protection zones based on dry-season conditions are more conservative (larger) than those based on average conditions. Swiss practice typically requires the more conservative delineation.
 
 **Analytical check:** The maximum half-width of the capture zone is $y_{max} = Q / (2Ti)$. If the gradient $i$ decreases under drought, $y_{max}$ increases.
+<br>
+""",
+
+# Transport Track — Notebook 2: Perceptual Model
+"task_t02_checkpoint_1": r"""
+## Solution — Seepage Velocity
+
+The seepage velocity is:
+
+$$v = \frac{K \cdot i}{n_e} = \frac{864 \times 0.0026}{0.20} = \frac{2.246}{0.20} = 11.2 \text{ m/d}$$
+
+This is the average linear velocity of groundwater — the speed at which a conservative tracer (or thermal front, before retardation) would move through the aquifer.
+
+Note: the specific discharge $q = Ki = 2.25$ m/d is the flux per unit area. Dividing by porosity converts from flux to velocity because water only moves through the pore space, not through the solid grains.
+<br>
+""",
+
+"task_t02_checkpoint_2": r"""
+## Solution — Thermal Retardation Factor
+
+The bulk volumetric heat capacity is:
+
+$$(\rho c)_{bulk} = n_e \cdot \rho_w \cdot c_w + (1 - n_e) \cdot \rho_s \cdot c_s$$
+$$= 0.25 \times 1000 \times 4184 + 0.75 \times 2650 \times 880$$
+$$= 1\,046\,000 + 1\,749\,000 = 2\,795\,000 \text{ J/(m}^3 \cdot \text{K)}$$
+
+The thermal retardation factor is:
+
+$$R = \frac{(\rho c)_{bulk}}{n_e \cdot \rho_w \cdot c_w} = \frac{2\,795\,000}{0.25 \times 1000 \times 4184} = \frac{2\,795\,000}{1\,046\,000} = 2.67$$
+
+A thermal front moves 2.67× slower than the groundwater velocity. Higher porosity → lower $R$ because more of the bulk volume is water (which carries the heat) and less is solid (which stores it).
+<br>
+""",
+
+"task_t02_checkpoint_3": r"""
+## Solution — Thermal Well Distribution
+
+**Correct answer: B) Concentrated in the city centre**
+
+The map shows that thermal groundwater concessions (WPG = heat pumps, KW = cooling water) are clustered in Zurich's city centre (districts 1–5). This reflects:
+
+1. **High heating and cooling demand** in dense urban areas (offices, commercial buildings)
+2. **Favourable aquifer conditions** — the Limmat Valley gravel aquifer is productive and accessible
+3. **Proximity to the Limmat** — river filtrate provides a large, renewable thermal resource
+
+This concentration creates a cumulative urban heat island effect in the aquifer that is part of the background thermal state we model.
+<br>
+""",
+
+"task_t02_checkpoint_4": r"""
+## Solution — Dominant Thermal Input
+
+**Correct answer: B) River Limmat / Hardhof recharge**
+
+The energy budget analysis shows that the Limmat / Hardhof recharge is the dominant thermal input because it combines:
+
+1. **Large volumetric flux**: ~7.7 × 10⁶ m³/yr (the largest single inflow)
+2. **Significant temperature anomaly**: +2.0 °C above background (12.5 vs. 10.5 °C)
+
+The thermal power anomaly $\Phi = \rho_w c_w Q \Delta T$ is proportional to both the flux and the temperature difference. While areal recharge covers a large area, its temperature anomaly is small (−0.7 °C) and its total flux is modest. The Sihl contributes a moderate flux but at near-background temperature (+0.1 °C).
+
+The Limmat's elevated temperature comes from Lake Zurich (thermal buffering) and urban heat inputs.
 <br>
 """
 
