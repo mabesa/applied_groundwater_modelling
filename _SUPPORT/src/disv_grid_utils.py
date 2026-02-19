@@ -311,6 +311,9 @@ def create_grid_with_rivers(
     refinement_areas: Optional[List[Tuple[gpd.GeoDataFrame, float]]] = None,
     crs: Optional[str] = None,
     min_river_intersection_fraction: float = 0.0,
+    min_cell_area: Optional[float] = None,
+    min_vertex_spacing: Optional[float] = None,
+    constrain_to_rivers: bool = True,
 ) -> Dict[str, Any]:
     """
     Create a Voronoi grid with river polygons as internal constraints.
@@ -347,6 +350,31 @@ def create_grid_with_rivers(
         least 30% of the cell must be covered by river. This helps reduce
         the number of river cells by excluding cells that only marginally
         touch river boundaries.
+    min_cell_area : float, optional
+        Minimum cell area in CRS units squared (e.g., m²). Voronoi
+        tessellations with internal polygon constraints can produce tiny
+        sliver cells at polygon boundaries. These cells can cause
+        floating-point exceptions in MODFLOW 6. If specified, cells below
+        this area are removed and remaining cells renumbered. A value of
+        4.0 corresponds to roughly 2 m minimum cell side length.
+    min_vertex_spacing : float, optional, default None
+        Minimum distance between consecutive vertices on river polygon
+        exteriors. If ``None``, an effective spacing of
+        ``river_cell_size / 3`` is used automatically — this scales
+        vertex density to the target mesh resolution and prevents
+        vertices that are far denser than the cell size from forcing
+        tiny triangles in the mesh. Pass a larger value to override
+        upward (the effective spacing is ``max(min_vertex_spacing,
+        river_cell_size / 3)``).
+    constrain_to_rivers : bool, default True
+        If True (default), river bank geometries become internal mesh
+        constraints so that Voronoi cell edges align with river banks.
+        This improves accuracy for the RIV package but produces smaller
+        transition cells along river bank edges.
+        If False, a uniform Voronoi grid is created and river cells are
+        identified purely by spatial overlay. This gives a cleaner grid
+        with more uniform cell sizes at the cost of cells that straddle
+        river banks.
 
     Returns
     -------
@@ -421,43 +449,140 @@ def create_grid_with_rivers(
     # Get boundary polygon
     boundary_polygon = _get_boundary_polygon(boundary_gdf)
 
-    # Get river polygons clipped to boundary
+    # ------------------------------------------------------------------
+    # Fast path: no river constraint — uniform grid + overlay
+    # ------------------------------------------------------------------
+    if not constrain_to_rivers:
+        grid_data = create_disv_from_boundary(
+            boundary_gdf, cell_size, refinement_areas, crs=crs
+        )
+        # Identify river cells by spatial overlay on the original polygons
+        river_union = unary_union(river_gdf.geometry)
+        river_clipped = river_union.intersection(boundary_polygon)
+        river_polys = _extract_polygons(river_clipped)
+        river_cells = _identify_river_cells(
+            grid_data['modelgrid'],
+            river_polys,
+            min_intersection_fraction=min_river_intersection_fraction,
+        )
+        grid_data['river_cells'] = river_cells
+        grid_data['river_polygons'] = river_polys
+        grid_data['river_constraint_polygons'] = river_polys
+        grid_data['boundary_polygon'] = boundary_polygon
+        return grid_data
+
+    # ------------------------------------------------------------------
+    # Constrained path: river banks as internal mesh edges
+    # ------------------------------------------------------------------
+
+    # Compute effective vertex spacing: scale to river_cell_size unless
+    # the user explicitly requested a larger spacing.
+    # river_cell_size / 3 balances geometry fidelity against mesh quality:
+    # finer spacing forces constrained triangles that produce tiny Voronoi
+    # sliver cells along river bank edges.
+    effective_spacing = max(min_vertex_spacing or 0, river_cell_size / 3)
+
+    # Get river polygons clipped to a boundary buffered inward by the
+    # effective vertex spacing.  This guarantees a gap between river edges
+    # and the domain boundary that is wide enough for Triangle to create
+    # properly-sized transition triangles — the original clip-to-boundary
+    # plus a fixed 2 m erosion left sub-metre gaps where rivers nearly
+    # touched the boundary, producing pathological sliver cells.
     river_union = unary_union(river_gdf.geometry)
-    river_clipped = river_union.intersection(boundary_polygon)
+
+    # Save original river geometry clipped to full boundary for cell
+    # identification.  The heavy erosion/simplification below creates mesh
+    # constraint edges only — river cells should be identified against the
+    # original polygons so that narrow river sections (e.g. the Sihl at
+    # ~15-20 m width) are not lost.
+    river_id_geom = river_union.intersection(boundary_polygon)
+    river_id_polygons = _extract_polygons(river_id_geom)
+
+    inner_boundary = boundary_polygon.buffer(-effective_spacing)
+    river_clipped = river_union.intersection(inner_boundary)
+
+    # Morphological opening: remove narrow appendages and small structures
+    # that cannot be resolved at the target river cell size.
+    # buffer(-r).buffer(+r) eliminates features narrower than 2*r.
+    opening_radius = river_cell_size / 4
+    river_clipped = river_clipped.buffer(-opening_radius, resolution=2).buffer(
+        opening_radius, resolution=2
+    )
 
     if river_clipped.is_empty:
         warnings.warn(
             "River polygons do not intersect model boundary. "
             "Creating grid without river constraints."
         )
-        return create_disv_from_boundary(
+        grid_data = create_disv_from_boundary(
             boundary_gdf, cell_size, refinement_areas, crs=crs
         )
+        grid_data['river_cells'] = np.array([], dtype=int)
+        grid_data['river_polygons'] = []
+        grid_data['river_constraint_polygons'] = []
+        grid_data['boundary_polygon'] = boundary_polygon
+        return grid_data
 
     # Simplify river geometry to reduce vertex count
     # Tolerance based on cell size to preserve detail at mesh resolution
     simplify_tolerance = river_cell_size / 4
     river_clipped = river_clipped.simplify(simplify_tolerance, preserve_topology=True)
 
-    # Erode rivers slightly to ensure they don't touch the boundary
-    # Triangle fails with coincident vertices between polygons
-    erosion = 2.0  # 2 meter erosion
-    river_eroded = river_clipped.buffer(-erosion)
+    # Erode river polygons by the effective vertex spacing.  This serves
+    # two purposes: (1) prevents constraint edges from touching where
+    # multiple internal polygons are close together, and (2) widens the
+    # gap between river constraint edges and surrounding mesh vertices,
+    # which directly controls the minimum Voronoi cell size along banks.
+    erosion = effective_spacing
+    river_eroded = river_clipped.buffer(-erosion, resolution=2)
     if river_eroded.is_empty:
         # If erosion removes all rivers, use original clipped geometry
         river_eroded = river_clipped
 
+    # Post-buffer simplification to remove dense vertices from both
+    # GIS source data and buffer arc-approximation
+    post_simplify_tol = effective_spacing
+    river_eroded = river_eroded.simplify(post_simplify_tol, preserve_topology=True)
+
     # Collect river polygons and fill holes (islands)
     # Triangle mesh generator struggles with interior rings
-    river_polygons = _extract_polygons_no_holes(river_eroded)
+    river_polygons = _extract_polygons_no_holes(
+        river_eroded, min_area=river_cell_size ** 2
+    )
+
+    # Enforce minimum vertex spacing on river polygons
+    # buffer() erosion creates dense arc-approximation vertices at corners
+    # that force tiny constrained triangles in the mesh
+    if effective_spacing > 0:
+        thinned = []
+        for poly in river_polygons:
+            p = _enforce_min_vertex_spacing(poly, effective_spacing)
+            if p.is_valid and not p.is_empty and p.area > 0:
+                thinned.append(p)
+        river_polygons = thinned
 
     if not river_polygons:
         warnings.warn(
-            "No valid river polygons found. Creating grid without river constraints."
+            "No valid river polygons after preprocessing. "
+            "Creating grid without river constraints."
         )
-        return create_disv_from_boundary(
+        grid_data = create_disv_from_boundary(
             boundary_gdf, cell_size, refinement_areas, crs=crs
         )
+        # Still identify river cells by overlay on original river geometry
+        river_union_orig = unary_union(river_gdf.geometry)
+        river_clipped_orig = river_union_orig.intersection(boundary_polygon)
+        river_polys_orig = _extract_polygons(river_clipped_orig)
+        river_cells_overlay = _identify_river_cells(
+            grid_data['modelgrid'],
+            river_polys_orig,
+            min_intersection_fraction=min_river_intersection_fraction,
+        )
+        grid_data['river_cells'] = river_cells_overlay
+        grid_data['river_polygons'] = river_polys_orig
+        grid_data['river_constraint_polygons'] = []
+        grid_data['boundary_polygon'] = boundary_polygon
+        return grid_data
 
     # Process additional refinement areas
     additional_refinement_polygons = []
@@ -505,10 +630,24 @@ def create_grid_with_rivers(
     vertices = disv_gridprops['vertices']
     cell2d = disv_gridprops['cell2d']
 
-    # Identify cells inside rivers
+    # Filter tiny sliver cells if min_cell_area is specified
+    if min_cell_area is not None and min_cell_area > 0:
+        disv_gridprops, modelgrid, old_to_new = _filter_small_cells(
+            disv_gridprops, min_cell_area, crs=output_crs
+        )
+        ncpl = disv_gridprops['ncpl']
+        nvert = disv_gridprops['nvert']
+        vertices = disv_gridprops['vertices']
+        cell2d = disv_gridprops['cell2d']
+
+    # Identify cells inside rivers using the ORIGINAL (pre-erosion) polygons.
+    # The eroded river_polygons were used only as mesh constraints for
+    # Triangle; using them for cell identification would eliminate narrow
+    # river sections like the Sihl (width ~15-20 m) where the 8+ m erosion
+    # removes the polygon entirely.
     river_cells = _identify_river_cells(
         modelgrid,
-        river_polygons,
+        river_id_polygons,
         min_intersection_fraction=min_river_intersection_fraction,
     )
 
@@ -522,7 +661,8 @@ def create_grid_with_rivers(
         'disv_gridprops': disv_gridprops,
         'crs': output_crs,
         'river_cells': river_cells,
-        'river_polygons': river_polygons,
+        'river_polygons': river_id_polygons,
+        'river_constraint_polygons': river_polygons,
         'boundary_polygon': boundary_polygon,
         'base_max_area': base_max_area,
     }
@@ -1485,6 +1625,96 @@ def _extract_polygons(geometry) -> List[Polygon]:
     return polygons
 
 
+def _filter_small_cells(
+    disv_gridprops: Dict[str, Any],
+    min_cell_area: float,
+    crs: Optional[str] = None,
+) -> Tuple[Dict[str, Any], VertexGrid, Dict[int, int]]:
+    """
+    Remove cells below a minimum area from DISV grid properties.
+
+    Voronoi tessellations with internal polygon constraints (e.g., river
+    banks, refinement zone boundaries) can produce tiny sliver cells where
+    constraint edges intersect. These cells can cause floating-point
+    exceptions in MODFLOW 6 when computing connection distances.
+
+    Parameters
+    ----------
+    disv_gridprops : dict
+        DISV grid properties from VoronoiGrid.get_disv_gridprops().
+    min_cell_area : float
+        Minimum cell area in CRS units squared (e.g., m²).
+    crs : str, optional
+        Coordinate reference system for the new VertexGrid.
+
+    Returns
+    -------
+    filtered_gridprops : dict
+        Filtered DISV grid properties with renumbered cells.
+    modelgrid : VertexGrid
+        New FloPy VertexGrid for the filtered grid.
+    old_to_new : dict
+        Mapping from old cell IDs to new cell IDs.
+    """
+    vertices = disv_gridprops['vertices']
+    cell2d = disv_gridprops['cell2d']
+    nvert = disv_gridprops['nvert']
+    ncpl_orig = disv_gridprops['ncpl']
+
+    keep_cells = []
+    old_to_new = {}
+
+    for cell in cell2d:
+        cell_id = cell[0]
+        n_verts = cell[3]
+        vert_ids = cell[4:4 + n_verts]
+        coords = [(vertices[v][1], vertices[v][2]) for v in vert_ids]
+
+        if len(coords) >= 3:
+            area = Polygon(coords).area
+        else:
+            area = 0.0
+
+        if area >= min_cell_area:
+            new_id = len(keep_cells)
+            old_to_new[cell_id] = new_id
+            new_cell = list(cell)
+            new_cell[0] = new_id
+            keep_cells.append(new_cell)
+
+    new_ncpl = len(keep_cells)
+    n_removed = ncpl_orig - new_ncpl
+
+    if n_removed > 0:
+        warnings.warn(
+            f"Removed {n_removed} cells with area < {min_cell_area} m² "
+            f"({ncpl_orig} → {new_ncpl} cells)."
+        )
+
+    filtered_gridprops = {
+        'ncpl': new_ncpl,
+        'nvert': nvert,
+        'vertices': vertices,
+        'cell2d': keep_cells,
+    }
+
+    # Create new VertexGrid from filtered data
+    top = np.ones(new_ncpl)
+    botm = np.zeros((1, new_ncpl))
+
+    modelgrid = VertexGrid(
+        vertices=vertices,
+        cell2d=keep_cells,
+        ncpl=new_ncpl,
+        top=top,
+        botm=botm,
+        nlay=1,
+        crs=crs,
+    )
+
+    return filtered_gridprops, modelgrid, old_to_new
+
+
 def _extract_polygons_no_holes(geometry, min_area: float = 100.0) -> List[Polygon]:
     """
     Extract polygons from geometry, removing interior holes (islands).
@@ -1534,6 +1764,64 @@ def _extract_polygons_no_holes(geometry, min_area: float = 100.0) -> List[Polygo
                             polygons.append(p)
 
     return polygons
+
+
+def _enforce_min_vertex_spacing(polygon: Polygon, min_spacing: float) -> Polygon:
+    """
+    Thin vertices on a polygon's exterior ring to enforce minimum spacing.
+
+    Walks through the exterior ring sequentially, keeping a vertex only if
+    it is at least ``min_spacing`` from the last kept vertex. Also checks
+    that the last kept vertex is far enough from the first; drops it if
+    too close (the ring will still close via Shapely's automatic closure).
+
+    Parameters
+    ----------
+    polygon : shapely.geometry.Polygon
+        Input polygon (must have no interior rings).
+    min_spacing : float
+        Minimum Euclidean distance between consecutive kept vertices.
+
+    Returns
+    -------
+    shapely.geometry.Polygon
+        Polygon with thinned vertices, or the original polygon unchanged
+        if fewer than 3 vertices would remain after thinning.
+    """
+    coords = list(polygon.exterior.coords)
+
+    # Drop the closing coordinate (duplicate of first) for processing
+    if coords[-1] == coords[0]:
+        coords = coords[:-1]
+
+    if len(coords) <= 3:
+        return polygon
+
+    kept = [coords[0]]
+    for coord in coords[1:]:
+        dx = coord[0] - kept[-1][0]
+        dy = coord[1] - kept[-1][1]
+        dist = (dx * dx + dy * dy) ** 0.5
+        if dist >= min_spacing:
+            kept.append(coord)
+
+    # Check ring closure: if last kept vertex is too close to first, drop it
+    if len(kept) > 3:
+        dx = kept[-1][0] - kept[0][0]
+        dy = kept[-1][1] - kept[0][1]
+        if (dx * dx + dy * dy) ** 0.5 < min_spacing:
+            kept = kept[:-1]
+
+    if len(kept) < 3:
+        return polygon
+
+    result = Polygon(kept)
+    if not result.is_valid:
+        result = result.buffer(0)
+        if not isinstance(result, Polygon) or result.is_empty:
+            return polygon
+
+    return result
 
 
 def _create_voronoi_with_rivers(

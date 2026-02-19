@@ -18,7 +18,7 @@ Note on synthetic observations:
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from shapely.geometry import Point
+from shapely.geometry import LineString, Point
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 import matplotlib.pyplot as plt
@@ -128,6 +128,51 @@ def format_metrics_table(metrics: Dict[str, float]) -> str:
     return "\n".join(lines)
 
 
+def compare_metrics(
+    before: Dict[str, float],
+    after: Dict[str, float],
+    labels: Tuple[str, str] = ("Before", "After"),
+) -> str:
+    """
+    Format a side-by-side comparison of two sets of calibration metrics.
+
+    Parameters
+    ----------
+    before : dict
+        Metrics dictionary from calculate_calibration_metrics() (first set).
+    after : dict
+        Metrics dictionary from calculate_calibration_metrics() (second set).
+    labels : tuple of str
+        Labels for the two columns.
+
+    Returns
+    -------
+    str
+        Formatted comparison table string.
+    """
+    header = f"{'Metric':<22} {labels[0]:>10} {labels[1]:>10} {'Change':>10}"
+    sep = "-" * len(header)
+    lines = [
+        "Calibration Metrics Comparison",
+        sep,
+        header,
+        sep,
+    ]
+    for key, unit in [("ME", "m"), ("MAE", "m"), ("RMSE", "m"),
+                       ("NRMSE", "%"), ("R2", "")]:
+        v1 = before[key]
+        v2 = after[key]
+        diff = v2 - v1
+        fmt = ".3f" if key != "NRMSE" else ".1f"
+        u = f" {unit}" if unit else "  "
+        sign = "+" if diff > 0 else ""
+        lines.append(
+            f"  {key:<20} {v1:>8{fmt}}{u} {v2:>8{fmt}}{u} {sign}{diff:>7{fmt}}{u}"
+        )
+    lines.append(sep)
+    return "\n".join(lines)
+
+
 # =============================================================================
 # OBSERVATION DATA LOADING
 # =============================================================================
@@ -196,6 +241,12 @@ def load_awel_observations(
             'value': 'mean'
         }).reset_index()
 
+    # Convert LV03 (6-digit) coordinates to LV95 (7-digit) if needed
+    lv03_mask = df['x_coord'] < 1_000_000
+    if lv03_mask.any():
+        df.loc[lv03_mask, 'x_coord'] += 2_000_000
+        df.loc[lv03_mask, 'y_coord'] += 1_000_000
+
     # Create GeoDataFrame
     geometry = [Point(x, y) for x, y in zip(df['x_coord'], df['y_coord'])]
     gdf = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:2056")
@@ -228,6 +279,370 @@ def load_awel_observations(
 # SYNTHETIC OBSERVATION GENERATION
 # =============================================================================
 
+def generate_reference_k_field(
+    modelgrid, idomain, top, bottom,
+    n_pilot_points=30, seed=42,
+    noise_std=0.15,
+    variogram_range=3000.0,
+    k_bounds=(1.0, 300.0),
+    anisotropy_angle=0.0,
+    anisotropy_scaling=1.0,
+):
+    """
+    Generate a stochastic reference K field correlated with aquifer thickness.
+
+    K follows a log-linear relationship with thickness, reflecting the geology
+    of alluvial aquifers where deeper sections contain coarser gravels:
+
+        log10(K) = 0.855 + 0.022 × thickness
+
+    This gives K ≈ 12 m/d at 10 m thickness, ≈ 25 m/d at 25 m (matching the
+    pumping test), and ≈ 90 m/d at 50 m.
+
+    Parameters
+    ----------
+    modelgrid : flopy grid
+        Model grid object with cell centres.
+    idomain : np.ndarray
+        Active-cell indicator (1=active).
+    top : np.ndarray
+        Top elevation of the aquifer (1-D or 2-D).
+    bottom : np.ndarray
+        Bottom elevation of the aquifer (1-D or 2-D).
+    n_pilot_points : int
+        Number of pilot points for the stochastic field.
+    seed : int
+        Random seed for reproducibility.
+    noise_std : float
+        Standard deviation of Gaussian noise in log10(K) space (~±40% at 0.15).
+    variogram_range : float
+        Kriging variogram range [m] controlling spatial correlation.
+    k_bounds : tuple
+        (min, max) K bounds [m/d] for clipping.
+    anisotropy_angle : float
+        Angle of major anisotropy axis, CCW from east [degrees].
+    anisotropy_scaling : float
+        Ratio of major to minor variogram range.
+
+    Returns
+    -------
+    k_field : np.ndarray (ncells,)
+        Hydraulic conductivity array [m/d].
+    """
+    from setup_pest_calibration import _distribute_pilot_points, _interpolate_pp_to_grid
+
+    rng = np.random.default_rng(seed)
+
+    # Distribute pilot points across active domain
+    pp_xy = _distribute_pilot_points(
+        modelgrid, n_target=n_pilot_points, seed=seed, idomain=idomain,
+    )
+
+    # Cell centroids
+    if hasattr(modelgrid, 'nrow'):
+        xc = modelgrid.xcellcenters.ravel()
+        yc = modelgrid.ycellcenters.ravel()
+    else:
+        xc = modelgrid.xcellcenters
+        yc = modelgrid.ycellcenters
+
+    # Thickness at all cells
+    thickness = (np.asarray(top) - np.asarray(bottom)).flatten()
+
+    # At each pilot point, find the nearest cell and compute log10(K)
+    pp_log_k = np.zeros(len(pp_xy))
+    for i in range(len(pp_xy)):
+        dx = xc - pp_xy[i, 0]
+        dy = yc - pp_xy[i, 1]
+        nearest = int(np.argmin(dx**2 + dy**2))
+        b = thickness[nearest]
+        pp_log_k[i] = 0.855 + 0.022 * b
+
+    # Add Gaussian noise in log10 space for spatial variability
+    pp_log_k += rng.normal(0, noise_std, len(pp_log_k))
+
+    # Interpolate to full grid via kriging
+    k_field = _interpolate_pp_to_grid(
+        pp_xy, pp_log_k, modelgrid,
+        method="ordinary_kriging", variogram_range=variogram_range,
+        anisotropy_angle=anisotropy_angle,
+        anisotropy_scaling=anisotropy_scaling,
+    )
+
+    # Clip to physical bounds
+    k_field = np.clip(np.asarray(k_field).flatten(), k_bounds[0], k_bounds[1])
+
+    return k_field
+
+
+def generate_conditioned_k_field(
+    sim, gwf, modelgrid, idomain, top, bottom,
+    obs_gdf,
+    *,
+    n_pilot_points=15,
+    seed=42,
+    noise_std=0.10,
+    variogram_range=3000.0,
+    anisotropy_angle=0.0,
+    anisotropy_scaling=1.0,
+    k_bounds=(1.0, 300.0),
+    delta_log_k=0.02,
+    lambda_reg=1.0,
+    max_iterations=3,
+    convergence_tol=0.5,
+    verbose=True,
+):
+    """
+    Generate a thickness-dependent K field conditioned on real AWEL head
+    observations using in-memory Gauss-Newton inversion.
+
+    This function:
+    1. Distributes pilot points and assigns thickness-based log10(K)
+    2. Iteratively adjusts pilot-point K values so that the model reproduces
+       observed heads at real AWEL wells (Jacobian-based least-squares)
+    3. Adds spatially correlated stochastic noise for realistic heterogeneity
+    4. Returns the final K field for synthetic observation generation
+
+    Parameters
+    ----------
+    sim : flopy.mf6.MFSimulation
+        The loaded MODFLOW 6 simulation.
+    gwf : flopy.mf6.MFModel
+        The groundwater flow model.
+    modelgrid : flopy grid
+        Model grid with cell centres.
+    idomain : np.ndarray
+        Active-cell indicator (1=active).
+    top, bottom : np.ndarray
+        Top and bottom elevations of the aquifer.
+    obs_gdf : gpd.GeoDataFrame
+        Observation wells. Must contain ``is_synthetic`` column; only wells
+        with ``is_synthetic == False`` are used for conditioning.
+    n_pilot_points : int
+        Number of pilot points (fewer than PEST calibration since we only
+        condition on ~4 real observations).
+    seed : int
+        Random seed for reproducibility.
+    noise_std : float
+        Standard deviation of post-conditioning Gaussian noise in log10(K)
+        space. Smaller than unconditioned (0.15) because the trend already
+        captures the main spatial structure.
+    variogram_range : float
+        Kriging variogram range [m].
+    anisotropy_angle : float
+        Angle of major anisotropy axis, CCW from east [degrees].
+    anisotropy_scaling : float
+        Ratio of major to minor variogram range.
+    k_bounds : tuple
+        (min, max) K bounds [m/d] for clipping.
+    delta_log_k : float
+        Finite-difference step for Jacobian computation [log10(m/d)].
+    lambda_reg : float
+        Tikhonov regularisation weight for the Gauss-Newton update.
+    max_iterations : int
+        Maximum Gauss-Newton iterations.
+    convergence_tol : float
+        Stop when max |residual| < this threshold [m].
+    verbose : bool
+        Print progress messages.
+
+    Returns
+    -------
+    k_field : np.ndarray (ncells,)
+        Final K with stochastic perturbation [m/d].
+    k_conditioned : np.ndarray (ncells,)
+        K after conditioning but before noise [m/d] (for diagnostics).
+    conditioning_info : dict
+        Diagnostics: iteration count, residuals, pilot-point values,
+        model run count.
+
+    Raises
+    ------
+    ValueError
+        If no real (non-synthetic) observations are found in obs_gdf.
+    """
+    from setup_pest_calibration import _distribute_pilot_points, _interpolate_pp_to_grid
+    from flopy.utils import GridIntersect
+    from shapely.geometry import Point
+
+    # --- Filter to real observations only ---
+    if 'is_synthetic' not in obs_gdf.columns:
+        raise ValueError("obs_gdf must have an 'is_synthetic' column")
+    real_obs = obs_gdf[~obs_gdf['is_synthetic']].copy()
+    if len(real_obs) == 0:
+        raise ValueError("No real (non-synthetic) observations for conditioning")
+
+    n_obs = len(real_obs)
+    obs_heads = real_obs['head_m'].values.copy()
+    if verbose:
+        print(f"Conditioning on {n_obs} real AWEL observations")
+
+    rng = np.random.default_rng(seed)
+
+    # --- Cell centroids and thickness ---
+    if hasattr(modelgrid, 'nrow'):
+        xc = modelgrid.xcellcenters.ravel()
+        yc = modelgrid.ycellcenters.ravel()
+    else:
+        xc = modelgrid.xcellcenters
+        yc = modelgrid.ycellcenters
+
+    thickness = (np.asarray(top) - np.asarray(bottom)).flatten()
+
+    # --- Distribute pilot points ---
+    pp_xy = _distribute_pilot_points(
+        modelgrid, n_target=n_pilot_points, seed=seed, idomain=idomain,
+    )
+    n_pp = len(pp_xy)
+
+    # --- Thickness-based initial log10(K) at each pilot point ---
+    pp_log_k = np.zeros(n_pp)
+    for i in range(n_pp):
+        dx = xc - pp_xy[i, 0]
+        dy = yc - pp_xy[i, 1]
+        nearest = int(np.argmin(dx**2 + dy**2))
+        b = thickness[nearest]
+        pp_log_k[i] = 0.855 + 0.022 * b
+
+    log_k_lower, log_k_upper = np.log10(k_bounds[0]), np.log10(k_bounds[1])
+    pp_log_k_init = pp_log_k.copy()
+
+    # --- Pre-compute observation cell indices ---
+    ix = GridIntersect(modelgrid, method='vertex')
+    obs_cell_ids = []
+    for _, row in real_obs.iterrows():
+        result = ix.intersect(Point(row['x'], row['y']))
+        if len(result) > 0:
+            cid = result.cellids[0]
+            obs_cell_ids.append(cid[-1] if isinstance(cid, tuple) else cid)
+        else:
+            obs_cell_ids.append(None)
+    obs_cell_ids = np.array(obs_cell_ids, dtype=object)
+
+    # --- Helper: run model with given pp values and extract heads ---
+    model_run_count = 0
+
+    def _run_and_extract(log_k_vals):
+        nonlocal model_run_count
+        k_full = _interpolate_pp_to_grid(
+            pp_xy, log_k_vals, modelgrid,
+            method="ordinary_kriging", variogram_range=variogram_range,
+            anisotropy_angle=anisotropy_angle,
+            anisotropy_scaling=anisotropy_scaling,
+        )
+        k_full = np.clip(np.asarray(k_full).flatten(), k_bounds[0], k_bounds[1])
+        gwf.npf.k.set_data(k_full)
+        sim.write_simulation()
+        success, _ = sim.run_simulation(silent=True)
+        model_run_count += 1
+        if not success:
+            return None
+        head = gwf.output.head().get_data()
+        heads_flat = head.flatten() if head.ndim > 1 else head
+        h_obs = np.full(n_obs, np.nan)
+        for j in range(n_obs):
+            if obs_cell_ids[j] is not None:
+                h_obs[j] = heads_flat[int(obs_cell_ids[j])]
+        return h_obs
+
+    # --- Gauss-Newton iteration ---
+    damping = 0.7
+    residuals_history = []
+
+    for iteration in range(max_iterations):
+        # Base run
+        h_sim = _run_and_extract(pp_log_k)
+        if h_sim is None:
+            if verbose:
+                print(f"  Iteration {iteration+1}: base model run FAILED, stopping")
+            break
+
+        # Filter to valid observations
+        valid = ~np.isnan(h_sim) & ~np.isnan(obs_heads)
+        residuals = obs_heads[valid] - h_sim[valid]
+        max_res = np.max(np.abs(residuals)) if len(residuals) > 0 else 0.0
+        residuals_history.append(residuals.copy())
+
+        if verbose:
+            print(f"  Iteration {iteration+1}: max|residual| = {max_res:.3f} m, "
+                  f"RMSE = {np.sqrt(np.mean(residuals**2)):.3f} m  "
+                  f"({model_run_count} model runs so far)")
+
+        if max_res < convergence_tol:
+            if verbose:
+                print(f"  Converged (max|residual| < {convergence_tol} m)")
+            break
+
+        # Compute Jacobian by finite differences
+        n_valid = int(valid.sum())
+        J = np.zeros((n_valid, n_pp))
+        for p in range(n_pp):
+            pp_pert = pp_log_k.copy()
+            pp_pert[p] += delta_log_k
+            h_pert = _run_and_extract(pp_pert)
+            if h_pert is not None:
+                h_pert_valid = h_pert[valid]
+                valid_pert = ~np.isnan(h_pert_valid)
+                if valid_pert.all():
+                    J[:, p] = (h_pert_valid - h_sim[valid]) / delta_log_k
+                # else: column stays 0 (no sensitivity)
+
+        # Solve regularised least squares: (J^T J + λI) δk = J^T r
+        JtJ = J.T @ J
+        Jtr = J.T @ residuals
+        A = JtJ + lambda_reg * np.eye(n_pp)
+        try:
+            delta_k = np.linalg.solve(A, Jtr)
+        except np.linalg.LinAlgError:
+            if verbose:
+                print(f"  Singular matrix at iteration {iteration+1}, stopping")
+            break
+
+        # Damped update with clipping
+        pp_log_k = pp_log_k + damping * delta_k
+        pp_log_k = np.clip(pp_log_k, log_k_lower, log_k_upper)
+
+    # --- Build conditioned K field (before noise) ---
+    k_conditioned = _interpolate_pp_to_grid(
+        pp_xy, pp_log_k, modelgrid,
+        method="ordinary_kriging", variogram_range=variogram_range,
+        anisotropy_angle=anisotropy_angle,
+        anisotropy_scaling=anisotropy_scaling,
+    )
+    k_conditioned = np.clip(np.asarray(k_conditioned).flatten(), k_bounds[0], k_bounds[1])
+
+    # --- Add spatially correlated noise ---
+    pp_log_k_noisy = pp_log_k + rng.normal(0, noise_std, n_pp)
+    pp_log_k_noisy = np.clip(pp_log_k_noisy, log_k_lower, log_k_upper)
+
+    k_field = _interpolate_pp_to_grid(
+        pp_xy, pp_log_k_noisy, modelgrid,
+        method="ordinary_kriging", variogram_range=variogram_range,
+        anisotropy_angle=anisotropy_angle,
+        anisotropy_scaling=anisotropy_scaling,
+    )
+    k_field = np.clip(np.asarray(k_field).flatten(), k_bounds[0], k_bounds[1])
+
+    # --- Restore model state with final K ---
+    gwf.npf.k.set_data(k_field)
+
+    conditioning_info = {
+        'n_iterations': len(residuals_history),
+        'residuals_final': residuals_history[-1] if residuals_history else np.array([]),
+        'max_residual_final': float(np.max(np.abs(residuals_history[-1]))) if residuals_history else np.nan,
+        'pp_xy': pp_xy,
+        'pp_log_k_conditioned': pp_log_k.copy(),
+        'pp_log_k_final': pp_log_k_noisy.copy(),
+        'model_run_count': model_run_count,
+    }
+
+    if verbose:
+        print(f"  Done: {model_run_count} model runs, "
+              f"final max|residual| = {conditioning_info['max_residual_final']:.3f} m")
+
+    return k_field, k_conditioned, conditioning_info
+
+
 def generate_synthetic_observations(
     model_grid,
     true_heads: np.ndarray,
@@ -240,6 +655,8 @@ def generate_synthetic_observations(
     exclude_cells: Optional[np.ndarray] = None,
     river_buffer_m: float = 50.0,
     river_gdf: Optional[gpd.GeoDataFrame] = None,
+    boundary_polygon=None,
+    exclude_north_of_river: bool = False,
 ) -> gpd.GeoDataFrame:
     """
     Generate synthetic observation points distributed across the model domain.
@@ -247,9 +664,10 @@ def generate_synthetic_observations(
     These synthetic observations supplement real AWEL data for teaching
     calibration methods. They are generated by:
     1. Sampling cell centroids from active model cells
-    2. Excluding river cells and cells near rivers
-    3. Extracting "true" heads from a reference model run
-    4. Adding realistic Gaussian measurement noise
+    2. Excluding river cells, cells near rivers, and cells north of the river
+    3. Excluding cells too close to the model boundary
+    4. Extracting "true" heads from a reference model run
+    5. Adding realistic Gaussian measurement noise
 
     Parameters
     ----------
@@ -268,7 +686,9 @@ def generate_synthetic_observations(
     min_distance_m : float, default 200.0
         Minimum distance between synthetic points (m)
     avoid_boundaries_m : float, default 100.0
-        Minimum distance from model boundary (m)
+        Minimum distance from model boundary (m). When boundary_polygon is
+        provided, this uses proper geometry-based distance; otherwise falls
+        back to a simple bounding-box approach.
     exclude_cells : np.ndarray, optional
         Array of cell indices to exclude (e.g., river cells from RIV package).
         These cells will not be selected for observations.
@@ -276,7 +696,16 @@ def generate_synthetic_observations(
         Minimum distance from river geometries (if river_gdf provided)
     river_gdf : gpd.GeoDataFrame, optional
         GeoDataFrame with river polygon geometries. Cells within river_buffer_m
-        of these polygons will be excluded.
+        of these polygons will be excluded. Also used for north/south
+        classification when exclude_north_of_river is True.
+    boundary_polygon : shapely.geometry.Polygon, optional
+        Model domain boundary polygon. When provided, used for accurate
+        distance-based boundary exclusion instead of the bounding-box fallback.
+    exclude_north_of_river : bool, default False
+        If True and river_gdf is provided, exclude cells whose centroids lie
+        north of the river (i.e. a vertical line drawn south from the cell
+        crosses the river geometry). This restricts synthetic observations
+        to the main aquifer south of the river system.
 
     Returns
     -------
@@ -316,32 +745,50 @@ def generate_synthetic_observations(
     xc = model_grid.xcellcenters.flatten()
     yc = model_grid.ycellcenters.flatten()
 
-    # Filter cells away from boundaries (simple approach using centroid bounds)
-    x_min, x_max = xc[active_mask].min(), xc[active_mask].max()
-    y_min, y_max = yc[active_mask].min(), yc[active_mask].max()
-
-    interior_mask = (
-        (xc > x_min + avoid_boundaries_m) &
-        (xc < x_max - avoid_boundaries_m) &
-        (yc > y_min + avoid_boundaries_m) &
-        (yc < y_max - avoid_boundaries_m) &
-        active_mask
-    )
+    # Filter cells away from model boundary
+    if boundary_polygon is not None:
+        # Proper geometry-based boundary distance
+        interior_polygon = boundary_polygon.buffer(-avoid_boundaries_m)
+        if interior_polygon.is_empty:
+            raise ValueError(
+                f"Boundary buffer of {avoid_boundaries_m}m eliminates entire domain. "
+                f"Reduce avoid_boundaries_m."
+            )
+        from shapely import prepare as _prepare
+        _prepare(interior_polygon)
+        interior_mask = np.array([
+            interior_polygon.contains(Point(xc[i], yc[i]))
+            for i in range(len(xc))
+        ]) & active_mask
+        n_boundary = active_mask.sum() - interior_mask.sum()
+        print(f"Excluding {n_boundary} cells within {avoid_boundaries_m}m of boundary")
+    else:
+        # Fallback: simple bounding-box approach
+        x_min, x_max = xc[active_mask].min(), xc[active_mask].max()
+        y_min, y_max = yc[active_mask].min(), yc[active_mask].max()
+        interior_mask = (
+            (xc > x_min + avoid_boundaries_m) &
+            (xc < x_max - avoid_boundaries_m) &
+            (yc > y_min + avoid_boundaries_m) &
+            (yc < y_max - avoid_boundaries_m) &
+            active_mask
+        )
 
     # Exclude specified cells (e.g., river cells)
     if exclude_cells is not None and len(exclude_cells) > 0:
         exclude_set = set(exclude_cells)
         exclude_mask = np.array([i not in exclude_set for i in range(len(idomain_flat))])
         interior_mask = interior_mask & exclude_mask
-        print(f"Excluding {len(exclude_cells)} cells (e.g., river cells)")
+        print(f"Excluding {len(exclude_cells)} river cells")
+
+    # Resolve river union once (used for buffer and north-of-river checks)
+    river_union = None
+    if river_gdf is not None and len(river_gdf) > 0:
+        river_union = river_gdf.union_all() if hasattr(river_gdf, 'union_all') else river_gdf.unary_union
 
     # Exclude cells near river geometries
-    if river_gdf is not None and len(river_gdf) > 0:
-        # Buffer the river polygons
-        river_union = river_gdf.union_all() if hasattr(river_gdf, 'union_all') else river_gdf.unary_union
+    if river_union is not None:
         river_buffered = river_union.buffer(river_buffer_m)
-
-        # Check which cell centroids are within the buffered river
         near_river_mask = np.array([
             not river_buffered.contains(Point(xc[i], yc[i]))
             for i in range(len(xc))
@@ -350,19 +797,49 @@ def generate_synthetic_observations(
         n_near_river = (~near_river_mask).sum()
         print(f"Excluding {n_near_river} cells within {river_buffer_m}m of rivers")
 
+    # Exclude cells north of the river
+    if exclude_north_of_river and river_union is not None:
+        y_far_south = yc[active_mask].min() - 10000
+        north_mask = np.array([
+            LineString([(xc[i], yc[i]), (xc[i], y_far_south)]).intersects(river_union)
+            for i in range(len(xc))
+        ])
+        n_north = (north_mask & interior_mask).sum()
+        interior_mask = interior_mask & ~north_mask
+        print(f"Excluding {n_north} cells north of river")
+
     candidate_cells = np.where(interior_mask)[0]
 
     if len(candidate_cells) < n_points:
-        print(f"Warning: Only {len(candidate_cells)} candidate cells after filtering")
-        # Fall back to interior cells without river exclusion
-        interior_only = (
-            (xc > x_min + avoid_boundaries_m) &
-            (xc < x_max - avoid_boundaries_m) &
-            (yc > y_min + avoid_boundaries_m) &
-            (yc < y_max - avoid_boundaries_m) &
-            active_mask
-        )
-        candidate_cells = np.where(interior_only)[0]
+        print(f"Warning: Only {len(candidate_cells)} candidate cells after filtering. "
+              f"Relaxing boundary distance to {avoid_boundaries_m / 2:.0f}m.")
+        # Fall back to half the boundary distance, keeping other exclusions
+        if boundary_polygon is not None:
+            fallback_polygon = boundary_polygon.buffer(-avoid_boundaries_m / 2)
+            if not fallback_polygon.is_empty:
+                fallback_mask = np.array([
+                    fallback_polygon.contains(Point(xc[i], yc[i]))
+                    for i in range(len(xc))
+                ]) & active_mask
+            else:
+                fallback_mask = active_mask.copy()
+        else:
+            x_min, x_max = xc[active_mask].min(), xc[active_mask].max()
+            y_min, y_max = yc[active_mask].min(), yc[active_mask].max()
+            half_dist = avoid_boundaries_m / 2
+            fallback_mask = (
+                (xc > x_min + half_dist) &
+                (xc < x_max - half_dist) &
+                (yc > y_min + half_dist) &
+                (yc < y_max - half_dist) &
+                active_mask
+            )
+        # Re-apply cell and river exclusions (but not north-of-river)
+        if exclude_cells is not None and len(exclude_cells) > 0:
+            fallback_mask = fallback_mask & exclude_mask
+        if river_union is not None:
+            fallback_mask = fallback_mask & near_river_mask
+        candidate_cells = np.where(fallback_mask)[0]
 
     # Select points with minimum spacing
     selected_cells = []
@@ -796,14 +1273,16 @@ def run_calibration_trial(
     k_global_multiplier: float = 1.0,
     rch_multiplier: float = 1.0,
     riv_multiplier: float = 1.0,
-    run_model: bool = True
+    run_model: bool = True,
+    return_budget: bool = False,
 ) -> np.ndarray:
     """
     Run the model with modified parameters and return heads.
 
-    This function modifies parameters using multipliers, runs the model,
-    and returns the resulting head array. It's designed for manual
-    calibration trials.
+    This function applies multipliers relative to the *current* parameter
+    values, runs the model, and then **restores all modified parameters**
+    to their pre-trial state.  This makes the function safe to call in a
+    loop without cumulative drift.
 
     Parameters
     ----------
@@ -822,26 +1301,30 @@ def run_calibration_trial(
         Multiplier for river conductance
     run_model : bool, default True
         If True, runs the model after modifying parameters
+    return_budget : bool, default False
+        If True, also compute the water balance summary and return a
+        ``(heads, budget_df)`` tuple instead of just heads.
 
     Returns
     -------
-    np.ndarray
-        Simulated head array, or None if model failed
-
-    Notes
-    -----
-    This function modifies the simulation in-place. For multiple trials,
-    consider reloading the base simulation or implementing parameter
-    reset functionality.
+    np.ndarray or tuple
+        Simulated head array, or None if model failed.
+        When *return_budget* is True, returns ``(heads, budget_df)``.
     """
-    import flopy
+    import copy
 
     gwf = sim.get_model(gwf_name)
+
+    # --- Save current state so we can restore after the trial ---
+    saved_k = None
+    saved_rch = None
+    saved_riv = None
 
     # Modify hydraulic conductivity
     if k_global_multiplier != 1.0:
         npf = gwf.get_package('NPF')
         if npf is not None:
+            saved_k = copy.deepcopy(npf.k.get_data())
             original_k = npf.k.get_data()
             if isinstance(original_k, list):
                 new_k = [arr * k_global_multiplier for arr in original_k]
@@ -855,7 +1338,7 @@ def run_calibration_trial(
         if rch is not None:
             original_rch = rch.recharge.get_data()
             if original_rch is not None:
-                # Handle stress period data
+                saved_rch = copy.deepcopy(original_rch)
                 if isinstance(original_rch, dict):
                     new_rch = {k: v * rch_multiplier for k, v in original_rch.items()}
                 else:
@@ -868,28 +1351,40 @@ def run_calibration_trial(
         if riv is not None:
             stress_period_data = riv.stress_period_data.get_data()
             if stress_period_data is not None:
+                saved_riv = copy.deepcopy(stress_period_data)
                 for per, spd in stress_period_data.items():
                     if spd is not None:
-                        # Conductance is typically the 3rd column (index 2)
                         spd['cond'] = spd['cond'] * riv_multiplier
                 riv.stress_period_data.set_data(stress_period_data)
 
     # Write and run model
+    heads = None
+    budget_df = None
     if run_model:
         sim.write_simulation()
         success, _ = sim.run_simulation(silent=True)
 
         if not success:
             print("Model run failed!")
-            return None
+        else:
+            head_file = gwf.output.head()
+            heads = head_file.get_data()
 
-        # Read heads
-        head_file = gwf.output.head()
-        heads = head_file.get_data()
+            if return_budget and heads is not None:
+                from model_io_utils import format_budget_summary
+                budget_df = format_budget_summary(gwf, sim)
 
-        return heads
+    # --- Restore parameters to pre-trial state ---
+    if saved_k is not None:
+        gwf.get_package('NPF').k.set_data(saved_k)
+    if saved_rch is not None:
+        gwf.get_package('RCHA').recharge.set_data(saved_rch)
+    if saved_riv is not None:
+        gwf.get_package('RIV').stress_period_data.set_data(saved_riv)
 
-    return None
+    if return_budget:
+        return (heads, budget_df)
+    return heads
 
 
 def grid_search_calibration(
@@ -991,6 +1486,8 @@ def get_observation_summary(obs_gdf: gpd.GeoDataFrame) -> str:
         n_real = total
         n_synth = 0
 
+    head_vals = obs_gdf['head_m'].round(2)
+
     lines = [
         "=" * 50,
         "OBSERVATION DATA SUMMARY",
@@ -999,8 +1496,8 @@ def get_observation_summary(obs_gdf: gpd.GeoDataFrame) -> str:
         f"  - Real (AWEL):   {n_real}",
         f"  - Synthetic:     {n_synth}",
         "",
-        f"Head range: {obs_gdf['head_m'].min():.2f} - {obs_gdf['head_m'].max():.2f} m a.s.l.",
-        f"Mean head:  {obs_gdf['head_m'].mean():.2f} m a.s.l.",
+        f"Head range: {head_vals.min():.2f} - {head_vals.max():.2f} m a.s.l.",
+        f"Mean head:  {head_vals.mean():.2f} m a.s.l.",
         "=" * 50,
     ]
 

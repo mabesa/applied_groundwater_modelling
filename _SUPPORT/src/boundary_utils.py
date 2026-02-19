@@ -371,13 +371,11 @@ def assign_idomain_from_geometry(
 
     Notes
     -----
-    A cell is considered active if its centroid falls within the domain
-    polygon. This is a simple point-in-polygon test that works well for
-    cells that are much smaller than the domain extent.
-
-    For cells that straddle the domain boundary, this approach may include
-    or exclude cells depending on centroid location. For more precise
-    boundary handling, consider using area-based intersection.
+    A cell is considered active if its centroid falls within or on the
+    boundary of the domain polygon (using Shapely's ``covers()``). This
+    ensures that edge cells whose centers lie exactly on the polygon
+    boundary are correctly included — important for Voronoi grids where
+    Triangle places mesh nodes on the boundary.
 
     Examples
     --------
@@ -426,9 +424,12 @@ def assign_idomain_from_geometry(
             yc = yc.flatten()
 
         # Check each cell centroid
+        # Use covers() instead of contains() because contains() excludes
+        # points exactly on the polygon boundary. For Voronoi grids generated
+        # from the boundary polygon, edge cells have centers on the boundary.
         for icell in range(ncpl):
             point = Point(xc[icell], yc[icell])
-            if domain_polygon.contains(point):
+            if domain_polygon.covers(point):
                 for ilay in range(nlay):
                     idomain[ilay, icell] = active_value
     else:
@@ -441,10 +442,11 @@ def assign_idomain_from_geometry(
         yc = modelgrid.ycellcenters
 
         # Check each cell centroid
+        # Use covers() instead of contains() — see VertexGrid branch above
         for irow in range(nrow):
             for icol in range(ncol):
                 point = Point(xc[irow, icol], yc[irow, icol])
-                if domain_polygon.contains(point):
+                if domain_polygon.covers(point):
                     for ilay in range(nlay):
                         idomain[ilay, irow, icol] = active_value
 
