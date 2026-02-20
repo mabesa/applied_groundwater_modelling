@@ -187,3 +187,5 @@ PROJECT/_demos/_animations/
 
 # Serena config
 /.serena
+/_SUPPORT/extract_river_temperature_from_yearbooks/debug_output
+/_SUPPORT/extract_river_temperature_from_yearbooks/downloaded_pdfs
