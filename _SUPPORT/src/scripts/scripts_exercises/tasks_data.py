@@ -407,6 +407,87 @@ Based on the concession map you just generated:
 ## Checkpoint 4 — Dominant Thermal Input
 Based on the thermal energy budget:
 - **Which flux component contributes the most thermal energy (warming) to the Limmat Valley aquifer?**
+""",
+
+# Transport Track — Notebook 3: MODFLOW for Heat Transport
+"task_t03_checkpoint_1": r"""
+## Checkpoint 1 — ADE Comprehension
+In the advection-dispersion equation:
+- **Which process moves the solute/heat front at the groundwater velocity?**
+""",
+
+"task_t03_checkpoint_2": r"""
+## Checkpoint 2 — Grid Peclet Number
+Given a longitudinal dispersivity $\alpha_L = 15$ m:
+- **What is the maximum cell size $\Delta x$ (in metres) to satisfy $Pe_{grid} \leq 2$?**
+
+**Hint:** $\Delta x \leq 2 \alpha_L$ when molecular diffusion is negligible.
+""",
+
+"task_t03_checkpoint_3": r"""
+## Checkpoint 3 — Package Identification
+In a MODFLOW 6 GWE model:
+- **Which package computes thermal retardation from porosity, density, and heat capacity?**
+""",
+
+# ============================================================================
+# TRANSPORT NOTEBOOK 4 - HEAT TRANSPORT MODEL IMPLEMENTATION CHECKPOINTS
+# ============================================================================
+
+"task_t04_checkpoint_1": r"""
+## Checkpoint 1 — Thermal Retardation Factor
+Given:
+- Effective porosity $n_e = 0.20$
+- Solid density $\rho_s = 2650$ kg/m³
+- Solid heat capacity $c_s = 880$ J/(kg·K)
+- Water density $\rho_w = 1000$ kg/m³
+- Water heat capacity $c_w = 4184$ J/(kg·K)
+
+$$R = \frac{n_e \cdot \rho_w \cdot c_w + (1 - n_e) \cdot \rho_s \cdot c_s}{n_e \cdot \rho_w \cdot c_w}$$
+
+**Calculate the thermal retardation factor $R$.**
+""",
+
+"task_t04_checkpoint_2": r"""
+## Checkpoint 2 — Courant Number
+Given:
+- Seepage velocity $v = 11$ m/d
+- Time step $\Delta t = 5$ days
+- Cell size $\Delta x = 25$ m
+
+$$Cr = \frac{v \cdot \Delta t}{\Delta x}$$
+
+**Calculate the Courant number.**
+""",
+
+"task_t04_checkpoint_3": r"""
+## Checkpoint 3 — Dominant Thermal Input
+Considering the boundary conditions of your heat transport model:
+- **Which boundary introduces the most thermal energy anomaly to the aquifer?**
+""",
+
+"task_t04_checkpoint_4": r"""
+## Checkpoint 4 — Summer Aquifer Temperature
+After running the transient heat transport simulation:
+- **What is the mean aquifer temperature (°C) in the last summer (July) snapshot?**
+""",
+
+"task_t04_checkpoint_5": r"""
+## Checkpoint 5 — Energy Budget
+From the GWE energy budget:
+- **Which component dominates energy input to the aquifer?**
+""",
+
+"task_t04_checkpoint_seasonal": r"""
+## Checkpoint — Seasonal Signal
+Looking at the temperature time series plot at your monitoring points:
+- **How does the seasonal temperature amplitude change with distance from the river?**
+""",
+
+"task_t04_checkpoint_alpha": r"""
+## Checkpoint — Dispersivity Sensitivity
+You increased the longitudinal dispersivity $\alpha_L$ from 10 m to 50 m:
+- **How does increasing $\alpha_L$ affect the thermal plume?**
 """
 
 }
@@ -471,6 +552,18 @@ solutions = {
     "task_t02_checkpoint_2": (2.5, 2.9),    # Correct solution 2.67
     # task_t02_checkpoint_3 is multiple choice - handled separately
     # task_t02_checkpoint_4 is multiple choice - handled separately
+    # Transport Track — Notebook 3 checkpoints
+    "task_t03_checkpoint_2": (28, 32),      # Correct solution 30 m (2 * 15)
+    # task_t03_checkpoint_1 is multiple choice - handled separately
+    # task_t03_checkpoint_3 is multiple choice - handled separately
+    # Transport Track — Notebook 4 checkpoints
+    "task_t04_checkpoint_1": (3.0, 3.5),    # Correct solution 3.23 (n_e=0.20)
+    "task_t04_checkpoint_2": (2.0, 2.5),    # Correct solution 2.2 (11*5/25)
+    "task_t04_checkpoint_4": (10.5, 13.5),  # Mean aquifer temperature in summer 2023
+    # task_t04_checkpoint_3 is multiple choice - handled separately
+    # task_t04_checkpoint_5 is multiple choice - handled separately
+    # task_t04_checkpoint_alpha is multiple choice - handled separately
+    # task_t04_checkpoint_seasonal is multiple choice - handled separately
 }
 
 
@@ -545,6 +638,18 @@ solutions_exact = {
     "task_t02_checkpoint_2": "2.67",
     "task_t02_checkpoint_3": "B) Concentrated in the city centre",
     "task_t02_checkpoint_4": "B) River Limmat / Hardhof recharge",
+    # Transport Track — Notebook 3 checkpoints
+    "task_t03_checkpoint_1": "B) Advection",
+    "task_t03_checkpoint_2": "30",
+    "task_t03_checkpoint_3": "B) EST",
+    # Transport Track — Notebook 4 checkpoints
+    "task_t04_checkpoint_1": "3.23",
+    "task_t04_checkpoint_2": "2.2",
+    "task_t04_checkpoint_3": "B) River Limmat",
+    "task_t04_checkpoint_4": "See output",
+    "task_t04_checkpoint_5": "C) SSM-RIV",
+    "task_t04_checkpoint_alpha": "B) Wider and more diffuse",
+    "task_t04_checkpoint_seasonal": "A) Decreases with distance",
 }
 
 
@@ -623,6 +728,18 @@ solution_unit = {
     "task_t02_checkpoint_2": "—",
     "task_t02_checkpoint_3": "multiple choice",
     "task_t02_checkpoint_4": "multiple choice",
+    # Transport Track — Notebook 3 checkpoints
+    "task_t03_checkpoint_1": "multiple choice",
+    "task_t03_checkpoint_2": "m",
+    "task_t03_checkpoint_3": "multiple choice",
+    # Transport Track — Notebook 4 checkpoints
+    "task_t04_checkpoint_1": "—",
+    "task_t04_checkpoint_2": "—",
+    "task_t04_checkpoint_3": "multiple choice",
+    "task_t04_checkpoint_4": "°C",
+    "task_t04_checkpoint_5": "multiple choice",
+    "task_t04_checkpoint_alpha": "multiple choice",
+    "task_t04_checkpoint_seasonal": "multiple choice",
 }
 
 
@@ -792,6 +909,44 @@ multiple_choice_options = {
         ("B) River Limmat / Hardhof recharge", "B) River Limmat / Hardhof recharge — large flux at +2 °C above background"),
         ("C) River Sihl infiltration", "C) River Sihl infiltration — alpine water close to background temperature"),
         ("D) Lateral inflow from hills", "D) Lateral inflow from hills — at background temperature"),
+    ],
+    # Transport Track — Notebook 3 checkpoints
+    "task_t03_checkpoint_1": [
+        ("A) Dispersion", "A) Dispersion — spreading due to velocity variations and diffusion"),
+        ("B) Advection", "B) Advection — bulk movement with the flowing groundwater"),
+        ("C) Conduction", "C) Conduction — heat transfer through the solid matrix"),
+        ("D) Retardation", "D) Retardation — slowing of the front due to solid-phase storage"),
+    ],
+    "task_t03_checkpoint_3": [
+        ("A) CND", "A) CND — handles conduction and mechanical dispersion"),
+        ("B) EST", "B) EST — Energy Storage and Transfer: porosity, density, heat capacity"),
+        ("C) ADV", "C) ADV — handles the advection scheme selection"),
+        ("D) SSM", "D) SSM — Source-Sink Mixing: assigns temperatures to GWF fluxes"),
+    ],
+    # Transport Track — Notebook 4 checkpoints
+    "task_t04_checkpoint_3": [
+        ("A) Areal recharge", "A) Areal recharge — largest area but small temperature anomaly (9.8 °C)"),
+        ("B) River Limmat", "B) River Limmat — large flux at 12.5 °C, 2 °C above background"),
+        ("C) River Sihl", "C) River Sihl — moderate flux at near-background temperature (10.6 °C)"),
+        ("D) Lateral inflow", "D) Lateral inflow — at background temperature (10.5 °C)"),
+    ],
+    "task_t04_checkpoint_5": [
+        ("A) SSM-WEL", "A) SSM-WEL — lateral inflow wells carry heat into the domain"),
+        ("B) SSM-RCHA", "B) SSM-RCHA — areal recharge spreads heat across the entire surface"),
+        ("C) SSM-RIV", "C) SSM-RIV — river-aquifer exchange is the dominant heat source"),
+        ("D) CND", "D) CND — conduction through the solid matrix dominates"),
+    ],
+    "task_t04_checkpoint_alpha": [
+        ("A) Narrower and sharper", "A) Narrower and sharper — higher dispersivity focuses the plume"),
+        ("B) Wider and more diffuse", "B) Wider and more diffuse — higher dispersivity spreads heat over a larger area"),
+        ("C) No significant change", "C) No significant change — dispersivity has little effect on temperature"),
+        ("D) Higher peak temperature", "D) Higher peak temperature — more dispersion concentrates energy"),
+    ],
+    "task_t04_checkpoint_seasonal": [
+        ("A) Decreases with distance", "A) Decreases with distance — thermal retardation and dispersion attenuate the signal"),
+        ("B) Increases with distance", "B) Increases with distance — the aquifer amplifies the seasonal signal"),
+        ("C) Stays constant", "C) Stays constant — the seasonal signal propagates unchanged"),
+        ("D) Inverts with distance", "D) Inverts with distance — summer becomes winter and vice versa"),
     ],
 }
 
@@ -1764,6 +1919,130 @@ The energy budget analysis shows that the Limmat / Hardhof recharge is the domin
 The thermal power anomaly $\Phi = \rho_w c_w Q \Delta T$ is proportional to both the flux and the temperature difference. While areal recharge covers a large area, its temperature anomaly is small (−0.7 °C) and its total flux is modest. The Sihl contributes a moderate flux but at near-background temperature (+0.1 °C).
 
 The Limmat's elevated temperature comes from Lake Zurich (thermal buffering) and urban heat inputs.
+<br>
+""",
+
+# Transport Track — Notebook 3: MODFLOW for Heat Transport
+"task_t03_checkpoint_1": r"""
+## Solution — ADE Comprehension
+
+**Correct answer: B) Advection**
+
+Advection is the process that transports solute or heat at the groundwater velocity $\mathbf{v}$. In the ADE:
+
+$$\frac{\partial (nC)}{\partial t} = \nabla \cdot (n \mathbf{D} \nabla C) - \nabla \cdot (n \mathbf{v} C) + q_s$$
+
+The advection term $\nabla \cdot (n \mathbf{v} C)$ moves the concentration front bodily with the flow. Dispersion spreads the front around its mean position but does not control the front velocity. Conduction (heat only) and retardation modify the effective front speed but are separate from the advective process itself.
+<br>
+""",
+
+"task_t03_checkpoint_2": r"""
+## Solution — Grid Peclet Number
+
+The grid Peclet criterion requires:
+
+$$Pe_{grid} = \frac{v \cdot \Delta x}{D_L} \leq 2$$
+
+When molecular diffusion is negligible, $D_L \approx \alpha_L \cdot v$, so:
+
+$$\Delta x \leq \frac{2 \cdot D_L}{v} = \frac{2 \cdot \alpha_L \cdot v}{v} = 2 \cdot \alpha_L = 2 \times 15 = 30 \text{ m}$$
+
+This means cells must be no larger than 30 m in the flow direction. Note that this constraint depends only on dispersivity, not on velocity — a useful simplification for grid design.
+<br>
+""",
+
+"task_t03_checkpoint_3": r"""
+## Solution — Package Identification
+
+**Correct answer: B) EST**
+
+The **EST** (Energy Storage and Transfer) package computes thermal retardation from:
+
+$$R = \frac{n_e \cdot \rho_w \cdot c_w + (1-n_e) \cdot \rho_s \cdot c_s}{n_e \cdot \rho_w \cdot c_w}$$
+
+It requires porosity ($n_e$), solid density ($\rho_s$), and solid heat capacity ($c_s$) as inputs. CND handles conduction and dispersion, ADV handles the advection scheme, and SSM assigns temperatures to GWF fluxes — none of these compute retardation.
+<br>
+""",
+
+# Transport Track — Notebook 4: Heat Transport Model Implementation
+
+"task_t04_checkpoint_1": r"""
+## Solution — Thermal Retardation Factor
+
+With $n_e = 0.20$ (the value used in NB4, not the $n_e = 0.25$ from NB2):
+
+$$(\rho c)_{bulk} = n_e \cdot \rho_w \cdot c_w + (1-n_e) \cdot \rho_s \cdot c_s$$
+$$= 0.20 \times 1000 \times 4184 + 0.80 \times 2650 \times 880$$
+$$= 836\,800 + 1\,865\,600 = 2\,702\,400 \text{ J/(m}^3 \cdot \text{K)}$$
+
+$$R = \frac{(\rho c)_{bulk}}{n_e \cdot \rho_w \cdot c_w} = \frac{2\,702\,400}{836\,800} = 3.23$$
+
+Note: NB2 used $n_e = 0.25$ and got $R = 2.67$. In NB4 we use $n_e = 0.20$ (more realistic for transport), which increases the solid fraction and thus the retardation.
+<br>
+""",
+
+"task_t04_checkpoint_2": r"""
+## Solution — Courant Number
+
+$$Cr = \frac{v \cdot \Delta t}{\Delta x} = \frac{11 \times 5}{25} = 2.2$$
+
+This exceeds the classical $Cr \leq 1$ criterion. The TVD (Total Variation Diminishing) advection scheme handles $Cr > 1$ without oscillations, at the cost of some numerical dispersion. For our 5-year simulation with 5-day time steps, this is an acceptable trade-off between accuracy and run time.
+<br>
+""",
+
+"task_t04_checkpoint_3": r"""
+## Solution — Dominant Thermal Input
+
+**Correct answer: B) River Limmat**
+
+The Limmat combines the largest volumetric flux with the greatest temperature anomaly (+2.0 °C above background). The thermal power anomaly $\Phi = \rho_w c_w Q \Delta T$ scales with both flux and temperature difference. Areal recharge covers a large area but is only −0.7 °C from background; the Sihl carries a moderate flux at near-background temperature (+0.1 °C); lateral inflow is at background temperature.
+
+This is consistent with the energy budget from NB2.
+<br>
+""",
+
+"task_t04_checkpoint_4": r"""
+## Solution — Summer Aquifer Temperature
+
+In the last summer (July) snapshot, the rivers are near their annual peak (~22–25 °C), and the Sihl drives a strong heat pulse into the aquifer through infiltration. The mean aquifer temperature in summer is elevated above background — cells near the infiltrating Sihl are warmed significantly, while cells far from the rivers remain near background. The domain-wide mean is around 10.8 °C, within the accepted range of 10.5–13.5 °C.
+<br>
+""",
+
+"task_t04_checkpoint_5": r"""
+## Solution — Energy Budget
+
+**Correct answer: C) SSM-RIV**
+
+River-aquifer exchange (SSM-RIV) dominates the energy budget because:
+1. The RIV package has the largest volumetric flux in the water balance
+2. The Limmat's 12.5 °C temperature carries significant thermal energy above background
+
+This mirrors the flow model where RIV dominates the water budget — the same water flux that dominates the hydraulic balance also dominates the energy balance.
+<br>
+""",
+
+"task_t04_checkpoint_alpha": r"""
+## Solution — Dispersivity Sensitivity
+
+**Correct answer: B) Wider and more diffuse**
+
+Increasing $\alpha_L$ increases mechanical dispersion ($D_L = \alpha_L \cdot v$), which spreads the thermal signal over a larger area. The peak temperature anomaly decreases (more mixing with background), while the spatial extent of the warm plume increases. With transient forcing, higher dispersivity also **damps the seasonal amplitude** — the summer peak and winter trough become less extreme.
+
+This exercise motivates calibration in NB5: the right $\alpha_L$ must reproduce observed temperature patterns — too low gives an overly sharp plume, too high gives an unrealistically diffuse one.
+<br>
+""",
+
+"task_t04_checkpoint_seasonal": r"""
+## Solution — Seasonal Signal Attenuation
+
+**Correct answer: A) Decreases with distance**
+
+The seasonal temperature signal attenuates with distance from the river due to:
+1. **Thermal retardation** ($R \approx 3.23$): the thermal front moves ~3× slower than the water, delaying and damping the signal
+2. **Dispersion**: mechanical and thermal dispersion smooth out sharp temperature gradients
+3. **Conduction**: heat exchange with the solid matrix acts as a low-pass filter
+
+Near the river, the aquifer closely tracks the seasonal river forcing. Far from the river, the signal is heavily damped and approaches the background temperature. The signal also **lags** — the summer peak at 300 m distance arrives later than at the river.
 <br>
 """
 
