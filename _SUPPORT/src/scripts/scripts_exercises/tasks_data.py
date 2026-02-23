@@ -488,6 +488,74 @@ Looking at the temperature time series plot at your monitoring points:
 ## Checkpoint — Dispersivity Sensitivity
 You increased the longitudinal dispersivity $\alpha_L$ from 10 m to 50 m:
 - **How does increasing $\alpha_L$ affect the thermal plume?**
+""",
+
+# ── Transport Track — Notebook 5 checkpoints ──
+
+"task_t05_checkpoint_1": r"""
+## Checkpoint 1 — Monitoring Network
+Looking at the synthetic temperature observation network:
+- **How many monitoring wells are there?**
+""",
+
+"task_t05_checkpoint_2": r"""
+## Checkpoint 2 — Initial Temperature RMSE
+Using the NB4 default parameters ($\alpha_L = 10$ m, $n_e = 0.20$):
+- **What is the overall temperature RMSE (°C) when comparing simulated to observed time series?**
+""",
+
+"task_t05_tt_checkpoint_1": r"""
+## Checkpoint — Tracer Test Velocity
+From the moment analysis of MW-1 (at $x = 50$ m):
+
+$$\bar{t} = \frac{M_1}{M_0}, \quad v = \frac{x}{\bar{t}}$$
+
+- **What is the estimated seepage velocity (m/d)?**
+""",
+
+"task_t05_tt_checkpoint_2": r"""
+## Checkpoint — Tracer Test Dispersivity
+From the moment analysis of MW-1:
+
+$$\sigma_t^2 = \frac{M_2}{M_0} - \bar{t}^2, \quad \sigma_x^2 = v^2 \cdot \sigma_t^2, \quad \alpha_L = \frac{\sigma_x^2}{2x}$$
+
+- **What is the estimated longitudinal dispersivity $\alpha_L$ (m)?**
+""",
+
+"task_t05_tt_checkpoint_3": r"""
+## Checkpoint — Dispersivity Variation
+The moment analysis shows $\alpha_L$ varies slightly from well to well:
+- **Why does the estimated $\alpha_L$ differ between observation wells?**
+""",
+
+"task_t05_checkpoint_best_alpha": r"""
+## Checkpoint — Best Dispersivity
+Looking at the calibration sweep results:
+- **Which $\alpha_L$ value gave the best (lowest) temperature RMSE?**
+""",
+
+"task_t05_checkpoint_3": r"""
+## Checkpoint — Calibrated Temperature RMSE
+After calibrating with the best $\alpha_L$ from the sweep:
+- **What is the calibrated overall temperature RMSE (°C)?**
+""",
+
+"task_t05_checkpoint_4": r"""
+## Checkpoint — Energy Balance
+From the GWE energy budget of the calibrated model:
+- **What is the energy balance error (%)?**
+""",
+
+"task_t05_checkpoint_nonunique": r"""
+## Checkpoint — Non-Uniqueness
+You tested trade-off combinations that give similar temperature RMSE:
+- **What independent measurement breaks the $\alpha_L$–$n_e$ trade-off?**
+""",
+
+"task_t05_checkpoint_transfer": r"""
+## Checkpoint — Heat to Solute Transfer
+When transferring calibrated parameters from a heat transport model to a solute transport model:
+- **Which parameter does NOT transfer directly?**
 """
 
 }
@@ -564,6 +632,17 @@ solutions = {
     # task_t04_checkpoint_5 is multiple choice - handled separately
     # task_t04_checkpoint_alpha is multiple choice - handled separately
     # task_t04_checkpoint_seasonal is multiple choice - handled separately
+    # Transport Track — Notebook 5 checkpoints
+    "task_t05_checkpoint_1": (4, 6),        # 5 monitoring wells
+    "task_t05_checkpoint_2": (0.1, 1.5),    # Initial RMSE with default params
+    "task_t05_tt_checkpoint_1": (10.0, 14.0),  # Velocity at MW-1 ~12.3 m/d
+    "task_t05_tt_checkpoint_2": (3.0, 7.0),    # alpha_L at MW-1 ~4.6 m
+    # task_t05_tt_checkpoint_3 is multiple choice - handled separately
+    # task_t05_checkpoint_best_alpha is multiple choice - handled separately
+    "task_t05_checkpoint_3": (0.01, 1.0),   # Calibrated RMSE
+    "task_t05_checkpoint_4": (0, 1.0),      # Energy balance error < 1%
+    # task_t05_checkpoint_nonunique is multiple choice - handled separately
+    # task_t05_checkpoint_transfer is multiple choice - handled separately
 }
 
 
@@ -650,6 +729,17 @@ solutions_exact = {
     "task_t04_checkpoint_5": "C) SSM-RIV",
     "task_t04_checkpoint_alpha": "B) Wider and more diffuse",
     "task_t04_checkpoint_seasonal": "A) Decreases with distance",
+    # Transport Track — Notebook 5 checkpoints
+    "task_t05_checkpoint_1": "5",
+    "task_t05_checkpoint_2": "See output",
+    "task_t05_tt_checkpoint_1": "~12.3",
+    "task_t05_tt_checkpoint_2": "~4.6",
+    "task_t05_tt_checkpoint_3": "B) Measurement noise and scale dependence",
+    "task_t05_checkpoint_best_alpha": "B) alpha_L = 5 m",
+    "task_t05_checkpoint_3": "See output",
+    "task_t05_checkpoint_4": "~0.001",
+    "task_t05_checkpoint_nonunique": "B) The tracer test constrains n_e independently",
+    "task_t05_checkpoint_transfer": "C) Thermal retardation factor",
 }
 
 
@@ -740,6 +830,17 @@ solution_unit = {
     "task_t04_checkpoint_5": "multiple choice",
     "task_t04_checkpoint_alpha": "multiple choice",
     "task_t04_checkpoint_seasonal": "multiple choice",
+    # Transport Track — Notebook 5 checkpoints
+    "task_t05_checkpoint_1": "wells",
+    "task_t05_checkpoint_2": "°C",
+    "task_t05_tt_checkpoint_1": "m/d",
+    "task_t05_tt_checkpoint_2": "m",
+    "task_t05_tt_checkpoint_3": "multiple choice",
+    "task_t05_checkpoint_best_alpha": "multiple choice",
+    "task_t05_checkpoint_3": "°C",
+    "task_t05_checkpoint_4": "%",
+    "task_t05_checkpoint_nonunique": "multiple choice",
+    "task_t05_checkpoint_transfer": "multiple choice",
 }
 
 
@@ -947,6 +1048,31 @@ multiple_choice_options = {
         ("B) Increases with distance", "B) Increases with distance — the aquifer amplifies the seasonal signal"),
         ("C) Stays constant", "C) Stays constant — the seasonal signal propagates unchanged"),
         ("D) Inverts with distance", "D) Inverts with distance — summer becomes winter and vice versa"),
+    ],
+    # Transport Track — Notebook 5 checkpoints
+    "task_t05_tt_checkpoint_3": [
+        ("A) Aquifer heterogeneity", "A) The aquifer is heterogeneous — each well samples a different dispersivity zone"),
+        ("B) Measurement noise and scale dependence", "B) Measurement noise + dispersivity tends to increase with transport distance (scale dependence)"),
+        ("C) The tracer decayed", "C) The tracer decayed differently at each well"),
+        ("D) All wells should give identical values", "D) All wells should give identical values — any difference is an error"),
+    ],
+    "task_t05_checkpoint_best_alpha": [
+        ("A) alpha_L = 2 m", "A) alpha_L = 2 m — under-dispersive, seasonal amplitude too large"),
+        ("B) alpha_L = 5 m", "B) alpha_L = 5 m — matches tracer test estimate, best RMSE"),
+        ("C) alpha_L = 10 m", "C) alpha_L = 10 m — the NB4 default, over-damps the signal"),
+        ("D) alpha_L = 20 m", "D) alpha_L = 20 m — strongly over-dispersive"),
+    ],
+    "task_t05_checkpoint_nonunique": [
+        ("A) More temperature observations", "A) More temperature observations — better spatial coverage of the same data type"),
+        ("B) The tracer test constrains n_e independently", "B) The tracer test constrains n_e independently — moment analysis gives v and n_e from a single BTC"),
+        ("C) Longer simulation time", "C) Longer simulation time — let the model reach steady-state"),
+        ("D) Higher-resolution grid", "D) Higher-resolution grid — better numerical accuracy"),
+    ],
+    "task_t05_checkpoint_transfer": [
+        ("A) Longitudinal dispersivity", "A) Longitudinal dispersivity alpha_L — mechanical dispersion is identical for heat and solute"),
+        ("B) Effective porosity", "B) Effective porosity n_e — same pore space carries heat and solute"),
+        ("C) Thermal retardation factor", "C) Thermal retardation factor — replace with sorption retardation for solutes"),
+        ("D) Transverse dispersivity", "D) Transverse dispersivity alpha_T — mechanical dispersion is identical"),
     ],
 }
 
@@ -2043,6 +2169,114 @@ The seasonal temperature signal attenuates with distance from the river due to:
 3. **Conduction**: heat exchange with the solid matrix acts as a low-pass filter
 
 Near the river, the aquifer closely tracks the seasonal river forcing. Far from the river, the signal is heavily damped and approaches the background temperature. The signal also **lags** — the summer peak at 300 m distance arrives later than at the river.
+<br>
+""",
+
+# ── Transport Track — Notebook 5 solutions ──
+
+"task_t05_checkpoint_1": r"""
+## Solution — Monitoring Network
+
+**5 monitoring wells** placed at increasing distances from the mid-Limmat (30, 80, 200, 400, 700 m). The near-river wells capture the strongest seasonal signal, while the distant wells show heavily attenuated temperature variations.
+<br>
+""",
+
+"task_t05_checkpoint_2": r"""
+## Solution — Initial Temperature RMSE
+
+With the NB4 default parameters ($\alpha_L = 10$ m, $n_e = 0.20$), the model over-damps the seasonal amplitude compared to the reference (which used $\alpha_L = 5$ m, $n_e = 0.18$). The initial RMSE quantifies this mismatch. Higher dispersivity smooths the temperature signal too much, reducing the simulated seasonal swing.
+<br>
+""",
+
+"task_t05_tt_checkpoint_1": r"""
+## Solution — Seepage Velocity
+
+From the moment analysis of the MW-1 breakthrough curve at $x = 50$ m:
+
+$$\bar{t} = \frac{M_1}{M_0} \approx 4.1 \text{ d}$$
+
+$$v = \frac{x}{\bar{t}} = \frac{50}{4.1} \approx 12.3 \text{ m/d}$$
+
+This is consistent with the Limmat Valley Darcy flux ($q \approx 2.2$ m/d) and effective porosity ($n_e \approx 0.18$).
+<br>
+""",
+
+"task_t05_tt_checkpoint_2": r"""
+## Solution — Longitudinal Dispersivity
+
+From the temporal variance of the MW-1 BTC:
+
+$$\sigma_t^2 = \frac{M_2}{M_0} - \bar{t}^2$$
+
+$$\sigma_x^2 = v^2 \cdot \sigma_t^2$$
+
+$$\alpha_L = \frac{\sigma_x^2}{2x} = \frac{\sigma_x^2}{100} \approx 4.6 \text{ m}$$
+
+The small deviation from the true 5.0 m is due to measurement noise. Farther wells (MW-2, MW-3) give values closer to 5.0 m because their BTCs have higher signal-to-noise ratios.
+<br>
+""",
+
+"task_t05_tt_checkpoint_3": r"""
+## Solution — Dispersivity Variation
+
+**Correct answer: B) Measurement noise and scale dependence**
+
+Two effects contribute:
+1. **Measurement noise** — the noisy BTC tails slightly bias the moment estimates, especially at the nearest well where the BTC is sharpest
+2. **Scale dependence** — longitudinal dispersivity tends to increase with transport distance in real aquifers (though this is a known artifact of the 1D moment analysis applied to heterogeneous media)
+
+The mean across wells provides a more robust estimate than any single well.
+<br>
+""",
+
+"task_t05_checkpoint_best_alpha": r"""
+## Solution — Best Dispersivity
+
+**Correct answer: B) alpha_L = 5 m**
+
+The calibration sweep shows a clear RMSE minimum at $\alpha_L = 5$ m, which matches the tracer test estimate. Values lower than 5 m under-damp the signal (too much seasonal amplitude), while values higher than 5 m over-damp it (too little amplitude). This convergence of two independent methods — tracer test and temperature calibration — builds confidence in the result.
+<br>
+""",
+
+"task_t05_checkpoint_3": r"""
+## Solution — Calibrated Temperature RMSE
+
+After calibration with $\alpha_L = 5$ m and $n_e = 0.18$ (from the tracer test), the temperature RMSE decreases significantly compared to the initial model. The improvement is most visible at near-river wells where the seasonal signal is strongest.
+<br>
+""",
+
+"task_t05_checkpoint_4": r"""
+## Solution — Energy Balance
+
+The GWE energy balance error should be very small (< 0.01%), confirming that the numerical solution is mass-conservative. This is the transport equivalent of the water balance check in flow modeling.
+<br>
+""",
+
+"task_t05_checkpoint_nonunique": r"""
+## Solution — Breaking Non-Uniqueness
+
+**Correct answer: B) The tracer test constrains n_e independently**
+
+The temperature time series alone cannot distinguish between (high $\alpha_L$, low $n_e$) and (low $\alpha_L$, high $n_e$) — both combinations can produce similar seasonal amplitudes. The tracer test BTC provides an independent measurement: moment analysis gives velocity $v = x/\bar{t}$, and since $n_e = q/v$, porosity is determined directly. With $n_e$ fixed, only $\alpha_L$ remains to be calibrated.
+
+This is the transport analogue of flow NB5's pumping test: an independent measurement that constrains one parameter, reducing the calibration to a 1D search.
+<br>
+""",
+
+"task_t05_checkpoint_transfer": r"""
+## Solution — Heat to Solute Transfer
+
+**Correct answer: C) Thermal retardation factor**
+
+| Parameter | Transfers? | Notes |
+|-----------|------------|-------|
+| $\alpha_L$, $\alpha_T$ | YES | Mechanical dispersion is identical for heat and solute |
+| $n_e$ | YES | Same pore space carries both heat and solute |
+| Thermal conductivity $\lambda$ | NO | Replace with molecular diffusion $D_m^*$ |
+| **Thermal retardation $R$** | **NO** | Replace with sorption retardation $R_d = 1 + \rho_b K_d / n_e$ |
+| Source terms | NO | Solute sources are chemically specific |
+
+Dispersivity and porosity transfer directly because they describe the physical pore structure. Retardation does not transfer because it has different physical origins: thermal retardation comes from heat exchange with the solid matrix, while sorption retardation comes from chemical partitioning.
 <br>
 """
 
