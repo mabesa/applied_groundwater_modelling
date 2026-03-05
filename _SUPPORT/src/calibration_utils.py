@@ -284,7 +284,7 @@ def generate_reference_k_field(
     n_pilot_points=30, seed=42,
     noise_std=0.15,
     variogram_range=3000.0,
-    k_bounds=(1.0, 300.0),
+    k_bounds=(10.0, 600.0),
     anisotropy_angle=0.0,
     anisotropy_scaling=1.0,
 ):
@@ -294,10 +294,10 @@ def generate_reference_k_field(
     K follows a log-linear relationship with thickness, reflecting the geology
     of alluvial aquifers where deeper sections contain coarser gravels:
 
-        log10(K) = 0.855 + 0.022 × thickness
+        log10(K) = 1.751 + 0.022 × thickness
 
-    This gives K ≈ 12 m/d at 10 m thickness, ≈ 25 m/d at 25 m (matching the
-    pumping test), and ≈ 90 m/d at 50 m.
+    This gives K ≈ 94 m/d at 10 m thickness, ≈ 200 m/d at 25 m (matching the
+    sensitivity sweep), and ≈ 710 m/d at 50 m (clipped to 600).
 
     Parameters
     ----------
@@ -356,7 +356,7 @@ def generate_reference_k_field(
         dy = yc - pp_xy[i, 1]
         nearest = int(np.argmin(dx**2 + dy**2))
         b = thickness[nearest]
-        pp_log_k[i] = 0.855 + 0.022 * b
+        pp_log_k[i] = 1.751 + 0.022 * b
 
     # Add Gaussian noise in log10 space for spatial variability
     pp_log_k += rng.normal(0, noise_std, len(pp_log_k))
@@ -381,11 +381,11 @@ def generate_conditioned_k_field(
     *,
     n_pilot_points=15,
     seed=42,
-    noise_std=0.10,
+    noise_std=0.25,
     variogram_range=3000.0,
-    anisotropy_angle=0.0,
-    anisotropy_scaling=1.0,
-    k_bounds=(1.0, 300.0),
+    anisotropy_angle=-30.0,
+    anisotropy_scaling=3.0,
+    k_bounds=(10.0, 600.0),
     delta_log_k=0.02,
     lambda_reg=1.0,
     max_iterations=3,
@@ -502,7 +502,7 @@ def generate_conditioned_k_field(
         dy = yc - pp_xy[i, 1]
         nearest = int(np.argmin(dx**2 + dy**2))
         b = thickness[nearest]
-        pp_log_k[i] = 0.855 + 0.022 * b
+        pp_log_k[i] = 1.751 + 0.022 * b
 
     log_k_lower, log_k_upper = np.log10(k_bounds[0]), np.log10(k_bounds[1])
     pp_log_k_init = pp_log_k.copy()

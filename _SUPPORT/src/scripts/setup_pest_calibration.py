@@ -194,9 +194,9 @@ def build_pest_setup(
     pt_location,
     pest_ws=None,
     n_pilot_points=25,
-    k_initial=20.0,
-    k_lower=1.0,
-    k_upper=300.0,
+    k_initial=200.0,
+    k_lower=10.0,
+    k_upper=600.0,
     pt_weight=1.0,
     reg_weight=0.5,
     obs_head_col="head_m",
@@ -762,8 +762,8 @@ def read_pest_phi_progress(pest_ws, pst_file="calibration.pst"):
         return None
 
 
-def get_calibrated_k_field(pest_ws, modelgrid, variogram_range=1500.0,
-                           anisotropy_angle=0.0, anisotropy_scaling=1.0):
+def get_calibrated_k_field(pest_ws, modelgrid, variogram_range=600.0,
+                           anisotropy_angle=-30.0, anisotropy_scaling=3.0):
     """
     Read optimised pilot-point values and interpolate to the model grid.
 
@@ -810,7 +810,7 @@ def get_calibrated_k_field(pest_ws, modelgrid, variogram_range=1500.0,
 
 def apply_calibrated_parameters(
     gwf, pest_ws, modelgrid, river_gdf, boundary_gdf,
-    variogram_range=6000.0, anisotropy_angle=-45.0, anisotropy_scaling=3.0,
+    variogram_range=600.0, anisotropy_angle=-30.0, anisotropy_scaling=3.0,
     set_npf_flags=True,
 ):
     """
@@ -833,9 +833,9 @@ def apply_calibrated_parameters(
     boundary_gdf : geopandas.GeoDataFrame
         Model domain polygon.
     variogram_range : float, optional
-        Kriging variogram range [m]. Default 6000.
+        Kriging variogram range [m]. Default 600.
     anisotropy_angle : float, optional
-        Variogram anisotropy angle [degrees]. Default -45.
+        Variogram anisotropy angle [degrees]. Default -30.
     anisotropy_scaling : float, optional
         Variogram anisotropy scaling. Default 3.
     set_npf_flags : bool, optional
@@ -919,13 +919,13 @@ def run_loo_cross_validation(
     idomain,
     sihl_cell_ids=None,
     n_pilot_points=20,
-    k_initial=20.0,
-    k_lower=1.0,
-    k_upper=300.0,
-    pt_weight=3.0,
-    reg_weight=1.5,
-    variogram_range=6000.0,
-    anisotropy_angle=-45.0,
+    k_initial=200.0,
+    k_lower=10.0,
+    k_upper=600.0,
+    pt_weight=1.5,
+    reg_weight=0.5,
+    variogram_range=600.0,
+    anisotropy_angle=-30.0,
     anisotropy_scaling=3.0,
     verbose=True,
 ):
