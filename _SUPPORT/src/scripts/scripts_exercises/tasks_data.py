@@ -215,7 +215,7 @@ The transmissivity estimates from the 4 wells are similar but not identical.
 # Notebook 5 - Manual trial checkpoint
 "task05_checkpoint_manual": r"""
 ## Manual Trial — Which K Direction Improves the Fit?
-You ran the model with three different K values (15, 20, 30 m/d).
+You ran the model with three different K values (150, 200, 300 m/d).
 - **Which K multiplier gave the lowest RMSE?**
 """,
 
@@ -366,7 +366,7 @@ After reducing recharge by 30% (climate drought scenario):
 
 "task08_checkpoint_8": r"""
 ## Checkpoint 8 — Capture Zone Under Drought
-You re-ran MODPATH under the reduced-recharge scenario.
+You re-ran PRT (particle tracking) under the reduced-recharge scenario.
 - **How does the capture zone of the pumping well change under drought conditions?**
 """,
 
@@ -599,10 +599,10 @@ solutions = {
     "task06_checkpoint_6": (0.3, 8.0),        # LOO-RMSE (wide range, depends on PEST++ convergence)
     # Checkpoint 7 is multiple choice - handled separately
     # Notebook 5 - Pumping Test checkpoints
-    "task05_pt_checkpoint_1": (0.50, 0.62),   # Cooper-Jacob slope ~0.56 m/log-cycle
-    "task05_pt_checkpoint_2": (580, 740),      # Transmissivity T ~650 m²/d
-    "task05_pt_checkpoint_3": (23.0, 30.0),    # K = T/b ~26 m/d
-    "task05_pt_checkpoint_4": (23.0, 30.0),    # Mean K from all 4 wells ~26 m/d
+    "task05_pt_checkpoint_1": (0.15, 0.22),   # Cooper-Jacob slope ~0.18 m/log-cycle
+    "task05_pt_checkpoint_2": (2600, 3500),    # Transmissivity T ~3000 m²/d
+    "task05_pt_checkpoint_3": (260, 350),      # K = T/b ~300 m/d
+    "task05_pt_checkpoint_4": (260, 350),      # Mean K from all 4 wells ~300 m/d
     # PT Checkpoint 5 is multiple choice - handled separately
     # Manual trial and non-uniqueness checkpoints are multiple choice - handled separately
     # Notebook 7 checkpoints
@@ -687,13 +687,13 @@ solutions_exact = {
     "task06_checkpoint_6": "See output",
     "task06_checkpoint_7": "A) The model may be overfitting",
     # Notebook 5 - Pumping Test checkpoints
-    "task05_pt_checkpoint_1": "~0.56",
-    "task05_pt_checkpoint_2": "~650",
-    "task05_pt_checkpoint_3": "~26",
-    "task05_pt_checkpoint_4": "~26",
+    "task05_pt_checkpoint_1": "~0.18",
+    "task05_pt_checkpoint_2": "~3000",
+    "task05_pt_checkpoint_3": "~300",
+    "task05_pt_checkpoint_4": "~300",
     "task05_pt_checkpoint_5": "B) Measurement noise and the Cooper-Jacob approximation",
     # Manual trial and non-uniqueness checkpoints
-    "task05_checkpoint_manual": "C) K = 30 m/d (multiplier 1.5)",
+    "task05_checkpoint_manual": "C) K = 300 m/d (multiplier 1.5)",
     "task05_checkpoint_nonunique": "B) River baseflow measurements",
     # Notebook 7 checkpoints
     "task07_checkpoint_1": "A) The pilot point nearest the observation wells",
@@ -896,9 +896,9 @@ multiple_choice_options = {
         ("D) Well skin effects", "D) Each well has a different skin factor that biases the slope"),
     ],
     "task05_checkpoint_manual": [
-        ("A) K = 15 m/d (multiplier 0.75)", "A) K = 15 m/d — lower K raises heads"),
-        ("B) K = 20 m/d (multiplier 1.0)", "B) K = 20 m/d — the baseline from Notebook 4"),
-        ("C) K = 30 m/d (multiplier 1.5)", "C) K = 30 m/d — higher K lowers heads"),
+        ("A) K = 150 m/d (multiplier 0.75)", "A) K = 150 m/d — lower K raises heads"),
+        ("B) K = 200 m/d (multiplier 1.0)", "B) K = 200 m/d — the baseline from Notebook 4"),
+        ("C) K = 300 m/d (multiplier 1.5)", "C) K = 300 m/d — higher K lowers heads"),
     ],
     "task05_checkpoint_nonunique": [
         ("A) More head observations", "A) More head observations — better spatial coverage of the same data type"),
@@ -1505,9 +1505,9 @@ This principle is key to calibration: use residual patterns to guide parameter a
 
 The slope $\Delta s$ is the drawdown change per log$_{10}$ cycle on the semi-log plot. The `cooper_jacob_fit` function performs this regression automatically on the late-time data.
 
-From the Theis solution with $T$ = 650 m²/d and $Q$ = 2000 m³/d:
+From the Theis solution with $T$ = 3000 m²/d and $Q$ = 3000 m³/d:
 
-$$\Delta s = \frac{2.3\,Q}{4\pi\,T} = \frac{2.3 \times 2000}{4\pi \times 650} \approx 0.56 \text{ m}$$
+$$\Delta s = \frac{2.3\,Q}{4\pi\,T} = \frac{2.3 \times 3000}{4\pi \times 3000} \approx 0.18 \text{ m}$$
 
 The fitted value may differ slightly due to measurement noise.
 <br>
@@ -1518,21 +1518,21 @@ The fitted value may differ slightly due to measurement noise.
 
 Rearranging the Cooper-Jacob slope equation:
 
-$$T = \frac{2.3\,Q}{4\pi\,\Delta s} = \frac{2.3 \times 2000}{4\pi \times 0.56} \approx 654 \text{ m}^2\text{/d}$$
+$$T = \frac{2.3\,Q}{4\pi\,\Delta s} = \frac{2.3 \times 3000}{4\pi \times 0.18} \approx 3050 \text{ m}^2\text{/d}$$
 
 **Common mistakes:**
-- Forgetting the 2.3 factor → $T \approx 284$ (too low by ~2.3×)
-- Using $2\pi$ instead of $4\pi$ → $T \approx 1310$ (too high by 2×)
-- Omitting $\pi$ entirely → $T \approx 2050$ (too high by ~$\pi$×)
+- Forgetting the 2.3 factor → $T \approx 1330$ (too low by ~2.3×)
+- Using $2\pi$ instead of $4\pi$ → $T \approx 6100$ (too high by 2×)
+- Omitting $\pi$ entirely → $T \approx 9600$ (too high by ~$\pi$×)
 <br>
 """,
 
 "task05_pt_checkpoint_3": r"""
 ## Solution — Hydraulic Conductivity
 
-$$K = \frac{T}{b} = \frac{654}{25} \approx 26 \text{ m/d}$$
+$$K = \frac{T}{b} = \frac{3000}{10} \approx 300 \text{ m/d}$$
 
-This is somewhat higher than the uniform K = 20 m/d used in Notebook 4, suggesting the aquifer at the pumping test site is more permeable than the domain average.
+This is higher than the uniform K = 200 m/d used in Notebook 4, suggesting the aquifer at the pumping test site is more permeable than the assumed domain average — consistent with coarse gravels in the central alluvial valley.
 
 **Common mistake:** Reporting $T$ instead of $K$ (off by a factor of $b$ = 25).
 <br>
@@ -1541,7 +1541,7 @@ This is somewhat higher than the uniform K = 20 m/d used in Notebook 4, suggesti
 "task05_pt_checkpoint_4": r"""
 ## Solution — Mean K from All Wells
 
-All four wells should give similar $T$ (and thus $K$) values because the Cooper-Jacob slope depends only on $Q$ and $T$, not on distance $r$. The mean K $\approx$ 26 m/d confirms this consistency.
+All four wells should give similar $T$ (and thus $K$) values because the Cooper-Jacob slope depends only on $Q$ and $T$, not on distance $r$. The mean K $\approx$ 300 m/d confirms this consistency.
 
 Small differences arise from measurement noise and the fact that the Cooper-Jacob approximation is not exact at early times (which affects the fit window selection differently for each well).
 <br>
@@ -1573,12 +1573,12 @@ The pumping test data is generated from a **homogeneous** Theis solution with ad
 "task05_checkpoint_manual": r"""
 ## Solution — Which K Direction Improves the Fit?
 
-**Correct answer: C) K = 30 m/d (multiplier 1.5)**
+**Correct answer: C) K = 300 m/d (multiplier 1.5)**
 
 **Reasoning:**
-- The reference K field (used to generate synthetic observations) has higher K values in many areas than the uniform 20 m/d baseline
+- The reference K field (used to generate synthetic observations) has higher K values in many areas than the uniform 200 m/d baseline
 - Increasing K lowers simulated heads, which better matches observations in areas where the baseline overpredicts
-- The RMSE decreases when moving from 20 → 30 m/d, confirming that the baseline K is too low on average
+- The RMSE decreases when moving from 200 → 300 m/d, confirming that the baseline K is too low on average
 
 This is exactly the intuition that automated calibration (PEST++) formalises: it adjusts parameters in the direction that reduces the objective function.
 <br>

@@ -1798,14 +1798,24 @@ def build_prt_model(
         saverecord=[('BUDGET', 'ALL')],
     )
 
-    # FMI — relative paths to GWF head/budget files
+    # FMI — relative paths to GWF head/budget/grid files
     gwf_sim_name = gwf.name
     gwf_hds = gwf_ws / f'{gwf_sim_name}.hds'
     gwf_cbc = gwf_ws / f'{gwf_sim_name}.cbc'
+    # Find the binary grid file (.grb) — needed so PRT can read ICELLTYPE
+    # when LOCAL_Z release coordinates are used in the PRP package.
+    grb_candidates = list(gwf_ws.glob(f'{gwf_sim_name}*.grb'))
+    if not grb_candidates:
+        grb_candidates = list(gwf_ws.glob('*.grb'))
     fmi_pd = [
         ('GWFHEAD',   os.path.relpath(gwf_hds, workspace)),
         ('GWFBUDGET', os.path.relpath(gwf_cbc, workspace)),
     ]
+    if grb_candidates:
+        gwf_grb = grb_candidates[0]
+        fmi_pd.append(
+            ('GWFGRID', os.path.relpath(gwf_grb, workspace))
+        )
     _flopy.mf6.ModflowPrtfmi(prt, packagedata=fmi_pd)
 
     # EMS
@@ -2008,7 +2018,7 @@ def build_refined_gwf_model(
         vertices=gridprops['vertices'], cell2d=gridprops['cell2d'],
     )
     _flopy.mf6.ModflowGwfnpf(
-        ref_gwf, k=k_ref, save_flows=True,
+        ref_gwf, icelltype=1, k=k_ref, save_flows=True,
         save_specific_discharge=True, save_saturation=True,
     )
     _flopy.mf6.ModflowGwfic(ref_gwf, strt=strt_ref)
