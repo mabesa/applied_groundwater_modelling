@@ -397,6 +397,22 @@ $$R = \frac{n_e \cdot \rho_w \cdot c_w + (1 - n_e) \cdot \rho_s \cdot c_s}{n_e \
 **Calculate $R$.**
 """,
 
+"task_t02_checkpoint_pe": r"""
+## Checkpoint — Grid Peclet Number
+Given:
+- Seepage velocity $v = 2.5 \times 10^{-5}$ m/s
+- Longitudinal dispersivity $\alpha_L = 10$ m
+- Grid cell size $\Delta x = 100$ m
+
+The grid Peclet number is defined as:
+
+$$Pe_{grid} = \frac{v \cdot \Delta x}{D_L}$$
+
+where $D_L = \alpha_L \cdot v + D_m^* \approx \alpha_L \cdot v$ (molecular diffusion negligible).
+
+**Calculate $Pe_{grid}$.**
+""",
+
 "task_t02_checkpoint_3": r"""
 ## Checkpoint 3 — Thermal Well Distribution
 Based on the concession map you just generated:
@@ -618,6 +634,7 @@ solutions = {
     # Transport Track — Notebook 2 checkpoints
     "task_t02_checkpoint_1": (10.0, 12.5),  # Correct solution 11.2 m/d (864 * 0.0026 / 0.20)
     "task_t02_checkpoint_2": (2.5, 2.9),    # Correct solution 2.67
+    "task_t02_checkpoint_pe": (9.0, 11.0),  # Correct solution 10.0 (Δx/α_L = 100/10)
     # task_t02_checkpoint_3 is multiple choice - handled separately
     # task_t02_checkpoint_4 is multiple choice - handled separately
     # Transport Track — Notebook 3 checkpoints
@@ -715,6 +732,7 @@ solutions_exact = {
     # Transport Track — Notebook 2 checkpoints
     "task_t02_checkpoint_1": "11.2",
     "task_t02_checkpoint_2": "2.67",
+    "task_t02_checkpoint_pe": "10.0",
     "task_t02_checkpoint_3": "B) Concentrated in the city centre",
     "task_t02_checkpoint_4": "B) River Limmat / Hardhof recharge",
     # Transport Track — Notebook 3 checkpoints
@@ -816,6 +834,7 @@ solution_unit = {
     # Transport Track — Notebook 2 checkpoints
     "task_t02_checkpoint_1": "m/d",
     "task_t02_checkpoint_2": "—",
+    "task_t02_checkpoint_pe": "—",
     "task_t02_checkpoint_3": "multiple choice",
     "task_t02_checkpoint_4": "multiple choice",
     # Transport Track — Notebook 3 checkpoints
@@ -2016,6 +2035,21 @@ A thermal front moves 2.67× slower than the groundwater velocity. Higher porosi
 <br>
 """,
 
+"task_t02_checkpoint_pe": r"""
+## Solution — Grid Peclet Number
+
+Since molecular diffusion is negligible ($D_m^* \ll \alpha_L v$), the hydrodynamic dispersion coefficient simplifies to:
+
+$$D_L \approx \alpha_L \cdot v = 10 \times 2.5 \times 10^{-5} = 2.5 \times 10^{-4} \text{ m}^2/\text{s}$$
+
+The grid Peclet number is:
+
+$$Pe_{grid} = \frac{v \cdot \Delta x}{D_L} = \frac{v \cdot \Delta x}{\alpha_L \cdot v} = \frac{\Delta x}{\alpha_L} = \frac{100}{10} = 10$$
+
+Note that when $D_m^*$ is negligible, the velocity cancels and $Pe_{grid}$ reduces to the simple ratio $\Delta x / \alpha_L$. This is well above the classical stability limit of 2, so a TVD advection scheme is needed.
+<br>
+""",
+
 "task_t02_checkpoint_3": r"""
 ## Solution — Thermal Well Distribution
 
@@ -2094,7 +2128,7 @@ It requires porosity ($n_e$), solid density ($\rho_s$), and solid heat capacity 
 "task_t04_checkpoint_1": r"""
 ## Solution — Thermal Retardation Factor
 
-With $n_e = 0.20$ (the value used in NB4, not the $n_e = 0.25$ from NB2):
+With $n_e = 0.20$ (the value used throughout the transport track):
 
 $$(\rho c)_{bulk} = n_e \cdot \rho_w \cdot c_w + (1-n_e) \cdot \rho_s \cdot c_s$$
 $$= 0.20 \times 1000 \times 4184 + 0.80 \times 2650 \times 880$$
@@ -2102,7 +2136,7 @@ $$= 836\,800 + 1\,865\,600 = 2\,702\,400 \text{ J/(m}^3 \cdot \text{K)}$$
 
 $$R = \frac{(\rho c)_{bulk}}{n_e \cdot \rho_w \cdot c_w} = \frac{2\,702\,400}{836\,800} = 3.23$$
 
-Note: NB2 used $n_e = 0.25$ and got $R = 2.67$. In NB4 we use $n_e = 0.20$ (more realistic for transport), which increases the solid fraction and thus the retardation.
+Note: The NB2 checkpoint exercise used $n_e = 0.25$ to test the formula, giving $R = 2.67$. The model consistently uses $n_e = 0.20$, which gives the higher retardation shown here.
 <br>
 """,
 
@@ -2111,7 +2145,7 @@ Note: NB2 used $n_e = 0.25$ and got $R = 2.67$. In NB4 we use $n_e = 0.20$ (more
 
 $$Cr = \frac{v \cdot \Delta t}{\Delta x} = \frac{11 \times 5}{25} = 2.2$$
 
-This exceeds the classical $Cr \leq 1$ criterion. The TVD (Total Variation Diminishing) advection scheme handles $Cr > 1$ without oscillations, at the cost of some numerical dispersion. For our 5-year simulation with 5-day time steps, this is an acceptable trade-off between accuracy and run time.
+This exceeds the classical $Cr \leq 1$ criterion. The TVD (Total Variation Diminishing) advection scheme handles $Cr > 1$ without oscillations, at the cost of some numerical dispersion. For our multi-decade simulation with monthly time steps, this is an acceptable trade-off between accuracy and run time.
 <br>
 """,
 
@@ -2120,7 +2154,7 @@ This exceeds the classical $Cr \leq 1$ criterion. The TVD (Total Variation Dimin
 
 **Correct answer: B) River Limmat**
 
-The Limmat combines the largest volumetric flux with the greatest temperature anomaly (+2.0 °C above background). The thermal power anomaly $\Phi = \rho_w c_w Q \Delta T$ scales with both flux and temperature difference. Areal recharge covers a large area but is only −0.7 °C from background; the Sihl carries a moderate flux at near-background temperature (+0.1 °C); lateral inflow is at background temperature.
+The Limmat combines the largest volumetric flux with the greatest temperature anomaly (~+2 °C above background). The thermal power anomaly $\Phi = \rho_w c_w Q \Delta T$ scales with both flux and temperature difference. Areal recharge covers a large area but is only slightly below background; the Sihl carries a moderate flux at near-background temperature; lateral inflow is at background temperature.
 
 This is consistent with the energy budget from NB2.
 <br>
