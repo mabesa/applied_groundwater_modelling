@@ -918,7 +918,7 @@ def build_riv_stress_period_data(
 
     # Default river parameters (from perceptual model analysis)
     default_params = {
-        'sihl_leakage_coeff': 1.3e-6 * 86400,    # 1/day (converted from 1/s)
+        'sihl_leakage_coeff': 2.5e-6 * 86400,    # 1/day (from 2.5e-6 1/s; flashier regime)
         'limmat_leakage_coeff': 3.5e-6 * 86400,  # 1/day
         'riverbed_thickness': 0.05,               # m (clogging layer, typically a few cm)
         'sihl_depth': 0.4,                        # m (mean depth)

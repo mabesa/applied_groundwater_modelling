@@ -681,8 +681,8 @@ class TestCreateGridWithRivers:
 
         A river polygon with a main channel (40m wide) plus a narrow
         appendage (5m wide × 200m long) should have the appendage
-        removed by the opening step (river_cell_size/4 = 6.25m radius
-        removes structures narrower than ~12.5m).
+        removed by the opening step (river_cell_size/6 ≈ 4.17m radius
+        removes structures narrower than ~8.3m).
         """
         # Main channel: 40m wide, 800m long, centered at y=500
         main_channel = Polygon([
@@ -721,7 +721,7 @@ class TestCreateGridWithRivers:
         """Test that morphological opening preserves wide river channels.
 
         A 60m wide × 800m long river should retain ~90% of its area
-        after opening with river_cell_size=25 (opening_radius=6.25m).
+        after opening with river_cell_size=25 (opening_radius≈4.17m).
         """
         wide_river = Polygon([
             (100, 470), (900, 470), (900, 530), (100, 530), (100, 470)

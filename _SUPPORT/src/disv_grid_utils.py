@@ -504,9 +504,9 @@ def create_grid_with_rivers(
     # Morphological opening: remove narrow appendages and small structures
     # that cannot be resolved at the target river cell size.
     # buffer(-r).buffer(+r) eliminates features narrower than 2*r.
-    opening_radius = river_cell_size / 4
-    river_clipped = river_clipped.buffer(-opening_radius, resolution=2).buffer(
-        opening_radius, resolution=2
+    opening_radius = river_cell_size / 6
+    river_clipped = river_clipped.buffer(-opening_radius, quad_segs=2).buffer(
+        opening_radius, quad_segs=2
     )
 
     if river_clipped.is_empty:
@@ -534,7 +534,7 @@ def create_grid_with_rivers(
     # gap between river constraint edges and surrounding mesh vertices,
     # which directly controls the minimum Voronoi cell size along banks.
     erosion = effective_spacing
-    river_eroded = river_clipped.buffer(-erosion, resolution=2)
+    river_eroded = river_clipped.buffer(-erosion, quad_segs=2)
     if river_eroded.is_empty:
         # If erosion removes all rivers, use original clipped geometry
         river_eroded = river_clipped

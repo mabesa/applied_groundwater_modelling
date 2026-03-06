@@ -1057,10 +1057,9 @@ multiple_choice_options = {
         ("D) All wells should give identical values", "D) All wells should give identical values — any difference is an error"),
     ],
     "task_t05_checkpoint_best_alpha": [
-        ("A) alpha_L = 2 m", "A) alpha_L = 2 m — under-dispersive, seasonal amplitude too large"),
+        ("A) alpha_L = 3 m", "A) alpha_L = 3 m — under-dispersive, seasonal amplitude too large"),
         ("B) alpha_L = 5 m", "B) alpha_L = 5 m — matches tracer test estimate, best RMSE"),
         ("C) alpha_L = 10 m", "C) alpha_L = 10 m — the NB4 default, over-damps the signal"),
-        ("D) alpha_L = 20 m", "D) alpha_L = 20 m — strongly over-dispersive"),
     ],
     "task_t05_checkpoint_nonunique": [
         ("A) More temperature observations", "A) More temperature observations — better spatial coverage of the same data type"),

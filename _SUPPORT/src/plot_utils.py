@@ -2295,3 +2295,104 @@ def plot_chd_validation(
 
     return fig, axes
 
+
+def check_heads_above_surface(
+    heads, model_top, idomain, modelgrid,
+    boundary_gdf=None, layer=0, figsize=(10, 8),
+):
+    """
+    Check whether simulated heads exceed the land surface (model top).
+
+    Masks inactive cells (idomain <= 0) and dry/no-flow cells (|head| > 1e10).
+    Prints a summary and, if exceedance exists, shows a map of exceedance magnitude.
+
+    Parameters
+    ----------
+    heads : numpy.ndarray
+        Head array from HeadFile.get_data(). Can be 1-D (ncpl,), 2-D (nlay, ncpl),
+        or 3-D (nlay, nrow, ncol).
+    model_top : numpy.ndarray
+        1-D array of land-surface elevation (length ncpl or nrow*ncol).
+    idomain : numpy.ndarray
+        Active-cell indicator (same shape conventions as heads).
+    modelgrid : flopy grid object
+        FloPy model grid (StructuredGrid or VertexGrid).
+    boundary_gdf : geopandas.GeoDataFrame, optional
+        Boundary polygon for map overlay.
+    layer : int, optional
+        Layer index to check (default 0).
+    figsize : tuple, optional
+        Figure size for the exceedance map (default (10, 8)).
+
+    Returns
+    -------
+    dict
+        Keys: mask (bool array of exceeded cells), exceedance (float array, m),
+        count, percentage, max_exceedance.
+    """
+    heads = np.asarray(heads)
+    model_top = np.asarray(model_top).flatten()
+    idomain = np.asarray(idomain)
+
+    # Extract the requested layer
+    if heads.ndim == 3:
+        h = heads[layer].flatten()
+    elif heads.ndim == 2:
+        h = heads[layer].flatten() if heads.shape[0] != len(model_top) else heads.flatten()
+    else:
+        h = heads.flatten()
+
+    if idomain.ndim >= 2:
+        idom = idomain[layer].flatten() if idomain.shape[0] != len(model_top) else idomain.flatten()
+    else:
+        idom = idomain.flatten()
+
+    # Mask inactive and dry/no-flow cells
+    active = (idom > 0) & (np.abs(h) < 1e10)
+    exceedance = np.where(active, h - model_top, 0.0)
+    above_mask = active & (exceedance > 0)
+
+    count = int(above_mask.sum())
+    n_active = int(active.sum())
+    pct = 100.0 * count / n_active if n_active > 0 else 0.0
+    max_exc = float(exceedance[above_mask].max()) if count > 0 else 0.0
+
+    result = {
+        "mask": above_mask,
+        "exceedance": exceedance,
+        "count": count,
+        "percentage": pct,
+        "max_exceedance": max_exc,
+    }
+
+    print("Heads-above-surface check:")
+    if count == 0:
+        print(f"  All {n_active} active cells have heads at or below land surface.")
+    else:
+        print(f"  {count} of {n_active} active cells ({pct:.1f}%) have heads above land surface")
+        print(f"  Max exceedance: {max_exc:.2f} m")
+
+        # Find location of max exceedance
+        idx_max = int(np.argmax(exceedance))
+        xc = modelgrid.xcellcenters
+        yc = modelgrid.ycellcenters
+        if xc.ndim == 2:
+            xc = xc.flatten()
+            yc = yc.flatten()
+        print(f"  Location of max exceedance: cell {idx_max} "
+              f"(E {xc[idx_max]:.0f}, N {yc[idx_max]:.0f})")
+
+        # Plot exceedance map
+        exc_plot = np.where(above_mask, exceedance, np.nan)
+        fig, ax = quick_model_plot(
+            modelgrid, exc_plot,
+            boundary_gdf=boundary_gdf,
+            title="Heads Above Land Surface",
+            cmap="YlOrRd",
+            colorbar_label="Exceedance (m)",
+            figsize=figsize,
+            show_grid=False,
+        )
+        plt.show()
+
+    return result
