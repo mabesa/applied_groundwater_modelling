@@ -1047,7 +1047,7 @@ multiple_choice_options = {
     "task_t04_checkpoint_3": [
         ("A) Areal recharge", "A) Areal recharge — largest area but small temperature anomaly (9.8 °C)"),
         ("B) River Limmat", "B) River Limmat — large flux at 12.5 °C, 2 °C above background"),
-        ("C) River Sihl", "C) River Sihl — moderate flux at near-background temperature (10.6 °C)"),
+        ("C) River Sihl", "C) River Sihl — moderate flux at near-background temperature (11.1 °C)"),
         ("D) Lateral inflow", "D) Lateral inflow — at background temperature (10.5 °C)"),
     ],
     "task_t04_checkpoint_5": [
