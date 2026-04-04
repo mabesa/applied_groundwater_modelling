@@ -4,6 +4,8 @@
 
 ![Groundwater Model Visualization](_SUPPORT/static/figures/0_readme/Groundwater_course.jpg)
 
+> **Tip:** This README is best viewed on [GitHub](https://github.com/mabesa/applied_groundwater_modelling). In VS Code, you can use Markdown preview: right-click the file → *Open Preview*, or press `Ctrl+Shift+V` (`Cmd+Shift+V` on Mac).
+
 ## 1 Overview
 
 Course materials for Master-level groundwater modeling (4 ECTS) at ETH Zurich. Combines theoretical exercises with a practical project using MODFLOW and FloPy, applied to the Limmat Valley aquifer case study.
@@ -18,7 +20,7 @@ Working locally with VS Code gives you the best development experience, version 
 
 **New to Python?** Follow the [Python for Water Modellers](https://mabesa.github.io/python-for-water-modellers/) tutorial first - it covers VS Code installation, uv setup, and Python basics.
 
-**Already comfortable with Python?** Quick setup:
+**Already comfortable with Python?** Quick setup — run these commands in the **VS Code integrated terminal** (open it via *Terminal → New Terminal*):
 
 ```bash
 # 1. Clone the repository
@@ -41,15 +43,20 @@ get-modflow :flopy
 code .  # Open in VS Code
 ```
 
+**Selecting the right Python environment:** When you open a notebook for the first time, VS Code will ask you to select a kernel. Choose the one pointing to `./.venv/bin/python` in this project folder. See [Jupyter Kernel Setup](#jupyter-kernel-setup) if you run into issues.
+
 <details>
 <summary><strong>For group work: Fork the repository</strong></summary>
 
-For case study collaboration, fork the repository to your own GitHub account:
+Forking creates your own copy of the repository on GitHub, where your group can collaborate independently. For case study collaboration:
 
-1. **Fork** this repository on GitHub (instead of cloning directly)
-2. **Clone** your fork locally
-3. **Add group members** as collaborators (Settings → Collaborators)
-4. Work together using branches and pull requests
+1. **Fork:** Go to the [repository page](https://github.com/mabesa/applied_groundwater_modelling) and click the **Fork** button (top right). This creates a copy under your GitHub account.
+2. **Clone your fork** locally (replace `YOUR_USERNAME`):
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/applied_groundwater_modelling.git
+   ```
+3. **Add group members** as collaborators: on your fork's GitHub page, go to *Settings → Collaborators → Add people*.
+4. Work together using branches and pull requests.
 
 This mirrors professional workflows and gives your group a shared workspace with full version control.
 
