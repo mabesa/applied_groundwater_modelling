@@ -31,3 +31,27 @@ Dependencies are managed in `pyproject.toml` with `uv.lock` for reproducibility.
 - Current model: MODFLOW-NWT with structured grid (model_name = `limmat_valley_model_nwt`)
 - Grid is rotated 30 degrees; modelgrid pickle must be loaded to restore transformation
 - Notebooks follow pattern: banner → imports → sections with completion markers
+
+## Workflow
+
+See `docs/workflow.md` for the full conventions. Key points:
+
+- **Orchestrator (Opus) never writes code** — delegates to Sonnet 4.6 subagents
+- **Plans are phase-based** with JSON dependency graphs for parallel/sequential execution
+- **Every code change updates affected docs** — no exceptions
+- **No subagent runs from a DRAFT plan** — user must confirm first
+
+### Avoid Task Jags
+
+Stay focused on the current task until completion. Do not change direction mid-stream
+(e.g. switching from implementing A to implementing B, or from implementing to testing).
+
+### Plan Readiness
+
+Plans start as `status: DRAFT`. Opus self-reviews before presenting to user.
+User confirms, then Opus sets `status: READY`. Do not begin implementation from
+a DRAFT plan.
+
+## Ask Questions
+
+Ask clarifying questions often to fill gaps. Better to clarify upfront than to implement the wrong solution.
