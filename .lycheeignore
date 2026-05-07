@@ -4,7 +4,11 @@
 
 # Private/instructional placeholders.
 ^https://github\.com/YOUR_USERNAME/
-^https://ethz-my\.sharepoint\.com/
+
+# ETH Zurich SharePoint (private; requires authentication). Pattern catches
+# both the personal OneDrive subdomain (ethz-my) and the organisational one
+# (ethz), plus any future ethz-* tenant variant.
+^https://ethz(-[a-z]+)?\.sharepoint\.com/
 
 # Runtime PDF/download bases. Directory listing is denied; the URL itself
 # is not accessible, but the extractor scripts append a filename to fetch
