@@ -1,0 +1,112 @@
+name: Check Links
+
+on:
+  push:
+    branches:
+      - main
+      - course_2026
+    paths:
+      - "**.md"
+      - "**.ipynb"
+      - "**.py"
+      - "**.toml"
+      - "**.yml"
+      - "**.yaml"
+      - "**.html"
+      - "**.txt"
+      - ".lycheeignore"
+      - ".github/scripts/lychee-preprocess.py"
+      - ".github/workflows/check-links.yml"
+  pull_request:
+    branches:
+      - main
+      - course_2026
+    paths:
+      - "**.md"
+      - "**.ipynb"
+      - "**.py"
+      - "**.toml"
+      - "**.yml"
+      - "**.yaml"
+      - "**.html"
+      - "**.txt"
+      - ".lycheeignore"
+      - ".github/scripts/lychee-preprocess.py"
+      - ".github/workflows/check-links.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  check-current-ref:
+    if: github.event_name != 'schedule'
+    name: Check links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare notebook preprocessor
+        run: chmod +x .github/scripts/lychee-preprocess.py
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --hidden
+            --no-progress
+            --verbose
+            --scheme http
+            --scheme https
+            --max-concurrency 32
+            --host-concurrency 4
+            --timeout 30
+            --exclude-path '(^|/)\.git/'
+            --exclude-path '(^|/)uv\.lock$'
+            --preprocess .github/scripts/lychee-preprocess.py
+            --extensions md,ipynb,py,toml,yml,yaml,html,txt
+            .
+          fail: true
+          format: markdown
+          jobSummary: true
+
+  check-scheduled-branches:
+    if: github.event_name == 'schedule'
+    name: Check links (${{ matrix.branch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        branch:
+          - main
+          - course_2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: Prepare notebook preprocessor
+        run: chmod +x .github/scripts/lychee-preprocess.py
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --hidden
+            --no-progress
+            --verbose
+            --scheme http
+            --scheme https
+            --max-concurrency 32
+            --host-concurrency 4
+            --timeout 30
+            --exclude-path '(^|/)\.git/'
+            --exclude-path '(^|/)uv\.lock$'
+            --preprocess .github/scripts/lychee-preprocess.py
+            --extensions md,ipynb,py,toml,yml,yaml,html,txt
+            .
+          fail: true
+          format: markdown
+          jobSummary: true

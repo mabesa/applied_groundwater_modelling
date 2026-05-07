@@ -1,0 +1,3 @@
+# URL templates and instructional placeholders are not directly fetchable.
+\{[^}]+\}
+^https://github\.com/YOUR_USERNAME/
