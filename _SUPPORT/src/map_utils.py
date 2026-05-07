@@ -172,14 +172,6 @@ def display_groundwater_resources_map(gw_map_path, zoom_level=10,
             overlay=False,
             control=True
         ).add_to(m)
-        # Stamen Terrain (explicit URL + attribution)
-        folium.TileLayer(
-            tiles='https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png',
-            attr='Map tiles by <a href="http://stamen.com">Stamen Design</a>, CC BY 3.0 — Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            name='Stamen Terrain',
-            overlay=False,
-            control=True
-        ).add_to(m)
     except Exception as _tile_err:
         warnings.warn(f"Could not add one or more base tile layers: {_tile_err}")
     
