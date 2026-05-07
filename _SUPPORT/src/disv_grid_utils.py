@@ -21,7 +21,7 @@ Requirements:
 
 References:
 - FloPy VoronoiGrid: https://flopy.readthedocs.io/en/latest/source/flopy.utils.voronoi.html
-- MODFLOW 6 DISV: https://modflow6.readthedocs.io/en/latest/mf6io_gwf_disv.html
+- MODFLOW 6 DISV: https://modflow6.readthedocs.io/en/stable/_mf6io/gwf-disv.html
 """
 
 from __future__ import annotations
