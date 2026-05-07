@@ -58,6 +58,7 @@ jobs:
             --hidden
             --no-progress
             --verbose
+            --user-agent 'Mozilla/5.0 (compatible; link-checker; +https://github.com/mabesa/applied_groundwater_modelling)'
             --scheme http
             --scheme https
             --max-concurrency 32
@@ -97,6 +98,7 @@ jobs:
             --hidden
             --no-progress
             --verbose
+            --user-agent 'Mozilla/5.0 (compatible; link-checker; +https://github.com/mabesa/applied_groundwater_modelling)'
             --scheme http
             --scheme https
             --max-concurrency 32

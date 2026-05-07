@@ -45,10 +45,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PDF_DIR = SCRIPT_DIR / "downloaded_pdfs"
 DEBUG_DIR = SCRIPT_DIR / "debug_output"
 
-METEOSWISS_URL = (
-    "https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/sma/"
-    "ogd-smn_sma_d_historical.csv"
-)
+METEOSWISS_URL = "https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/sma/ogd-smn_sma_d_historical.csv"
 
 # ---------------------------------------------------------------------------
 # Logging
