@@ -1,3 +1,17 @@
 # URL templates and instructional placeholders are not directly fetchable.
 \{[^}]+\}
+%7B[^%]+%7D
+
+# Private/instructional placeholders.
 ^https://github\.com/YOUR_USERNAME/
+^https://ethz-my\.sharepoint\.com/
+
+# Runtime PDF/download bases deny directory listing, but code appends filenames.
+^https://hydroproweb\.zh\.ch/Karten/JB%20GW%20Pegel/Dokumente/$
+^https://hydroproweb\.zh\.ch/Karten/B3%20JB%20Wassertemp/Dokumente/$
+
+# Valid scholarly DOI links that currently reject automated CI checks.
+^https://doi\.org/10\.1073/pnas\.1317504111$
+^https://doi\.org/10\.1111/j\.1745-6584\.2005\.00052\.x$
+^https://doi\.org/10\.1029/92WR00607$
+^https://doi\.org/10\.1146/annurev-statistics-010814-020148$
