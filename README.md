@@ -1,6 +1,15 @@
-[![Package Dependencies](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml)
+[![Package Dependencies](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml) [![Check Links](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-links.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-links.yml)
 
 # Applied Groundwater Modeling
+
+<a href="https://ethz.ch/">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="_SUPPORT/static/figures/0_readme/eth-logo-neg.svg">
+    <img alt="ETH Zurich" src="_SUPPORT/static/figures/0_readme/eth-logo-pos.svg" width="100">
+  </picture>
+</a>
+
+> 🚧 **HS26 iteration in active development on the `course_2026` branch.** 
 
 ![Groundwater Model Visualization](_SUPPORT/static/figures/0_readme/Groundwater_course.jpg)
 
@@ -268,3 +277,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for:
 ## 10 Acknowledgments
 
 Funded by the ETH Zurich Department of Earth and Planetary Sciences and the Rectors Innovendum Fund ([project link](https://innovedumprojects.ethz.ch/projects/groundwater-in-action-real-world-problem-centered-approach-with-students-collaborative-projects/)).
+
+Computational resources for development provided by [hydrosolutions](https://hydrosolutions.ch).
+
+<a href="https://hydrosolutions.ch"><img alt="hydrosolutions" src="_SUPPORT/static/figures/0_readme/hydrosolutionsLogo_Vec.png" width="80"></a>
