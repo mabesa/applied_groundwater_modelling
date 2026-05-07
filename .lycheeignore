@@ -6,9 +6,31 @@
 ^https://github\.com/YOUR_USERNAME/
 ^https://ethz-my\.sharepoint\.com/
 
-# Runtime PDF/download bases deny directory listing, but code appends filenames.
+# Runtime PDF/download bases. Directory listing is denied; the URL itself
+# is not accessible, but the extractor scripts append a filename to fetch
+# specific yearbooks. Excluded from CI because the bare base URL fails.
+# Manual-check list (build a real filename, paste into a browser, expect
+# the PDF to download):
+#   - https://hydroproweb.zh.ch/Karten/JB%20GW%20Pegel/Dokumente/
+#       Groundwater-level yearbooks (Canton ZH)
+#       Filename pattern:  G_<well_id>_<year>.pdf
+#       → _SUPPORT/extract_GW_levels_from_yearbooks/yearbook_extractor.py
+#   - https://hydroproweb.zh.ch/Karten/B3%20JB%20Wassertemp/Dokumente/
+#       River-temperature yearbooks (Canton ZH)
+#       Filename pattern:  <station_id>t<yy>.PDF  (e.g. 2099t020.PDF)
+#       → _SUPPORT/extract_river_temperature_from_yearbooks/river_temperature_extractor.py
 ^https://hydroproweb\.zh\.ch/Karten/JB%20GW%20Pegel/Dokumente/$
 ^https://hydroproweb\.zh\.ch/Karten/B3%20JB%20Wassertemp/Dokumente/$
+
+# Manual-check reminders for runtime data downloads that CURRENTLY pass CI
+# (no exclusion regex needed — listed here so a periodic review confirms the
+# data product itself is still published in the same shape).
+#   - https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/sma/ogd-smn_sma_d_historical.csv
+#       MeteoSchweiz Open Government Data — daily SMA (Zürich/Fluntern)
+#       historical air-temperature CSV. Bare directory returns 403; full
+#       CSV path returns 200. Verify the file still downloads and the
+#       columns (reference_timestamp, tre200d0) haven't changed.
+#       → _SUPPORT/extract_river_temperature_from_yearbooks/river_temperature_extractor.py
 
 # Valid scholarly DOI links that currently reject automated CI checks.
 # Manual-check list (paste each URL into a browser at each major review):

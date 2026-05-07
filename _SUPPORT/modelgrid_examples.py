@@ -482,7 +482,7 @@ plt.title("Cross-Section of VertexGrid")
 #
 # Before building an `UnstructuredGrid` we must first develop a grid. This example loads saved grid information from data files to create an `UnstructuredGrid`.
 #
-# *Note*: `Gridgen` can also be used to develop an unstructured grid and examples of how to do this can be found in the notebook [flopy3_gridgen.ipynb](https://github.com/modflowpy/flopy/blob/develop/examples/Notebooks/flopy3_gridgen.ipynb)
+# *Note*: `Gridgen` can also be used to develop an unstructured grid and examples of how to do this can be found in the FloPy [gridgen example](https://github.com/modflowpy/flopy/blob/develop/.docs/Notebooks/gridgen_example.py).
 
 
 # +
