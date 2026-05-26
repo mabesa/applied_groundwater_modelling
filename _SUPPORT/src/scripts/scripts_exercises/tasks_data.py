@@ -12,6 +12,11 @@ import print_images as du
 
 #------ Dictionary to store the markdown to diplay the question asked
 questions_markdown = {
+
+# ============================================================================
+# EXERCISES THEORY
+# ============================================================================
+
 "task01_1":  r"""
 We can assume the system to be at a steady state.
  - **Estimate $A$ the area of the Tsalet catchment in $\text{km}^2$**
@@ -572,7 +577,25 @@ You tested trade-off combinations that give similar temperature RMSE:
 ## Checkpoint — Heat to Solute Transfer
 When transferring calibrated parameters from a heat transport model to a solute transport model:
 - **Which parameter does NOT transfer directly?**
-"""
+""",
+
+"task_exercise_flow_net_1": r"""
+## Task 1
+Compute the hydraulic head at point A (in meter)
+""",
+
+"task_exercise_flow_net_2": r"""
+## Task 2
+Compute the pressure gradient (in kPa/m) of pore water between Points B and C which are at the same elevation.
+""",
+
+"task_exercise_flow_net_3": r"""
+## Task 3
+Compute the groundwater discharge of unit aquifer width (in $cm^3$/s) in the Box D which has a dimension of 10 m by 10 m.
+""",
+
+
+
 
 }
 
@@ -660,6 +683,9 @@ solutions = {
     "task_t05_checkpoint_4": (0, 1.0),      # Energy balance error < 1%
     # task_t05_checkpoint_nonunique is multiple choice - handled separately
     # task_t05_checkpoint_transfer is multiple choice - handled separately
+    "task_exercise_flow_net_1": (20, 22), 
+    "task_exercise_flow_net_2": (-2.2, -1.8), 
+    "task_exercise_flow_net_3": (90, 110), 
 }
 
 
@@ -758,6 +784,9 @@ solutions_exact = {
     "task_t05_checkpoint_4": "~0.001",
     "task_t05_checkpoint_nonunique": "B) The tracer test constrains n_e independently",
     "task_t05_checkpoint_transfer": "C) Thermal retardation factor",
+    "task_exercise_flow_net_1": "21",
+    "task_exercise_flow_net_2": "-2",
+    "task_exercise_flow_net_3": "100",
 }
 
 
@@ -860,6 +889,10 @@ solution_unit = {
     "task_t05_checkpoint_4": "%",
     "task_t05_checkpoint_nonunique": "multiple choice",
     "task_t05_checkpoint_transfer": "multiple choice",
+    # Exercises implemented in notebooks from theory
+    "task_exercise_flow_net_1": " m",
+    "task_exercise_flow_net_2": " kPa/m",
+    "task_exercise_flow_net_3": " cm^3/s",
 }
 
 
@@ -2311,8 +2344,39 @@ This is the transport analogue of flow NB5's pumping test: an independent measur
 
 Dispersivity and porosity transfer directly because they describe the physical pore structure. Retardation does not transfer because it has different physical origins: thermal retardation comes from heat exchange with the solid matrix, while sorption retardation comes from chemical partitioning.
 <br>
-"""
+""",
 
+"task_exercise_flow_net_1": r"""
+The computation is the following: $h_A = h - \frac{\Delta h}{N_D} = 23 - \frac{20}{10}= 21$m
+""",
+
+"task_exercise_flow_net_2": r"""
+The computation is the following: 
+
+The pore pressure at point B is $p_B = \rho g (h_B - z_B)$
+
+The pore pressure at point C is $p_C = \rho g (h_C - z_C)$
+
+The pressure gradient of pore water between Points B and C, given that $z_B = z_C$ is:
+
+$\frac{dp}{dx} = \frac{p_B - p_C}{x_B - x_C} $
+$= \frac{\rho g (h_B - z_B) - \rho g (h_C - z_C)}{x_B - x_C}$
+$= \frac{\rho g (h_B - h_C)}{x_B - x_C}$
+$= \frac{10 [m/s^2] 1000 [kg/m^3] 2[m]} {-10 [m]}$
+$= -2 10^3$ Pa/m
+$= -2$ kPa/m
+""",
+
+"task_exercise_flow_net_3": r"""
+The hydraulic gradient across the Box D can be calculated as :
+
+$I = \frac{\Delta h}{\Delta s} = 2 [m]/10 [m] = 0.2$
+
+The discharge of unit width (B=1 m) across Box D can be calculated as :
+
+$Q_D = K \cdot I\cdot A = 5 \cdot 10^{-5} [m/s]\cdot  0.2 \cdot 10 [m]\cdot  1[m] = 10^{-4} m^3/s = 100 cm^3/s$
+
+""",
 }
 
 
@@ -2321,7 +2385,7 @@ task_functions = {
     "task01_1": lambda: du.display_image(image_filename='SwissTopoTsaletArea.png', image_folder='3_exercises'),
     "task01_4": lambda: display_disc_area_interactive(),
     "task04_1": lambda: draw_hx_plot(),
-
+    
 }
 
 # Dictionary to map tasks to Python functions to execute before the question
