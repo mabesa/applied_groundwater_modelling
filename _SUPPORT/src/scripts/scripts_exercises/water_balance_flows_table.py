@@ -1,12 +1,11 @@
-
 import ipywidgets as widgets
-from IPython.display import display, clear_output
+from IPython.display import display, Markdown
 
 # ==========================================
 # 1. CONFIGURATION (EDIT THIS SECTION)
 # ==========================================
 
-CASE_TITLE = "Task 1: identify flow components"
+CASE_TITLE = ""
 
 CASE_DESCRIPTION = """
 Identify flow components who can be set to zero for the water balance.
@@ -20,14 +19,13 @@ FLOW_OPTIONS = [
     "Lateral Groundwater Outflow",
     "Artificial inflow (e.g. injection well)",
     "Artificial outflow (e.g. pumping well)",
-    "Surface Water Infiltration to the Aquifer",
+    "Surface Water Infiltration to the Aquifer (precipitation not included here)",
     "Surface Water Discharge from the Aquifer",
     "Groundwater Inflow from lower aquifer",
     "Groundwater Outflow to lower aquifer",
 ]
 
 # THE SOLUTION: List exactly which flows should be set to ZERO.
-# Copy strings exactly from FLOW_OPTIONS.
 FLOWS_THAT_ARE_ZERO = [
     #"Precipitation Infiltration",
     "Evapotranspiration",
@@ -42,14 +40,9 @@ FLOWS_THAT_ARE_ZERO = [
 ]
 
 # TEXT TO DISPLAY WHEN "SHOW SOLUTION" IS CLICKED
-# You can edit this text freely. Use \n for new lines.
-SOLUTION_TEXT = """
-Here is the correct conceptual model for this case study:
-
-In this specific catchment, the only active flows are:
-1. Precipitation Infiltration (Recharge)
-2. Surface Water Discharge (The river gains water from the aquifer)
-
+SOLUTION_TEXT = """In this specific catchment, the only flows that are to be considered are:
+1. Precipitation Infiltration: recharge
+2. Surface Water Discharge: the river gains water from the aquifer at the outflow of the system.
 All other flows (ET, Lateral flows, Artificial flows, Deep leakage) are considered negligible or non-existent due to the geological boundaries and lack of human activity.
 """
 
@@ -65,7 +58,7 @@ def run_quiz_water_balance():
     checkboxes = {}
     rows = []
     
-    # Table Header Row (Visual only)
+    # Table Header Row
     header_row = widgets.Box([
         widgets.HTML("<b>Inflow or Outflow flux</b>", layout=widgets.Layout(flex='2')),
         widgets.HTML("<b>Tick if the flux should be considered zero</b>", layout=widgets.Layout(flex='1', textAlign='center'))
@@ -81,63 +74,65 @@ def run_quiz_water_balance():
         ], layout=widgets.Layout(padding='5px', align_items='center'))
         rows.append(row)
 
+    # Placeholder for feedback/solution text inside the table
+    feedback_widget = widgets.HTML("")
+    feedback_row = widgets.Box([feedback_widget], layout=widgets.Layout(padding='10px', border_top='1px solid #ddd', background_color='#fafafa'))
+    rows.append(feedback_row)
+
     table_box = widgets.VBox(rows, layout=widgets.Layout(border='1px solid #ddd', margin='10px 0'))
 
-    # Buttons
-    btn_check = widgets.Button(description="Submit Answer", button_style='primary')
-    btn_reset = widgets.Button(description="Reset", button_style='warning')
-    btn_solution = widgets.Button(description="Show Solution", button_style='info', layout=widgets.Layout(display='none')) # Hidden initially
+    # Buttons (No button_style argument)
+    btn_check = widgets.Button(description="Submit Answer")
+    btn_reset = widgets.Button(description="Reset")
     
-    output = widgets.Output()
-    solution_output = widgets.Output()
+    # Solution button starts hidden
+    btn_solution = widgets.Button(description="Show Solution")
+    btn_solution.layout.display = 'none' 
 
     def on_check(b):
-        with output:
-            clear_output()
-        with solution_output:
-            clear_output()
-            
         student_zeros = {flow for flow, cb in checkboxes.items() if cb.value}
         correct_zeros = set(FLOWS_THAT_ARE_ZERO)
 
         missed = correct_zeros - student_zeros
         false_pos = student_zeros - correct_zeros
 
+        html_content = ""
         if not missed and not false_pos:
-            print("✅ CORRECT! You perfectly identified the zero-flows.")
+            html_content = "<span style='color: green; font-weight: bold;'>Correct! You perfectly identified the zero-flows.</span>"
         else:
-            print("❌ Not quite right. Review the following:")
+            html_content = "<span style='color: #d9534f; font-weight: bold;'>Some elements are not correct:</span><ul style='margin-top:5px;'>"
             if missed:
-                print(f"\n• Missed (Should be zero): {', '.join(missed)}")
+                html_content += f"<li style='color: #d9534f;'><b>Missed (Should be zero):</b> {', '.join(missed)}</li>"
             if false_pos:
-                print(f"\n• Incorrect (Should NOT be zero): {', '.join(false_pos)}")
+                html_content += f"<li style='color: #d9534f;'><b>Incorrect (Should NOT be zero):</b> {', '.join(false_pos)}</li>"
+            html_content += "</ul>"
         
-        # Reveal the solution button after submission
+        # Update the feedback widget inside the table
+        feedback_widget.value = html_content
+        
+        # Reveal the solution button
         btn_solution.layout.display = 'flex'
 
     def on_reset(b):
-        with output:
-            clear_output()
-        with solution_output:
-            clear_output()
+        # Clear feedback
+        feedback_widget.value = ""
+        # Uncheck all
         for cb in checkboxes.values():
             cb.value = False
-        # Hide solution button again on reset
+        # Hide solution button
         btn_solution.layout.display = 'none'
 
     def on_show_solution(b):
-        with solution_output:
-            clear_output()
-            # Format the text nicely with line breaks
-            formatted_text = SOLUTION_TEXT.replace('\n', '<br>')
-            display(widgets.HTML(f"<div style='background-color: #f0f0f0; padding: 15px; border-left: 5px solid #007bff;'><b>Solution:</b><br>{formatted_text}</div>"))
+        formatted_solution = SOLUTION_TEXT.replace('\n', '<br>').replace('**', '<b>').replace('**', '</b>')
+        feedback_widget.value = f"<div style='background-color: #e9f5ff; padding: 10px; border-left: 4px solid #007bff; margin-top: 10px;'><b>💡 Solution:</b><br><br>{formatted_solution}</div>"
 
     btn_check.on_click(on_check)
     btn_reset.on_click(on_reset)
     btn_solution.on_click(on_show_solution)
 
-    # Display everything
-    display(header, table_box, widgets.HBox([btn_check, btn_reset, btn_solution]), output, solution_output)
+    # Layout for buttons
+    button_box = widgets.HBox([btn_check, btn_reset, btn_solution], layout=widgets.Layout(margin='10px 0'))
 
-# Run the quiz
-run_quiz_water_balance()
+    # Display everything
+    display(header, table_box, button_box)
+

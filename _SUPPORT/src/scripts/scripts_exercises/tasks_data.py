@@ -1132,7 +1132,8 @@ multiple_choice_options = {
 solutions_markdown = {
 
 "task01_1": r"""
-We must have that $ V_{in} = V_{out} $.
+At a steady state, we must have that $ V_{in} = V_{out} $.
+We know from the Task 1 that the only inflow is from precipitation and the only outflow is to the river.
 
 Water input volume over 1 day is $ V_{in} = P \times A \times t $ where:
 - $ P $ is the net recharge rate in km/day, $ P = 1 \text{mm/day} = 1 \times 10^{-6} \text{km/day} $
