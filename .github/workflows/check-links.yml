@@ -63,7 +63,9 @@ jobs:
             --scheme https
             --max-concurrency 32
             --host-concurrency 4
-            --timeout 30
+            --timeout 60
+            --max-retries 2
+            --retry-wait-time 5
             --exclude-path '(^|/)\.git/'
             --exclude-path '(^|/)uv\.lock$'
             --preprocess .github/scripts/lychee-preprocess.py
@@ -103,7 +105,9 @@ jobs:
             --scheme https
             --max-concurrency 32
             --host-concurrency 4
-            --timeout 30
+            --timeout 60
+            --max-retries 2
+            --retry-wait-time 5
             --exclude-path '(^|/)\.git/'
             --exclude-path '(^|/)uv\.lock$'
             --preprocess .github/scripts/lychee-preprocess.py
