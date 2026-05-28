@@ -54,3 +54,11 @@
 ^https://doi\.org/10\.1111/j\.1745-6584\.2005\.00052\.x$
 ^https://doi\.org/10\.1029/92WR00607$
 ^https://doi\.org/10\.1146/annurev-statistics-010814-020148$
+
+# Valid resource that times out from GitHub Actions runners (likely IP-based
+# throttling of the Azure range). Browser/local curl returns 200 OK quickly.
+# Manual-check at each major review:
+#   - https://scnat.ch/de/uuid/i/0bd7aa3b-0bd7-5d54-9e2f-597a42dada50-Die_Grundwasserverh%C3%A4ltnisse_des_Kantons_Z%C3%BCrich
+#       SCNAT/SAGW report on the groundwater conditions of canton Zürich
+#       → flow/2_perceptual_model.ipynb
+^https://scnat\.ch/de/uuid/i/0bd7aa3b-0bd7-5d54-9e2f-597a42dada50-Die_Grundwasserverh%C3%A4ltnisse_des_Kantons_Z%C3%BCrich$
