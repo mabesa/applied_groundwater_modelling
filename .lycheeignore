@@ -54,3 +54,10 @@
 ^https://doi\.org/10\.1111/j\.1745-6584\.2005\.00052\.x$
 ^https://doi\.org/10\.1029/92WR00607$
 ^https://doi\.org/10\.1146/annurev-statistics-010814-020148$
+
+# Valid ETH Zurich page that returns 415 Unsupported Media Type to
+# HEAD requests from CI runner IPs (Cloudflare/WAF bot-detection).
+# Browser/local curl returns 200 OK. Manual-check at each major review:
+#   - https://innovedumprojects.ethz.ch/projects/groundwater-in-action-real-world-problem-centered-approach-with-students-collaborative-projects/
+#       Innovedum project page for this course               → README.md
+^https://innovedumprojects\.ethz\.ch/projects/groundwater-in-action-real-world-problem-centered-approach-with-students-collaborative-projects/$
