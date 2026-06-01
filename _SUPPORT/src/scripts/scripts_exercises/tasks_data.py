@@ -38,8 +38,13 @@ Given the uncertainty intervals for $P$ and $Q$ :
 """,
 
 "task03_1": r"""
-With Tsalet's mixed deposits in the setup column, you now observe that $\Delta h=0.4$ m.
-- **What is your estimate of the specific discharge $q$ in mm/s?**
+## Task 4
+Different soils can have different hydraulic conductivity. 
+We refill the same Darcy experiment setup's column with mixed deposits of hydraulic conductivity **$K_{T}$=0.0005 $\text{m}\text{s}^{-1}$**,
+and effective porosity **$\phi_e$=0.2**. 
+We now observe that $\Delta h=0.4$ m.
+
+**What is your estimate of the specific discharge $q$ in mm/s?**
 """,
 
 "task03_2": r"""
