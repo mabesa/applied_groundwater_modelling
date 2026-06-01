@@ -251,6 +251,19 @@ The y-axis scale is now the same for all profiles to help you in comparing diffe
     Displays the exercise for K_eq attribution.
     """
     display(Markdown(r"""
+ ## Task 2.1
+
+Horizontal saturated groundwater flow are established in soil layers with following properties :
+- length $L$ : 100 $\text{m}$
+- specific discharge at inflow per unit area $q$:  $3 \cdot 10^{-7}\text{m}^2\text{s}^{-1}$ 
+- hydraulic conductivities differ among considered layers:
+    - $K_0=5$ $\mu\text{m}\cdot\text{s}^{-1}$
+    - $K_1=10$ $\mu\text{m}\cdot\text{s}^{-1}$ 
+    - $K_2=20$ $\mu\text{m}\cdot\text{s}^{-1}$
+    - $K_3=50$ $\mu\text{m}\cdot\text{s}^{-1}$
+- groundwater recharge from the surface is negligible
+- the aquifer are confined                   
+
 **Your task is to fill the table below** <br>For each of the 6 soils (schematic (a) to (f)), indicate: 
 - Line 1 : its equivalent hydraulic conductivity $K_{eq}$
 - Line 2 : the number of its associated $h(x)$ profile plot.

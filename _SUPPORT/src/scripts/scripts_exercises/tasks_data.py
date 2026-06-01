@@ -38,7 +38,7 @@ Given the uncertainty intervals for $P$ and $Q$ :
 """,
 
 "task03_1": r"""
-## Task 4
+## Task 1.4
 Different soils can have different hydraulic conductivity. 
 We refill the same Darcy experiment setup's column with mixed deposits of hydraulic conductivity **$K_{T}$=0.0005 $\text{m}\text{s}^{-1}$**,
 and effective porosity **$\phi_e$=0.2**. 
@@ -62,6 +62,8 @@ Based on the experiment's graph:
 """,
 
 "task04_1": r"""
+## Task 2.2
+You are given a 200 m long confined aquifer, composed of two successive layers of different hydraulic conductivities.
 - **Estimate the water table level $h(x)$ (in meter) at the interface $x$ = 100m** :
 """,
 
@@ -599,9 +601,47 @@ Compute the pressure gradient (in kPa/m) of pore water between Points B and C wh
 Compute the groundwater discharge of unit aquifer width (in $cm^3$/s) in the Box D which has a dimension of 10 m by 10 m.
 """,
 
+"task_exercise_darcy_further_application_and_use_1": r"""
 
+A highly permeable detritus layer overlies a sandstone aquifer.
 
+Assume $K_{detritus} >> K_{sandstone}$
 
+The sandstone aquifer has:
+- horizontal impermeable bottom at z = 0 m
+- top elevation z_top = 10 m
+- porosity n = 0.22
+
+Groundwater flows from Point C toward a spring at Point A.
+
+Known data:
+- $h_C$ = 12.0 m
+- $h_A$ = 0.1 m
+- $q_A$ = 1.0 10⁻⁴ m/s
+- $L_{AC}$ = 1000 m
+
+The aquifer is:
+- unconfined between C and B
+- confined between B and A
+
+Assume:
+- steady-state conditions
+- one-dimensional horizontal flow
+- unit width
+- no recharge between C and A
+
+## Task 3.1
+    
+Using Darcy's law:
+- **Determine the specific discharge $q_B$, at the vertical Profile B**
+""",
+
+"task_exercise_darcy_further_application_and_use_2": r"""
+## Task 3.2
+Given the Dupuit assumption that specific discharge, $q_B$, at vertical Profile B is calculated as,
+$q_B=K\left(h_B^2-h_A^2\right)/\left(2L_{AB}h_B\right)$, where $K$ is the hydraulic conductivity of the sandstone aquifer:
+- **Determine the distance $L_{AB}$**
+""",
 }
 
 
@@ -691,6 +731,8 @@ solutions = {
     "task_exercise_flow_net_1": (20, 22), 
     "task_exercise_flow_net_2": (-2.2, -1.8), 
     "task_exercise_flow_net_3": (90, 110), 
+    "task_exercise_darcy_further_application_and_use_1": (9.9,10.1), 
+    "task_exercise_darcy_further_application_and_use_2": (710,718), 
 }
 
 
@@ -792,6 +834,8 @@ solutions_exact = {
     "task_exercise_flow_net_1": "21",
     "task_exercise_flow_net_2": "-2",
     "task_exercise_flow_net_3": "100",
+    "task_exercise_darcy_further_application_and_use_1": "10", 
+    "task_exercise_darcy_further_application_and_use_2": "714", 
 }
 
 
@@ -898,6 +942,8 @@ solution_unit = {
     "task_exercise_flow_net_1": " m",
     "task_exercise_flow_net_2": " kPa/m",
     "task_exercise_flow_net_3": " cm^3/s",
+    "task_exercise_darcy_further_application_and_use_1": "m", 
+    "task_exercise_darcy_further_application_and_use_2": "m", 
 }
 
 
@@ -2382,6 +2428,32 @@ The discharge of unit width (B=1 m) across Box D can be calculated as :
 
 $Q_D = K \cdot I\cdot A = 5 \cdot 10^{-5} [m/s]\cdot  0.2 \cdot 10 [m]\cdot  1[m] = 10^{-4} m^3/s = 100 cm^3/s$
 
+""",
+
+"task_exercise_darcy_further_application_and_use_1": r"""
+At Profile B, the water table intersects the top of the sandstone aquifer. 
+Therefore the pressure at the aquifer roof is atmospheric ($p$=0), and the hydraulic head equals the elevation of the aquifer top.
+Consequently we have: 
+$ h_B = z_{top} +  \frac{p_B}{\rho g} = z_{top} +  0 = 10$ m
+""",
+
+"task_exercise_darcy_further_application_and_use_2": r"""
+According to mass conservation, the discharge through vertical Profile C is the same as the one through vertical Profile B: $Q_B=Q_C$. 
+
+In addition, $m_B$ and $m_C$ are the aquifer thicknesses at B and C and are both equalling $z_{top}$ such that the relation between discharge and specific discharge at B and C vertical profiles becomes:
+- $Q_B= q_B\times m_B\times1=q_B \times z_{top}$ 
+- $Q_C= q_C\times m_C\times1=q_C \times z_{top}$
+
+Since $Q_B=Q_C$ is then obtained that $q_B=q_C$ as well.
+
+
+We apply Dupuit'y assumption both from confined B-C and unconfined A-B sides perspectives
+- $q_C = K\times\frac{h_C-h_B}{L-L_{AB}}$
+- $q_B = K\left(h_B^2-h_A^2\right)/\left(2L_{AB}h_B\right)$ 
+
+Kowing that $q_B=q_C$  we can solve the equation for the unknown $L_{AB}$:
+- $L_{AB}=\frac{\left(h_B^2-h_A^2\right)L}{h_B^2-h_A^2+2\left(h_C-h_B\right)h_B}$ 
+$= \frac{\left(10\ m\right)^2-\left(0.1\ m\right)^2}{\left(10\ m\right)^2-\left(0.1\ m\right)^2+2\times\left(12\ m-10\ m\right)\times10\ m}\times1000 m=714$ m
 """,
 }
 
