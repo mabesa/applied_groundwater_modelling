@@ -587,17 +587,17 @@ When transferring calibrated parameters from a heat transport model to a solute 
 """,
 
 "task_exercise_flow_net_1": r"""
-## Task 1
+## Task 1.1
 Compute the hydraulic head at point A (in meter)
 """,
 
 "task_exercise_flow_net_2": r"""
-## Task 2
+## Task 1.2
 Compute the pressure gradient (in kPa/m) of pore water between Points B and C which are at the same elevation.
 """,
 
 "task_exercise_flow_net_3": r"""
-## Task 3
+## Task 1.3
 Compute the groundwater discharge of unit aquifer width (in $cm^3$/s) in the Box D which has a dimension of 10 m by 10 m.
 """,
 
@@ -2399,7 +2399,7 @@ Dispersivity and porosity transfer directly because they describe the physical p
 """,
 
 "task_exercise_flow_net_1": r"""
-The computation is the following: $h_A = h - \frac{\Delta h}{N_D} = 23 - \frac{20}{10}= 21$m
+The computation is the following: $h_A = h - \frac{\Delta h}{N_D} = 23 - \frac{20}{10}= 21$ m
 """,
 
 "task_exercise_flow_net_2": r"""
@@ -2415,7 +2415,7 @@ $\frac{dp}{dx} = \frac{p_B - p_C}{x_B - x_C} $
 $= \frac{\rho g (h_B - z_B) - \rho g (h_C - z_C)}{x_B - x_C}$
 $= \frac{\rho g (h_B - h_C)}{x_B - x_C}$
 $= \frac{10 [m/s^2] 1000 [kg/m^3] 2[m]} {-10 [m]}$
-$= -2 10^3$ Pa/m
+$= -2 \cdot 10^3$ Pa/m
 $= -2$ kPa/m
 """,
 

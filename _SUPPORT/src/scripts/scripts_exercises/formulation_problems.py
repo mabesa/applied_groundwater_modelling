@@ -70,6 +70,11 @@ def dictionnary_matching(dictionnary, plot_func=None):
 
 # Usage:
 def boundary_condition_matching():
+    display(Markdown(r"""
+## Task 2.1 : Boundary Conditions
+- **Match the correct expression to each possible boundary condition**:
+        """))
+    
     possibilities_BC = {
         'Prescribed head profile along a boudary' : "$h(x,y,t)=h_0(x,y,t)$",
         'Specified discharge perpendicular to a boundary' : "$Q_n = - T \\frac{\\partial h}{\\partial n} = f(x,y,t)$",
@@ -87,6 +92,11 @@ def boundary_condition_matching():
     return
 
 def sources_and_sinks_matching():
+    display(Markdown(r"""
+## Task 2.2 : Source and Sink Terms
+- **Match the correct expression to each possible source or sink term:**
+    """))
+        
     possibilities_sources_and_sinks = {
         'Recharge rate' : "$W_{in} = N$",
         'Well input rate (negative if injection)' : '$W_w = -\\frac{Q_{well}}{\\Delta x \\Delta y}$',
@@ -103,6 +113,11 @@ def sources_and_sinks_matching():
     return
 
 def flow_equation_matching():
+    display(Markdown(r"""    
+## Task 2.3 : Analytical formulation of simple problems
+- **Match the correct expression to each presented simple flow equation:**
+    """))
+
     possibilities_equation = {
         'Steady-state 1D flow, no source/sink' : "$\\frac{\\partial ^2 h(x)}{\\partial x ^2} = 0$",
         'Steady-state 1D flow, with a well' : "$r \\frac{\\partial h(r)}{\\partial r} = - \\frac{Q_{well}}{2 \\pi T}$",
@@ -111,6 +126,11 @@ def flow_equation_matching():
     return
 
 def flow_analytical_solutions_matching():
+    display(Markdown(r""" 
+## Task 2.4 : Analytical solution to simple problems
+- **Match the correct expression to each presented analytical solution equation:**
+     """))
+    
     possibilities_solution = {
         'Steady-state 1D flow, confined aquifer, no source/sink' : "$h(x) = h(x = 0) + \\frac{h(x = L) - h(x = 0)}{L} x$",
         'Steady-state 1D flow, unconfined aquifer, no source/sink (Dupuit solution)' : "$h(x)^2 = h(x=0)^2 - (h(x=0)^2 - h(x=L)^2)\\frac{x}{L} + \\frac{N}{K} \\cdot x (x-L)$ ",
