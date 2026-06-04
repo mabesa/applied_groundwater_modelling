@@ -653,6 +653,22 @@ $q_B=K\left(h_B^2-h_A^2\right)/\left(2L_{AB}h_B\right)$, where $K$ is the hydrau
 - **Determine the storativity of the aquifer, again using Jacob's approximation to the Theiss solution** (give the result with 5 decimals)
 """,
 
+
+"K_increase_sandstone_1": r"""
+## Task 3.3
+- If $h_A$ and $q_A$ are fixed, where would B shift?
+""",
+
+"K_increase_sandstone_2": r"""
+## Task 3.4
+- If $q_A$ and B location are maintained, what happens to $h_A$?
+""",
+
+"K_increase_sandstone_3": r"""
+## Task 3.5
+- If B location and $h_A$ are fixed, how would $q_A$ change?
+""",
+
 }
 
 
@@ -748,6 +764,9 @@ solutions = {
     "task_exercise_darcy_further_application_and_use_2": (710,718), 
     "pumping_test_1": (0.01,0.02), 
     "pumping_test_2": (0.0001, 0.0003), 
+    # "K_increase_sandstone_1" mcq- handled separately
+    # "K_increase_sandstone_2" mcp- handled separately
+    # "K_increase_sandstone_3" mcq- handled separately
 }
 
 
@@ -853,6 +872,9 @@ solutions_exact = {
     "task_exercise_darcy_further_application_and_use_2": "714", 
     "pumping_test_1": "0.0142", 
     "pumping_test_2": "0.000211", 
+    "K_increase_sandstone_1": "A) shift of B towards A",
+    "K_increase_sandstone_2": "B) $h_A$ increase",
+    "K_increase_sandstone_3": "B) $q_A$ increase",
 }
 
 
@@ -963,6 +985,9 @@ solution_unit = {
     "task_exercise_darcy_further_application_and_use_2": "m", 
     "pumping_test_1": "m^2/s", 
     "pumping_test_2": "", 
+    "K_increase_sandstone_1": "multiple choice",
+    "K_increase_sandstone_2": "multiple choice",
+    "K_increase_sandstone_3": "multiple choice",
 }
 
 
@@ -1195,6 +1220,20 @@ multiple_choice_options = {
         ("C) Thermal retardation factor", "C) Thermal retardation factor — replace with sorption retardation for solutes"),
         ("D) Transverse dispersivity", "D) Transverse dispersivity alpha_T — mechanical dispersion is identical"),
     ],
+
+    "K_increase_sandstone_1": [
+        ("A) shift of B towards A", "A) shift of B towards A"),
+        ("B) shift of B towards C", "B) shift of B towards C"),
+    ],
+    "K_increase_sandstone_2": [
+        ("A) $h_A$ decreases", "A) decreases"),
+        ("B) $h_A$ increase", "B) increases"),
+    ],
+    "K_increase_sandstone_3": [
+        ("A) $q_A$ decreases", "A) decreases"),
+        ("B) $q_A$ increase", "B) increases"),
+    ],
+
 }
 
 
@@ -2494,6 +2533,18 @@ For $Q=0.0316\, m^{-3}s^{-1}$ and $t=0.0142\, m^2/s$
 For the storativity, the late time linear fit can be continued to cross the $s=0$ line such that $t_0$ is read. In this case, it can be estimated to be $t_0 \approx 1.64$ min. Therefore:
 
 $$S = \frac{2.25\, T\, t_o}{r_0^2} = \frac{2.25\cdot 0.0142\cdot 1.64 \cdot 60}{122^2} \simeq 0.000211$$""",
+
+"K_increase_sandstone_1": r"""
+Look at $q_C$ equation: if $K$ increases, $L-L_{AB}$ must increase, $L_{AB}$ must decrease.
+""",
+
+"K_increase_sandstone_2": r"""
+Look at $q_C$ equation: $q_C$ increase because of K increasing so $Q_C$ and then $Q_A$ as well increase. Since $Q=q\cdot A$, if $q_A$ is maintained, $A$, i.e. $q_A$ must increase.
+""",
+
+"K_increase_sandstone_3": r"""
+Look at $q_C$ equation: $q_C$ increase because of K increasing so $Q_C$ and then $Q_A$ as well increase. Since $Q=q\cdot A$, if $h_A$ is maintained $A$ is maintained so $q_A$ must increase.
+""",
 
 
 
