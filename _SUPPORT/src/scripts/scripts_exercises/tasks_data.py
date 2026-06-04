@@ -587,17 +587,17 @@ When transferring calibrated parameters from a heat transport model to a solute 
 """,
 
 "task_exercise_flow_net_1": r"""
-## Task 1.1
+## Task 1
 Compute the hydraulic head at point A (in meter)
 """,
 
 "task_exercise_flow_net_2": r"""
-## Task 1.2
+## Task 2
 Compute the pressure gradient (in kPa/m) of pore water between Points B and C which are at the same elevation.
 """,
 
 "task_exercise_flow_net_3": r"""
-## Task 1.3
+## Task 3
 Compute the groundwater discharge of unit aquifer width (in $cm^3$/s) in the Box D which has a dimension of 10 m by 10 m.
 """,
 
@@ -642,7 +642,20 @@ Given the Dupuit assumption that specific discharge, $q_B$, at vertical Profile 
 $q_B=K\left(h_B^2-h_A^2\right)/\left(2L_{AB}h_B\right)$, where $K$ is the hydraulic conductivity of the sandstone aquifer:
 - **Determine the distance $L_{AB}$**
 """,
+
+"pumping_test_1": r"""
+## Task 1
+- **Determine the transmissivity of the aquifer using Jacob's approximation to the Theiss solution** (give the result in $m^2/s$ with 4 decimals)
+""",
+
+"pumping_test_2": r"""
+## Task 2
+- **Determine the storativity of the aquifer, again using Jacob's approximation to the Theiss solution** (give the result with 5 decimals)
+""",
+
 }
+
+
 
 
 
@@ -733,6 +746,8 @@ solutions = {
     "task_exercise_flow_net_3": (90, 110), 
     "task_exercise_darcy_further_application_and_use_1": (9.9,10.1), 
     "task_exercise_darcy_further_application_and_use_2": (710,718), 
+    "pumping_test_1": (0.01,0.02), 
+    "pumping_test_2": (0.0001, 0.0003), 
 }
 
 
@@ -836,6 +851,8 @@ solutions_exact = {
     "task_exercise_flow_net_3": "100",
     "task_exercise_darcy_further_application_and_use_1": "10", 
     "task_exercise_darcy_further_application_and_use_2": "714", 
+    "pumping_test_1": "0.0142", 
+    "pumping_test_2": "0.000211", 
 }
 
 
@@ -944,6 +961,8 @@ solution_unit = {
     "task_exercise_flow_net_3": " cm^3/s",
     "task_exercise_darcy_further_application_and_use_1": "m", 
     "task_exercise_darcy_further_application_and_use_2": "m", 
+    "pumping_test_1": "m^2/s", 
+    "pumping_test_2": "", 
 }
 
 
@@ -2455,6 +2474,30 @@ Kowing that $q_B=q_C$  we can solve the equation for the unknown $L_{AB}$:
 - $L_{AB}=\frac{\left(h_B^2-h_A^2\right)L}{h_B^2-h_A^2+2\left(h_C-h_B\right)h_B}$ 
 $= \frac{\left(10\ m\right)^2-\left(0.1\ m\right)^2}{\left(10\ m\right)^2-\left(0.1\ m\right)^2+2\times\left(12\ m-10\ m\right)\times10\ m}\times1000 m=714$ m
 """,
+
+"pumping_test_1": r"""
+We use Jacob's approximation to the Theiss solution. We assume to have a transient radial flow in a confined aquifer. The drawdown at a single well of pumping rate $Q$=31.6 L/s located at radius r=122m is measured regularly in time from 1 to 240 minutes.
+
+$$s(r,t) \approx -\frac{2.3\, Q}{4\pi T} \log_{10}\left(\frac{2.25\, T\, t}{r^2 S}\right) = -\frac{2.3\, Q}{4\pi T} \log_{10}\left(\frac{2.25\, T}{r^2 S}\right) - \frac{2.3\, Q}{4\pi T} \log_{10}(t)$$
+
+A plot s(t) can be produced on a linear-logarithmic diagram, and a linear fit is done on the late time data (linear portion of the data). $\Delta s$ is measured for late times where the approximation is more accurate, so for us $\Delta s \approx 0.408m$ for the log cycle $t=10$ to $t=100$ min.
+
+In these conditions, we find that:
+
+$$T = - \frac{2.3\cdot Q}{4\pi \cdot\Delta s} =  - \frac{2.3\cdot 0.0316}{4\cdot 3.1416\cdot 0.408} \approx 0.0142\, m^2/s$$
+
+
+For $Q=0.0316\, m^{-3}s^{-1}$ and $t=0.0142\, m^2/s$
+""",
+
+"pumping_test_2": r"""
+For the storativity, the late time linear fit can be continued to cross the $s=0$ line such that $t_0$ is read. In this case, it can be estimated to be $t_0 \approx 1.64$ min. Therefore:
+
+$$S = \frac{2.25\, T\, t_o}{r_0^2} = \frac{2.25\cdot 0.0142\cdot 1.64 \cdot 60}{122^2} \simeq 0.000211$$""",
+
+
+
+
 }
 
 
@@ -2463,6 +2506,7 @@ task_functions = {
     "task01_1": lambda: du.display_image(image_filename='SwissTopoTsaletArea.png', image_folder='3_exercises'),
     "task01_4": lambda: display_disc_area_interactive(),
     "task04_1": lambda: draw_hx_plot(),
+    "pumping_test_1": lambda: du.display_image(image_filename='PumpingTestFit.png', image_folder='3_exercises'),
     
 }
 

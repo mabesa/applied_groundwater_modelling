@@ -106,7 +106,9 @@ def attribution_observation_well_student(resolution_interpolation):
     submit_button.on_click(on_submit_clicked)
     
     # Display the interactive matching tool
-    display(Markdown(f"- **Match the correct interpolated head values to each observation well:**"))
+    display(Markdown(r"""
+## Task 1.1 - estimate the hydraulic head using linear interpolation
+- **Match the correct interpolated head values to each observation well:**"""))
     display(widgets.HBox([dropdowns['A'], dropdowns['B'], dropdowns['C']]))
     display(submit_button, output)
 
@@ -192,7 +194,9 @@ def interactive_interpolation():
         with output:
             plot_head_full_field_interactive(change['new'])
 
-    display(Markdown("<br>**Click on the interpolation method to display the field :** <br>"))
+    display(Markdown(r""" 
+### Task 1.2 - comparison of interpolation methods
+- **Click on the interpolation method to display the field :** """))
     method_buttons.observe(on_method_change, names='value')
     display(method_buttons)
     display(output)
