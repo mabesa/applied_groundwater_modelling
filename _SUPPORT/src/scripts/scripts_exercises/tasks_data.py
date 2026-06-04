@@ -655,17 +655,14 @@ $q_B=K\left(h_B^2-h_A^2\right)/\left(2L_{AB}h_B\right)$, where $K$ is the hydrau
 
 
 "K_increase_sandstone_1": r"""
-## Task 3.3
 - If $h_A$ and $q_A$ are fixed, where would B shift?
 """,
 
 "K_increase_sandstone_2": r"""
-## Task 3.4
 - If $q_A$ and B location are maintained, what happens to $h_A$?
 """,
 
 "K_increase_sandstone_3": r"""
-## Task 3.5
 - If B location and $h_A$ are fixed, how would $q_A$ change?
 """,
 
