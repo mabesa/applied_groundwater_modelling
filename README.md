@@ -68,14 +68,16 @@ Run this step in your system terminal:
 
 ```bash
 # Working solo:
-git clone https://github.com/mabesa/applied_groundwater_modelling.git
+git clone -b course_2026 https://github.com/mabesa/applied_groundwater_modelling.git
 
 # For group work, clone your fork instead:
-# git clone https://github.com/YOUR_USERNAME/applied_groundwater_modelling.git
+# git clone -b course_2026 https://github.com/YOUR_USERNAME/applied_groundwater_modelling.git
 
 cd applied_groundwater_modelling
 code .
 ```
+
+> 📌 **Current semester branch:** `course_2026` (HS26). Taking the course in a later year? Use that semester's branch instead.
 
 If `code .` is not found, install the command from VS Code via Command Palette → **Shell Command: Install 'code'
 command in PATH**, or open the cloned folder with **File → Open Folder**.
@@ -200,7 +202,7 @@ applied_groundwater_modelling/
 
 - Apply numerical methods to solve groundwater flow and transport problems
 - Construct and adapt models to address real-world hydrogeological challenges
-- Implement and analyze numerical solutions using MODFLOW, MT3D and FloPy
+- Implement and analyze numerical solutions using MODFLOW 6 (with GWT/GWE for transport) and FloPy
 - Critically evaluate modeling results and their implications
 
 ## 5 Prerequisites
@@ -242,7 +244,7 @@ file_path = download_named_file(name='groundwater_map_norm', data_type='gis')
 **Repository out of date:**
 Run `0_sync_repo.ipynb` or in terminal:
 ```bash
-git fetch origin && git reset --hard origin/main
+git fetch origin && git reset --hard origin/course_2026
 ```
 
 **405: Method Not Allowed:**
@@ -291,14 +293,14 @@ uv run python -m ipykernel install --user --name=applied_gw_modelling --display-
 
 Then select `Applied GW Modelling (uv)` as your kernel.
 
-### MODFLOW or MT3D Model Issues
+### MODFLOW Model Issues
 
 **Model changes not taking effect:**
 If you modify model settings, run the model, but results don't change:
 1. Delete the model workspace folder (e.g., `model_ws/`)
 2. Re-run the notebook cells that create and run the model
 
-MODFLOW and MT3D may reuse cached files from previous runs, causing your changes to be ignored.
+MODFLOW may reuse cached files from previous runs, causing your changes to be ignored.
 
 </details>
 
