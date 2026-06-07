@@ -165,16 +165,16 @@ The project follows a 10-step modeling methodology:
 | Step | Topic | Flow Track | Transport Track |
 |------|-------|------------|-----------------|
 | 0 | Introduction | `0_start_here.ipynb` | `0_start_here.ipynb` |
-| 1 | Model Goal | `flow/1_model_goal.ipynb` | `transport/1_model_goal.ipynb` |
-| 2 | Perceptual Model | `flow/2_perceptual_model.ipynb` | `transport/2_perceptual_model.ipynb` |
-| 3 | Conceptual Model | `flow/3_modflow_fundamentals.ipynb` | — |
-| 4 | Model Implementation | `flow/4_model_implementation.ipynb` | `transport/4_model_implementation.ipynb` |
-| 5 | Calibration | `flow/5_calibration.ipynb` | — |
-| 6 | Validation | `flow/6_validation.ipynb` | — |
-| 7 | Sensitivity & Uncertainty | `flow/7_sensitivity_uncertainty.ipynb` | — |
-| 8 | Model Application | `flow/8_model_application.ipynb` | — |
-| 9 | Documentation | `flow/9_documentation.ipynb` | — |
-| 10 | Communication | `flow/10_communication.ipynb` | — |
+| 1 | Model Goal | `flow/01f_model_goal.ipynb` | `transport/01t_model_goal.ipynb` |
+| 2 | Perceptual Model | `flow/02f_perceptual_model.ipynb` | `transport/02t_perceptual_model.ipynb` |
+| 3 | Conceptual Model | `flow/03f_modflow_fundamentals.ipynb` | `transport/03t_modflow_transport.ipynb` |
+| 4 | Model Implementation | `flow/04f_model_implementation.ipynb` | `transport/04t_model_implementation.ipynb` |
+| 5 | Calibration | `flow/05f_calibration.ipynb` | `transport/05t_calibration.ipynb` |
+| 6 | Validation | `flow/06f_validation.ipynb` | — |
+| 7 | Sensitivity & Uncertainty | `flow/07f_sensitivity_uncertainty.ipynb` | — |
+| 8 | Model Application | `flow/08f_model_application.ipynb` | — |
+| 9 | Documentation | `flow/09f_documentation.ipynb` | — |
+| 10 | Communication | `flow/10f_communication.ipynb` | — |
 
 The transport track builds on the calibrated flow model. Steps marked with "—" use the flow model results.
 
@@ -188,7 +188,7 @@ applied_groundwater_modelling/
 ├── PROJECT/                  # Phase 2: Case study (Weeks 9-14)
 │   ├── 0_start_here.ipynb    # Course intro & 10-step framework
 │   ├── flow/                 # Flow modeling track (steps 1-10)
-│   ├── transport/            # Transport track (steps 1, 2, 4)
+│   ├── transport/            # Transport track (steps 1-5)
 │   ├── workspace/            # Your working area
 │   └── _demos/               # Calibration & uncertainty demos
 ├── _SUPPORT/                 # Helper code and static files
