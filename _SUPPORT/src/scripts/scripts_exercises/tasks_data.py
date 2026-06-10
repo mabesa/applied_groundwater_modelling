@@ -12,6 +12,11 @@ import print_images as du
 
 #------ Dictionary to store the markdown to diplay the question asked
 questions_markdown = {
+
+# ============================================================================
+# EXERCISES THEORY
+# ============================================================================
+
 "task01_1":  r"""
 We can assume the system to be at a steady state.
  - **Estimate $A$ the area of the Tsalet catchment in $\text{km}^2$**
@@ -33,8 +38,13 @@ Given the uncertainty intervals for $P$ and $Q$ :
 """,
 
 "task03_1": r"""
-With Tsalet's mixed deposits in the setup column, you now observe that $\Delta h=0.4$ m.
-- **What is your estimate of the specific discharge $q$ in mm/s?**
+## Task 1.4
+Different soils can have different hydraulic conductivity. 
+We refill the same Darcy experiment setup's column with mixed deposits of hydraulic conductivity **$K_{T}$=0.0005 $\text{m}\text{s}^{-1}$**,
+and effective porosity **$\phi_e$=0.2**. 
+We now observe that $\Delta h=0.4$ m.
+
+**What is your estimate of the specific discharge $q$ in mm/s?**
 """,
 
 "task03_2": r"""
@@ -52,6 +62,8 @@ Based on the experiment's graph:
 """,
 
 "task04_1": r"""
+## Task 2.2
+You are given a 200 m long confined aquifer, composed of two successive layers of different hydraulic conductivities.
 - **Estimate the water table level $h(x)$ (in meter) at the interface $x$ = 100m** :
 """,
 
@@ -572,9 +584,91 @@ You tested trade-off combinations that give similar temperature RMSE:
 ## Checkpoint — Heat to Solute Transfer
 When transferring calibrated parameters from a heat transport model to a solute transport model:
 - **Which parameter does NOT transfer directly?**
-"""
+""",
+
+"task_exercise_flow_net_1": r"""
+## Task 1
+Compute the hydraulic head at point A (in meter)
+""",
+
+"task_exercise_flow_net_2": r"""
+## Task 2
+Compute the pressure gradient (in kPa/m) of pore water between Points B and C which are at the same elevation.
+""",
+
+"task_exercise_flow_net_3": r"""
+## Task 3
+Compute the groundwater discharge of unit aquifer width (in $cm^3$/s) in the Box D which has a dimension of 10 m by 10 m.
+""",
+
+"task_exercise_darcy_further_application_and_use_1": r"""
+
+A highly permeable detritus layer overlies a sandstone aquifer.
+
+Assume $K_{detritus} >> K_{sandstone}$
+
+The sandstone aquifer has:
+- horizontal impermeable bottom at z = 0 m
+- top elevation z_top = 10 m
+- porosity n = 0.22
+
+Groundwater flows from Point C toward a spring at Point A.
+
+Known data:
+- $h_C$ = 12.0 m
+- $h_A$ = 0.1 m
+- $q_A$ = 1.0 10⁻⁴ m/s
+- $L_{AC}$ = 1000 m
+
+The aquifer is:
+- unconfined between C and B
+- confined between B and A
+
+Assume:
+- steady-state conditions
+- one-dimensional horizontal flow
+- unit width
+- no recharge between C and A
+
+## Task 3.1
+    
+Using Darcy's law:
+- **Determine the specific discharge $q_B$, at the vertical Profile B**
+""",
+
+"task_exercise_darcy_further_application_and_use_2": r"""
+## Task 3.2
+Given the Dupuit assumption that specific discharge, $q_B$, at vertical Profile B is calculated as,
+$q_B=K\left(h_B^2-h_A^2\right)/\left(2L_{AB}h_B\right)$, where $K$ is the hydraulic conductivity of the sandstone aquifer:
+- **Determine the distance $L_{AB}$**
+""",
+
+"pumping_test_1": r"""
+## Task 1
+- **Determine the transmissivity of the aquifer using Jacob's approximation to the Theiss solution** (give the result in $m^2/s$ with 4 decimals)
+""",
+
+"pumping_test_2": r"""
+## Task 2
+- **Determine the storativity of the aquifer, again using Jacob's approximation to the Theiss solution** (give the result with 5 decimals)
+""",
+
+
+"K_increase_sandstone_1": r"""
+- If $h_A$ and $q_A$ are fixed, where would B shift?
+""",
+
+"K_increase_sandstone_2": r"""
+- If $q_A$ and B location are maintained, what happens to $h_A$?
+""",
+
+"K_increase_sandstone_3": r"""
+- If B location and $h_A$ are fixed, how would $q_A$ change?
+""",
 
 }
+
+
 
 
 
@@ -660,6 +754,16 @@ solutions = {
     "task_t05_checkpoint_4": (0, 1.0),      # Energy balance error < 1%
     # task_t05_checkpoint_nonunique is multiple choice - handled separately
     # task_t05_checkpoint_transfer is multiple choice - handled separately
+    "task_exercise_flow_net_1": (20, 22), 
+    "task_exercise_flow_net_2": (-2.2, -1.8), 
+    "task_exercise_flow_net_3": (90, 110), 
+    "task_exercise_darcy_further_application_and_use_1": (9.9,10.1), 
+    "task_exercise_darcy_further_application_and_use_2": (710,718), 
+    "pumping_test_1": (0.01,0.02), 
+    "pumping_test_2": (0.0001, 0.0003), 
+    # "K_increase_sandstone_1" mcq- handled separately
+    # "K_increase_sandstone_2" mcp- handled separately
+    # "K_increase_sandstone_3" mcq- handled separately
 }
 
 
@@ -758,6 +862,16 @@ solutions_exact = {
     "task_t05_checkpoint_4": "~0.001",
     "task_t05_checkpoint_nonunique": "B) The tracer test constrains n_e independently",
     "task_t05_checkpoint_transfer": "C) Thermal retardation factor",
+    "task_exercise_flow_net_1": "21",
+    "task_exercise_flow_net_2": "-2",
+    "task_exercise_flow_net_3": "100",
+    "task_exercise_darcy_further_application_and_use_1": "10", 
+    "task_exercise_darcy_further_application_and_use_2": "714", 
+    "pumping_test_1": "0.0142", 
+    "pumping_test_2": "0.000211", 
+    "K_increase_sandstone_1": "A) shift of B towards A",
+    "K_increase_sandstone_2": "B) $h_A$ increase",
+    "K_increase_sandstone_3": "B) $q_A$ increase",
 }
 
 
@@ -860,6 +974,17 @@ solution_unit = {
     "task_t05_checkpoint_4": "%",
     "task_t05_checkpoint_nonunique": "multiple choice",
     "task_t05_checkpoint_transfer": "multiple choice",
+    # Exercises implemented in notebooks from theory
+    "task_exercise_flow_net_1": " m",
+    "task_exercise_flow_net_2": " kPa/m",
+    "task_exercise_flow_net_3": " cm^3/s",
+    "task_exercise_darcy_further_application_and_use_1": "m", 
+    "task_exercise_darcy_further_application_and_use_2": "m", 
+    "pumping_test_1": "m^2/s", 
+    "pumping_test_2": "", 
+    "K_increase_sandstone_1": "multiple choice",
+    "K_increase_sandstone_2": "multiple choice",
+    "K_increase_sandstone_3": "multiple choice",
 }
 
 
@@ -1092,6 +1217,20 @@ multiple_choice_options = {
         ("C) Thermal retardation factor", "C) Thermal retardation factor — replace with sorption retardation for solutes"),
         ("D) Transverse dispersivity", "D) Transverse dispersivity alpha_T — mechanical dispersion is identical"),
     ],
+
+    "K_increase_sandstone_1": [
+        ("A) shift of B towards A", "A) shift of B towards A"),
+        ("B) shift of B towards C", "B) shift of B towards C"),
+    ],
+    "K_increase_sandstone_2": [
+        ("A) $h_A$ decreases", "A) decreases"),
+        ("B) $h_A$ increase", "B) increases"),
+    ],
+    "K_increase_sandstone_3": [
+        ("A) $q_A$ decreases", "A) decreases"),
+        ("B) $q_A$ increase", "B) increases"),
+    ],
+
 }
 
 
@@ -1099,7 +1238,8 @@ multiple_choice_options = {
 solutions_markdown = {
 
 "task01_1": r"""
-We must have that $ V_{in} = V_{out} $.
+At a steady state, we must have that $ V_{in} = V_{out} $.
+We know from the Task 1 that the only inflow is from precipitation and the only outflow is to the river.
 
 Water input volume over 1 day is $ V_{in} = P \times A \times t $ where:
 - $ P $ is the net recharge rate in km/day, $ P = 1 \text{mm/day} = 1 \times 10^{-6} \text{km/day} $
@@ -2311,7 +2451,100 @@ This is the transport analogue of flow NB5's pumping test: an independent measur
 
 Dispersivity and porosity transfer directly because they describe the physical pore structure. Retardation does not transfer because it has different physical origins: thermal retardation comes from heat exchange with the solid matrix, while sorption retardation comes from chemical partitioning.
 <br>
-"""
+""",
+
+"task_exercise_flow_net_1": r"""
+The computation is the following: $h_A = h - \frac{\Delta h}{N_D} = 23 - \frac{20}{10}= 21$ m
+""",
+
+"task_exercise_flow_net_2": r"""
+The computation is the following: 
+
+The pore pressure at point B is $p_B = \rho g (h_B - z_B)$
+
+The pore pressure at point C is $p_C = \rho g (h_C - z_C)$
+
+The pressure gradient of pore water between Points B and C, given that $z_B = z_C$ is:
+
+$\frac{dp}{dx} = \frac{p_B - p_C}{x_B - x_C} $
+$= \frac{\rho g (h_B - z_B) - \rho g (h_C - z_C)}{x_B - x_C}$
+$= \frac{\rho g (h_B - h_C)}{x_B - x_C}$
+$= \frac{10 [m/s^2] 1000 [kg/m^3] 2[m]} {-10 [m]}$
+$= -2 \cdot 10^3$ Pa/m
+$= -2$ kPa/m
+""",
+
+"task_exercise_flow_net_3": r"""
+The hydraulic gradient across the Box D can be calculated as :
+
+$I = \frac{\Delta h}{\Delta s} = 2 [m]/10 [m] = 0.2$
+
+The discharge of unit width (B=1 m) across Box D can be calculated as :
+
+$Q_D = K \cdot I\cdot A = 5 \cdot 10^{-5} [m/s]\cdot  0.2 \cdot 10 [m]\cdot  1[m] = 10^{-4} m^3/s = 100 cm^3/s$
+
+""",
+
+"task_exercise_darcy_further_application_and_use_1": r"""
+At Profile B, the water table intersects the top of the sandstone aquifer. 
+Therefore the pressure at the aquifer roof is atmospheric ($p$=0), and the hydraulic head equals the elevation of the aquifer top.
+Consequently we have: 
+$ h_B = z_{top} +  \frac{p_B}{\rho g} = z_{top} +  0 = 10$ m
+""",
+
+"task_exercise_darcy_further_application_and_use_2": r"""
+According to mass conservation, the discharge through vertical Profile C is the same as the one through vertical Profile B: $Q_B=Q_C$. 
+
+In addition, $m_B$ and $m_C$ are the aquifer thicknesses at B and C and are both equalling $z_{top}$ such that the relation between discharge and specific discharge at B and C vertical profiles becomes:
+- $Q_B= q_B\times m_B\times1=q_B \times z_{top}$ 
+- $Q_C= q_C\times m_C\times1=q_C \times z_{top}$
+
+Since $Q_B=Q_C$ is then obtained that $q_B=q_C$ as well.
+
+
+We apply Dupuit'y assumption both from confined B-C and unconfined A-B sides perspectives
+- $q_C = K\times\frac{h_C-h_B}{L-L_{AB}}$
+- $q_B = K\left(h_B^2-h_A^2\right)/\left(2L_{AB}h_B\right)$ 
+
+Kowing that $q_B=q_C$  we can solve the equation for the unknown $L_{AB}$:
+- $L_{AB}=\frac{\left(h_B^2-h_A^2\right)L}{h_B^2-h_A^2+2\left(h_C-h_B\right)h_B}$ 
+$= \frac{\left(10\ m\right)^2-\left(0.1\ m\right)^2}{\left(10\ m\right)^2-\left(0.1\ m\right)^2+2\times\left(12\ m-10\ m\right)\times10\ m}\times1000 m=714$ m
+""",
+
+"pumping_test_1": r"""
+We use Jacob's approximation to the Theiss solution. We assume to have a transient radial flow in a confined aquifer. The drawdown at a single well of pumping rate $Q$=31.6 L/s located at radius r=122m is measured regularly in time from 1 to 240 minutes.
+
+$$s(r,t) \approx -\frac{2.3\, Q}{4\pi T} \log_{10}\left(\frac{2.25\, T\, t}{r^2 S}\right) = -\frac{2.3\, Q}{4\pi T} \log_{10}\left(\frac{2.25\, T}{r^2 S}\right) - \frac{2.3\, Q}{4\pi T} \log_{10}(t)$$
+
+A plot s(t) can be produced on a linear-logarithmic diagram, and a linear fit is done on the late time data (linear portion of the data). $\Delta s$ is measured for late times where the approximation is more accurate, so for us $\Delta s \approx 0.408m$ for the log cycle $t=10$ to $t=100$ min.
+
+In these conditions, we find that:
+
+$$T = - \frac{2.3\cdot Q}{4\pi \cdot\Delta s} =  - \frac{2.3\cdot 0.0316}{4\cdot 3.1416\cdot 0.408} \approx 0.0142\, m^2/s$$
+
+
+For $Q=0.0316\, m^{-3}s^{-1}$ and $t=0.0142\, m^2/s$
+""",
+
+"pumping_test_2": r"""
+For the storativity, the late time linear fit can be continued to cross the $s=0$ line such that $t_0$ is read. In this case, it can be estimated to be $t_0 \approx 1.64$ min. Therefore:
+
+$$S = \frac{2.25\, T\, t_o}{r_0^2} = \frac{2.25\cdot 0.0142\cdot 1.64 \cdot 60}{122^2} \simeq 0.000211$$""",
+
+"K_increase_sandstone_1": r"""
+Look at $q_C$ equation: if $K$ increases, $L-L_{AB}$ must increase, $L_{AB}$ must decrease.
+""",
+
+"K_increase_sandstone_2": r"""
+Look at $q_C$ equation: $q_C$ increase because of K increasing so $Q_C$ and then $Q_A$ as well increase. Since $Q=q\cdot A$, if $q_A$ is maintained, $A$, i.e. $q_A$ must increase.
+""",
+
+"K_increase_sandstone_3": r"""
+Look at $q_C$ equation: $q_C$ increase because of K increasing so $Q_C$ and then $Q_A$ as well increase. Since $Q=q\cdot A$, if $h_A$ is maintained $A$ is maintained so $q_A$ must increase.
+""",
+
+
+
 
 }
 
@@ -2321,7 +2554,8 @@ task_functions = {
     "task01_1": lambda: du.display_image(image_filename='SwissTopoTsaletArea.png', image_folder='3_exercises'),
     "task01_4": lambda: display_disc_area_interactive(),
     "task04_1": lambda: draw_hx_plot(),
-
+    "pumping_test_1": lambda: du.display_image(image_filename='PumpingTestFit.png', image_folder='3_exercises'),
+    
 }
 
 # Dictionary to map tasks to Python functions to execute before the question
