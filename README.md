@@ -1,4 +1,4 @@
-[![Package Dependencies](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml) [![Check Links](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-links.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-links.yml)
+[![Package Dependencies](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml/badge.svg)](https://github.com/mabesa/applied_groundwater_modelling/actions/workflows/check-dependencies.yml)
 
 # Applied Groundwater Modeling
 
