@@ -61,3 +61,10 @@
 #   - https://innovedumprojects.ethz.ch/projects/groundwater-in-action-real-world-problem-centered-approach-with-students-collaborative-projects/
 #       Innovedum project page for this course               → README.md
 ^https://innovedumprojects\.ethz\.ch/projects/groundwater-in-action-real-world-problem-centered-approach-with-students-collaborative-projects/$
+
+# Valid scholarly resource that returns 403 Forbidden to CI runner IPs
+# (bot-blocked). Browser returns 200 OK. Manual-check at each major review:
+#   - https://fc79.gw-project.org/english/
+#       Freeze & Cherry (1979) "Groundwater" via The Groundwater Project
+#                                                           → PROJECT/0_start_here.ipynb
+^https://fc79\.gw-project\.org/english/$
