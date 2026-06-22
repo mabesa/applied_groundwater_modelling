@@ -1,0 +1,45 @@
+name: Check Internal Links
+
+on:
+  push:
+    paths:
+      - '**.ipynb'
+      - '**.md'
+      - 'THEORY/**'
+      - '_SUPPORT/static/**'
+      - '_SUPPORT/src/scripts/check_internal_links.py'
+      - '_SUPPORT/tests/test_check_internal_links.py'
+      - '.github/workflows/check-internal-links.yml'
+  pull_request:
+    paths:
+      - '**.ipynb'
+      - '**.md'
+      - 'THEORY/**'
+      - '_SUPPORT/static/**'
+      - '_SUPPORT/src/scripts/check_internal_links.py'
+      - '_SUPPORT/tests/test_check_internal_links.py'
+      - '.github/workflows/check-internal-links.yml'
+  workflow_dispatch:
+
+jobs:
+  check-internal-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run validator unit tests
+        run: uv run pytest _SUPPORT/tests/test_check_internal_links.py -v
+
+      - name: Run validator on repository
+        run: uv run python _SUPPORT/src/scripts/check_internal_links.py
