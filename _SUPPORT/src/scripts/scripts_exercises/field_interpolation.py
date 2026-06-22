@@ -4,6 +4,7 @@ import numpy as np
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
+from scipy.spatial import ConvexHull, Delaunay
 import ipywidgets as widgets
 from IPython.display import display, Markdown, clear_output, HTML
 from math import sqrt
@@ -132,6 +133,12 @@ def plot_head_full_field_interactive(method_passed, resolution_interpolation_pas
     xi = np.linspace(0, 100, resolution_interpolation_passed)
     yi = np.linspace(0, 100, resolution_interpolation_passed)
     xi_grid, yi_grid = np.meshgrid(xi, yi)
+    grid_points = np.column_stack([xi_grid.ravel(), yi_grid.ravel()])
+    hull = ConvexHull(np.column_stack([x_all, y_all]))
+    hull_points = np.column_stack([x_all, y_all])[hull.vertices]
+    outside_hull = (
+        Delaunay(hull_points).find_simplex(grid_points) < 0
+    ).reshape(xi_grid.shape)
 
     if method_passed in ['linear', 'nearest', 'cubic']:
         zi = griddata((x_all, y_all), head_all, (xi_grid, yi_grid), method=method_passed)
@@ -156,16 +163,79 @@ def plot_head_full_field_interactive(method_passed, resolution_interpolation_pas
         raise ValueError("Unknown interpolation method.")
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    contour = ax.contour(xi_grid, yi_grid, zi, 15, cmap=cmap)
+    field_cmap = plt.get_cmap(cmap).copy()
+    field_cmap.set_bad('lightgray', alpha=1.0)
+    ax.set_facecolor('lightgray')
+    if method_passed in ['linear', 'cubic']:
+        zi_plot = np.ma.MaskedArray(zi, mask=outside_hull)
+    elif method_passed == 'nearest':
+        zi_plot = np.ma.MaskedArray(zi, mask=np.zeros_like(zi, dtype=bool))
+    else:
+        zi_plot = zi
+    ax.pcolormesh(
+        xi_grid,
+        yi_grid,
+        zi_plot,
+        cmap=field_cmap,
+        shading='auto',
+        vmin=np.nanmin(head_all),
+        vmax=np.nanmax(head_all),
+    )
+    contour = ax.contour(
+        xi_grid,
+        yi_grid,
+        zi_plot,
+        15,
+        cmap=cmap,
+        vmin=np.nanmin(head_all),
+        vmax=np.nanmax(head_all),
+    )
     fmt = lambda x: f"{x:.1f} m"
     plt.clabel(contour, inline=True, fontsize=8, fmt=fmt)
-    ax.scatter(x_new, y_new, c=heads_new, cmap=cmap, edgecolor='red', s=80, marker='.', label='A, B, C')
+    ax.scatter(
+        x_all, y_all,
+        facecolors='none',
+        edgecolors='black',
+        marker='o',
+        s=80,
+        linewidths=0.5,
+        alpha=0.6,
+        zorder=4,
+    )
+    ax.scatter(
+        x_all, y_all, c=head_all, cmap=cmap,
+        marker='.', edgecolors='face',
+        s=300, label='Known wells',
+        zorder=5,
+    )
+    if method_passed in ['linear', 'cubic']:
+        hull_loop = np.append(hull.vertices, hull.vertices[0])
+        ax.plot(
+            x_all[hull_loop],
+            y_all[hull_loop],
+            linestyle='--',
+            linewidth=2,
+            color='black',
+            label='Convex hull of input data',
+            zorder=6,
+        )
+    ax.scatter(
+        x_new, y_new,
+        facecolors='red',
+        edgecolors='red',
+        marker='.',
+        s=200,
+        linewidths=1,
+        label='A, B, C',
+        zorder=7,
+    )
     for i, label in enumerate(labels_new):
         ax.text(x_new[i] + 1, y_new[i], label, fontsize=14, color='red', va='center')
     ax.set_xlabel('X [m]')
     ax.set_ylabel('Y [m]')
     ax.set_title(f"Interpolated $h(x,y)$ field ({method_passed})")
     ax.grid(True)
+    ax.legend()
     enable_hover_coordinates(ax)
     plt.show()
 
@@ -200,4 +270,3 @@ def interactive_interpolation():
     method_buttons.observe(on_method_change, names='value')
     display(method_buttons)
     display(output)
-
