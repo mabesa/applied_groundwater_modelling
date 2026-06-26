@@ -17,8 +17,11 @@ Run tests with: uv run pytest _SUPPORT/tests/test_setup_pest_calibration.py -v
 from __future__ import annotations
 
 import os
+import json
+import shutil
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -30,6 +33,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
 
 from setup_pest_calibration import (
+    CALIBRATION_BUNDLE_ESSENTIAL_FILES,
+    CALIBRATION_BUNDLE_MIN_VERSION,
     _distribute_pilot_points,
     _interpolate_pp_to_grid,
     _nearest_pilot_point,
@@ -37,7 +42,11 @@ from setup_pest_calibration import (
     _write_k_tpl,
     _write_pst_file,
     build_pest_setup,
+    ensure_calibration_workspace,
+    ensure_notebook4_model_exists,
+    ensure_pestpp_installed,
 )
+import setup_pest_calibration
 
 
 # =============================================================================
@@ -80,6 +89,194 @@ def _read_pst_sections(path):
                 sections.setdefault("_header", [])
                 sections["_header"].append(stripped)
     return sections
+
+
+def _write_stub_pest_setup(pest_ws, bundle_version=None, include_manifest=True):
+    """Create the complete calibration bundle file set with stub contents."""
+    pest_ws = Path(pest_ws)
+    pest_ws.mkdir(parents=True, exist_ok=True)
+    for name in CALIBRATION_BUNDLE_ESSENTIAL_FILES:
+        path = pest_ws / name
+        if name.endswith(".npy"):
+            np.save(path, np.array([1, 2, 3]))
+        else:
+            path.write_text(f"stub {name}\n")
+    if include_manifest:
+        if bundle_version is None:
+            bundle_version = CALIBRATION_BUNDLE_MIN_VERSION
+        (pest_ws / "MANIFEST.json").write_text(json.dumps({
+            "bundle_version": bundle_version,
+            "commit_sha": "test",
+            "pestpp_glm_version": "test",
+            "n_pilot_points": 20,
+            "n_observations": 5,
+            "bundle_date": "2026-06-23",
+        }))
+
+
+def _write_bundle_zip(zip_path, bundle_version=None, include_manifest=True):
+    """Create a zip with pest_setup/ at its root."""
+    source = Path(zip_path).parent / "bundle_source" / "pest_setup"
+    _write_stub_pest_setup(source, bundle_version, include_manifest)
+    with zipfile.ZipFile(zip_path, "w") as archive:
+        for path in source.rglob("*"):
+            archive.write(path, Path("pest_setup") / path.relative_to(source))
+    return zip_path
+
+
+def _patch_calibration_download(monkeypatch, zip_path, calls):
+    def fake_download_named_file(name, dest_folder=None, data_type=None):
+        calls.append((name, dest_folder, data_type))
+        dest = Path(dest_folder) / Path(zip_path).name
+        shutil.copy2(zip_path, dest)
+        return str(dest)
+
+    monkeypatch.setattr("data_utils.download_named_file", fake_download_named_file)
+
+
+def _write_valid_notebook4_model(workspace):
+    """Write a tiny valid MF6/DISV simulation for load-only validation."""
+    import flopy
+
+    workspace = Path(workspace)
+    workspace.mkdir(parents=True, exist_ok=True)
+    sim = flopy.mf6.MFSimulation(
+        sim_name="test_nb4",
+        sim_ws=str(workspace),
+        exe_name="mf6",
+    )
+    flopy.mf6.ModflowTdis(sim)
+    gwf = flopy.mf6.ModflowGwf(sim, modelname="limmat_valley")
+    ims = flopy.mf6.ModflowIms(sim)
+    sim.register_ims_package(ims, [gwf.name])
+    vertices = [
+        (0, 0.0, 0.0),
+        (1, 1.0, 0.0),
+        (2, 1.0, 1.0),
+        (3, 0.0, 1.0),
+    ]
+    cell2d = [(0, 0.5, 0.5, 4, 0, 1, 2, 3)]
+    flopy.mf6.ModflowGwfdisv(
+        gwf,
+        nlay=1,
+        ncpl=1,
+        nvert=4,
+        vertices=vertices,
+        cell2d=cell2d,
+        top=[1.0],
+        botm=[[0.0]],
+    )
+    sim.write_simulation(silent=True)
+    return workspace
+
+
+# =============================================================================
+# Tests for optional calibration download guards
+# =============================================================================
+
+def test_ensure_pestpp_installed_idempotent_when_on_path(monkeypatch):
+    monkeypatch.setattr(setup_pest_calibration.shutil, "which", lambda exe: "/bin/pestpp-glm")
+    assert ensure_pestpp_installed() is True
+
+
+def test_ensure_notebook4_model_exists_valid_missing_and_truncated(tmp_path):
+    data_dir = tmp_path / "data"
+    nb4_workspace = _write_valid_notebook4_model(data_dir / "notebook4_model")
+
+    assert ensure_notebook4_model_exists(str(data_dir)) == str(nb4_workspace)
+
+    shutil.rmtree(nb4_workspace)
+    nb4_workspace.mkdir(parents=True)
+    (nb4_workspace / "mfsim.nam").write_text("# partial\n")
+    expected = "Notebook 4 output not found or incomplete"
+    with pytest.raises(FileNotFoundError, match=expected):
+        ensure_notebook4_model_exists(str(data_dir))
+
+    shutil.rmtree(nb4_workspace)
+    _write_valid_notebook4_model(nb4_workspace)
+    disv_file = next(nb4_workspace.glob("*.disv"))
+    disv_file.write_text("truncated\n")
+    with pytest.raises(FileNotFoundError, match=expected):
+        ensure_notebook4_model_exists(str(data_dir))
+
+
+def test_ensure_calibration_workspace_downloads_complete_bundle(tmp_path, monkeypatch):
+    data_dir = tmp_path / "data"
+    zip_path = _write_bundle_zip(tmp_path / "bundle.zip")
+    calls = []
+    _patch_calibration_download(monkeypatch, zip_path, calls)
+
+    pest_ws = ensure_calibration_workspace(str(data_dir))
+
+    assert pest_ws.endswith(os.path.join("calibration", "pest_setup"))
+    for name in CALIBRATION_BUNDLE_ESSENTIAL_FILES:
+        assert (Path(pest_ws) / name).exists(), f"Missing {name}"
+    assert (Path(pest_ws) / "MANIFEST.json").exists()
+
+
+def test_ensure_calibration_workspace_refreshes_stale_version(tmp_path, monkeypatch):
+    data_dir = tmp_path / "data"
+    current = data_dir / "calibration" / "pest_setup"
+    _write_stub_pest_setup(current, bundle_version=0)
+    zip_path = _write_bundle_zip(tmp_path / "bundle.zip", bundle_version=1)
+    calls = []
+    _patch_calibration_download(monkeypatch, zip_path, calls)
+    monkeypatch.setattr("setup_pest_calibration.CALIBRATION_BUNDLE_MIN_VERSION", 1)
+
+    pest_ws = ensure_calibration_workspace(str(data_dir))
+
+    assert (data_dir / "calibration" / "pest_setup.stale").is_dir()
+    assert len(calls) == 1
+    manifest = json.loads((Path(pest_ws) / "MANIFEST.json").read_text())
+    assert manifest["bundle_version"] == 1
+
+
+def test_ensure_calibration_workspace_warns_and_accepts_version_skew(tmp_path, monkeypatch, recwarn):
+    data_dir = tmp_path / "data"
+    zip_path = _write_bundle_zip(tmp_path / "bundle.zip", bundle_version=1)
+    calls = []
+    _patch_calibration_download(monkeypatch, zip_path, calls)
+    monkeypatch.setattr("setup_pest_calibration.CALIBRATION_BUNDLE_MIN_VERSION", 2)
+
+    pest_ws = ensure_calibration_workspace(str(data_dir))
+
+    warning = recwarn.pop(UserWarning)
+    assert "Downloaded bundle version 1 is below code minimum 2" in str(warning.message)
+    assert len(calls) == 1
+    manifest = json.loads((Path(pest_ws) / "MANIFEST.json").read_text())
+    assert manifest["bundle_version"] == 1
+
+
+def test_ensure_calibration_workspace_keeps_single_stale_snapshot(tmp_path, monkeypatch):
+    data_dir = tmp_path / "data"
+    calibration_dir = data_dir / "calibration"
+    current = calibration_dir / "pest_setup"
+    stale = calibration_dir / "pest_setup.stale"
+    _write_stub_pest_setup(current, bundle_version=0)
+    stale.mkdir(parents=True)
+    (stale / "old.txt").write_text("old snapshot\n")
+    zip_path = _write_bundle_zip(tmp_path / "bundle.zip", bundle_version=1)
+    calls = []
+    _patch_calibration_download(monkeypatch, zip_path, calls)
+    monkeypatch.setattr("setup_pest_calibration.CALIBRATION_BUNDLE_MIN_VERSION", 1)
+
+    ensure_calibration_workspace(str(data_dir))
+
+    assert stale.is_dir()
+    assert not (stale / "old.txt").exists()
+    assert (stale / "calibration.pst").exists()
+    assert len(list(calibration_dir.glob("pest_setup.stale*"))) == 1
+
+
+def test_ensure_calibration_workspace_missing_manifest_message(tmp_path):
+    data_dir = tmp_path / "data"
+    _write_stub_pest_setup(
+        data_dir / "calibration" / "pest_setup",
+        include_manifest=False,
+    )
+
+    with pytest.raises(FileNotFoundError, match="`MANIFEST.json` missing from bundle"):
+        ensure_calibration_workspace(str(data_dir))
 
 
 # =============================================================================
@@ -309,6 +506,7 @@ class TestWritePstFileBaseline:
         _write_pst_file(
             str(path), n_pp=5, k_initial=20.0, k_lower=1.0, k_upper=100.0,
             obs_info=obs_info, pp_pt_idx=2, pt_K=12.0, pt_weight=1.0,
+            reg_weight=0.5,
             tpl_name="hk_pps.tpl", ins_name="heads_out.ins",
             par_file="hk_pps.dat", obs_file="heads_sim.dat",
             sihl_cell_ids=None,
@@ -359,12 +557,12 @@ class TestWritePstFileBaseline:
         assert "heads_out.ins" in mio[1]
 
     def test_prior_information(self, pst_path):
-        """Should have one prior info equation referencing hk_pp_02."""
+        """Should have regularisation rows and one PT prior referencing hk_pp_02."""
         sections = _read_pst_sections(str(pst_path))
         pi = sections["prior information"]
-        assert len(pi) == 1
-        assert "hk_pp_02" in pi[0]
-        assert "pi_pt_k" in pi[0]
+        assert len(pi) == 6
+        assert "hk_pp_02" in pi[-1]
+        assert "pi_pt_k" in pi[-1]
 
     def test_observation_data(self, pst_path):
         """Should have 3 observation data lines matching obs_info."""
@@ -399,6 +597,7 @@ class TestWritePstFileWithSihl:
         _write_pst_file(
             str(path), n_pp=5, k_initial=20.0, k_lower=1.0, k_upper=100.0,
             obs_info=obs_info, pp_pt_idx=2, pt_K=12.0, pt_weight=1.0,
+            reg_weight=0.5,
             tpl_name="hk_pps.tpl", ins_name="heads_out.ins",
             par_file="hk_pps.dat", obs_file="heads_sim.dat",
             sihl_cell_ids=np.array([10, 20, 30]),
@@ -696,6 +895,7 @@ class TestSihlEdgeCases:
         _write_pst_file(
             str(path), n_pp=3, k_initial=20.0, k_lower=1.0, k_upper=100.0,
             obs_info=obs_info, pp_pt_idx=0, pt_K=10.0, pt_weight=1.0,
+            reg_weight=0.5,
             tpl_name="hk_pps.tpl", ins_name="heads_out.ins",
             par_file="hk_pps.dat", obs_file="heads_sim.dat",
             sihl_cell_ids=sihl_ids,
@@ -715,6 +915,7 @@ class TestSihlEdgeCases:
         _write_pst_file(
             str(path), n_pp=3, k_initial=20.0, k_lower=1.0, k_upper=100.0,
             obs_info=obs_info, pp_pt_idx=0, pt_K=10.0, pt_weight=1.0,
+            reg_weight=0.5,
             tpl_name="hk_pps.tpl", ins_name="heads_out.ins",
             par_file="hk_pps.dat", obs_file="heads_sim.dat",
             sihl_cell_ids=np.array([42]),
@@ -752,6 +953,7 @@ class TestSihlEdgeCases:
         _write_pst_file(
             str(path), n_pp=2, k_initial=20.0, k_lower=1.0, k_upper=100.0,
             obs_info=obs_info, pp_pt_idx=0, pt_K=10.0, pt_weight=1.0,
+            reg_weight=0.5,
             tpl_name="hk_pps.tpl", ins_name="heads_out.ins",
             par_file="hk_pps.dat", obs_file="heads_sim.dat",
             sihl_cell_ids=np.array([1]),
@@ -774,6 +976,7 @@ class TestSihlEdgeCases:
         _write_pst_file(
             str(path), n_pp=3, k_initial=20.0, k_lower=1.0, k_upper=100.0,
             obs_info=obs_info, pp_pt_idx=0, pt_K=10.0, pt_weight=1.0,
+            reg_weight=0.5,
             tpl_name="hk_pps.tpl", ins_name="heads_out.ins",
             par_file="hk_pps.dat", obs_file="heads_sim.dat",
             sihl_cell_ids=np.array([1]),

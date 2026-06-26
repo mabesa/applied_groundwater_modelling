@@ -31,6 +31,9 @@ Dependencies are managed in `pyproject.toml` with `uv.lock` for reproducibility.
 - Current model: MODFLOW-NWT with structured grid (model_name = `limmat_valley_model_nwt`)
 - Grid is rotated 30 degrees; modelgrid pickle must be loaded to restore transformation
 - Notebooks follow pattern: banner → imports → sections with completion markers
+- All `RUN_X` toggles in flow notebooks default to `False` (opt-in). Long-running optional work
+  (PEST calibration, LOO cross-validation, etc.) only runs when the student explicitly flips the
+  toggle to `True`.
 
 ## Workflow
 
