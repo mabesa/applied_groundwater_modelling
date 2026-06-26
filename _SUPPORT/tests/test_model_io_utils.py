@@ -29,6 +29,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 from model_io_utils import (
     load_and_interpolate_aquifer_thickness,
     DEFAULT_GWLTYP_TO_THICKNESS_M,
+    GWF_NEWTON_IMS_OPTIONS,
+    GWF_NEWTON_OPTIONS,
 )
 
 
@@ -290,6 +292,28 @@ def mock_geopackage_multipolygon(tmp_path, deep_contours_gdf, shallow_zones_mult
 # =============================================================================
 # Tests for DEFAULT_GWLTYP_TO_THICKNESS_M constant
 # =============================================================================
+
+
+class TestCourseSolverPolicy:
+    """Tests for the course MODFLOW 6 solver policy."""
+
+    def test_refined_gwf_solver_policy_is_newton_bicgstab(self):
+        """Verify the refined NB8 helper uses the expected solver policy."""
+        assert GWF_NEWTON_OPTIONS == "NEWTON"
+        assert GWF_NEWTON_IMS_OPTIONS["complexity"] == "COMPLEX"
+        assert GWF_NEWTON_IMS_OPTIONS["outer_dvclose"] == 1e-3
+        assert GWF_NEWTON_IMS_OPTIONS["inner_dvclose"] == 1e-4
+        assert GWF_NEWTON_IMS_OPTIONS["linear_acceleration"] == "BICGSTAB"
+
+    def test_nb4_notebook_solver_policy_has_not_drifted(self):
+        """Verify NB4 still creates the base model with NEWTON + BICGSTAB."""
+        nb4_path = Path(__file__).parents[2] / "PROJECT/flow/04f_model_implementation.ipynb"
+        nb4_source = nb4_path.read_text(encoding="utf-8")
+
+        assert "newtonoptions='NEWTON'" in nb4_source
+        assert "linear_acceleration='BICGSTAB'" in nb4_source
+        assert "inner_dvclose=1e-4" in nb4_source
+
 
 class TestDefaultGwltypMapping:
     """Tests for the DEFAULT_GWLTYP_TO_THICKNESS_M constant."""

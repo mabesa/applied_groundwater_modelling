@@ -53,6 +53,17 @@ DEFAULT_GWLTYP_TO_THICKNESS_M = {
     6: 20,  # Very high thickness (>20m)
 }
 
+# Course steady-state MODFLOW 6 policy used by the refined NB8 model.
+GWF_NEWTON_OPTIONS = "NEWTON"
+GWF_NEWTON_IMS_OPTIONS = {
+    "complexity": "COMPLEX",
+    "outer_maximum": 200,
+    "inner_maximum": 100,
+    "outer_dvclose": 1e-3,
+    "inner_dvclose": 1e-4,
+    "linear_acceleration": "BICGSTAB",
+}
+
 
 def load_model_boundary(
     data_dir: Union[str, Path],
@@ -2003,14 +2014,15 @@ def build_refined_gwf_model(
     _flopy.mf6.ModflowTdis(
         ref_sim, time_units='DAYS', nper=1, perioddata=[(1.0, 1, 1)],
     )
+    # Keep the refined solver aligned with the course NEWTON policy.
     _flopy.mf6.ModflowIms(
-        ref_sim, complexity='MODERATE',
-        outer_maximum=200, inner_maximum=100,
-        outer_dvclose=1e-6, inner_dvclose=1e-9,
+        ref_sim,
+        **GWF_NEWTON_IMS_OPTIONS,
     )
 
     ref_gwf = _flopy.mf6.ModflowGwf(
         ref_sim, modelname=sim_name, save_flows=True,
+        newtonoptions=GWF_NEWTON_OPTIONS,
     )
     _flopy.mf6.ModflowGwfdisv(
         ref_gwf, nlay=1, ncpl=ncpl, nvert=gridprops['nvert'],
