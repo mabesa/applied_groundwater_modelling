@@ -492,9 +492,13 @@ You report the doublet results to a regulator. Even on the **refined** grid the 
 # ── Transport Track — Notebook 5 checkpoints ──
 
 "task_t05_checkpoint_1": r"""
-## Checkpoint 1 — Monitoring Network
-Looking at the synthetic temperature observation network:
-- **How many monitoring wells are there?**
+## Checkpoint — Why is transport calibration under-constrained?
+
+The **flow** phase of your project carries the calibration rubric (heads, fluxes, PEST++).
+The **transport** phase does *not* ask you to calibrate $\alpha_L$, $\alpha_T$ and $n_e$
+against plume data — instead you lock them and run an $\alpha_L$ **sensitivity** sweep.
+
+**What is the main reason a full transport calibration is beyond the scope of this course project?**
 """,
 
 "task_t05_checkpoint_2": r"""
@@ -841,7 +845,7 @@ solutions_exact = {
     "task_t04_checkpoint_2": "≈ 0.73",
     "task_t04_checkpoint_3": "A) Recirculation reaches the abstraction well",
     # Transport Track — Notebook 5 checkpoints
-    "task_t05_checkpoint_1": "5",
+    "task_t05_checkpoint_1": "A) Sparse plume data plus parameter trade-offs leave the inverse problem under-constrained",
     "task_t05_checkpoint_2": "See output",
     "task_t05_tt_checkpoint_1": "~12.3",
     "task_t05_tt_checkpoint_2": "~4.6",
@@ -952,7 +956,7 @@ solution_unit = {
     "task_t04_checkpoint_2": " d",
     "task_t04_checkpoint_3": "multiple choice",
     # Transport Track — Notebook 5 checkpoints
-    "task_t05_checkpoint_1": "wells",
+    "task_t05_checkpoint_1": "multiple choice",
     "task_t05_checkpoint_2": "°C",
     "task_t05_tt_checkpoint_1": "m/d",
     "task_t05_tt_checkpoint_2": "m",
@@ -1166,6 +1170,16 @@ multiple_choice_options = {
          "D) \"Refining the grid removed all numerical error\" — refining recovered longitudinal/peak accuracy but transverse stays Pe_T ≫ 2."),
     ],
     # Transport Track — Notebook 5 checkpoints
+    "task_t05_checkpoint_1": [
+        ("A) Sparse plume data plus parameter trade-offs leave the inverse problem under-constrained",
+         "A) In the field you rarely have enough concentration observations to pin alpha_L, alpha_T and n_e separately, and they trade off against each other (e.g. alpha_L vs n_e both reshape arrival time and spread) — so the transport inverse problem is under-constrained. That is why the flow phase carries the calibration rubric and the transport phase runs a sensitivity sweep instead."),
+        ("B) MODFLOW 6 GWT models cannot be calibrated",
+         "B) Untrue — GWT transport models can be calibrated (e.g. with PEST++); the obstacle here is data and identifiability, not the software."),
+        ("C) The transport parameters are already known exactly",
+         "C) Untrue — alpha_L, alpha_T and n_e are genuinely uncertain; that is exactly why you report an alpha_L sensitivity range rather than one calibrated value."),
+        ("D) Calibration runs are simply too slow to ever finish",
+         "D) Runtime is a practical nuisance, but the fundamental issue is identifiability: too few plume observations to constrain the parameters uniquely."),
+    ],
     "task_t05_tt_checkpoint_3": [
         ("A) Aquifer heterogeneity", "A) The aquifer is heterogeneous — each well samples a different dispersivity zone"),
         ("B) Measurement noise and scale dependence", "B) Measurement noise + dispersivity tends to increase with transport distance (scale dependence)"),
@@ -2291,9 +2305,28 @@ Refining recovers the longitudinal/peak accuracy but **cannot** fix the transver
 # ── Transport Track — Notebook 5 solutions ──
 
 "task_t05_checkpoint_1": r"""
-## Solution — Monitoring Network
+## Solution — Why transport calibration is under-constrained
 
-**5 monitoring wells** placed at increasing distances from the mid-Limmat (30, 80, 200, 400, 700 m). The near-river wells capture the strongest seasonal signal, while the distant wells show heavily attenuated temperature variations.
+**Correct answer: A.**
+
+A defensible calibration needs observations that constrain each parameter. For solute transport
+in the field you typically have **few (or no) plume concentration observations**, and the
+key parameters **trade off** against one another:
+
+| Parameter | What shifts it | Trade-off |
+|---|---|---|
+| $\alpha_L$ (longitudinal dispersivity) | spreads/flattens the breakthrough | higher $\alpha_L$ mimics lower $n_e$ |
+| $n_e$ (effective porosity) | sets advective arrival time $x/v$ | lower $n_e$ → earlier arrival |
+| $\alpha_T$ (transverse dispersivity) | lateral width — but **numerically unresolved** (Pe$_T \gg 2$) |
+
+With sparse data and these correlations, the inverse problem is **under-constrained**: many
+parameter sets fit equally well. The software (MODFLOW 6 GWT, PEST++) is perfectly capable of
+calibration (so B is wrong), the parameters are genuinely uncertain (so C is wrong), and runtime
+is a nuisance rather than the core obstacle (so D is wrong).
+
+That is why this course **carries the calibration rubric in the flow phase** and, for transport,
+asks you to **lock** $\alpha_L = 10$ m / $\alpha_T = 1$ m / $n_e = 0.20$ and report an
+$\alpha_L$ **sensitivity range** instead of a single calibrated value.
 <br>
 """,
 
