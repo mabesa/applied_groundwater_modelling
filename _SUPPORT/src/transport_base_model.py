@@ -94,6 +94,31 @@ def _cellsize(mg, ncpl) -> np.ndarray:
     return np.array([np.sqrt(Polygon(mg.get_cell_vertices(i)).area) for i in range(ncpl)])
 
 
+def _run_failure_tail(ws: Union[str, Path], buf, n: int = 40) -> str:
+    """Build a useful failure message from the MF6 listing files.
+
+    sim.run_simulation's returned buffer (`buf`) frequently comes back empty on a
+    convergence/parameter error, which hid the real MF6 message behind an empty
+    tail.  Read the tail of mfsim.lst and the gwf/gwt listings so the actual error
+    (e.g. "DECAY_SORBED not provided ...") is surfaced.
+    """
+    ws = Path(ws)
+    chunks = []
+    for name in ("mfsim.lst", "gwf.lst", "gwt.lst"):
+        p = ws / name
+        if p.exists():
+            try:
+                lines = p.read_text(errors="replace").splitlines()
+            except OSError:
+                continue
+            if lines:
+                chunks.append(f"--- {name} (last {n} lines) ---\n" + "\n".join(lines[-n:]))
+    buf_tail = "\n".join(buf[-12:]) if buf else ""
+    if buf_tail.strip():
+        chunks.append("--- run_simulation buffer (tail) ---\n" + buf_tail)
+    return "\n\n".join(chunks) if chunks else "(no listing output found)"
+
+
 def _corridor_points(a_xy, b_xy, step: float = 40.0, pad: float = 40.0):
     a, b = np.array(a_xy, float), np.array(b_xy, float)
     L = float(np.hypot(*(b - a)))
@@ -259,11 +284,21 @@ def build_doublet_base(
         mst_kw = dict(porosity=LOCKED_PARAMS["porosity"])
         if reactions:
             Kd = reactions.get("Kd", 0.0); lam = reactions.get("lambda", 0.0)
-            if Kd and Kd > 0:
+            has_sorption = bool(Kd and Kd > 0)
+            has_decay = bool(lam and lam > 0)
+            if has_sorption:
                 mst_kw.update(sorption="linear", distcoef=Kd * 1e-3,  # mL/g -> m3/kg
                               bulk_density=reactions.get("rho_b", 1800.0))
-            if lam and lam > 0:
+            if has_decay:
                 mst_kw.update(first_order_decay=True, decay=lam)
+                # MF6 6.x requires DECAY_SORBED whenever first-order decay AND
+                # sorption are both active (else: "DECAY_SORBED not provided in
+                # GRIDDATA block but decay and sorption are active"). Use the
+                # standard equal-first-order-rate assumption: the sorbed phase
+                # decays at the same rate as the dissolved phase. Decay-only
+                # (no sorption) does NOT need decay_sorbed, so it is gated here.
+                if has_sorption:
+                    mst_kw.update(decay_sorbed=lam)
         flopy.mf6.ModflowGwtmst(gwt, **mst_kw)
         flopy.mf6.ModflowGwtadv(gwt, scheme=LOCKED_PARAMS["scheme"])
         flopy.mf6.ModflowGwtdsp(gwt, alh=LOCKED_PARAMS["alh"], ath1=LOCKED_PARAMS["ath1"],
@@ -295,7 +330,8 @@ def build_doublet_base(
     # ---- pilot to read velocity field, size Courant, then production ----
     sim, gwf, gwt, ok, buf = _make_sim(20)
     if not ok:
-        raise RuntimeError(f"pilot run failed; tail:\n" + "\n".join(buf[-12:]))
+        raise RuntimeError("pilot run failed; listing tail:\n"
+                           + _run_failure_tail(case_ws / "sim", buf))
     spd = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
     vmag = np.sqrt(spd["qx"] ** 2 + spd["qy"] ** 2) / LOCKED_PARAMS["porosity"]
     corr_no_wells = corridor_mask.copy()
@@ -306,7 +342,8 @@ def build_doublet_base(
 
     sim, gwf, gwt, ok, buf = _make_sim(nstp)
     if not ok:
-        raise RuntimeError(f"production run failed; tail:\n" + "\n".join(buf[-12:]))
+        raise RuntimeError("production run failed; listing tail:\n"
+                           + _run_failure_tail(case_ws / "sim", buf))
 
     cobj = gwt.output.concentration(); times = np.array(cobj.get_times())
     bt = np.maximum(np.array([cobj.get_data(totim=t)[0, 0, rcell] for t in times]), 0)
