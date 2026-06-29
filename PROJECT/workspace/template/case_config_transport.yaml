@@ -73,7 +73,7 @@ transport_scenarios:
         conservative: true                # No sorption or decay
 
       transport:
-        porosity: 0.25
+        porosity: 0.20
         bulk_density_kg_m3: 1800.0
         longitudinal_dispersivity_m: 10.0
         transverse_dispersivity_m: 1.0
@@ -141,7 +141,7 @@ transport_scenarios:
         conservative: true
 
       transport:
-        porosity: 0.25
+        porosity: 0.20
         bulk_density_kg_m3: 1800.0
         longitudinal_dispersivity_m: 10.0
         transverse_dispersivity_m: 1.0
@@ -207,7 +207,7 @@ transport_scenarios:
         conservative: false
 
       transport:
-        porosity: 0.25
+        porosity: 0.20
         bulk_density_kg_m3: 1800.0
         longitudinal_dispersivity_m: 10.0
         transverse_dispersivity_m: 1.0
@@ -271,7 +271,7 @@ transport_scenarios:
         conservative: true
 
       transport:
-        porosity: 0.25
+        porosity: 0.20
         bulk_density_kg_m3: 1800.0
         longitudinal_dispersivity_m: 10.0
         transverse_dispersivity_m: 1.0
@@ -330,7 +330,7 @@ transport_scenarios:
         conservative: false
 
       transport:
-        porosity: 0.25
+        porosity: 0.20
         bulk_density_kg_m3: 1800.0
         longitudinal_dispersivity_m: 10.0
         transverse_dispersivity_m: 1.0
@@ -397,7 +397,7 @@ transport_scenarios:
         conservative: true
 
       transport:
-        porosity: 0.25
+        porosity: 0.20
         bulk_density_kg_m3: 1800.0
         longitudinal_dispersivity_m: 10.0
         transverse_dispersivity_m: 1.0
@@ -463,7 +463,7 @@ transport_scenarios:
         conservative: false
 
       transport:
-        porosity: 0.25
+        porosity: 0.20
         bulk_density_kg_m3: 1800.0
         longitudinal_dispersivity_m: 10.0
         transverse_dispersivity_m: 1.0
@@ -518,7 +518,7 @@ transport_scenarios:
         conservative: false
 
       transport:
-        porosity: 0.25
+        porosity: 0.20
         bulk_density_kg_m3: 1800.0
         longitudinal_dispersivity_m: 10.0
         transverse_dispersivity_m: 1.0
@@ -572,7 +572,7 @@ transport_scenarios:
         conservative: false
 
       transport:
-        porosity: 0.25
+        porosity: 0.20
         bulk_density_kg_m3: 1800.0
         longitudinal_dispersivity_m: 10.0
         transverse_dispersivity_m: 1.0
