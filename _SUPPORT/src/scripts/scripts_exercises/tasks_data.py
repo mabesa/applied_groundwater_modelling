@@ -557,6 +557,34 @@ When transferring calibrated parameters from a heat transport model to a solute 
 - **Which parameter does NOT transfer directly?**
 """,
 
+# ── Transport Track — Notebook 8 (keystone doublet) checkpoints ──
+
+"task_t08_checkpoint_1": r"""
+## Checkpoint 1 — Predict the failure mode (before running the toy)
+
+You are about to run the **provided 1D scheme-verification toy** and compare its breakthrough curve to the two-term first-type Ogata–Banks analytical solution, using a **front-sensitive** gate (≤5% rising-limb C/C₀ error **and** ≤5% t₅₀ error).
+
+Suppose the numerical breakthrough **failed** that ±5% front gate — the simulated front came out too smeared and shifted. **What would be the most likely cause?**
+
+*(Recall from 02t/04t that $Pe = \Delta x / \alpha_L \le 2$ is an **accuracy** criterion — a coarse grid adds numerical dispersion; it does not make the implicit solver unstable.)*
+""",
+
+"task_t08_checkpoint_2": r"""
+## Checkpoint 2 — Predict the recirculation-fraction band (before reading the result)
+
+The loaded geothermal doublet reinjects a conservative tracer (c_inj = 1) and pumps from an extraction well 160 m away, in the regional Limmat flow field. You will read the **steady-state plateau ratio C∞/c_inj** at the extraction well.
+
+**Before** looking — predict which band the recirculation fraction falls into:
+""",
+
+"task_t08_checkpoint_3": r"""
+## Checkpoint 3 — Predict the effect of doubling α_L (before the toggled rerun)
+
+You are about to (optionally) rerun the doublet with α_L doubled from 10 m to 20 m. The locked ratio keeps α_T = α_L/10, so **α_T doubles as well**.
+
+**Which description best captures the expected change in the extraction-well breakthrough curve?**
+""",
+
 "task_exercise_flow_net_1": r"""
 ## Task 1
 Compute the hydraulic head at point A (in meter)
@@ -823,6 +851,10 @@ solutions_exact = {
     "task_t05_checkpoint_4": "~0.001",
     "task_t05_checkpoint_nonunique": "B) The tracer test constrains n_e independently",
     "task_t05_checkpoint_transfer": "C) Thermal retardation factor",
+    # Transport Track — Notebook 8 (keystone doublet) checkpoints
+    "task_t08_checkpoint_1": "A) Grid Péclet too high",
+    "task_t08_checkpoint_2": "B) 10–70%",
+    "task_t08_checkpoint_3": "A) Earlier toe, broader front, longer tail; plateau may drop",
     "task_exercise_flow_net_1": "21",
     "task_exercise_flow_net_2": "-2",
     "task_exercise_flow_net_3": "100",
@@ -930,6 +962,10 @@ solution_unit = {
     "task_t05_checkpoint_4": "%",
     "task_t05_checkpoint_nonunique": "multiple choice",
     "task_t05_checkpoint_transfer": "multiple choice",
+    # Transport Track — Notebook 8 (keystone doublet) checkpoints
+    "task_t08_checkpoint_1": "multiple choice",
+    "task_t08_checkpoint_2": "multiple choice",
+    "task_t08_checkpoint_3": "multiple choice",
     # Exercises implemented in notebooks from theory
     "task_exercise_flow_net_1": " m",
     "task_exercise_flow_net_2": " kPa/m",
@@ -1152,6 +1188,37 @@ multiple_choice_options = {
         ("B) Effective porosity", "B) Effective porosity n_e — same pore space carries heat and solute"),
         ("C) Thermal retardation factor", "C) Thermal retardation factor — replace with sorption retardation for solutes"),
         ("D) Transverse dispersivity", "D) Transverse dispersivity alpha_T — mechanical dispersion is identical"),
+    ],
+    # Transport Track — Notebook 8 (keystone doublet) checkpoints
+    "task_t08_checkpoint_1": [
+        ("A) Grid Péclet too high",
+         "A) The grid Péclet number Δx/α_L is too high — a coarse grid adds numerical dispersion that smears and shifts the front (tie to the Pe ≤ 2 accuracy criterion from 02t/04t)"),
+        ("B) Molecular diffusion too large",
+         "B) The molecular diffusion D_m* was set too large — it dominates the dispersion coefficient"),
+        ("C) Ogata–Banks is wrong",
+         "C) The Ogata–Banks analytical solution itself is incorrect for a continuous source"),
+        ("D) Courant number causes a crash",
+         "D) The Courant number Cr > 1 makes the implicit solver unstable and the run crashes"),
+    ],
+    "task_t08_checkpoint_2": [
+        ("A) <10%",
+         "A) <10% — the doublet essentially does not short-circuit; nearly all reinjected tracer is swept downgradient"),
+        ("B) 10–70%",
+         "B) 10–70% — a substantial but partial fraction of the reinjected tracer returns to the extraction well"),
+        ("C) >90%",
+         "C) >90% — the doublet is almost fully closed; nearly all reinjected tracer recirculates"),
+        ("D) Cannot be bounded",
+         "D) The fraction cannot be bounded even roughly without first running a transient particle-tracking model"),
+    ],
+    "task_t08_checkpoint_3": [
+        ("A) Earlier toe, broader front, longer tail; plateau may drop",
+         "A) Earlier toe and a more gradual/broader front with a longer tail; and because α_T doubles too, transverse dilution may LOWER the plateau (which can never exceed c_inj)"),
+        ("B) Later toe, sharper front, plateau exceeds c_inj",
+         "B) A later toe and sharper front, with the plateau rising above c_inj"),
+        ("C) No change for a doublet",
+         "C) No change — α_L only affects 1D columns, not a doublet geometry"),
+        ("D) Plateau doubles",
+         "D) The plateau concentration doubles because the dispersion coefficient doubles"),
     ],
 
     "K_increase_sandstone_1": [
@@ -2326,6 +2393,49 @@ This is the transport analogue of flow NB5's pumping test: an independent measur
 | Source terms | NO | Solute sources are chemically specific |
 
 Dispersivity and porosity transfer directly because they describe the physical pore structure. Retardation does not transfer because it has different physical origins: thermal retardation comes from heat exchange with the solid matrix, while sorption retardation comes from chemical partitioning.
+<br>
+""",
+
+# ── Transport Track — Notebook 8 (keystone doublet) solutions ──
+
+"task_t08_checkpoint_1": r"""
+## Solution — Predicted failure mode
+
+**Correct answer: A) Grid Péclet too high.**
+
+A front that comes out too smeared and shifted is the signature of **numerical dispersion**, which a coarse grid (high grid Péclet $Pe = \Delta x/\alpha_L > 2$) adds on top of the physical dispersion. This is exactly the **accuracy** criterion you met in 02t/04t — and it is what the toy is built to avoid (it uses $\Delta x/\alpha_L = 0.5$).
+
+- **B** is wrong: $D_m^*$ is fixed and tiny ($8.64\times10^{-5}$ m²/d); it is negligible next to $\alpha_L v$.
+- **C** is wrong: Ogata–Banks is the *reference* truth here; we verify the numerics against it, not the other way round.
+- **D** is wrong: $Cr \le 1$ (like $Pe \le 2$) is an **accuracy** criterion, not a stability one. MF6 solves advection implicitly, so $Cr > 1$ smears the curve in time but does **not** crash the run.
+
+So a failed front gate points you at the **grid**, not the solver or the analytical solution.
+<br>
+""",
+
+"task_t08_checkpoint_2": r"""
+## Solution — Recirculation-fraction band
+
+**Correct answer: B) 10–70%.**
+
+Reading the steady-state plateau at the extraction well gives $C_\infty/c_\text{inj} \approx 0.51$ — about **half** of the reinjected tracer recirculates. This is the **partial-recirculation** regime: a finite-spacing doublet in regional flow neither fully captures its own reinjected water (which would push toward >90%) nor cleanly avoids it (which would give <10%). For a GWHE installation this is the operationally important middle ground.
+
+- **A (<10%)** would mean a well-separated doublet with negligible short-circuiting.
+- **C (>90%)** would mean an almost closed loop — not the case at this spacing and regional gradient.
+- **D** is wrong: the recirculation fraction is a robust, flux-integrated quantity read directly from the breakthrough plateau; no extra particle-tracking model is needed to bound it.
+<br>
+""",
+
+"task_t08_checkpoint_3": r"""
+## Solution — Effect of doubling α_L
+
+**Correct answer: A) Earlier toe, broader front, longer tail; plateau may drop.**
+
+More longitudinal dispersion spreads the front: the **toe arrives earlier** (faster leading edge), the rise is **more gradual/broader**, and the **tail is longer**. Because the locked ratio keeps $\alpha_T = \alpha_L/10$, doubling $\alpha_L$ **also doubles $\alpha_T$**, so *transverse* dilution increases — which can **lower** the steady-state plateau rather than raise it.
+
+- **B** is wrong: more dispersion brings the toe *earlier*, not later, and smears (not sharpens) the front.
+- **C** is wrong: dispersivity reshapes the breakthrough in any geometry, doublet included.
+- **D** is wrong: the plateau is a concentration *ratio* bounded by mixing — it **can never exceed $c_\text{inj}$**, let alone double.
 <br>
 """,
 
