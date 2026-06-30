@@ -1,0 +1,57 @@
+name: Check Calibration Bundle Version
+
+on:
+  pull_request:
+    paths:
+      - '_SUPPORT/src/scripts/setup_pest_calibration.py'
+      - 'config_template.py'
+      - '.github/workflows/check-calibration-bundle.yml'
+
+jobs:
+  check-calibration-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require bundle URL update with version bump
+        run: |
+          set -euo pipefail
+
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          echo "Changed files:"
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA"
+
+          version_changed=false
+          if ! git diff --quiet \
+            -G '^CALIBRATION_BUNDLE_MIN_VERSION[[:space:]]*=' \
+            "$BASE_SHA" "$HEAD_SHA" \
+            -- _SUPPORT/src/scripts/setup_pest_calibration.py; then
+            version_changed=true
+          fi
+
+          calibrated_url_changed=false
+          if git diff -U1 \
+            -G '^[[:space:]]*"url"[[:space:]]*:' \
+            "$BASE_SHA" "$HEAD_SHA" \
+            -- config_template.py \
+            | awk '
+                /^@@/ { in_calibrated = 0 }
+                /"calibrated_model"[[:space:]]*:/ { in_calibrated = 1 }
+                in_calibrated && /^[+-][[:space:]]*"url"[[:space:]]*:/ { found = 1 }
+                END { exit found ? 0 : 1 }
+              '; then
+            calibrated_url_changed=true
+          fi
+
+          echo "CALIBRATION_BUNDLE_MIN_VERSION changed: $version_changed"
+          echo "config_template.py calibrated_model url changed: $calibrated_url_changed"
+
+          if [[ "$version_changed" == "true" && "$calibrated_url_changed" != "true" ]]; then
+            echo "::error::CALIBRATION_BUNDLE_MIN_VERSION changed without updating calibrated_model['url'] in config_template.py."
+            echo "::error::Upload the refreshed bundle first, then update config_template.py in the same PR."
+            exit 1
+          fi

@@ -329,9 +329,9 @@ The project uses `0_start_here.ipynb` with:
 Use relative markdown links:
 
 ```markdown
-> 📘 **Prerequisites:** Complete [Notebook 3: MODFLOW Fundamentals](3_modflow_fundamentals.ipynb) before proceeding.
+> 📘 **Prerequisites:** Complete [Notebook 3: MODFLOW Fundamentals](03f_modflow_fundamentals.ipynb) before proceeding.
 
-> ➡️ **Next:** Continue to [Notebook 5: Calibration](5_calibration.ipynb)
+> ➡️ **Next:** Continue to [Notebook 5: Calibration](05f_calibration.ipynb)
 ```
 
 ### Section Navigation Within Notebook

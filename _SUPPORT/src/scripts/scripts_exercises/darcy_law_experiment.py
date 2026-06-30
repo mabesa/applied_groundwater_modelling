@@ -36,13 +36,15 @@ def darcy_task_1_1():
     submit_button.on_click(on_submit)
 
     with question_output:
-        display(Markdown("What behavior do you expect for the curve of $q$ versus $I$?"))
+        display(Markdown("## Task 1.1"
+                         "\nWhat behavior do you expect for the curve of $q$ versus $I$?"))
     display(VBox([question_output, radio_buttons, submit_button, answer_output]))
 
 # Task 1.2: Interactive simulation for adding points and plotting fit
 def darcy_task_1_2():
     display(Markdown(
-        "Perform the Darcy experiment simulation.<br>"
+        "## Task 1.2"
+        "\nPerform the Darcy experiment simulation.<br>"
         "Add (I, q) points for at least 5 different hydraulic head differences.<br>"
         "Once at least 5 points are added, you will be able to plot the linear fit.<br>"
     ))
@@ -119,6 +121,7 @@ def darcy_task_1_2():
 
 # Task 1.3: Solution check for further analysis
 def darcy_task_1_3():
-    display(Markdown("Analyze the results and answer the following questions:"))
+    display(Markdown("## Task 1.3"
+    "\nAnalyze the results and answer the following questions:"))
     check_task_with_solution("task03_3")
 

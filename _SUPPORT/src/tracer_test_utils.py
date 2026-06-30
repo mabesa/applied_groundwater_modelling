@@ -8,6 +8,8 @@ Functions:
     temporal_moment      — Compute the n-th temporal moment of a BTC
     estimate_transport_params — Derive v, n_e, D_L, alpha_L from moments
     analytical_btc       — 1D ADE pulse solution (for fitted curves)
+    ogata_banks_btc      — 1D ADE continuous first-type (Ogata-Banks 1961) BTC
+    build_and_run_1d_verification — Tiny MF6 GWF+GWT scheme-verification toy
     analyze_all_wells    — Moment analysis on multiple wells
     plot_all_wells_raw   — Raw BTC plot for all wells
     plot_all_wells_fitted — BTCs with fitted analytical curves
@@ -17,6 +19,7 @@ Functions:
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.special import erfc, erfcx
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +154,320 @@ def analytical_btc(time, x, v, D_L, M, A, n_e):
     c[pos] = ((M / A) * x / (n_e * np.sqrt(4.0 * np.pi * D_L * t_pos**3))
               * np.exp(-(x - v * t_pos)**2 / (4.0 * D_L * t_pos)))
     return c
+
+
+# ---------------------------------------------------------------------------
+# Analytical 1D ADE continuous first-type (Ogata-Banks 1961) solution
+# ---------------------------------------------------------------------------
+
+def ogata_banks_btc(x, t, v, alpha_L, D_m=8.64e-5, c0=1.0):
+    """
+    Two-term first-type (Dirichlet) Ogata-Banks (1961) solution.
+
+    Continuous constant-concentration source C(0, t) = c0 on a 1D
+    semi-infinite column with uniform seepage velocity v:
+
+        C/C0 = 1/2 * erfc[(x - v t) / (2 sqrt(D_L t))]
+             + 1/2 * exp(v x / D_L) * erfc[(x + v t) / (2 sqrt(D_L t))]
+
+    with the longitudinal dispersion coefficient
+
+        D_L = alpha_L * v + D_m.
+
+    Numerical stability
+    -------------------
+    The ``exp(v x / D_L)`` prefactor of the second term overflows at field
+    Peclet numbers.  It is evaluated via the scaled complementary error
+    function ``erfcx(z) = exp(z^2) erfc(z)`` using the combined-exponent
+    identity
+
+        exp(v x / D_L) * erfc[(x + v t) / (2 sqrt(D_L t))]
+            = erfcx[(x + v t) / (2 sqrt(D_L t))]
+              * exp[-(x - v t)^2 / (4 D_L t)],
+
+    so no positive exponent is ever formed (the companion exponent
+    ``-(x - v t)^2 / (4 D_L t)`` is always <= 0 and ``erfcx`` is bounded for
+    non-negative arguments).
+
+    Parameters
+    ----------
+    x : float
+        Distance from the inlet [m].
+    t : array-like or float
+        Time(s) since the source switched on [d].  ``t = 0`` returns 0.
+    v : float
+        Seepage velocity [m/d].
+    alpha_L : float
+        Longitudinal dispersivity [m].
+    D_m : float, default 8.64e-5
+        Effective molecular diffusion coefficient [m²/d]
+        (8.64e-5 m²/d ~ 1e-9 m²/s).
+    c0 : float, default 1.0
+        Source concentration [-] or [mg/L].
+
+    Returns
+    -------
+    np.ndarray or float
+        C/C0 (scaled by ``c0``) at each time.  Scalar in, scalar out.
+
+    Notes
+    -----
+    Units follow the course convention: model days and metres
+    (v in m/d, alpha_L in m, D_m in m²/d).
+    """
+    D_L = alpha_L * v + D_m
+    t_arr = np.asarray(t, dtype=float)
+    scalar_in = t_arr.ndim == 0
+    t_arr = np.atleast_1d(t_arr)
+
+    c = np.zeros_like(t_arr)
+    pos = t_arr > 0.0
+    tp = t_arr[pos]
+
+    denom = 2.0 * np.sqrt(D_L * tp)
+    arg1 = (x - v * tp) / denom
+    arg2 = (x + v * tp) / denom
+
+    # First term: standard erfc, always well behaved.
+    term1 = 0.5 * erfc(arg1)
+    # Second term: combined-exponent identity, overflow-free.
+    term2 = 0.5 * erfcx(arg2) * np.exp(-(x - v * tp) ** 2 / (4.0 * D_L * tp))
+
+    c[pos] = c0 * (term1 + term2)
+
+    if scalar_in:
+        return float(c[0])
+    return c
+
+
+# ---------------------------------------------------------------------------
+# 1D MF6 GWF+GWT scheme-verification toy (recovers the Ogata-Banks setup)
+# ---------------------------------------------------------------------------
+
+def _find_mf6_exe():
+    """Locate the MODFLOW 6 executable (flopy bindir, then PATH)."""
+    import os
+    cand = os.path.expanduser("~/.local/share/flopy/bin/mf6")
+    if os.path.exists(cand):
+        return cand
+    return "mf6"
+
+
+def build_and_run_1d_verification(
+    v=1.5,
+    alpha_L=10.0,
+    n_e=0.20,
+    D_m=8.64e-5,
+    x_obs=200.0,
+    total_time=300.0,
+    workspace=None,
+):
+    """
+    Build, run, and observe a tiny 1D MF6 GWF+GWT model reproducing the
+    first-type Ogata-Banks setup, so the ADV/DSP scheme can be verified.
+
+    Design choices (rung 1 of the 08t keystone scheme check)
+    --------------------------------------------------------
+    * 1D row of confined cells, uniform flow.  K and the head gradient are
+      chosen so the simulated seepage velocity q / n_e equals ``v`` (the
+      recovered v is asserted to within ~1%).
+    * First-type inlet: a ``ModflowGwtcnc`` cell pins C = c0 = 1 at the first
+      interior cell, matching the analytic Dirichlet boundary at x = 0.  The
+      observation cell sits ``x_obs`` downstream, so the half-cell offset
+      between the cell-centred CNC and the analytic x = 0 inlet is negligible.
+    * The domain is kept long enough that the front never reaches the
+      downstream boundary within ``total_time`` (semi-infinite proxy).
+    * Δx <= alpha_L so the grid Peclet number Δx / alpha_L <= ~1 (well
+      resolved — this is a scheme check, not a grid-Peclet stress test).
+    * ADV scheme = 'TVD'; nstp sized so the Courant number Cr = v dt / Δx <= 1.
+    * MST porosity = n_e; DSP alh = alpha_L and diffc = D_m, so the MF6
+      dispersion coefficient D = alpha_L * v + D_m matches the analytic D_L.
+
+    Parameters
+    ----------
+    v : float, default 1.5
+        Target seepage velocity [m/d].
+    alpha_L : float, default 10.0
+        Longitudinal dispersivity [m].
+    n_e : float, default 0.20
+        Effective porosity [-].
+    D_m : float, default 8.64e-5
+        Effective molecular diffusion coefficient [m²/d].
+    x_obs : float, default 200.0
+        Distance from the inlet (CNC cell) to the observation cell [m].
+        Rounded to the nearest cell if not a multiple of Δx.
+    total_time : float, default 300.0
+        Total simulated time [d].
+    workspace : str or Path, optional
+        Model workspace directory.  Defaults to a ``ob1d_verification``
+        folder under the course data directory.
+
+    Returns
+    -------
+    times : np.ndarray
+        Observation times [d].
+    c_over_c0 : np.ndarray
+        Simulated C/C0 at the observation cell [-].
+    """
+    import os
+    import shutil
+    import flopy
+
+    if workspace is None:
+        workspace = os.path.expanduser(
+            "~/applied_groundwater_modelling_data/limmat/ob1d_verification"
+        )
+    workspace = str(workspace)
+    if os.path.isdir(workspace):
+        shutil.rmtree(workspace)
+    os.makedirs(workspace, exist_ok=True)
+
+    exe = _find_mf6_exe()
+    c0 = 1.0
+
+    # -- Spatial discretisation -------------------------------------------
+    # Δx <= alpha_L  -> grid Peclet <= 1 (use half a dispersivity for margin).
+    delx = max(min(alpha_L / 2.0, alpha_L), 1.0)
+    D_L = alpha_L * v + D_m
+
+    inlet_col = 1                       # first interior cell (CNC)
+    n_obs_cells = int(round(x_obs / delx))
+    obs_col = inlet_col + n_obs_cells
+    x_distance = n_obs_cells * delx     # exact analytic x for ogata_banks_btc
+
+    # Domain long enough that the front stays away from the downstream BC.
+    front_reach = v * total_time + 6.0 * np.sqrt(D_L * total_time)
+    domain_len = max(x_distance + 5.0 * alpha_L, front_reach) + 10.0 * delx
+    ncol = int(np.ceil(domain_len / delx)) + 1
+    obs_col = min(obs_col, ncol - 2)
+
+    # -- Flow geometry: confined, single layer/row ------------------------
+    K = 10.0                            # m/d (arbitrary; gradient absorbs it)
+    top = 10.0
+    botm = 0.0
+    grad = (v * n_e) / K                # i = q / K, with q = v * n_e
+    head_drop = grad * (ncol * delx)
+    h_right = top + 5.0                 # keep confined (artesian, h > top)
+    h_left = h_right + head_drop
+
+    # -- Time discretisation: Cr = v dt / Δx <= 1 -------------------------
+    nstp = int(np.ceil(1.2 * v * total_time / delx))
+    nstp = max(nstp, 1)
+    dt = total_time / nstp
+    cr = v * dt / delx
+
+    # -- Simulation + shared TDIS -----------------------------------------
+    sim = flopy.mf6.MFSimulation(
+        sim_name="ob1d", sim_ws=workspace, exe_name=exe,
+        verbosity_level=0,
+    )
+    flopy.mf6.ModflowTdis(
+        sim, time_units="DAYS", nper=1,
+        perioddata=[(total_time, nstp, 1.0)],
+    )
+
+    # -- GWF model --------------------------------------------------------
+    gwf_name = "gwf"
+    gwf = flopy.mf6.ModflowGwf(sim, modelname=gwf_name, save_flows=True)
+    flopy.mf6.ModflowIms(
+        sim, complexity="SIMPLE", linear_acceleration="BICGSTAB",
+        outer_dvclose=1e-8, inner_dvclose=1e-9, filename=f"{gwf_name}.ims",
+    )
+    sim.register_ims_package(sim.get_package(f"{gwf_name}.ims"), [gwf_name])
+
+    flopy.mf6.ModflowGwfdis(
+        gwf, length_units="METERS", nlay=1, nrow=1, ncol=ncol,
+        delr=delx, delc=1.0, top=top, botm=botm,
+    )
+    flopy.mf6.ModflowGwfic(gwf, strt=h_left)
+    flopy.mf6.ModflowGwfnpf(
+        gwf, icelltype=0, k=K, save_flows=True, save_specific_discharge=True,
+    )
+    chd_spd = [
+        [(0, 0, 0), h_left],
+        [(0, 0, ncol - 1), h_right],
+    ]
+    flopy.mf6.ModflowGwfchd(gwf, stress_period_data=chd_spd)
+    flopy.mf6.ModflowGwfoc(
+        gwf, head_filerecord=f"{gwf_name}.hds",
+        budget_filerecord=f"{gwf_name}.cbc",
+        saverecord=[("HEAD", "LAST"), ("BUDGET", "LAST")],
+    )
+
+    # -- GWT model --------------------------------------------------------
+    gwt_name = "gwt"
+    gwt = flopy.mf6.ModflowGwt(sim, modelname=gwt_name, save_flows=True)
+    flopy.mf6.ModflowIms(
+        sim, complexity="SIMPLE", linear_acceleration="BICGSTAB",
+        outer_dvclose=1e-8, inner_dvclose=1e-9, filename=f"{gwt_name}.ims",
+    )
+    sim.register_ims_package(sim.get_package(f"{gwt_name}.ims"), [gwt_name])
+
+    flopy.mf6.ModflowGwtdis(
+        gwt, length_units="METERS", nlay=1, nrow=1, ncol=ncol,
+        delr=delx, delc=1.0, top=top, botm=botm,
+    )
+    flopy.mf6.ModflowGwtic(gwt, strt=0.0)
+    flopy.mf6.ModflowGwtmst(gwt, porosity=n_e)
+    flopy.mf6.ModflowGwtadv(gwt, scheme="TVD")
+    # MF6 dispersion: D = alh * v + diffc  -> matches analytic D_L.
+    flopy.mf6.ModflowGwtdsp(gwt, alh=alpha_L, ath1=0.0, diffc=D_m)
+    # SSM required because GWF carries flow boundary packages (CHD).  No AUX
+    # concentration -> CHD inflow enters at C = 0, outflow leaves at cell C.
+    flopy.mf6.ModflowGwtssm(gwt, sources=[[]])
+    # First-type inlet: pin C = c0 at the first interior cell.
+    flopy.mf6.ModflowGwtcnc(
+        gwt, stress_period_data=[[(0, 0, inlet_col), c0]],
+    )
+    flopy.mf6.ModflowGwtoc(
+        gwt, concentration_filerecord=f"{gwt_name}.ucn",
+        saverecord=[("CONCENTRATION", "ALL")],
+    )
+
+    # -- Couple flow -> transport -----------------------------------------
+    flopy.mf6.ModflowGwfgwt(
+        sim, exgtype="GWF6-GWT6", exgmnamea=gwf_name, exgmnameb=gwt_name,
+    )
+
+    sim.write_simulation(silent=True)
+    success, _ = sim.run_simulation(silent=True)
+    if not success:
+        raise RuntimeError("MF6 1D verification run did not converge.")
+
+    # -- Recover seepage velocity and assert within ~1% -------------------
+    spdis = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
+    qx_obs = float(spdis["qx"][obs_col])
+    v_sim = abs(qx_obs) / n_e
+    rel_err_v = abs(v_sim - v) / v
+    if rel_err_v > 0.01:
+        raise AssertionError(
+            f"Recovered seepage velocity {v_sim:.4f} m/d deviates "
+            f"{100 * rel_err_v:.2f}% from target {v:.4f} m/d (>1%)."
+        )
+
+    # -- Extract the observed BTC -----------------------------------------
+    cobj = gwt.output.concentration()
+    ts = cobj.get_ts((0, 0, obs_col))
+    times = ts[:, 0]
+    c_over_c0 = ts[:, 1] / c0
+
+    # Stash the resolved discretisation for callers/tests.
+    build_and_run_1d_verification.last_meta = {
+        "delx": delx,
+        "ncol": ncol,
+        "obs_col": obs_col,
+        "x_distance": x_distance,
+        "D_L": D_L,
+        "v_sim": v_sim,
+        "rel_err_v": rel_err_v,
+        "nstp": nstp,
+        "dt": dt,
+        "Cr": cr,
+        "grid_Pe": delx / alpha_L,
+        "workspace": workspace,
+    }
+
+    return times, c_over_c0
 
 
 # ---------------------------------------------------------------------------

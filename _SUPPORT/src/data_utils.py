@@ -24,22 +24,17 @@ def find_project_root(marker_files=['config.py', 'config_template.py']):
     # this will be the directory where the notebook is located.
     # In a JupyterHub environment, it will be the user's home directory.
     path = os.getcwd()
-    print(f"Starting search for project root from: {path}")
     # Traverse up the directory tree until we find the marker file
     # or reach the filesystem root.
     while os.path.dirname(path) != path: # Stop at filesystem root
-        print(f"Checking path: {path}")
         for marker in marker_files:
             if os.path.exists(os.path.join(path, marker)):
-                print(f"Found project root: {path} (marker: {marker})")
                 return path
-        print(f"Marker file not found in {path}. Moving up...")
         path = os.path.dirname(path)
     
     # Fallback 
     # If running as a script, __file__ might be available
     try:
-        print(f"Trying to find project root using __file__...")
         path = os.path.dirname(os.path.abspath(__file__))
         while os.path.dirname(path) != path:
             for marker in marker_files:
@@ -58,7 +53,7 @@ try:
     from config import CASE_STUDY, DATA_SOURCE, DATA_URLS
     print("Loaded configuration from 'config.py'")
 except ImportError:
-    print("Warning: 'config.py' not found. Falling back to 'config_template.py'.")
+    print("Note: config.py not found — using config_template.py (default for public data).")
     from config_template import CASE_STUDY, DATA_SOURCE, DATA_URLS
 
 
