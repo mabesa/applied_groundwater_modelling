@@ -468,13 +468,13 @@ where $\Delta x$ is the local cell size (here the cell $\sqrt{\text{area}}$ at t
 
 **Step 1 — Predict (no calculation):** Before computing, decide — do you expect the native grid to be *above* or *below* the $Pe_L \le 2$ accuracy threshold? What would being *above* it mean for the simulated plume?
 
-**Step 2 — Compute:** Using the printed near-doublet cell size $\Delta x \approx 57$ m and $\alpha_L = 10$ m, calculate $Pe_L$.
+**Step 2 — Compute:** Using the printed near-doublet cell size $\Delta x \approx 54$ m and $\alpha_L = 10$ m, calculate $Pe_L$.
 """,
 
 "task_t04_checkpoint_2": r"""
 ## Checkpoint 2 — Maximum Time Step on the Refined Grid
 
-On the refined corridor, the well-adjacent cell has seepage velocity $v = q/n_e \approx 18.4$ m/d (read from the NPF specific-discharge field — **not** the radial velocity singularity at the well itself) and size $\Delta s \approx 10.5$ m.
+On the refined corridor, the well-adjacent cell has seepage velocity $v = q/n_e \approx 28.3$ m/d (read from the NPF specific-discharge field — **not** the radial velocity singularity at the well itself) and size $\Delta s \approx 10.8$ m.
 
 The Courant accuracy criterion $Cr = v\,\Delta t / \Delta s \le 1$ sets the largest admissible time step:
 
@@ -576,7 +576,7 @@ Suppose the numerical breakthrough **failed** that ±5% front gate — the simul
 "task_t08_checkpoint_2": r"""
 ## Checkpoint 2 — Predict the recirculation-fraction band (before reading the result)
 
-The loaded geothermal doublet reinjects a conservative tracer (c_inj = 1) and pumps from an extraction well 160 m away, in the regional Limmat flow field. You will read the **steady-state plateau ratio C∞/c_inj** at the extraction well.
+The loaded geothermal doublet reinjects a conservative tracer (c_inj = 1) and pumps from an extraction well 200 m away, in the regional Limmat flow field. You will read the **steady-state plateau ratio C∞/c_inj** at the extraction well.
 
 **Before** looking — predict which band the recirculation fraction falls into:
 """,
@@ -738,8 +738,8 @@ solutions = {
     # task_t03_checkpoint_1 is multiple choice - handled separately
     # task_t03_checkpoint_3 is multiple choice - handled separately
     # Transport Track — Notebook 4 checkpoints
-    "task_t04_checkpoint_1": (4.7, 6.7),    # Pe_L = dx/alpha_L = ~57/10 = 5.7 (b010192 native, > 2)
-    "task_t04_checkpoint_2": (0.45, 0.7),   # dt_max = ds/v = 10.5/18.4 = 0.57 d (refined well-adj cell)
+    "task_t04_checkpoint_1": (4.4, 6.4),    # Pe_L = dx/alpha_L = ~54/10 = 5.4 (b010191 native, > 2)
+    "task_t04_checkpoint_2": (0.30, 0.50),  # dt_max = ds/v = 10.8/28.3 = 0.38 d (refined well-adj cell)
     # task_t04_checkpoint_3 is multiple choice - handled separately
     # Transport Track — Notebook 5 checkpoints
     "task_t05_checkpoint_1": (4, 6),        # 5 monitoring wells
@@ -841,8 +841,8 @@ solutions_exact = {
     "task_t03_checkpoint_2": "30",
     "task_t03_checkpoint_3": "A) MST",
     # Transport Track — Notebook 4 checkpoints
-    "task_t04_checkpoint_1": "≈ 5.7",
-    "task_t04_checkpoint_2": "≈ 0.57",
+    "task_t04_checkpoint_1": "≈ 5.4",
+    "task_t04_checkpoint_2": "≈ 0.38",
     "task_t04_checkpoint_3": "A) Recirculation reaches the abstraction well",
     # Transport Track — Notebook 5 checkpoints
     "task_t05_checkpoint_1": "A) Sparse plume data plus parameter trade-offs leave the inverse problem under-constrained",
@@ -1161,7 +1161,7 @@ multiple_choice_options = {
     # Transport Track — Notebook 4 checkpoints
     "task_t04_checkpoint_3": [
         ("A) Recirculation reaches the abstraction well",
-         "A) \"A meaningful fraction (~0.30 of c_inj) of the injected solute recirculates to the abstraction well\" — a flux-integrated arrival quantity that is grid-robust (native ~0.30 ≈ refined ~0.31)."),
+         "A) \"A meaningful fraction (~0.30 of c_inj) of the injected solute recirculates to the abstraction well\" — a longitudinal/flux-integrated arrival quantity that CONVERGES under refinement (native ~0.18 → refined ~0.30): the coarse grid under-reads it, but refining recovers a trustworthy value, unlike the transverse width/contour claims."),
         ("B) Contaminated zone is exactly 80 m wide",
          "B) \"The contaminated zone is exactly 80 m wide at the 10% contour\" — lateral width is governed by transverse dispersion (Pe_T ≈ 12 ≫ 2 even refined): a numerical-dispersion artefact."),
         ("C) The 0.1 contour passes through a specific parcel",
@@ -2268,9 +2268,9 @@ DSP handles dispersion ($\alpha_L$/`alh`, $\alpha_T$/`ath1`, $D_m^*$/`diffc`), A
 "task_t04_checkpoint_1": r"""
 ## Solution — Grid Péclet Number
 
-With the near-doublet cell size $\Delta x \approx 57$ m and $\alpha_L = 10$ m:
+With the near-doublet cell size $\Delta x \approx 54$ m and $\alpha_L = 10$ m:
 
-$$Pe_L = \frac{\Delta x}{\alpha_L} = \frac{57}{10} \approx 5.7$$
+$$Pe_L = \frac{\Delta x}{\alpha_L} = \frac{54}{10} \approx 5.4$$
 
 This is **above** the $Pe_L \le 2$ accuracy threshold. Crucially, **$Pe_L \le 2$ is an *accuracy* criterion, not a stability one** — the TVD scheme with implicit (IMS) advection stays stable far above $Pe = 2$; it does **not** blow up. Instead, a coarse grid adds *numerical dispersion* that artificially smears the plume — most damagingly **across** the flow direction — and dilutes the concentrations near the corridor centre-line. The consequence you predicted: the native grid will **under-predict the peak concentration** along the source→receptor corridor.
 <br>
@@ -2279,9 +2279,9 @@ This is **above** the $Pe_L \le 2$ accuracy threshold. Crucially, **$Pe_L \le 2$
 "task_t04_checkpoint_2": r"""
 ## Solution — Maximum Time Step
 
-$$\Delta t_{max} = \frac{\Delta s}{v} = \frac{10.5}{18.4} \approx 0.57 \text{ d}$$
+$$\Delta t_{max} = \frac{\Delta s}{v} = \frac{10.8}{28.3} \approx 0.38 \text{ d}$$
 
-Like $Pe \le 2$, **$Cr \le 1$ is an accuracy criterion, not a stability one** — MF6 solves advection implicitly (IMS), so it stays stable for $Cr > 1$; the penalty is temporal smearing of the breakthrough curve. Note the coupling: the native grid ($\Delta s \approx 49$ m) tolerated $\Delta t \approx 6.4$ d, but refining to $\approx 10$ m cells cut the admissible step to $\approx 0.57$ d — **roughly an 11× increase in the number of time steps.** Refining space forces refining time.
+Like $Pe \le 2$, **$Cr \le 1$ is an accuracy criterion, not a stability one** — MF6 solves advection implicitly (IMS), so it stays stable for $Cr > 1$; the penalty is temporal smearing of the breakthrough curve. Note the coupling: the native grid ($\Delta s \approx 50$ m) tolerated $\Delta t \approx 6.6$ d, but refining to $\approx 11$ m cells cut the admissible step to $\approx 0.38$ d — **roughly a 17× increase in the number of time steps.** Refining space forces refining time.
 <br>
 """,
 
@@ -2290,15 +2290,15 @@ Like $Pe \le 2$, **$Cr \le 1$ is an accuracy criterion, not a stability one** �
 
 **Correct answer: A** — the recirculation of injected solute back to the abstraction well.
 
-Three different quantities have three different levels of grid-trustworthiness:
+Quantities fall into two camps by how they respond to refinement:
 
 | Quantity | Grid behaviour | Defensible? |
 |---|---|---|
-| **Recirculation / arrival at the well** (A) | flux-integrated; grid-robust (native ~0.30 ≈ refined ~0.31) | **Yes** — the number survives coarsening, so it is the one to quote |
-| **Peak concentration in the plume body** | grid-sensitive; under-predicted on coarse grids, recovers on refinement (0.85 → 0.96) | With caution — refine first |
-| **Lateral plume width / exact contour** (B, C) | set by transverse dispersion; $Pe_T \approx 12 \gg 2$ at any feasible grid | **No** — numerical artefact |
+| **Recirculation / arrival at the well** (A) | longitudinal/flux-integrated; under-read on coarse grids but **converges** on refinement (native ~0.18 → refined ~0.30) | **Yes** — refine, then quote the converged value |
+| **Peak concentration in the plume body** | grid-sensitive; under-predicted on coarse grids, recovers on refinement (0.84 → 0.98) | With caution — refine first |
+| **Lateral plume width / exact contour** (B, C) | set by transverse dispersion; $Pe_T \approx 11 \gg 2$ at any feasible grid | **No** — numerical artefact |
 
-Refining recovers the longitudinal/peak accuracy but **cannot** fix the transverse under-resolution (so D is wrong): $Pe_T$ stays far above 2. A claim about *whether and roughly how much* solute returns to the well is defensible; a claim about the *exact width or contour* of the contaminated area is not — at any resolution you can afford. This is a **graded** judgment in your final report (Results & Interpretation — limitations; Conceptual Model — assumptions).
+The coarse grid under-reads *both* the recirculation and the peak (large cells dilute concentration), but refinement **recovers** the longitudinal/flux-integrated quantities — it **cannot** fix the transverse under-resolution (so D is wrong): $Pe_T$ stays far above 2. A claim about *whether and roughly how much* solute returns to the well is defensible once you have refined; a claim about the *exact width or contour* of the contaminated area is not — at any resolution you can afford. This is a **graded** judgment in your final report (Results & Interpretation — limitations; Conceptual Model — assumptions).
 <br>
 """,
 

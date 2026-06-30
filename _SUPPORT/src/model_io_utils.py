@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import os
 import json
+import zipfile
 from pathlib import Path
 from typing import Union, Dict, List, Optional, Any
 
@@ -840,6 +841,93 @@ def load_base_simulation(
         print(f"  {model_name} packages: {package_names}")
 
     return sim
+
+
+def ensure_flow_model(sim_path: Optional[Union[str, Path]] = None) -> Path:
+    """Return the CALIBRATED flow-model simulation path, downloading + extracting
+    the pre-computed calibration if it is not already present locally.
+
+    The default location is ``<data>/limmat/calibration`` — the steady-state
+    MODFLOW 6 / DISV flow model produced by the flow track's
+    ``05f_calibration.ipynb``. It has the same DISV grid and wells as the base
+    ``notebook4_model`` but with the *calibrated* hydraulic-conductivity field
+    (mean K ~ 361 m/d). The model name inside the simulation is ``limmat_valley``.
+    The transport track builds on this calibrated field.
+
+    Resolution order:
+      1. If ``<sim_path>/mfsim.nam`` already exists (05f output or a prior
+         download) -> return ``sim_path``.
+      2. Otherwise try ``download_named_file('flow_model_mf6')`` and unzip the
+         archive into ``sim_path``.
+      3. If the download name is not configured (or the fetch fails) -> raise a
+         clear, actionable error pointing the user at 05f / config.py.
+
+    Parameters
+    ----------
+    sim_path : str or Path, optional
+        Simulation workspace to use / populate. Defaults to
+        ``<default-data-folder>/calibration``.
+
+    Returns
+    -------
+    pathlib.Path
+        Path to the simulation workspace containing ``mfsim.nam``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the model is absent locally and cannot be downloaded/extracted.
+    """
+    # 1. Resolve the default calibrated-model workspace.
+    if sim_path is None:
+        from data_utils import get_default_data_folder
+        sim_path = Path(get_default_data_folder()) / "calibration"
+    else:
+        sim_path = Path(sim_path)
+
+    nam_path = sim_path / "mfsim.nam"
+
+    # 2. Already present (05f output or a prior download) -> use as-is.
+    if nam_path.exists():
+        return sim_path
+
+    # 3. Try to download + extract the pre-computed calibrated flow model.
+    sim_path.mkdir(parents=True, exist_ok=True)
+    try:
+        from data_utils import download_named_file
+        zip_path = download_named_file("flow_model_mf6", dest_folder=str(sim_path))
+    except Exception as exc:
+        raise FileNotFoundError(
+            "Calibrated flow model not found. Either run the flow track "
+            "05f_calibration.ipynb (which downloads the pre-computed "
+            "calibration), or configure the 'flow_model_mf6' download in "
+            f"config.py.\n(underlying error: {exc})"
+        ) from exc
+
+    # 4. Extract the archive (handle a zip wrapping either the workspace
+    #    directory or its bare contents). Idempotent on re-run.
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(sim_path)
+    except zipfile.BadZipFile as exc:
+        raise FileNotFoundError(
+            "Calibrated flow model download is not a valid zip archive: "
+            f"{zip_path}\n(underlying error: {exc})"
+        ) from exc
+
+    if nam_path.exists():
+        return sim_path
+
+    # zip wrapped a top-level directory -> locate mfsim.nam and use its parent.
+    found = list(sim_path.rglob("mfsim.nam"))
+    if found:
+        return found[0].parent
+
+    raise FileNotFoundError(
+        "Calibrated flow model archive did not contain 'mfsim.nam'. Either run "
+        "the flow track 05f_calibration.ipynb, or fix the 'flow_model_mf6' "
+        "download in config.py."
+    )
 
 
 # Additional utility functions that may be useful
