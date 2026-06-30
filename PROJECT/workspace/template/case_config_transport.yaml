@@ -15,15 +15,16 @@
 # Fixed assignments by group number (each group gets ONE validated REAL
 # geothermal-doublet concession; injection + extraction wells both active,
 # extraction well = compliance/monitoring "Well"):
-# Group 0: concession b010205 - TCE       - Industrial spill (demo)   - Q=1370 m3/d, recirc 0.207
-# Group 1: concession b010196 - Nitrate    - Sports field fertilizer  - Q=1370 m3/d, recirc 0.308
-# Group 2: concession b010185 - Benzene    - Gas station leak (decay) - Q=1370 m3/d, recirc 0.394
-# Group 3: concession b010211 - Chloride   - Legacy landfill          - Q=1370 m3/d, recirc 0.201
-# Group 4: concession b010223 - Chromium   - Metal plating (R~19)     - Q=1370 m3/d, recirc 0.323
-# Group 5: concession b010200 - PFOA       - Industrial point source  - Q=1370 m3/d, recirc 0.140
-# Group 6: concession b010224 - PCE        - Dry cleaning (sorption)  - Q=5760 m3/d, recirc 0.597
-# Group 7: concession b010230 - Ammonium   - Leaking sewer (decay)    - Q=1370 m3/d, recirc 0.100
-# Group 8: concession b010199 - Atrazine   - Garden allotment         - Q=5760 m3/d, recirc 0.469
+# Recirc fractions below are the CALIBRATED values (05f-calibrated K field).
+# Group 0: concession b010205 - TCE       - Industrial spill (demo)   - Q=1370 m3/d, recirc 0.221
+# Group 1: concession b010196 - Nitrate    - Sports field fertilizer  - Q=1370 m3/d, recirc 0.272
+# Group 2: concession b010185 - Benzene    - Gas station leak (decay) - Q=1370 m3/d, recirc 0.384
+# Group 3: concession b010211 - Chloride   - Legacy landfill          - Q=1370 m3/d, recirc 0.213
+# Group 4: concession b010223 - Chromium   - Metal plating (R~19)     - Q=1370 m3/d, recirc 0.376
+# Group 5: concession b010200 - PFOA       - Industrial point source  - Q=1370 m3/d, recirc 0.142
+# Group 6: concession b010224 - PCE        - Dry cleaning (sorption)  - Q=5760 m3/d, recirc 0.596
+# Group 7: concession b010230 - Ammonium   - Leaking sewer (decay)    - Q=1370 m3/d, recirc 0.093
+# Group 8: concession b010199 - Atrazine   - Garden allotment         - Q=5760 m3/d, recirc 0.460
 #
 # Doublet locations are REAL, validated AWEL concessions. Groups 6 & 8 use the
 # higher-rate (>3000 L/min) class (Q=5760 m3/d); all others Q=1370 m3/d.
@@ -38,14 +39,17 @@ description: >
   regarding well-contaminant interactions (e.g., will pumping wells capture the plume? Does
   injection spread contamination? What's the breakthrough time at monitoring locations?).
 
-# Base parent model (fresh download, independent from student flow results)
-# MF6 GWT base: the steady-state MODFLOW 6 / DISV flow model the transport base
-# builds on (see _SUPPORT/src/transport_base_model.py, which loads the
-# notebook4_model simulation and gets model "limmat_valley"). This REPLACES the
-# legacy MODFLOW-NWT references (limmat_valley_model_nwt) that no longer apply.
+# Parent flow model (the 05f-CALIBRATED MF6 / DISV steady-state field)
+# MF6 GWT base: the transport base builds on the CALIBRATED steady-state
+# MODFLOW 6 / DISV flow model produced by the flow track's 05f_calibration.ipynb
+# (same DISV grid + wells as notebook4_model, but with the calibrated K field,
+# mean K ~ 361 m/d). See _SUPPORT/src/transport_base_model.py, which calls
+# model_io_utils.ensure_flow_model() to load the calibration simulation and gets
+# model "limmat_valley". This REPLACES both the uncalibrated notebook4_model base
+# and the legacy MODFLOW-NWT references (limmat_valley_model_nwt) that no longer apply.
 model:
-  data_name: baseline_model               # Fixed - downloads known-good MF6 GWF model
-  workspace: "~/applied_groundwater_modelling_data/limmat/notebook4_model"
+  data_name: flow_model_mf6               # Calibrated MF6 GWF model (05f); bootstrapped via ensure_flow_model()
+  workspace: "~/applied_groundwater_modelling_data/limmat/calibration"  # 05f-calibrated model
   sim_namefile: "mfsim.nam"               # MF6 simulation name file
   sim_name: "limmat_valley"               # MF6 GWF model name inside the simulation
   baseline_model_name: "limmat_valley"
@@ -107,7 +111,7 @@ transport_scenarios:
         extraction_easting: 2681799.9     # m (LV95) - compliance/monitoring Well
         extraction_northing: 1248143.8    # m (LV95)
         pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.207     # validated injection->extraction recirc fraction
+        recirculation_fraction: 0.221     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
@@ -185,7 +189,7 @@ transport_scenarios:
         extraction_easting: 2681365.9     # m (LV95) - compliance/monitoring Well
         extraction_northing: 1248266.8    # m (LV95)
         pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.308     # validated injection->extraction recirc fraction
+        recirculation_fraction: 0.272     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
@@ -261,7 +265,7 @@ transport_scenarios:
         extraction_easting: 2681515.9     # m (LV95) - compliance/monitoring Well
         extraction_northing: 1249254.9    # m (LV95)
         pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.394     # validated injection->extraction recirc fraction
+        recirculation_fraction: 0.384     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
@@ -335,7 +339,7 @@ transport_scenarios:
         extraction_easting: 2682394.3     # m (LV95) - compliance/monitoring Well
         extraction_northing: 1248252.2    # m (LV95)
         pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.201     # validated injection->extraction recirc fraction
+        recirculation_fraction: 0.213     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "area"
         release_type: "continuous"
@@ -409,7 +413,7 @@ transport_scenarios:
         extraction_easting: 2681894.0     # m (LV95) - compliance/monitoring Well
         extraction_northing: 1248169.9    # m (LV95)
         pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.323     # validated injection->extraction recirc fraction
+        recirculation_fraction: 0.376     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
@@ -488,7 +492,7 @@ transport_scenarios:
         extraction_easting: 2681519.9     # m (LV95) - compliance/monitoring Well
         extraction_northing: 1249158.9    # m (LV95)
         pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.14     # validated injection->extraction recirc fraction
+        recirculation_fraction: 0.142     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
@@ -565,7 +569,7 @@ transport_scenarios:
         extraction_easting: 2682709.4     # m (LV95) - compliance/monitoring Well
         extraction_northing: 1248294.2    # m (LV95)
         pumping_rate_m3_d: 5760           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.597     # validated injection->extraction recirc fraction
+        recirculation_fraction: 0.596     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
@@ -642,7 +646,7 @@ transport_scenarios:
         extraction_easting: 2682480.0     # m (LV95) - compliance/monitoring Well
         extraction_northing: 1248406.0    # m (LV95)
         pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.1     # validated injection->extraction recirc fraction
+        recirculation_fraction: 0.093     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "line"                    # Line source (sewer)
         release_type: "continuous"
@@ -716,7 +720,7 @@ transport_scenarios:
         extraction_easting: 2681005.5     # m (LV95) - compliance/monitoring Well
         extraction_northing: 1248318.8    # m (LV95)
         pumping_rate_m3_d: 5760           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.469     # validated injection->extraction recirc fraction
+        recirculation_fraction: 0.460     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"

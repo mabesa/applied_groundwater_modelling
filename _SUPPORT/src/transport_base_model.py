@@ -635,7 +635,10 @@ if __name__ == "__main__":
     rivers = gpd.read_file(os.path.join(DATA, "gis", "AV_Gewasser_-OGD.gpkg"))
     rivers = rivers[rivers["GEWAESSERNAME"].isin(["Limmat", "Sihl"])
                     & rivers.intersects(boundary.geometry.iloc[0])]
-    csim = flopy.mf6.MFSimulation.load(sim_ws=os.path.join(DATA, "notebook4_model"),
+    # Route through the bootstrap so the corridor refine + spill build on the
+    # CALIBRATED flow field (05f), not the uncalibrated notebook4_model base.
+    flow_ws = mio.ensure_flow_model()
+    csim = flopy.mf6.MFSimulation.load(sim_ws=str(flow_ws),
                                        exe_name=MF6, verbosity_level=0)
     cgwf = csim.get_model("limmat_valley")
     inj = (2679712.0, 1249990.0)
