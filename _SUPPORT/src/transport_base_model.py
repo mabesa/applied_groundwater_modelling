@@ -16,11 +16,22 @@ NOTE (provenance): prototyped and gate-validated in scratchpad/13_doublet.py.
 This module reproduces those numbers via its __main__ regression anchor
 (loc2 geothermal doublet -> recirculation fraction ~ 0.566, all gates pass).
 
+A third source mode is the student-project COMBINED scenario:
+
+    - build_spill_scenario : a real geothermal DOUBLET active for FLOW ONLY (clean
+                    injection well +Q, extraction/monitoring well -Q) PLUS a SEPARATE
+                    zero-water CNC contaminant SPILL (the solute) placed upgradient,
+                    with per-group sorption/decay in MST and the source->extraction
+                    corridor (plus the injection well) refined.  This is the
+                    "will the spill reach the well, and does it exceed the threshold?"
+                    setup the Weeks 11-12 student template runs.  [groups]
+
 Functions:
-    build_doublet_base : build + run the validated corridor-refine coupled sim
-    load_doublet_base  : solve-free loader (re-open cached sim + npz)
-    courant_nstp       : size fixed nstp from a pilot seepage-velocity field
-    relocate_receptor  : receptor-relocation rule for retarded (sorbing) species
+    build_doublet_base   : build + run the validated corridor-refine coupled sim
+    build_spill_scenario : doublet-flow + separate CNC contaminant spill (students)
+    load_doublet_base    : solve-free loader (re-open cached sim + npz)
+    courant_nstp         : size fixed nstp from a pilot seepage-velocity field
+    relocate_receptor    : receptor-relocation rule for retarded (sorbing) species
 
 Author: Applied Groundwater Modelling Course (M2 transport base)
 """
@@ -125,6 +136,41 @@ def _corridor_points(a_xy, b_xy, step: float = 40.0, pad: float = 40.0):
     u = (b - a) / L
     n = max(int((L + 2 * pad) // step) + 1, 2)
     return [tuple(a + s * u) for s in np.linspace(-pad, L + pad, n)], u, L
+
+
+def _refine_with_retry(coarse_gwf, boundary_gdf, river_gdf, refine_points, head_array,
+                       workspace: Union[str, Path], *,
+                       refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+                       base_cell_size: float = 50.0, refined_cell_size: float = 10.0,
+                       sim_name: str = "rg") -> Tuple[Dict[str, Any], float]:
+    """Refine the corridor, retrying over a small set of refine radii.
+
+    cs=10 local refinement SIGILL-crashes on a fraction of source locations
+    (macOS arm64 / mf6 6.7.0) and boundary-clipped circles can trip a Triangle
+    precision abort.  Both manifest as an exception out of build_refined_gwf_model.
+    Walking the radius slightly (70 -> 62 -> 78 -> 56 -> 84 m) reliably dodges the
+    crash for the validated student doublets (the corridor stays well-resolved at
+    any of these radii: Pe_L <= 2 throughout).
+
+    Returns (build_refined_gwf_model result dict, radius actually used).
+    """
+    workspace = Path(workspace)
+    last_exc: Optional[Exception] = None
+    for k, rr in enumerate(refine_radii):
+        try:
+            res = mio.build_refined_gwf_model(
+                coarse_gwf, boundary_gdf=boundary_gdf, river_gdf=river_gdf,
+                refine_points=refine_points, head_array=head_array,
+                workspace=str(workspace / f"rg{k}"), refine_radius=float(rr),
+                base_cell_size=base_cell_size, refined_cell_size=refined_cell_size,
+                sim_name=sim_name)
+            return res, float(rr)
+        except Exception as e:  # SIGILL / Triangle abort surface here
+            last_exc = e
+            continue
+    raise RuntimeError(
+        f"corridor refinement failed at all radii {tuple(refine_radii)}; "
+        f"last error: {last_exc!r}")
 
 
 def courant_nstp(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
@@ -369,6 +415,198 @@ def build_doublet_base(
                        src_xy=tuple(src_xy), receptor_xy=tuple(receptor_xy), meta=meta)
 
 
+def build_spill_scenario(
+    coarse_gwf,
+    boundary_gdf: gpd.GeoDataFrame,
+    river_gdf: gpd.GeoDataFrame,
+    inj_xy: Tuple[float, float],
+    ext_xy: Tuple[float, float],
+    spill_xy: Tuple[float, float],
+    case_ws: Union[str, Path],
+    *,
+    Q: float = 1370.0,                       # doublet rate [m3/d]; inj +Q / ext -Q
+    c_src: float = 1.0,                      # spill source concentration [mg/L]
+    release: Optional[Dict[str, Any]] = None,  # {'type':'pulse'|'continuous','duration_days':..}
+    geometry: str = "point",                # 'point' | 'line' | 'area'
+    geometry_size: float = 30.0,            # line half-length / area radius [m]
+    reactions: Optional[Dict[str, Any]] = None,  # {'Kd':mL/g,'rho_b':kg/m3,'lambda':1/d}
+    total_time: float = 365.0,
+    cr_target: float = 0.9,
+    nstp_cap: int = 4000,
+    refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+    heads_array: Optional[np.ndarray] = None,
+) -> DoubletBase:
+    """Build + run the COMBINED student scenario: doublet flow + a separate spill solute.
+
+    The geothermal doublet is active for FLOW ONLY: a clean injection well (+Q, no
+    concentration) and an extraction / monitoring well (-Q) shape the forced-gradient
+    flow field.  The contaminant is a SEPARATE zero-water CNC source placed at
+    ``spill_xy`` (point/line/area, pulse/continuous) carrying per-group sorption/decay
+    via MST.  The breakthrough is read at the extraction (monitoring) well, so the
+    scenario answers "does the spill reach the well, and does it exceed the threshold?".
+
+    The source->extraction corridor PLUS the injection well are locally refined (cs=10)
+    with a SIGILL retry over ``refine_radii``.  nstp is sized from a pilot velocity
+    field at ``cr_target``; ``nstp_cap`` defaults high (4000) so high-Q + retarded
+    cases (e.g. Atrazine at Q=5760, which needs ~3200 steps) reach Cr<=1 uncapped.
+
+    Returns a DoubletBase with src_cells = spill cell(s), receptor_cell = extraction
+    well, src_xy = spill_xy, receptor_xy = ext_xy, recirc_fraction = peak C / c_src.
+    Caches to ``case_ws`` in the same format as build_doublet_base (load via
+    load_doublet_base).
+    """
+    case_ws = Path(case_ws); case_ws.mkdir(parents=True, exist_ok=True)
+    exe = coarse_gwf.simulation.exe_name
+    if heads_array is None:
+        heads_array = coarse_gwf.output.head().get_data().flatten()
+
+    rel = release or {"type": "continuous", "duration_days": total_time}
+    is_pulse = rel.get("type") == "pulse"
+    dur = float(rel.get("duration_days", total_time))
+    is_pulse = is_pulse and dur < total_time
+
+    # ---- 1. corridor refinement (spill->extraction corridor + injection well) ----
+    corr_pts, u, L = _corridor_points(spill_xy, ext_xy)
+    refine_points = corr_pts + [tuple(inj_xy)]
+    res, refine_radius_used = _refine_with_retry(
+        coarse_gwf, boundary_gdf, river_gdf, refine_points, heads_array,
+        case_ws / "refgrid", refine_radii=refine_radii,
+        base_cell_size=LOCKED_PARAMS["base_cell_size"],
+        refined_cell_size=LOCKED_PARAMS["refined_cell_size"], sim_name="rg")
+    rgwf = res["gwf"]; mg = res["modelgrid"]; gp = res["gridprops"]; ncpl = res["ncpl"]
+    xc = np.array(mg.xcellcenters); yc = np.array(mg.ycellcenters)
+    csz = _cellsize(mg, ncpl)
+
+    k_ref = rgwf.npf.k.array; top_ref = rgwf.disv.top.array; botm_ref = rgwf.disv.botm.array
+    heads_ref = rgwf.output.head().get_data().flatten()
+    chd = rgwf.get_package("CHD").stress_period_data.get_data(0)
+    riv = rgwf.get_package("RIV").stress_period_data.get_data(0)
+    rch = rgwf.get_package("RCHA").recharge.get_data()
+
+    injc = int(np.argmin((xc - inj_xy[0]) ** 2 + (yc - inj_xy[1]) ** 2))
+    extc = int(np.argmin((xc - ext_xy[0]) ** 2 + (yc - ext_xy[1]) ** 2))
+    # spill source cells per geometry
+    if geometry == "line":
+        t = np.array([-u[1], u[0]])  # perpendicular to the corridor direction
+        pts = [np.array(spill_xy) + s * t for s in np.linspace(-geometry_size, geometry_size, 5)]
+        src_cells = sorted({int(np.argmin((xc - p[0]) ** 2 + (yc - p[1]) ** 2)) for p in pts})
+    elif geometry == "area":
+        d = np.hypot(xc - spill_xy[0], yc - spill_xy[1])
+        src_cells = [int(i) for i in np.where(d < geometry_size)[0]] or \
+                    [int(np.argmin(d))]
+    else:  # point
+        src_cells = [int(np.argmin((xc - spill_xy[0]) ** 2 + (yc - spill_xy[1]) ** 2))]
+    line = LineString([tuple(spill_xy), tuple(ext_xy)])
+    corridor_mask = np.array([line.distance(Point(xc[i], yc[i])) < refine_radius_used
+                              for i in range(ncpl)])
+
+    def _make_sim(nstp_per_period):
+        ws = str(case_ws / "sim")
+        sim = flopy.mf6.MFSimulation(sim_name="spill", exe_name=exe, sim_ws=ws)
+        if is_pulse:
+            n_on = max(int(nstp_per_period * dur / total_time), 1)
+            perioddata = [(dur, n_on, 1.0),
+                          (total_time - dur, max(nstp_per_period - n_on, 1), 1.0)]
+        else:
+            perioddata = [(total_time, nstp_per_period, 1.0)]
+        nper = len(perioddata)
+        flopy.mf6.ModflowTdis(sim, time_units=LOCKED_PARAMS["time_units"], nper=nper, perioddata=perioddata)
+        flopy.mf6.ModflowIms(sim, filename="gwf.ims", **_GWF_IMS)
+        gwf = flopy.mf6.ModflowGwf(sim, modelname="gwf", save_flows=True, newtonoptions=_GWF_NEWTON)
+        flopy.mf6.ModflowGwfdisv(gwf, nlay=1, ncpl=ncpl, nvert=gp["nvert"], top=top_ref,
+                                 botm=botm_ref, vertices=gp["vertices"], cell2d=gp["cell2d"])
+        flopy.mf6.ModflowGwfnpf(gwf, icelltype=1, k=k_ref, save_flows=True, save_specific_discharge=True)
+        flopy.mf6.ModflowGwfic(gwf, strt=np.maximum(heads_ref, botm_ref[0] + 0.01))
+        flopy.mf6.ModflowGwfsto(gwf, steady_state={i: True for i in range(nper)})
+        flopy.mf6.ModflowGwfrcha(gwf, recharge=rch)
+        flopy.mf6.ModflowGwfchd(gwf, stress_period_data=[(tuple(r["cellid"]), float(r["head"])) for r in chd])
+        flopy.mf6.ModflowGwfriv(gwf, stress_period_data=[(tuple(r["cellid"]), float(r["stage"]),
+                                float(r["cond"]), float(r["rbot"])) for r in riv])
+        # ---- doublet wells: FLOW ONLY (clean injection, no concentration) ----
+        flopy.mf6.ModflowGwfwel(gwf, pname="injw", stress_period_data={0: [[(0, injc), abs(Q)]]})
+        flopy.mf6.ModflowGwfwel(gwf, pname="absw", stress_period_data={0: [[(0, extc), -abs(Q)]]})
+        flopy.mf6.ModflowGwfoc(gwf, head_filerecord="gwf.hds", budget_filerecord="gwf.cbc",
+                               saverecord=[("HEAD", "LAST"), ("BUDGET", "LAST")])
+        # ---- GWT (solute = the spill) ----
+        gwt = flopy.mf6.ModflowGwt(sim, modelname="gwt", save_flows=True)
+        flopy.mf6.ModflowGwtdisv(gwt, nlay=1, ncpl=ncpl, nvert=gp["nvert"], top=top_ref,
+                                 botm=botm_ref, vertices=gp["vertices"], cell2d=gp["cell2d"])
+        flopy.mf6.ModflowGwtic(gwt, strt=0.0)
+        mst_kw = dict(porosity=LOCKED_PARAMS["porosity"])
+        if reactions:
+            Kd = reactions.get("Kd", 0.0); lam = reactions.get("lambda", 0.0)
+            has_sorption = bool(Kd and Kd > 0)
+            has_decay = bool(lam and lam > 0)
+            if has_sorption:
+                mst_kw.update(sorption="linear", distcoef=Kd * 1e-3,  # mL/g -> m3/kg
+                              bulk_density=reactions.get("rho_b", 1800.0))
+            if has_decay:
+                mst_kw.update(first_order_decay=True, decay=lam)
+                if has_sorption:  # MF6 requires DECAY_SORBED when both are active
+                    mst_kw.update(decay_sorbed=lam)
+        flopy.mf6.ModflowGwtmst(gwt, **mst_kw)
+        flopy.mf6.ModflowGwtadv(gwt, scheme=LOCKED_PARAMS["scheme"])
+        flopy.mf6.ModflowGwtdsp(gwt, alh=LOCKED_PARAMS["alh"], ath1=LOCKED_PARAMS["ath1"],
+                                diffc=LOCKED_PARAMS["diffc"], xt3d_off=LOCKED_PARAMS["xt3d_off"])
+        # SSM still required (CHD/RIV/RCHA default c=0 inflow); CNC supplies the spill
+        flopy.mf6.ModflowGwtssm(gwt)
+        spd = {0: [[(0, c), c_src] for c in src_cells]}
+        if is_pulse:
+            spd[1] = []  # spill ends -> plume free to migrate / decay / sorb
+        flopy.mf6.ModflowGwtcnc(gwt, stress_period_data=spd)
+        flopy.mf6.ModflowGwtoc(gwt, concentration_filerecord="gwt.ucn",
+                               saverecord=[("CONCENTRATION", "ALL")])
+        flopy.mf6.ModflowIms(sim, filename="gwt.ims", **_GWT_IMS)
+        sim.register_ims_package(sim.get_package("gwt.ims"), ["gwt"])
+        flopy.mf6.ModflowGwfgwt(sim, exgtype="GWF6-GWT6", exgmnamea="gwf", exgmnameb="gwt",
+                                filename="spill.gwfgwt")
+        sim.write_simulation(silent=True)
+        ok, buf = sim.run_simulation(silent=True)
+        return sim, gwf, gwt, ok, buf
+
+    # ---- pilot to read velocity, size Courant, then production ----
+    sim, gwf, gwt, ok, buf = _make_sim(20)
+    if not ok:
+        raise RuntimeError("pilot run failed; listing tail:\n"
+                           + _run_failure_tail(case_ws / "sim", buf))
+    spd = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
+    vmag = np.sqrt(spd["qx"] ** 2 + spd["qy"] ** 2) / LOCKED_PARAMS["porosity"]
+    corr_no_wells = corridor_mask.copy()
+    for c in src_cells + [injc, extc]:
+        corr_no_wells[c] = False
+    nstp, dt, cr_act, cdiag = courant_nstp(vmag, csz, corr_no_wells, total_time, cr_target, nstp_cap)
+    v_peak = cdiag["v_bind"]; ds_min = cdiag["ds_bind"]
+
+    sim, gwf, gwt, ok, buf = _make_sim(nstp)
+    if not ok:
+        raise RuntimeError("production run failed; listing tail:\n"
+                           + _run_failure_tail(case_ws / "sim", buf))
+
+    cobj = gwt.output.concentration(); times = np.array(cobj.get_times())
+    bt = np.maximum(np.array([cobj.get_data(totim=t)[0, 0, extc] for t in times]), 0)
+    peak = float(bt.max())
+    t_arrival = float(times[int(np.argmax(bt))]) if bt.size else float("nan")
+    recirc = peak / c_src if c_src else float("nan")
+
+    spd_final = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
+    meta = dict(ncpl=ncpl, nstp=nstp, dt=dt, Cr=cr_act, v_peak=v_peak, ds_min=ds_min,
+                PeL_min=float(csz[corridor_mask].min() / LOCKED_PARAMS["alh"]),
+                PeL_max=float(csz[corridor_mask].max() / LOCKED_PARAMS["alh"]),
+                source_mode="spill", geometry=geometry, release=rel,
+                reactions=reactions, total_time=total_time, Q=Q, c_src=c_src,
+                peak=peak, t_arrival=t_arrival, refine_radius_used=refine_radius_used,
+                ds_true_min=cdiag["ds_true_min"], courant_floor=cdiag["floor"],
+                cr_capped=bool(cr_act > 1.001))
+    np.savez(str(case_ws / "base_cache.npz"), times=times, bt=bt, src_cells=np.array(src_cells),
+             receptor_cell=extc, corridor_mask=corridor_mask, recirc=recirc,
+             src_xy=np.array(spill_xy), receptor_xy=np.array(ext_xy), meta=meta, allow_pickle=True)
+
+    return DoubletBase(sim=sim, gwf=gwf, gwt=gwt, modelgrid=mg, src_cells=src_cells,
+                       receptor_cell=extc, corridor_mask=corridor_mask, spdis=spd_final,
+                       breakthrough=(times, bt), recirc_fraction=recirc,
+                       src_xy=tuple(spill_xy), receptor_xy=tuple(ext_xy), meta=meta)
+
+
 def load_doublet_base(case_ws: Union[str, Path]) -> DoubletBase:
     """Solve-free loader: re-open the cached coupled sim + npz cache."""
     case_ws = Path(case_ws)
@@ -420,4 +658,30 @@ if __name__ == "__main__":
     # recirc has ~+/-0.05 Voronoi-regeneration sensitivity; partial capture is the invariant
     ok = (0.45 < db.recirc_fraction < 0.65) and db.meta["PeL_max"] <= 2 and db.meta["Cr"] <= 1
     print("  REGRESSION:", "PASS" if ok else "FAIL")
-    sys.exit(0 if ok else 1)
+
+    # --- spill-scenario smoke test (group 2 Benzene: REACHES-above-threshold) ---
+    # Doublet b010185, Q=1370; 10-day pulse, decay 0.005/d; spill +50E/-102N of ext well.
+    print("\nSPILL SMOKE TEST (group 2 Benzene doublet b010185)")
+    g2_inj = (2681487.9, 1249310.9)
+    g2_ext = (2681515.9, 1249254.9)
+    g2_spill = (g2_ext[0] + 50.0, g2_ext[1] - 102.0)
+    t0 = time.time()
+    sp = build_spill_scenario(
+        cgwf, boundary, rivers, g2_inj, g2_ext, g2_spill,
+        case_ws=os.path.join(SCR, "spill_smoke"),
+        Q=1370.0, c_src=10.0, geometry="point",
+        release={"type": "pulse", "duration_days": 10.0},
+        reactions={"Kd": 0.0, "rho_b": 1800.0, "lambda": 0.005},
+        total_time=60.0)
+    dts = time.time() - t0
+    peak = sp.meta["peak"]; thr = 0.005
+    print(f"  peak at well    = {peak:.4g} mg/L  (threshold {thr} mg/L -> "
+          f"{'ABOVE' if peak >= thr else 'below'})")
+    print(f"  PeL corridor    = {sp.meta['PeL_min']:.2f}..{sp.meta['PeL_max']:.2f}  (<=2)")
+    print(f"  Cr peak         = {sp.meta['Cr']:.2f}  nstp={sp.meta['nstp']}  "
+          f"refine_radius={sp.meta['refine_radius_used']:.0f} m")
+    print(f"  wall-clock      = {dts:.0f}s (Mac proxy)")
+    ok_sp = (peak >= thr) and sp.meta["PeL_max"] <= 2 and sp.meta["Cr"] <= 1.05
+    print("  SPILL SMOKE:", "PASS" if ok_sp else "FAIL")
+
+    sys.exit(0 if (ok and ok_sp) else 1)

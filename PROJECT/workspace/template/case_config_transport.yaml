@@ -353,8 +353,13 @@ transport_scenarios:
         ssm_itype: -1
 
       simulation:
-        duration_days: 3650
-        output_times_days: [365, 730, 1095, 1825, 2555, 3650]
+        # Capped from 3650 d: this continuous source reaches a stable plateau
+        # (~65 mg/L, BELOW the 100 mg/L threshold -> MARGINAL) by ~330 d and stays
+        # flat thereafter, so 9/10 of the original horizon just recomputed a flat
+        # line. 730 d shows the rise plus a full 2-year stable plateau and runs in
+        # well under a minute on this Mac. Verdict unchanged (MARGINAL).
+        duration_days: 730
+        output_times_days: [90, 180, 365, 548, 730]
 
       submodel:
         buffer_north_m: 700
@@ -579,8 +584,15 @@ transport_scenarios:
         ssm_itype: -1
 
       simulation:
-        duration_days: 3650
-        output_times_days: [90, 180, 365, 730, 1095, 1825, 3650]
+        # Capped from 3650 d: the 90-d PCE pulse peaks at the well at ~344 d and
+        # exceeds the 0.04 mg/L threshold over ~180-700 d, then clears (back to ~0
+        # by ~1300 d). 1095 d (3 yr) captures the complete rise-peak-decline. The
+        # original 3650-d horizon also FORCED the Courant cap at high Q=5760
+        # (nstp=4000, Cr~1.25 > 1 -> numerically inaccurate); shortening to 1095 d
+        # brings the required nstp back under the cap so Cr<1 (accurate).
+        # Verdict unchanged (REACHES-above).
+        duration_days: 1095
+        output_times_days: [90, 180, 365, 548, 730, 1095]
 
       submodel:
         buffer_north_m: 500
@@ -649,8 +661,13 @@ transport_scenarios:
         ssm_itype: -1
 
       simulation:
-        duration_days: 3650
-        output_times_days: [30, 90, 180, 365, 730, 1095, 1825, 3650]
+        # Capped from 3650 d: this continuous source crosses the 0.5 mg/L threshold
+        # at ~40 d and reaches a stable plateau (~2.35 mg/L -> REACHES-above, despite
+        # nitrification decay) by ~330 d, flat thereafter. 730 d resolves the verdict
+        # (early exceedance + stable 2-year plateau) and fits the budget easily.
+        # Verdict unchanged (REACHES-above).
+        duration_days: 730
+        output_times_days: [30, 90, 180, 365, 548, 730]
 
       submodel:
         buffer_north_m: 400
