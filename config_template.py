@@ -1,4 +1,5 @@
 # config_template.py
+# Phase 1.2 follow-up: fill calibrated_model url/readme_url after Dropbox upload.
 
 # CHOOSE CASE STUDY:
 # Options:
@@ -106,6 +107,11 @@ DATA_URLS = {
                 "filename": "limmat_valley_base_model_nwt.zip",
                 "readme_url": "https://www.dropbox.com/scl/fi/d75bbhtt75hj7mjjbm9g4/readme.md?rlkey=mke9qqfruozxx5b5lg0fr40z9&dl=1",
             }, 
+            "calibrated_model": {
+                "url": "https://www.dropbox.com/scl/fi/aeml2ixjqbc2mjp2o3ts2/limmat_valley_calibrated_model.zip?rlkey=zu043rvwdnli8qe1s63y23m07&dl=1",
+                "filename": "limmat_valley_calibrated_model.zip",
+                "readme_url": "https://www.dropbox.com/scl/fi/1gbut8vgrf3k0gl46bkhx/limmat_valley_calibrated_model_README.md?rlkey=yaxlxk02zwk6yf9bylw2i9pho&dl=1",
+            }, 
             "river_data": {
                 "url": "https://www.dropbox.com/scl/fi/q8x027ahe5cpqcbs52tei/Pegel_Tagesmittel.zip?rlkey=ewwzx25nn35ra8dfe5lui2hge&dl=1", 
                 "filename": "Pegel_Tagesmittel.zip",
@@ -120,4 +126,3 @@ DATA_URLS = {
         }
     },
 }
-

@@ -9,7 +9,7 @@ supporting template/instruction files.
 Key components
 --------------
 * **Pilot points** (~20) distributed across the active model domain,
-  log-transformed K with bounds appropriate for a gravel aquifer (1–300 m/d).
+  log-transformed K with course calibration bounds (10-600 m/d in NB5/NB6).
 * **Observations** — 4 AWEL mean-head measurements plus synthetic observations.
 * **Prior information** — K at the pilot point nearest the pumping-test
   location, weighted by the PT-derived uncertainty.
@@ -28,11 +28,202 @@ Usage from the notebook::
 """
 
 import os
+import json
 import shutil
+import subprocess
 import sys
+import warnings
+import zipfile
 
 import numpy as np
 import pandas as pd
+
+
+CALIBRATION_BUNDLE_MIN_VERSION = 2
+
+COURSE_PEST_SETTINGS = {
+    "n_pilot_points": 20,
+    "k_initial": 200.0,
+    "k_lower": 10.0,
+    "k_upper": 600.0,
+    "pt_weight": 1.5,
+    "reg_weight": 0.5,
+    "variogram_range": 600.0,
+    "anisotropy_angle": -30.0,
+    "anisotropy_scaling": 3.0,
+}
+
+CALIBRATION_BUNDLE_ESSENTIAL_FILES = (
+    "calibration.pst",
+    "calibration.par",
+    "calibration.jcb",
+    "calibration.par.usum.csv",
+    "calibration.post.cov",
+    "pilot_points.csv",
+    "hk_pps.dat",
+    "pp_xy.npy",
+    "sihl_mult.dat",
+    "sihl_cell_ids.npy",
+    "heads_out.ins",
+    "heads_sim.dat",
+    "forward_run.py",
+    "run_model.sh",
+    "hk_pps.tpl",
+    "sihl_mult.tpl",
+    "calibration.rec",
+    "calibration.iobj",
+    "calibration.rei",
+)
+
+
+def ensure_pestpp_installed() -> bool:
+    """Ensure pestpp-glm is available on PATH, installing via pyEMU if needed."""
+    if shutil.which("pestpp-glm") is not None:
+        print(f"pestpp-glm found: {shutil.which('pestpp-glm')}")
+        return True
+
+    print("pestpp-glm not found on PATH. Installing via get-pestpp...")
+    venv_bin = os.path.dirname(sys.executable)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyemu.utils.get_pestpp",
+            "--subset",
+            "pestpp-glm",
+            venv_bin,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        result = subprocess.run(
+            ["get-pestpp", "--subset", "pestpp-glm", venv_bin],
+            capture_output=True,
+            text=True,
+        )
+    print(result.stdout[-500:] if len(result.stdout) > 500 else result.stdout)
+    if shutil.which("pestpp-glm"):
+        print("pestpp-glm installed successfully.")
+        return True
+    print("Warning: pestpp-glm could not be installed automatically.")
+    print("Install manually: get-pestpp /path/to/bin")
+    return False
+
+
+def _read_calibration_manifest(pest_ws):
+    manifest_path = os.path.join(pest_ws, "MANIFEST.json")
+    if not os.path.exists(manifest_path):
+        return None
+    with open(manifest_path) as f:
+        return json.load(f)
+
+
+def _download_calibration_bundle(data_dir):
+    from data_utils import download_named_file
+
+    calibration_dir = os.path.join(data_dir, "calibration")
+    os.makedirs(calibration_dir, exist_ok=True)
+    print("Downloading pre-computed calibration (~0.5 MB)…")
+    zip_path = download_named_file(
+        name="calibrated_model",
+        dest_folder=calibration_dir,
+        data_type=None,
+    )
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(calibration_dir)
+
+
+def _validate_calibration_bundle(pest_ws):
+    for name in CALIBRATION_BUNDLE_ESSENTIAL_FILES:
+        if not os.path.exists(os.path.join(pest_ws, name)):
+            raise FileNotFoundError(
+                f"Bundle is missing essential file '{name}'; the zip may be corrupted."
+            )
+
+
+def ensure_calibration_workspace(data_dir: str) -> str:
+    """Ensure the downloaded calibration pest_setup workspace is present."""
+    pest_ws = os.path.join(data_dir, "calibration", "pest_setup")
+    pst_path = os.path.join(pest_ws, "calibration.pst")
+    did_download = False
+
+    if not os.path.exists(pst_path):
+        _download_calibration_bundle(data_dir)
+        did_download = True
+    else:
+        manifest = _read_calibration_manifest(pest_ws)
+        if manifest is not None:
+            bundle_version = int(manifest.get("bundle_version", 0))
+            if bundle_version < CALIBRATION_BUNDLE_MIN_VERSION:
+                print(
+                    "Local calibration is schema-stale "
+                    f"(bundle_version={bundle_version} < min={CALIBRATION_BUNDLE_MIN_VERSION}); refreshing."
+                )
+                stale_ws = os.path.join(data_dir, "calibration", "pest_setup.stale")
+                if os.path.exists(stale_ws):
+                    shutil.rmtree(stale_ws)
+                shutil.move(pest_ws, stale_ws)
+                _download_calibration_bundle(data_dir)
+                did_download = True
+
+    _validate_calibration_bundle(pest_ws)
+    manifest = _read_calibration_manifest(pest_ws)
+    if manifest is None:
+        raise FileNotFoundError(
+            "`MANIFEST.json` missing from bundle. The bundle was likely produced "
+            "before v3 or by an out-of-date `package_calibration.py`. Re-run "
+            "packaging from a clean NB5 workspace, or contact the instructor."
+        )
+
+    bundle_version = int(manifest.get("bundle_version", 0))
+    if bundle_version >= CALIBRATION_BUNDLE_MIN_VERSION:
+        print(f"Calibration found (bundle_version={bundle_version}).")
+        return pest_ws
+
+    if did_download:
+        message = (
+            f"Downloaded bundle version {bundle_version} is below code minimum "
+            f"{CALIBRATION_BUNDLE_MIN_VERSION} — Dropbox bundle has not yet "
+            "been refreshed after a schema bump. Proceeding with the older "
+            "bundle; outputs may not match current code paths. Re-run after "
+            "the bundle URL is updated."
+        )
+        warnings.warn(message, UserWarning)
+        print(message)
+        return pest_ws
+
+    raise FileNotFoundError(
+        "`MANIFEST.json` missing from bundle. The bundle was likely produced "
+        "before v3 or by an out-of-date `package_calibration.py`. Re-run "
+        "packaging from a clean NB5 workspace, or contact the instructor."
+    )
+
+
+def ensure_notebook4_model_exists(data_dir: str) -> str:
+    """Ensure Notebook 4's MODFLOW 6 workspace exists and loads."""
+    nb4_workspace = os.path.join(data_dir, "notebook4_model")
+    try:
+        import flopy
+
+        sim = flopy.mf6.MFSimulation.load(
+            sim_ws=nb4_workspace,
+            load_only=["disv"],
+            verbosity_level=0,
+        )
+        for model in sim.model_names:
+            modelgrid = sim.get_model(model).modelgrid
+            if getattr(modelgrid, "ncpl", None) is None:
+                raise ValueError("DISV grid did not load ncpl")
+            _ = modelgrid.verts
+    except Exception as exc:
+        raise FileNotFoundError(
+            f"Notebook 4 output not found or incomplete at `{nb4_workspace}`. "
+            "Please run [04f_model_implementation.ipynb] first to build the "
+            "MODFLOW 6 model — it is a hard prerequisite. "
+            f"(Underlying error: `{exc}`)"
+        ) from exc
+    return nb4_workspace
 
 
 def _write_k_tpl(tpl_path, n_pilot_points, k_array_file="hk_layer1.dat"):

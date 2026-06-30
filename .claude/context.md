@@ -57,14 +57,14 @@ The course implementation is complete with 10 case study notebooks covering the 
 CASE_STUDY/
 ├── 0_start_here.ipynb        # Shared intro to 10-step framework
 ├── flow/                     # Flow modeling track (steps 1-10)
-│   ├── 1_model_goal.ipynb
-│   ├── 2_perceptual_model.ipynb
+│   ├── 01f_model_goal.ipynb
+│   ├── 02f_perceptual_model.ipynb
 │   ├── ...
-│   └── 10_communication.ipynb
-├── transport/                # Transport extension track (steps 1-10)
-│   ├── 1_model_goal.ipynb
+│   └── 10f_communication.ipynb
+├── transport/                # Transport extension track (steps 1-5)
+│   ├── 01t_model_goal.ipynb
 │   ├── ...
-│   └── 10_communication.ipynb
+│   └── 05t_calibration.ipynb
 ├── student_work/             # Group working areas
 └── grading_scheme/
 ```
