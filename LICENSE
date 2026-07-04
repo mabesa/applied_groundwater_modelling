@@ -1,13 +1,28 @@
-MIT License
+Repository License Summary
+==========================
 
-Copyright (c) 2025 Beatrice Marti
+Copyright (c) 2025-2026 Beatrice Marti and contributors
+
+This repository contains source code, teaching content, figures, notebooks, and data references. Unless a file states otherwise:
+
+- Source code, scripts, helper modules, and executable code cells are licensed under the MIT License below.
+- Teaching text, notebook prose, exercise text, markdown documentation, and project-owned figures are licensed under the Creative Commons Attribution 4.0 International License (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+- Third-party public data remain under the terms of the original data providers. See DATA_AVAILABILITY.md.
+- Derived data and model artifacts may incorporate third-party public data and must be reused under the applicable provider terms described in DATA_AVAILABILITY.md, unless explicitly stated otherwise.
+
+For the MIT License below, "Software" means source code, scripts, helper modules, and executable code cells owned by this project. It does not include third-party data, derived data/model artifacts, teaching prose, figures, or exercise text.
+
+Notebook files are mixed-license files: executable code cells are MIT-licensed Software, while markdown/prose cells, teaching explanations, embedded exercise text, and project-owned figures are CC BY 4.0 unless a file states otherwise.
+
+MIT License
+===========
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+of the Software, to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following
+conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.

@@ -19,6 +19,8 @@
 
 Course materials for Master-level groundwater modeling (4 ECTS) at ETH Zurich. Combines theoretical exercises with a practical project using MODFLOW and FloPy, applied to the Limmat Valley aquifer case study.
 
+> **From Darcy's Law to Model-Based Decisions.** The course teaches students to reason like applied groundwater modellers, not just solve equations.
+
 ## 2 Quick Start for Students
 
 Choose your preferred way to work with the course materials:
@@ -148,7 +150,7 @@ The course is organized into two main phases:
 Lectures and exercises covering flow and transport fundamentals.
 
 **Materials in `THEORY/`:**
-- `exercises/` - 6 exercises reinforcing key concepts
+- `exercises/` - exercises and reminders reinforcing key concepts; most exercises are now embedded in the flow and transport notebooks
 - `_demos/` - Lecture demonstrations (e.g., porosity and REV)
 
 ### Phase 2: Project (Weeks 9-14)
@@ -172,11 +174,23 @@ The project follows a 10-step modeling methodology:
 | 5 | Calibration | `flow/05f_calibration.ipynb` | `transport/05t_calibration.ipynb` |
 | 6 | Validation | `flow/06f_validation.ipynb` | — |
 | 7 | Sensitivity & Uncertainty | `flow/07f_sensitivity_uncertainty.ipynb` | — |
-| 8 | Model Application | `flow/08f_model_application.ipynb` | — |
+| 8 | Model Application | `flow/08f_model_application.ipynb` | `transport/08t_model_application.ipynb` |
 | 9 | Documentation | `flow/09f_documentation.ipynb` | — |
 | 10 | Communication | `flow/10f_communication.ipynb` | — |
 
 The transport track builds on the calibrated flow model. Steps marked with "—" use the flow model results.
+
+### Semester Map
+
+| Period | Focus | Main student activity | Main output |
+| --- | --- | --- | --- |
+| Weeks 1-8 | Groundwater flow and transport theory | Lectures, exercises, discussions, and modelling foundations | Self-corrected exercises and exam preparation |
+| Project block | Limmat Valley case study | Flow and transport notebooks, scenario analysis, report writing, and presentation preparation | Submitted notebooks, configuration files, report, and presentation |
+| Final communication | Synthesis and communication | Present modelling results, limitations, and recommendations | Project presentation and final report |
+
+### Workload Planning
+
+The course is a 4 ECTS course. The project workload is being reassessed for HS26 using notebook time estimates, student/group time logs, project-clinic observations, and instructor/TA support tracking. Required and optional notebook sections should be planned from the time estimates shown at the top of each notebook.
 
 ### Repository Structure
 
@@ -188,7 +202,7 @@ applied_groundwater_modelling/
 ├── PROJECT/                  # Phase 2: Case study (Weeks 9-14)
 │   ├── 0_start_here.ipynb    # Course intro & 10-step framework
 │   ├── flow/                 # Flow modeling track (steps 1-10)
-│   ├── transport/            # Transport track (steps 1-5)
+│   ├── transport/            # Transport track
 │   ├── workspace/            # Your working area
 │   └── _demos/               # Calibration & uncertainty demos
 ├── _SUPPORT/                 # Helper code and static files
@@ -215,6 +229,8 @@ applied_groundwater_modelling/
 
 Course data is downloaded automatically and stored in `~/applied_groundwater_modelling_data/`.
 
+The Limmat Valley case study uses public data sources, including AWEL/GIS-ZH, BAFU, and swisstopo. The repository may use mirrors or cached teaching copies for convenient downloads, but provider portals and terms remain authoritative. See [DATA_AVAILABILITY.md](DATA_AVAILABILITY.md) for provenance, terms, and raw-versus-derived artifact notes.
+
 <details>
 <summary>Data configuration details</summary>
 
@@ -224,7 +240,7 @@ The data system uses `config.py` for data source configuration. For public data 
 cp config_template.py config.py
 ```
 
-Workshop participants receive a `config.py` with additional private datasets - don't commit this file.
+Some deployments may use a local `config.py` with alternate mirrors or temporary teaching links. Do not commit local configuration files.
 
 Data downloads automatically when needed:
 ```python
@@ -332,7 +348,20 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for:
 - Pre-commit hooks (auto-strips notebook outputs)
 - Code style and contribution guidelines
 
-## 10 Acknowledgments
+## 10 For Instructors
+
+See [INSTRUCTOR_GUIDE.md](INSTRUCTOR_GUIDE.md) for the teaching design, project scope, support model, deliverables, and reuse guidance.
+
+## 11 Citation, Licensing, And Data
+
+- See [CITATION.cff](CITATION.cff) for citation metadata.
+- See [LICENSE](LICENSE) for the repository license structure.
+- See [DATA_AVAILABILITY.md](DATA_AVAILABILITY.md) for public data provenance and provider terms.
+- See [REFERENCES.md](REFERENCES.md) for scientific and technical background references.
+
+The `course_2026` branch is a live teaching branch. For publication or formal reuse, cite a tagged release and archived DOI once available; until then, cite the repository version or commit you used.
+
+## 12 Acknowledgments
 
 Funded by the ETH Zurich Department of Earth and Planetary Sciences and the Rectors Innovendum Fund ([project link](https://innovedumprojects.ethz.ch/projects/groundwater-in-action-real-world-problem-centered-approach-with-students-collaborative-projects/)).
 
