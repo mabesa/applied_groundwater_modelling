@@ -31,7 +31,7 @@ MeteoSwiss states that its open meteorological and climatological data may be sh
 
 swisstopo states that its free geodata and geoservices may be used, distributed, made accessible, enriched, processed, and used commercially, with mandatory source reference.
 
-BAFU/FOEN hydrological data are accessed through the public hydrological-data portal. Dataset-specific terms and attribution requirements should be checked through the provider or corresponding opendata.swiss entry before redistributing derived data.
+The BAFU/FOEN daily river data used in this course were provided directly by FOEN Hydrology for teaching use. The dataset contains daily discharge and water-level values for stations 2099 Limmat - Zurich, Unterhard and 2176 Sihl - Zurich, Sihlholzli for 2000-2024. Values from 2021-01-01 onward are provisional. BAFU conditions for covered hydrological raw data permit commercial and non-commercial use and recommend source attribution. Treat these data as BAFU/FOEN provider-terms data, not as project-owned CC BY material.
 
 ## Raw And Derived Items
 
@@ -46,7 +46,7 @@ The table below is a working provenance map for the items referenced in `config_
 | `gauges` | Raw public geodata / mirrored teaching copy | AWEL / GIS-ZH / Canton Zurich | Not derived in this repository | Public OGD source. Attribute provider and dataset according to Canton Zurich terms. |
 | `rivers` | Raw public geodata / mirrored teaching copy | AWEL / GIS-ZH / Canton Zurich | Not derived in this repository | Public OGD source. Attribute provider and dataset according to Canton Zurich terms. |
 | `wells` | Raw public geodata / mirrored teaching copy | AWEL / GIS-ZH / Canton Zurich | Not derived in this repository | Public OGD source. Attribute provider and dataset according to Canton Zurich terms. |
-| `river_data` | Raw public hydrological data / mirrored teaching copy | BAFU / FOEN | Not derived in this repository | Verify dataset-specific FOEN/opendata.swiss terms and attribution requirements. |
+| `river_data` | Raw public hydrological data / mirrored teaching copy | BAFU / FOEN | Not derived in this repository | Provided directly by FOEN Hydrology for teaching use; source attribution recommended. Contains daily discharge and water-level values for stations 2099 and 2176 from 2000-2024; values from 2021-01-01 onward are provisional. |
 | `river_cells` | Derived geodata / teaching artifact | Project-owned processing; based on public geodata | River geodata, model grid, and modelling choices | Reuse under applicable source-provider terms plus project attribution. |
 | `model_boundary` | Derived geodata / teaching artifact | Project-owned processing; based on public geodata and teaching choices | Aquifer/geodata interpretation and modelling scope | Reuse under applicable source-provider terms plus project attribution. |
 | `model_boundary_segments` | Derived geodata / teaching artifact | Project-owned processing; based on public geodata and teaching choices | `model_boundary` and boundary-condition interpretation | Reuse under applicable source-provider terms plus project attribution. |

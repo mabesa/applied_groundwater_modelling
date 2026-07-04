@@ -26,7 +26,7 @@ DATA_URLS = {
                 "url": "https://www.dropbox.com/scl/fi/0tzhzcbmj64ii9faq0jp9/Grundwasservorkommen_-OGD.gpkg?rlkey=8zwfw4nv8nskmrm1h7urgsz9y&st=wz2o6bsu&dl=1",
                 "filename": "Grundwasservorkommen_-OGD.gpkg",
                 "layer": "GS_GW_LEITER_F", 
-                "readme_url": "https://www.dropbox.com/scl/fi/4w76qtxe8w3i6eztyh3p8/Produktblatt_AV_Gewasser_-OGD.pdf?rlkey=o8dt6qkrvxuqf0jagau5rz1yr&dl=1", 
+                "readme_url": "https://www.dropbox.com/scl/fi/4yaju2g94t7oq9fz8cx62/Produktblatt_Grundwasservorkommen_-OGD.pdf?rlkey=cv0952ssxt0uk0t6maldhnses&dl=1",
             }, 
             "dem": {
                 "url": "https://www.dropbox.com/scl/fi/6wq78jlj14gmmj75kzjm3/dem_converted_bbox.tif?rlkey=4tenmorf5hbyt428xkih8lt2g&dl=1",
