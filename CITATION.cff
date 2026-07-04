@@ -5,7 +5,10 @@ type: software
 authors:
   - family-names: Marti
     given-names: Beatrice
-  - name: "Applied Groundwater Modelling contributors"
+  - family-names: Kong
+    given-names: Xiang-Zhao
+  - family-names: Noël du Payrat
+    given-names: Louise
 abstract: "Open teaching material for a Master-level applied groundwater modelling course using a Limmat Valley aquifer case study, MODFLOW, FloPy, and staged flow and transport notebooks."
 repository-code: "https://github.com/mabesa/applied_groundwater_modelling"
 url: "https://github.com/mabesa/applied_groundwater_modelling"
