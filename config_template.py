@@ -120,7 +120,7 @@ DATA_URLS = {
                 "url": "https://www.dropbox.com/scl/fi/coeml1evsu1p6o1acvb93/limmat_valley_calibrated_flow_model.zip?rlkey=45m4gmdf9lfbnlhblekwfuvg6&dl=1",
                 "filename": "limmat_valley_calibrated_flow_model.zip",
                 "layer": None,  # zip of the MF6 simulation, no GIS layer
-                # "readme_url": add after uploading the README (text provided separately)
+                "readme_url": "https://www.dropbox.com/scl/fi/lbbcvrbuce34547wji4ko/limmat_valley_calibrated_flow_model_README.md?rlkey=rhf4s3iuqy243nlelav1go7o3&dl=1",
             },
             "river_data": {
                 "url": "https://www.dropbox.com/scl/fi/q8x027ahe5cpqcbs52tei/Pegel_Tagesmittel.zip?rlkey=ewwzx25nn35ra8dfe5lui2hge&dl=1",
