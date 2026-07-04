@@ -150,6 +150,95 @@ def download_named_file(name, dest_folder=None, data_type=None):
 
     return data_path
 
+PREFETCH_GIS_FILES = [
+    "model_boundary", "model_boundary_segments",
+    "wells", "rivers",
+    "groundwater_map_norm",   # ~23 MB — 04f Section 3 (thickness)
+    "dem_hres",               # ~46 MB — 04f Section 3 (DEM/model top)
+]
+# Keep in sync with every download_named_file(..., data_type='gis') call in the notebooks.
+
+
+def format_cache_report(report) -> str:
+    """Return a plain-text table of prefetch results (one row per item) plus a summary line."""
+    lines = [
+        "Data cache prefetch — GIS files (~70 MB; actual usage slightly higher due to README sidecars)",
+        f"{'Name':<30} {'Status':<12} {'Size (MB)':>10}",
+        "-" * 56,
+    ]
+    for item in report.get("items", []):
+        name   = item.get("key", "?")
+        status = item.get("status", "?")
+        size   = item.get("size_mb")
+        size_s = f"{size:.1f}" if size is not None else "-"
+        marker = "✓" if status in ("CACHED", "DOWNLOADED") else "✗"
+        lines.append(f"  {marker}  {name:<28} {status:<12} {size_s:>10}")
+    lines.append("-" * 56)
+    c = report.get("counts", {})
+    total_mb = report.get("total_mb", 0)
+    lines.append(
+        f"  {c.get('CACHED', 0)} cached / {c.get('DOWNLOADED', 0)} downloaded / "
+        f"{c.get('FAILED', 0)} failed / {total_mb:.0f} MB total"
+    )
+    return "\n".join(lines)
+
+
+def warm_data_cache(gis_names=None, data_type="gis", data_dir=None, verbose=True) -> dict:
+    """Pre-download the common GIS files so notebooks (esp. 04f Section 3) don't pause to
+    fetch them. Idempotent: already-present files are skipped. Per-file failures are isolated
+    and reported, never raised. GIS-only (model bundles intentionally out of scope for v1)."""
+    gis_names = gis_names or PREFETCH_GIS_FILES
+    data_dir  = data_dir or get_default_data_folder()
+
+    items = []
+    for name in gis_names:
+        try:
+            info = get_data_urls().get(name)
+            if info is None:
+                items.append({
+                    "key": name, "group": "gis", "status": "FAILED",
+                    "path": None, "size_mb": None, "error": "not in DATA_URLS",
+                })
+                continue
+            dest = os.path.join(data_dir, data_type, info["filename"])
+            existed_before = os.path.exists(dest)
+            path = download_named_file(name, data_type=data_type)
+            size_mb = round(os.path.getsize(path) / 1024**2, 1)
+            status  = "CACHED" if existed_before else "DOWNLOADED"
+            items.append({
+                "key": name, "group": "gis", "status": status,
+                "path": path, "size_mb": size_mb, "error": None,
+            })
+        except Exception as e:
+            items.append({
+                "key": name, "group": "gis", "status": "FAILED",
+                "path": None, "size_mb": None, "error": str(e),
+            })
+
+    counts = {
+        "CACHED":     sum(1 for i in items if i["status"] == "CACHED"),
+        "DOWNLOADED": sum(1 for i in items if i["status"] == "DOWNLOADED"),
+        "FAILED":     sum(1 for i in items if i["status"] == "FAILED"),
+    }
+    total_mb = sum(
+        i["size_mb"] for i in items
+        if i["size_mb"] is not None and i["status"] in ("CACHED", "DOWNLOADED")
+    )
+    ok = counts["FAILED"] == 0
+
+    report = {
+        "items":    items,
+        "counts":   counts,
+        "total_mb": round(total_mb, 1),
+        "ok":       ok,
+    }
+
+    if verbose:
+        print(format_cache_report(report))
+
+    return report
+
+
 def get_data_path(data_type=None):
     """
     Get the path to data folder for the current case study.
