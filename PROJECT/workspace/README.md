@@ -133,5 +133,10 @@ steward export, and a scratch card end to end, then produce a submission ZIP. Th
 confirms the environment, the `exports/` bundle, and the FloPy-free scratch rerun all
 work on the image students will use.
 
+Rerun the scratch ZIP check after any update that touches the workspace template,
+`scratch_io.py`, the steward export notebook, the project dependencies, or the
+JupyterHub image. The key check is: extract a submitted-style ZIP in a clean folder and
+restart-and-run a scratch notebook using only the local `scratch_io.py` and `exports/`.
+
 Received submissions are saved by the lecturers to the project SWITCHdrive, with access
 restricted to lecturers only.
