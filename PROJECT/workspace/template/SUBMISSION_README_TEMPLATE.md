@@ -23,18 +23,23 @@ One row per member. State the card and one sentence on what you produced.
 
 ## Included files checklist
 
-Tick what is in this ZIP:
+Tick what is in this ZIP. The template notebooks keep their shipped filenames — **do not
+rename them to your group number**; your group is identified by the `group_<N>/` folder.
 
-- [ ] `case_config.yaml` (filled in)
-- [ ] `case_config_transport.yaml` (if transport was done)
-- [ ] `case_study_flow_group_<N>.ipynb` — master flow notebook, **with saved output**
-- [ ] `case_study_transport_group_<N>.ipynb` — master transport notebook, with saved output *(optional)*
-- [ ] `steward_export_lightweight.ipynb` — export notebook, with saved output
-- [ ] `scratch_analysis_template.ipynb` (or per-member copies) — with saved figures/tables
-- [ ] `scratch_io.py` — the FloPy-free reader (required for rerun)
-- [ ] `exports/` — the lightweight bundle (see below)
-- [ ] `figures/` and `tables/` — outputs produced by the scratch cards
-- [ ] project report (PDF) and presentation
+- [ ] `case_config.yaml` (filled in) *(required)*
+- [ ] `case_config_transport.yaml` (filled in) *(required)*
+- [ ] `case_study_flow_group_0.ipynb` — master flow notebook, **with saved output** *(required)*
+- [ ] `case_study_transport_group_0.ipynb` — master transport notebook, with saved output *(required)*
+- [ ] `steward_export_lightweight.ipynb` — export notebook, with saved output *(required)*
+- [ ] `scratch_<name>.ipynb` (one per member) — with saved figures/tables *(required)*
+- [ ] `scratch_io.py` — the FloPy-free reader (required for rerun) *(required)*
+- [ ] `exports/` — the lightweight bundle (see below) *(required)*
+- [ ] `figures/` and `tables/` — outputs produced by the scratch cards *(required)*
+- [ ] `report.pdf` — in the group folder root *(required)*
+- [ ] `presentation.pdf` — in the group folder root *(required)*
+
+Flow **and** transport are both required for the final submission once the transport
+phase has been assigned.
 
 ### `exports/` bundle contents
 
@@ -42,10 +47,15 @@ Tick what is in this ZIP:
 - [ ] `flow_heads_sub_base.gpkg` *(required)*
 - [ ] `flow_heads_sub_wells.gpkg` *(required)*
 - [ ] `flow_budget_summary.csv` *(required)*
-- [ ] `flow_heads_sub_scenario.gpkg` *(optional)*
-- [ ] `transport_breakthrough.csv` *(optional)*
-- [ ] `transport_meta.json` *(optional)*
+- [ ] `transport_breakthrough.csv` *(required)*
+- [ ] `transport_meta.json` *(required)*
+- [ ] `flow_heads_sub_scenario.gpkg` *(optional — include if a scenario export exists)*
 - [ ] `pathlines_summary.csv` *(optional)*
+
+Optional non-export extras:
+
+- [ ] presentation source file such as `presentation.pptx` *(optional — `presentation.pdf`
+      in the group folder root is what is required)*
 
 ## Optional exports we did NOT include
 
@@ -73,15 +83,18 @@ MB, machine-specific). The lightweight `exports/` bundle stands in for them.
 
 Submit **one single ZIP** — no loose files, no split/multi-part archives.
 
-- **Preferred: Moodle** — upload the single group ZIP. The exact Moodle assignment
-  location and file-size limit are **pending confirmation** by the teaching team; check
-  the current course announcement before submitting.
+- **Preferred: Moodle** — upload the single group ZIP.
 - **Fallback: email** (if Moodle is unavailable or the ZIP is over the Moodle limit) —
   **one** email to **both lecturers** with **all group members in CC**. Attach the
   single ZIP if it is small enough; if it is too large to email, send a **SWITCHdrive
   link** to the single ZIP instead. One ZIP only — no loose files, no split archives.
 - **Receipt** — a lecturer replies by email to confirm receipt. The **first lecturer
   confirmation** is the official receipt timestamp.
+
+> **Moodle is the definitive source for the local course run.** The actual fallback
+> lecturer email addresses, the Moodle assignment location, and any file-size limit are
+> announced in Moodle / in class — they are **not** stored in this public repository.
+> Check the current course announcement before submitting.
 
 Record how you submitted:
 
