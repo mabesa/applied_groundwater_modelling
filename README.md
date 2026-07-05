@@ -188,6 +188,8 @@ The transport track builds on the calibrated flow model. Steps marked with "—"
 | Project block | Limmat Valley case study | Flow and transport notebooks, scenario analysis, report writing, and presentation preparation | Submitted notebooks, configuration files, report, and presentation |
 | Final communication | Synthesis and communication | Present modelling results, limitations, and recommendations | Project presentation and final report |
 
+The project block is designed as supported independent group work, with supervised clinics and a monitored shared question channel defined by the teaching team.
+
 ### Workload Planning
 
 The course is a 4 ECTS course. The project workload is being reassessed for HS26 using notebook time estimates, student/group time logs, project-clinic observations, and instructor/TA support tracking. Required and optional notebook sections should be planned from the time estimates shown at the top of each notebook.
