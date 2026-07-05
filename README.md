@@ -215,6 +215,8 @@ applied_groundwater_modelling/
 
 > **Note:** Folders starting with `_` contain internal/instructor materials - you can ignore them.
 
+The supporting documentation is indexed in [DOCUMENTATION/README.md](DOCUMENTATION/README.md).
+
 ## 4 Learning Objectives
 
 - Apply numerical methods to solve groundwater flow and transport problems

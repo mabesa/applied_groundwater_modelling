@@ -33,7 +33,7 @@ The course implementation is complete with 10 case study notebooks covering the 
 
 ### Notebook Refactoring - Keep Content Concise
 
-**Planning Document:** [planning/notebook_refactoring.md](../planning/notebook_refactoring.md)
+**Planning Document:** historical notebook-refactoring planning note, not tracked in this repository.
 
 **Priority Order:**
 1. Notebook 4 (Model Implementation) - 2915 lines → target ~800
@@ -77,7 +77,7 @@ Other directories:
 
 ## Development Setup
 
-See **[DEVELOPMENT.md](../DEVELOPMENT.md)** for complete instructions including:
+See **[DEVELOPMENT.md](../DOCUMENTATION/DEVELOPMENT.md)** for complete instructions including:
 - Environment setup with uv
 - Contributing guidelines
 - Code style conventions

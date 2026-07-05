@@ -91,7 +91,7 @@ Minimum viable support:
 - clear required/optional labels and explicit deliverable expectations;
 - instructor and, where available, TA preparation by running required notebooks in the student environment before assigning them.
 
-The material should not be advertised as a fully unsupported self-study resource. A defensible publication claim is that the notebooks support independent group project work when paired with a lightweight support scaffold: pre-work framing, supervised clinics that may be in person or online, a monitored question channel, and timely instructor/TA responses during monitored periods.
+The material should not be advertised as a fully unsupported self-study resource. A defensible publication claim is that the notebooks support independent group project work when paired with a lightweight support scaffold: pre-work framing, supervised clinics that may be in person, online, or hybrid, a monitored question channel, and timely instructor/TA responses during monitored periods.
 
 ## Student Deliverables
 

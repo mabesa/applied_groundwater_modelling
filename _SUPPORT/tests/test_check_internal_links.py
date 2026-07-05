@@ -80,6 +80,25 @@ def test_readme_links_resolve():
     )
 
 
+def test_tooling_markdown_is_scanned():
+    tracked = {
+        ".claude/context.md",
+        ".github/pull_request_template.md",
+        "DOCUMENTATION/README.md",
+        "PROJECT/workspace/README.md",
+        "README.md",
+        "notes.txt",
+    }
+
+    assert check_internal_links.source_files(tracked) == [
+        ".claude/context.md",
+        ".github/pull_request_template.md",
+        "DOCUMENTATION/README.md",
+        "PROJECT/workspace/README.md",
+        "README.md",
+    ]
+
+
 def test_synthetic_broken_target_fails(tmp_path):
     (tmp_path / "doc.md").write_text("[bad](missing.ipynb)\n", encoding="utf-8")
     output = io.StringIO()

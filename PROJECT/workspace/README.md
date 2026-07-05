@@ -20,7 +20,7 @@ This is where you work on your flow and transport case study.
 
 ## What You Submit
 
-Submit the complete project material via Moodle:
+Submit the complete project material through the channel announced by the teaching team, for example Moodle:
 
 - your completed flow notebook;
 - your completed transport notebook;
