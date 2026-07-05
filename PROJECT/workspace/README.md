@@ -36,6 +36,22 @@ Work through the required notebook sections first. Optional sections are enrichm
 
 Use the time estimates at the top of each notebook to plan your work. If a task takes much longer than the estimate, ask for help rather than spending many hours debugging alone.
 
+## When To Ask For Help
+
+Use the shared question channel announced by the teaching team when you are blocked. Include the notebook name, section, relevant error message or screenshot, and what you already tried.
+
+Ask for help when:
+
+- JupyterHub, kernels, or file access are unstable;
+- code errors appear that you do not understand after reading the surrounding notebook text;
+- a required model run fails or takes much longer than expected;
+- model edits lead to numerical instability or non-convergence;
+- you cannot tell whether a result is a hydrogeological signal, numerical noise, or a code/setup issue;
+- you are unsure whether a notebook section is required or optional;
+- you cannot connect a notebook output to the report or presentation deliverable.
+
+If numerical instability appears after you edited model parameters or scenario settings, step back to the original `template/` version or your last known working version. Then reintroduce your changes one at a time.
+
 ## Definition Of Done
 
 Before submission, check that you can answer each item below. The goal is not only to produce figures.

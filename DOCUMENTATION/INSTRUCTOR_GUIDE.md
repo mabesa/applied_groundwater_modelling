@@ -1,6 +1,6 @@
 # Instructor Guide
 
-This guide is for instructors, teaching assistants, and external adopters. The main [README.md](README.md) is the student entry point.
+This guide is for instructors, teaching assistants, and external adopters. The main [README.md](../README.md) is the student entry point.
 
 ## Course Identity
 
@@ -71,19 +71,31 @@ Recommended runtime constraint: no individual model run should take more than ab
 
 ## Support Model
 
-Do not leave students alone with the notebooks. The project can include self-study, but students need structured support.
+Do not leave students alone with the notebooks. The project can include self-study, but it is designed as supported independent work, not as a fully unsupervised self-study module. Structured support keeps student effort focused on groundwater modelling judgement rather than avoidable setup, code, or numerical-stability blockers.
 
 Recommended support:
 
-- explain the most important notebook sections and take-home modelling ideas in class;
-- run in-class project clinics during the project block;
-- provide a Moodle forum or equivalent shared question space;
-- aim for TA or instructor response within 24 hours during active project periods;
-- encourage peer support, while keeping expectations and deliverables clear.
+- frame each modelling-heavy notebook sequence before students work independently: identify the take-home modelling idea, required versus optional sections, cells students are expected to modify, and outputs that feed the project report;
+- offer supervised project clinics during active project work. As a baseline, plan two clinics in the first half of the project block and two in the second half. If project work is split across the semester, offer two clinics during each active project-work period;
+- hold clinics in person, online, or hybrid as staffing allows. All three are valid support formats; choose based on staffing, student location, and course logistics;
+- provide a shared question channel, such as a Moodle forum or equivalent course platform;
+- publish a monitoring schedule or monitored hours for the question channel, so students know when replies can be expected;
+- aim for instructor or TA response within 24 hours during active project periods and monitored times;
+- encourage peer support for concepts, setup issues, and debugging symptoms, while keeping group-specific interpretations, report text, figures, and conclusions as each group's own work.
+
+Minimum viable support:
+
+- short in-class framing before modelling-heavy notebook sequences;
+- supervised project clinics during active project work;
+- a monitored shared question channel;
+- clear required/optional labels and explicit deliverable expectations;
+- instructor and, where available, TA preparation by running required notebooks in the student environment before assigning them.
+
+The material should not be advertised as a fully unsupported self-study resource. A defensible publication claim is that the notebooks support independent group project work when paired with a lightweight support scaffold: pre-work framing, supervised clinics that may be in person or online, a monitored question channel, and timely instructor/TA responses during monitored periods.
 
 ## Student Deliverables
 
-The canonical student deliverables are listed in [PROJECT/workspace/README.md](PROJECT/workspace/README.md). Keep the deliverables there to avoid drift between student-facing and instructor-facing documentation.
+The canonical student deliverables are listed in [PROJECT/workspace/README.md](../PROJECT/workspace/README.md). Keep the deliverables there to avoid drift between student-facing and instructor-facing documentation.
 
 Instructors or TAs should run submitted notebooks to verify that report content is reproducible from the submitted work.
 
@@ -109,9 +121,9 @@ Report and presentation rubrics should emphasize:
 
 Before running the material in another course:
 
-- read the [README.md](README.md) and verify the local setup with `0_diagnostics.ipynb`;
+- read the [README.md](../README.md) and verify the local setup with `0_diagnostics.ipynb`;
 - check [DATA_AVAILABILITY.md](DATA_AVAILABILITY.md) and confirm that the public data terms fit your intended use;
-- review [LICENSE](LICENSE) and retain required attribution for code, teaching material, figures, and public data providers;
+- review [LICENSE](../LICENSE) and retain required attribution for code, teaching material, figures, and public data providers;
 - decide whether to use Layer 1, Layer 2, or optional extensions;
 - allocate supervised project clinic time;
 - decide which optional notebook sections are in scope;
@@ -149,4 +161,4 @@ Suggested pre/post concept-question dimensions:
 
 ## Licensing
 
-See [LICENSE](LICENSE) for the repository license structure and [DATA_AVAILABILITY.md](DATA_AVAILABILITY.md) for public data provenance and provider terms.
+See [LICENSE](../LICENSE) for the repository license structure and [DATA_AVAILABILITY.md](DATA_AVAILABILITY.md) for public data provenance and provider terms.
