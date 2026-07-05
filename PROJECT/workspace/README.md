@@ -7,9 +7,14 @@ This is where you work on your flow and transport case study.
 ## Getting Started
 
 1. Copy the `template/` folder to create your own workspace.
-2. Rename the copy to your group name, for example `group_alice_bob/`.
+2. Rename the copy to your group folder using the standard naming `group_<N>`, zero-padded
+   to two digits — for example `group_03`.
 3. Work only in your group folder.
-4. Keep the original `template/` folder unchanged so you can compare against it if needed.
+4. **Do not rename the template notebooks.** The filenames stay exactly as shipped —
+   `case_study_flow_group_0.ipynb` and `case_study_transport_group_0.ipynb` — even though
+   your folder is `group_<N>`. Your group is identified by the folder name, not the
+   notebook filename.
+5. Keep the original `template/` folder unchanged so you can compare against it if needed.
 
 ## Template Contents
 
@@ -62,9 +67,7 @@ Fill in and include
 
 **Submission channel:**
 
-- **Preferred — Moodle.** Upload the single group ZIP to Moodle. The exact Moodle
-  assignment location and its file-size limit are **still being confirmed** by the
-  teaching team; check the current course announcement before you submit.
+- **Preferred — Moodle.** Upload the single group ZIP to Moodle.
 - **Fallback — email (if Moodle is unavailable or the ZIP exceeds the Moodle limit).**
   Send **one** email to **both lecturers**, with **all group members in CC**:
   - if the ZIP is small enough for email, **attach the single group ZIP**;
@@ -74,14 +77,24 @@ Fill in and include
 - **Receipt.** A lecturer replies by email to confirm they received your submission.
   The **first lecturer confirmation** is your official receipt timestamp; keep it.
 
+> **Moodle is the definitive source for the local course run.** The actual fallback
+> lecturer email addresses, the Moodle assignment location, and any file-size limit are
+> announced in Moodle / in class — they are **not** stored in this public repository.
+> Always check the current course announcement before you submit.
+
 The ZIP contains:
 
-- your filled `case_config.yaml` (and `case_config_transport.yaml` if used);
-- the **master** flow (and transport) notebooks, **with saved output**;
+- your filled `case_config.yaml` and `case_config_transport.yaml`;
+- the **master** flow and transport notebooks, **with saved output**
+  (`case_study_flow_group_0.ipynb`, `case_study_transport_group_0.ipynb`);
 - the **steward export** notebook, with saved output;
-- the **scratch** notebook(s) with saved figures/tables, plus `scratch_io.py`;
+- the **scratch** notebook(s) (`scratch_<name>.ipynb`) with saved figures/tables, plus
+  `scratch_io.py`;
 - the `exports/` bundle, and the `figures/` and `tables/` you produced;
-- your project report and presentation covering both flow and transport.
+- `report.pdf` and `presentation.pdf` in the **group folder root**.
+
+Flow **and** transport are **both required** for the final project submission once the
+transport phase has been assigned.
 
 The heavy MODFLOW / transport model workspaces under
 `~/applied_groundwater_modelling_data/` are **excluded** from the ZIP — the lightweight
@@ -112,15 +125,74 @@ Before submission, check that you can answer each item below. The goal is not on
 - whether the result looks like a physical signal, numerical noise, or model instability;
 - what the result implies for the practical groundwater problem.
 
-## Before You Submit
+## How To Prepare And Submit The ZIP
 
-- Restart the kernel and run the **scratch** notebook top to bottom against the frozen
-  `exports/` bundle — it must run without manual fixes. This is the reproducibility
-  check your TA repeats.
-- Make sure the **master** and **steward** notebooks are saved **with their output**
-  (they are provenance records, not rerun targets).
-- Confirm the `exports/` bundle and `scratch_io.py` are inside the ZIP and the heavy
-  workspaces are not.
+These steps run on the course JupyterHub. Replace `<N>` with your zero-padded group
+number (for example `03`). All commands avoid `/tmp` and use `~/ziptest` for the extract
+check.
+
+**1. Finalise your work inside the group folder.** Do everything inside
+`PROJECT/workspace/group_<N>/`. Nothing you submit lives outside that folder.
+
+**2. Fill in the submission README.** Copy `template/SUBMISSION_README_TEMPLATE.md` into
+your group folder as `SUBMISSION_README.md` and fill in every `<...>` field.
+
+**3. Run the steward export.** The steward opens `steward_export_lightweight.ipynb`,
+restarts the kernel, and runs all cells to (re)build the `exports/` bundle.
+
+**4. Run each scratch notebook.** For every `scratch_<name>.ipynb` in the group folder,
+restart the kernel and run all cells so figures and tables are saved with output.
+
+**5. Add the report and presentation.** Put `report.pdf` and `presentation.pdf` in the
+**group folder root** (`PROJECT/workspace/group_<N>/`), alongside the notebooks.
+
+**6. Create the ZIP from `PROJECT/workspace/`** — *not* from inside the group folder, so
+the archive has a single top-level `group_<N>/` folder. Exclude checkpoint/cache junk:
+
+```bash
+cd ~/applied_groundwater_modelling.git/PROJECT/workspace
+rm -f group_<N>.zip
+zip -r group_<N>.zip group_<N> \
+  -x "*/.ipynb_checkpoints/*" "*/__pycache__/*" "*.pyc" "*/.DS_Store" "*/__MACOSX/*"
+```
+
+**7. Verify the ZIP has a single top-level `group_<N>/` folder:**
+
+```bash
+unzip -l group_<N>.zip | head
+```
+
+Everything listed should sit under `group_<N>/`. If you see files at the top level, you
+zipped from inside the group folder — redo step 6 from `PROJECT/workspace/`.
+
+**8. Extract into a clean folder and rerun one scratch notebook.** Extract under
+`~/ziptest` (never `/tmp`) and confirm a scratch notebook reruns from the extracted copy
+alone:
+
+```bash
+rm -rf ~/ziptest/group_<N>
+mkdir -p ~/ziptest
+unzip -q group_<N>.zip -d ~/ziptest
+cd ~/ziptest/group_<N>
+```
+
+Then open one `scratch_<name>.ipynb` from `~/ziptest/group_<N>/`, **restart the kernel,
+and run all cells**. It must run top to bottom without manual fixes, using only the local
+`scratch_io.py` and `exports/` bundle.
+
+**9. Submit one ZIP only** via the channel above (Moodle preferred). No loose files, no
+split archives.
+
+### What reruns, and what does not
+
+- The **scratch** notebooks (`scratch_<name>.ipynb`) are the **rerun target**: they are
+  FloPy-free and rerun from the submission ZIP alone on the course JupyterHub
+  environment, reading only `scratch_io.py` and the `exports/` bundle.
+- The **master** notebooks (`case_study_flow_group_0.ipynb`,
+  `case_study_transport_group_0.ipynb`) and the **steward export** notebook are
+  **saved-output / provenance records**, not ZIP-rerun targets.
+- The heavy model workspaces under `~/applied_groundwater_modelling_data/` are
+  **excluded** from the ZIP; the lightweight `exports/` bundle stands in for them.
 
 For roles, card assignment, the export freeze, and the (optional) Git guidance, see
 [`template/COLLABORATION.md`](template/COLLABORATION.md).
