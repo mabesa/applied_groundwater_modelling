@@ -12,7 +12,7 @@ CASE_STUDY = "limmat"
 DATA_SOURCE = "dropbox"
 
 # DATA_URLS for different case studies and sources.
-# Keep DATA_AVAILABILITY.md in sync when adding, removing, or renaming data keys.
+# Keep DOCUMENTATION/DATA_AVAILABILITY.md in sync when adding, removing, or renaming data keys.
 DATA_URLS = {
     "limmat": {
         "dropbox": {

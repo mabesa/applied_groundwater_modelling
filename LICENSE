@@ -7,8 +7,8 @@ This repository contains source code, teaching content, figures, notebooks, and 
 
 - Source code, scripts, helper modules, and executable code cells are licensed under the MIT License below.
 - Teaching text, notebook prose, exercise text, markdown documentation, and project-owned figures are licensed under the Creative Commons Attribution 4.0 International License (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
-- Third-party public data remain under the terms of the original data providers. See DATA_AVAILABILITY.md.
-- Derived data and model artifacts may incorporate third-party public data and must be reused under the applicable provider terms described in DATA_AVAILABILITY.md, unless explicitly stated otherwise.
+- Third-party public data remain under the terms of the original data providers. See DOCUMENTATION/DATA_AVAILABILITY.md.
+- Derived data and model artifacts may incorporate third-party public data and must be reused under the applicable provider terms described in DOCUMENTATION/DATA_AVAILABILITY.md, unless explicitly stated otherwise.
 
 For the MIT License below, "Software" means source code, scripts, helper modules, and executable code cells owned by this project. It does not include third-party data, derived data/model artifacts, teaching prose, figures, or exercise text.
 

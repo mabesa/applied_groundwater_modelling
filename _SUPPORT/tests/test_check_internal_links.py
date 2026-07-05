@@ -61,7 +61,12 @@ def test_readme_links_resolve():
     source = REPO_ROOT / "README.md"
 
     assert (
-        check_internal_links.validate_link(REPO_ROOT, tracked, source, "DEVELOPMENT.md")
+        check_internal_links.validate_link(
+            REPO_ROOT,
+            tracked,
+            source,
+            "DOCUMENTATION/DEVELOPMENT.md",
+        )
         is None
     )
     assert (

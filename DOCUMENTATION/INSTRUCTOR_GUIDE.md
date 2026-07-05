@@ -1,6 +1,6 @@
 # Instructor Guide
 
-This guide is for instructors, teaching assistants, and external adopters. The main [README.md](README.md) is the student entry point.
+This guide is for instructors, teaching assistants, and external adopters. The main [README.md](../README.md) is the student entry point.
 
 ## Course Identity
 
@@ -95,7 +95,7 @@ The material should not be advertised as a fully unsupported self-study resource
 
 ## Student Deliverables
 
-The canonical student deliverables are listed in [PROJECT/workspace/README.md](PROJECT/workspace/README.md). Keep the deliverables there to avoid drift between student-facing and instructor-facing documentation.
+The canonical student deliverables are listed in [PROJECT/workspace/README.md](../PROJECT/workspace/README.md). Keep the deliverables there to avoid drift between student-facing and instructor-facing documentation.
 
 Instructors or TAs should run submitted notebooks to verify that report content is reproducible from the submitted work.
 
@@ -121,9 +121,9 @@ Report and presentation rubrics should emphasize:
 
 Before running the material in another course:
 
-- read the [README.md](README.md) and verify the local setup with `0_diagnostics.ipynb`;
+- read the [README.md](../README.md) and verify the local setup with `0_diagnostics.ipynb`;
 - check [DATA_AVAILABILITY.md](DATA_AVAILABILITY.md) and confirm that the public data terms fit your intended use;
-- review [LICENSE](LICENSE) and retain required attribution for code, teaching material, figures, and public data providers;
+- review [LICENSE](../LICENSE) and retain required attribution for code, teaching material, figures, and public data providers;
 - decide whether to use Layer 1, Layer 2, or optional extensions;
 - allocate supervised project clinic time;
 - decide which optional notebook sections are in scope;
@@ -161,4 +161,4 @@ Suggested pre/post concept-question dimensions:
 
 ## Licensing
 
-See [LICENSE](LICENSE) for the repository license structure and [DATA_AVAILABILITY.md](DATA_AVAILABILITY.md) for public data provenance and provider terms.
+See [LICENSE](../LICENSE) for the repository license structure and [DATA_AVAILABILITY.md](DATA_AVAILABILITY.md) for public data provenance and provider terms.

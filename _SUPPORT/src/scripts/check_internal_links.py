@@ -91,6 +91,9 @@ def is_source_file(path):
     if "/" not in path and suffix == ".md":
         return True
 
+    if path.startswith("DOCUMENTATION/"):
+        return suffix == ".md"
+
     if not path.startswith("PROJECT/"):
         return False
 

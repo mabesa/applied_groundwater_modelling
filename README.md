@@ -207,6 +207,7 @@ applied_groundwater_modelling/
 │   ├── transport/            # Transport track
 │   ├── workspace/            # Your working area
 │   └── _demos/               # Calibration & uncertainty demos
+├── DOCUMENTATION/            # Instructor, data, reference, and development docs
 ├── _SUPPORT/                 # Helper code and static files
 ├── 0_diagnostics.ipynb       # Environment check
 └── 0_sync_repo.ipynb         # Update from upstream
@@ -231,7 +232,7 @@ applied_groundwater_modelling/
 
 Course data is downloaded automatically and stored in `~/applied_groundwater_modelling_data/`.
 
-The Limmat Valley case study uses public data sources, including AWEL/GIS-ZH, BAFU, and swisstopo. The repository may use mirrors or cached teaching copies for convenient downloads, but provider portals and terms remain authoritative. See [DATA_AVAILABILITY.md](DATA_AVAILABILITY.md) for provenance, terms, and raw-versus-derived artifact notes.
+The Limmat Valley case study uses public data sources, including AWEL/GIS-ZH, BAFU, and swisstopo. The repository may use mirrors or cached teaching copies for convenient downloads, but provider portals and terms remain authoritative. See [Data Availability](DOCUMENTATION/DATA_AVAILABILITY.md) for provenance, terms, and raw-versus-derived artifact notes.
 
 <details>
 <summary>Data configuration details</summary>
@@ -345,21 +346,21 @@ This course is designed with accessibility in mind - screen reader compatibility
 
 ## 9 For Developers
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for:
+See the [Development Guide](DOCUMENTATION/DEVELOPMENT.md) for:
 - Environment setup with uv
 - Pre-commit hooks (auto-strips notebook outputs)
 - Code style and contribution guidelines
 
 ## 10 For Instructors
 
-See [INSTRUCTOR_GUIDE.md](INSTRUCTOR_GUIDE.md) for the teaching design, project scope, support model, deliverables, and reuse guidance.
+See the [Instructor Guide](DOCUMENTATION/INSTRUCTOR_GUIDE.md) for the teaching design, project scope, support model, deliverables, and reuse guidance.
 
 ## 11 Citation, Licensing, And Data
 
 - See [CITATION.cff](CITATION.cff) for citation metadata.
 - See [LICENSE](LICENSE) for the repository license structure.
-- See [DATA_AVAILABILITY.md](DATA_AVAILABILITY.md) for public data provenance and provider terms.
-- See [REFERENCES.md](REFERENCES.md) for scientific and technical background references.
+- See [Data Availability](DOCUMENTATION/DATA_AVAILABILITY.md) for public data provenance and provider terms.
+- See [References](DOCUMENTATION/REFERENCES.md) for scientific and technical background references.
 
 The `course_2026` branch is a live teaching branch. For publication or formal reuse, cite a tagged release and archived DOI once available; until then, cite the repository version or commit you used.
 
