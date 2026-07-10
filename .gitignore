@@ -193,3 +193,6 @@ _SUPPORT/src/spill_smoke/
 /.serena
 /_SUPPORT/extract_river_temperature_from_yearbooks/debug_output
 /_SUPPORT/extract_river_temperature_from_yearbooks/downloaded_pdfs
+
+# WF2 (vision-build) detached gate-runner artifacts
+.claude/workflow-runs/
