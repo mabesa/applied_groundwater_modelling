@@ -1938,27 +1938,27 @@ def build_prt_model(
     }
 
 
-def build_refined_gwf_model(
+def generate_refined_grid(
     gwf,
     boundary_gdf: gpd.GeoDataFrame,
     river_gdf: gpd.GeoDataFrame,
     refine_points: Union[List[tuple], gpd.GeoDataFrame],
     head_array: np.ndarray,
-    workspace: Union[str, Path],
     refine_radius: float = 200.0,
     base_cell_size: float = 50.0,
     refined_cell_size: float = 10.0,
     well_data: Optional[List[tuple]] = None,
-    sim_name: str = "refined_model",
     baseline_head_array: Optional[np.ndarray] = None,
 ) -> Dict[str, Any]:
     """
-    Build and run a locally-refined GWF model from an existing coarse model.
+    Build a locally-refined Voronoi grid and interpolate/reassign all
+    model inputs from an existing coarse GWF model onto it.
 
-    Creates a new Voronoi grid with refinement zones around each point in
-    *refine_points*, interpolates all properties from the coarse model via
-    nearest-neighbour, transfers CHD / RIV / WEL boundary conditions, and
-    runs the simulation.
+    This performs every step that depends on geometry — grid generation,
+    nearest-neighbour interpolation of arrays, and spatial reassignment of
+    CHD / RIV / WEL boundary conditions — and returns a frozen "spec" dict
+    of plain arrays/lists with no MF6 objects. :func:`assemble_gwf_from_spec`
+    turns that spec into an actual simulation.
 
     Parameters
     ----------
@@ -1975,8 +1975,6 @@ def build_refined_gwf_model(
     head_array : numpy.ndarray
         Head array from the coarse model (used as starting heads on the
         refined grid).  Shape must match the coarse DISV grid.
-    workspace : str or Path
-        Directory for the refined simulation files.
     refine_radius : float, optional
         Radius of refinement circle around each point (m).  Default 200.
     base_cell_size : float, optional
@@ -1985,8 +1983,6 @@ def build_refined_gwf_model(
         Cell size inside refinement zones (m).  Default 10.
     well_data : list of (x, y, rate) tuples, optional
         Well locations and rates to add via WEL package.
-    sim_name : str, optional
-        MF6 simulation / model name.
     baseline_head_array : numpy.ndarray, optional
         Head array from the *coarse* baseline model (before scenario
         changes).  When provided, it is interpolated onto the refined grid
@@ -1995,28 +1991,19 @@ def build_refined_gwf_model(
     Returns
     -------
     dict
-        ``sim``            – MFSimulation
-        ``gwf``            – ModflowGwf (refined)
-        ``modelgrid``      – refined VertexGrid
-        ``gridprops``      – DISV grid properties dict
-        ``ncpl``           – cells per layer
-        ``heads``          – 1-D head array from the run
-        ``well_cells``     – list of flat cell indices (one per well_data entry)
-        ``baseline_heads`` – 1-D head array on refined grid (only when
-                             *baseline_head_array* is given)
+        Plain-array spec consumed by :func:`assemble_gwf_from_spec` — no
+        live MF6 objects, no VertexGrid: ``gridprops``, ``ncpl``, ``top``,
+        ``botm``, ``k``, ``rch``, ``strt``, ``idomain``, ``chd_cellid``,
+        ``chd_head``, ``riv_cellid``, ``riv_stage``, ``riv_cond``,
+        ``riv_rbot``, ``wel_cellid``, ``wel_rate``, ``well_cells``,
+        ``refine_radius_used``, ``crs``, and (optionally)
+        ``baseline_heads``.
     """
-    import shutil
     from scipy.interpolate import NearestNDInterpolator
     from shapely.geometry import Point as ShapelyPoint
     from shapely.geometry import Polygon as ShapelyPolygon
     from shapely.prepared import prep as shapely_prep
     import disv_grid_utils as dgu
-    import flopy as _flopy
-
-    workspace = Path(workspace)
-    if workspace.exists():
-        shutil.rmtree(workspace)
-    workspace.mkdir(parents=True)
 
     # ------------------------------------------------------------------
     # 1. Normalise refine_points → list of (x, y)
@@ -2094,38 +2081,7 @@ def build_refined_gwf_model(
     )(xc_ref, yc_ref)
 
     # ------------------------------------------------------------------
-    # 4. Build GWF simulation
-    # ------------------------------------------------------------------
-    ref_sim = _flopy.mf6.MFSimulation(
-        sim_name=sim_name, exe_name='mf6', sim_ws=str(workspace),
-    )
-    _flopy.mf6.ModflowTdis(
-        ref_sim, time_units='DAYS', nper=1, perioddata=[(1.0, 1, 1)],
-    )
-    # Keep the refined solver aligned with the course NEWTON policy.
-    _flopy.mf6.ModflowIms(
-        ref_sim,
-        **GWF_NEWTON_IMS_OPTIONS,
-    )
-
-    ref_gwf = _flopy.mf6.ModflowGwf(
-        ref_sim, modelname=sim_name, save_flows=True,
-        newtonoptions=GWF_NEWTON_OPTIONS,
-    )
-    _flopy.mf6.ModflowGwfdisv(
-        ref_gwf, nlay=1, ncpl=ncpl, nvert=gridprops['nvert'],
-        top=top_ref, botm=[botm_ref],
-        vertices=gridprops['vertices'], cell2d=gridprops['cell2d'],
-    )
-    _flopy.mf6.ModflowGwfnpf(
-        ref_gwf, icelltype=1, k=k_ref, save_flows=True,
-        save_specific_discharge=True, save_saturation=True,
-    )
-    _flopy.mf6.ModflowGwfic(ref_gwf, strt=strt_ref)
-    _flopy.mf6.ModflowGwfrcha(ref_gwf, recharge=rch_ref)
-
-    # ------------------------------------------------------------------
-    # 5. CHD transfer
+    # 4. CHD transfer
     # ------------------------------------------------------------------
     chd_orig = gwf.get_package('CHD')
     chd_data = chd_orig.stress_period_data.get_data(0)
@@ -2152,11 +2108,12 @@ def build_refined_gwf_model(
         if rec[0] not in seen:
             seen.add(rec[0])
             chd_dedup.append(rec)
-    _flopy.mf6.ModflowGwfchd(ref_gwf, stress_period_data=chd_dedup)
+    chd_cellid = [rec[0] for rec in chd_dedup]
+    chd_head = [rec[1] for rec in chd_dedup]
     print(f"CHD cells: {len(chd_dedup)}")
 
     # ------------------------------------------------------------------
-    # 6. RIV transfer
+    # 5. RIV transfer
     # ------------------------------------------------------------------
     riv_orig = gwf.get_package('RIV').stress_period_data.get_data(0)
     riv_xy = np.array([
@@ -2166,7 +2123,7 @@ def build_refined_gwf_model(
     ])
     stage_nn = NearestNDInterpolator(riv_xy, [r['stage'] for r in riv_orig])
     rbot_nn = NearestNDInterpolator(riv_xy, [r['rbot'] for r in riv_orig])
-    riv_cond = np.array([r['cond'] for r in riv_orig])
+    riv_cond_orig = np.array([r['cond'] for r in riv_orig])
 
     orig_riv_areas = np.array([
         ShapelyPolygon(coarse_modelgrid.get_cell_vertices(
@@ -2180,37 +2137,155 @@ def build_refined_gwf_model(
     ].geometry.union_all()
     river_prep = shapely_prep(river_union)
 
-    riv_spd = []
+    riv_cellid = []
+    riv_stage = []
+    riv_cond = []
+    riv_rbot = []
     for i in range(ncpl):
         if river_prep.contains(ShapelyPoint(xc_ref[i], yc_ref[i])):
             dists = (riv_xy[:, 0] - xc_ref[i])**2 + (riv_xy[:, 1] - yc_ref[i])**2
             j = np.argmin(dists)
             area_new = ShapelyPolygon(mg_ref.get_cell_vertices(i)).area
-            cond_scaled = riv_cond[j] * area_new / orig_riv_areas[j]
-            riv_spd.append((
-                (0, i),
-                float(stage_nn(xc_ref[i], yc_ref[i])),
-                float(cond_scaled),
-                float(rbot_nn(xc_ref[i], yc_ref[i])),
-            ))
-    _flopy.mf6.ModflowGwfriv(ref_gwf, stress_period_data=riv_spd)
-    print(f"RIV cells: {len(riv_spd)}")
+            cond_scaled = riv_cond_orig[j] * area_new / orig_riv_areas[j]
+            riv_cellid.append((0, i))
+            riv_stage.append(float(stage_nn(xc_ref[i], yc_ref[i])))
+            riv_cond.append(float(cond_scaled))
+            riv_rbot.append(float(rbot_nn(xc_ref[i], yc_ref[i])))
+    print(f"RIV cells: {len(riv_cellid)}")
 
     # ------------------------------------------------------------------
-    # 7. WEL
+    # 6. WEL
     # ------------------------------------------------------------------
     well_cells_out = []
+    wel_cellid = []
+    wel_rate = []
     if well_data:
-        wel_spd = []
         for wx, wy, rate in well_data:
             wc = int(np.argmin((xc_ref - wx)**2 + (yc_ref - wy)**2))
-            wel_spd.append(((0, wc), rate))
+            wel_cellid.append((0, wc))
+            wel_rate.append(rate)
             well_cells_out.append(wc)
-        _flopy.mf6.ModflowGwfwel(ref_gwf, stress_period_data=wel_spd)
-        print(f"WEL cells: {len(wel_spd)}")
+        print(f"WEL cells: {len(wel_cellid)}")
+
+    spec: Dict[str, Any] = {
+        'gridprops': gridprops,
+        'ncpl': ncpl,
+        'top': top_ref,
+        'botm': botm_ref,
+        'k': k_ref,
+        'rch': rch_ref,
+        'strt': strt_ref,
+        'idomain': np.ones(ncpl, dtype=int),
+        'chd_cellid': chd_cellid,
+        'chd_head': chd_head,
+        'riv_cellid': riv_cellid,
+        'riv_stage': riv_stage,
+        'riv_cond': riv_cond,
+        'riv_rbot': riv_rbot,
+        'wel_cellid': wel_cellid,
+        'wel_rate': wel_rate,
+        'well_cells': well_cells_out,
+        'refine_radius_used': refine_radius,
+        'crs': str(boundary_gdf.crs),
+    }
+    if bl_heads_ref is not None:
+        spec['baseline_heads'] = bl_heads_ref
+    return spec
+
+
+def assemble_gwf_from_spec(
+    spec: Dict[str, Any],
+    workspace: Union[str, Path],
+    sim_name: str = "refined_model",
+) -> Dict[str, Any]:
+    """
+    Build, write, and run an MF6 GWF simulation from a frozen grid spec.
+
+    Pure MF6 construction — no Triangle/Voronoi grid generation, no
+    NearestND interpolation, no spatial (point-in-polygon / nearest)
+    reassignment happens here.  *spec* is the frozen plain-array dict
+    produced by :func:`generate_refined_grid`; every required key is
+    accessed directly (no defaulting) so a spec missing a key fails with
+    a ``KeyError`` before anything is built.
+
+    Parameters
+    ----------
+    spec : dict
+        Grid/property/boundary-condition spec from
+        :func:`generate_refined_grid`.
+    workspace : str or Path
+        Directory for the refined simulation files (must already exist).
+    sim_name : str, optional
+        MF6 simulation / model name.
+
+    Returns
+    -------
+    dict
+        ``sim``            – MFSimulation
+        ``gwf``            – ModflowGwf (refined)
+        ``modelgrid``      – refined VertexGrid
+        ``gridprops``      – DISV grid properties dict
+        ``ncpl``           – cells per layer
+        ``heads``          – 1-D head array from the run
+        ``well_cells``     – list of flat cell indices (one per well_data entry)
+        ``baseline_heads`` – 1-D head array on refined grid (only when
+                             *spec* contains ``baseline_heads``)
+    """
+    import flopy as _flopy
+
+    workspace = Path(workspace)
+    gridprops = spec['gridprops']
+    ncpl = spec['ncpl']
 
     # ------------------------------------------------------------------
-    # 8. OC, write, run
+    # 1. Build GWF simulation
+    # ------------------------------------------------------------------
+    ref_sim = _flopy.mf6.MFSimulation(
+        sim_name=sim_name, exe_name='mf6', sim_ws=str(workspace),
+    )
+    _flopy.mf6.ModflowTdis(
+        ref_sim, time_units='DAYS', nper=1, perioddata=[(1.0, 1, 1)],
+    )
+    # Keep the refined solver aligned with the course NEWTON policy.
+    _flopy.mf6.ModflowIms(
+        ref_sim,
+        **GWF_NEWTON_IMS_OPTIONS,
+    )
+
+    ref_gwf = _flopy.mf6.ModflowGwf(
+        ref_sim, modelname=sim_name, save_flows=True,
+        newtonoptions=GWF_NEWTON_OPTIONS,
+    )
+    _flopy.mf6.ModflowGwfdisv(
+        ref_gwf, nlay=1, ncpl=ncpl, nvert=gridprops['nvert'],
+        top=spec['top'], botm=[spec['botm']], idomain=[spec['idomain']],
+        vertices=gridprops['vertices'], cell2d=gridprops['cell2d'],
+    )
+    _flopy.mf6.ModflowGwfnpf(
+        ref_gwf, icelltype=1, k=spec['k'], save_flows=True,
+        save_specific_discharge=True, save_saturation=True,
+    )
+    _flopy.mf6.ModflowGwfic(ref_gwf, strt=spec['strt'])
+    _flopy.mf6.ModflowGwfrcha(ref_gwf, recharge=spec['rch'])
+
+    # ------------------------------------------------------------------
+    # 2. CHD / RIV / WEL packages — built from frozen cellid/value arrays
+    # ------------------------------------------------------------------
+    chd_spd = list(zip(spec['chd_cellid'], spec['chd_head']))
+    _flopy.mf6.ModflowGwfchd(ref_gwf, stress_period_data=chd_spd)
+
+    riv_spd = list(zip(
+        spec['riv_cellid'], spec['riv_stage'], spec['riv_cond'], spec['riv_rbot'],
+    ))
+    _flopy.mf6.ModflowGwfriv(ref_gwf, stress_period_data=riv_spd)
+
+    wel_cellid = spec['wel_cellid']
+    if wel_cellid:
+        wel_spd = list(zip(wel_cellid, spec['wel_rate']))
+        _flopy.mf6.ModflowGwfwel(ref_gwf, stress_period_data=wel_spd)
+
+    # ------------------------------------------------------------------
+    # 3. OC, write, run
     # ------------------------------------------------------------------
     _flopy.mf6.ModflowGwfoc(
         ref_gwf,
@@ -2229,7 +2304,9 @@ def build_refined_gwf_model(
         )
 
     heads = ref_gwf.output.head().get_data().flatten()
-    ref_gwf.modelgrid.set_coord_info(crs=str(boundary_gdf.crs))
+    crs = spec.get('crs')
+    if crs is not None:
+        ref_gwf.modelgrid.set_coord_info(crs=crs)
     print(f"Refined model completed. Head range: "
           f"{heads.min():.2f} – {heads.max():.2f} m")
 
@@ -2240,11 +2317,103 @@ def build_refined_gwf_model(
         'gridprops': gridprops,
         'ncpl': ncpl,
         'heads': heads,
-        'well_cells': well_cells_out,
+        'well_cells': spec['well_cells'],
     }
-    if bl_heads_ref is not None:
-        result['baseline_heads'] = bl_heads_ref
+    if 'baseline_heads' in spec:
+        result['baseline_heads'] = spec['baseline_heads']
     return result
+
+
+def build_refined_gwf_model(
+    gwf,
+    boundary_gdf: gpd.GeoDataFrame,
+    river_gdf: gpd.GeoDataFrame,
+    refine_points: Union[List[tuple], gpd.GeoDataFrame],
+    head_array: np.ndarray,
+    workspace: Union[str, Path],
+    refine_radius: float = 200.0,
+    base_cell_size: float = 50.0,
+    refined_cell_size: float = 10.0,
+    well_data: Optional[List[tuple]] = None,
+    sim_name: str = "refined_model",
+    baseline_head_array: Optional[np.ndarray] = None,
+) -> Dict[str, Any]:
+    """
+    Build and run a locally-refined GWF model from an existing coarse model.
+
+    Creates a new Voronoi grid with refinement zones around each point in
+    *refine_points*, interpolates all properties from the coarse model via
+    nearest-neighbour, transfers CHD / RIV / WEL boundary conditions, and
+    runs the simulation.
+
+    Thin wrapper around :func:`generate_refined_grid` (spatial/interpolation
+    work) followed by :func:`assemble_gwf_from_spec` (pure MF6 construction).
+
+    Parameters
+    ----------
+    gwf : flopy.mf6.ModflowGwf
+        Source (coarse) GWF model — must have DISV, NPF, RCHA, CHD, RIV.
+    boundary_gdf : geopandas.GeoDataFrame
+        Model domain polygon (used for grid generation).
+    river_gdf : geopandas.GeoDataFrame
+        River polygons used to identify RIV cells in the refined grid.
+        Must intersect with ``boundary_gdf``.
+    refine_points : list of (x, y) tuples **or** GeoDataFrame with Points
+        Locations around which the grid is refined.  Each point gets a
+        circular buffer of *refine_radius*.
+    head_array : numpy.ndarray
+        Head array from the coarse model (used as starting heads on the
+        refined grid).  Shape must match the coarse DISV grid.
+    workspace : str or Path
+        Directory for the refined simulation files.
+    refine_radius : float, optional
+        Radius of refinement circle around each point (m).  Default 200.
+    base_cell_size : float, optional
+        Base Voronoi cell size (m).  Default 50.
+    refined_cell_size : float, optional
+        Cell size inside refinement zones (m).  Default 10.
+    well_data : list of (x, y, rate) tuples, optional
+        Well locations and rates to add via WEL package.
+    sim_name : str, optional
+        MF6 simulation / model name.
+    baseline_head_array : numpy.ndarray, optional
+        Head array from the *coarse* baseline model (before scenario
+        changes).  When provided, it is interpolated onto the refined grid
+        via nearest-neighbour and returned as ``baseline_heads``.
+
+    Returns
+    -------
+    dict
+        ``sim``            – MFSimulation
+        ``gwf``            – ModflowGwf (refined)
+        ``modelgrid``      – refined VertexGrid
+        ``gridprops``      – DISV grid properties dict
+        ``ncpl``           – cells per layer
+        ``heads``          – 1-D head array from the run
+        ``well_cells``     – list of flat cell indices (one per well_data entry)
+        ``baseline_heads`` – 1-D head array on refined grid (only when
+                             *baseline_head_array* is given)
+    """
+    import shutil
+
+    workspace_path = Path(workspace)
+    if workspace_path.exists():
+        shutil.rmtree(workspace_path)
+    workspace_path.mkdir(parents=True)
+
+    spec = generate_refined_grid(
+        gwf=gwf,
+        boundary_gdf=boundary_gdf,
+        river_gdf=river_gdf,
+        refine_points=refine_points,
+        head_array=head_array,
+        refine_radius=refine_radius,
+        base_cell_size=base_cell_size,
+        refined_cell_size=refined_cell_size,
+        well_data=well_data,
+        baseline_head_array=baseline_head_array,
+    )
+    return assemble_gwf_from_spec(spec, workspace=workspace, sim_name=sim_name)
 
 
 def run_scenario_prt(
