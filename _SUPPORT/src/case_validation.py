@@ -31,10 +31,13 @@ Design notes
 
 from __future__ import annotations
 
+import importlib
+import inspect
 import os
 import signal
 import subprocess
 import sys
+import tempfile
 import textwrap
 import time
 from typing import Callable, Optional
@@ -59,9 +62,27 @@ REQUIRED_STAGES: tuple[str, ...] = (
 VALID_STATUSES = frozenset({"PASS", "FAIL", "SKIP", "TIMEOUT", "ERROR", "NOT_IMPLEMENTED"})
 
 # Statuses that make a report "not green" for --require-green purposes.
-_BAD_STATUSES = frozenset({"FAIL", "TIMEOUT", "ERROR", "NOT_IMPLEMENTED"})
+# NOTE: every status other than PASS is "bad" for green purposes -- SKIP
+# included. A stage that was never executed (e.g. because --stage restricted
+# execution to a different stage) must not count as green just because it
+# didn't fail; is_green() is the release gate and must not be foolable by
+# skipping stages.
+_BAD_STATUSES = frozenset({"FAIL", "TIMEOUT", "ERROR", "NOT_IMPLEMENTED", "SKIP"})
 
 DEFAULT_STAGE_TIMEOUT_S = 60.0
+
+# The canonical, closed set of case-study group ids (0-8). Used by the CLI to
+# reject out-of-domain --groups selections and to define what "all groups"
+# means for the --require-green release gate.
+CANONICAL_GROUPS: tuple[int, ...] = tuple(range(9))
+
+# Maximum number of ids a single "lo-hi" range in a --groups spec may expand
+# to. Guards against a typo (or malicious input) like "0-999999999" silently
+# building a huge in-memory list.
+_MAX_GROUPS_RANGE_SPAN = 1000
+
+# Bound on how much of a failed stage's stderr is kept for the FAIL reason.
+_STDERR_TAIL_BYTES = 4096
 
 # stage_id -> (callable, timeout_s)
 _REGISTRY: dict[str, tuple[Callable, float]] = {}
@@ -74,10 +95,27 @@ _REGISTRY: dict[str, tuple[Callable, float]] = {}
 def register_stage(stage_id: str, fn: Callable, timeout_s: Optional[float] = None) -> None:
     """Register *fn* as the implementation for canonical stage *stage_id*.
 
-    *fn* is called as ``fn(group)`` inside a fresh subprocess, so it must be
-    a top-level module function (its ``__qualname__`` must not contain ``.``
-    or ``<locals>``) — lambdas, closures, and bound/nested methods are
-    rejected up front rather than failing mysteriously at run time.
+    *fn* is called as ``fn(group)`` inside a fresh subprocess, which re-imports
+    it by ``(module, qualname)`` rather than pickling it directly. This
+    requires *fn* to be a plain, top-level (module-level) function that a
+    fresh interpreter can resolve back to the same object:
+
+    - ``inspect.isfunction(fn)`` must be true — rejects lambdas (caught
+      separately below for a clearer message), ``functools.partial`` objects,
+      and callable class instances, none of which re-import the same way.
+    - its ``__qualname__`` must not contain ``.`` or ``<locals>`` — rejects
+      lambdas, closures, and bound/nested methods.
+    - ``fn.__module__`` must not be ``"__main__"`` — a function defined in a
+      script run directly re-imports as a *different* module in the
+      subprocess, so it would silently fail to resolve.
+    - ``importlib.import_module(fn.__module__)`` must actually expose an
+      attribute named ``fn.__name__`` that *is* ``fn`` — catches the case
+      where the module resolves but the top-level name doesn't point back at
+      the same function (e.g. it was reassigned or deleted after def).
+
+    All of the above are checked at registration time, so a bad registration
+    fails immediately with a clear ``ValueError`` instead of mysteriously
+    failing inside a subprocess later.
     """
     if stage_id not in REQUIRED_STAGES:
         raise ValueError(f"unknown stage id {stage_id!r}; must be one of {REQUIRED_STAGES}")
@@ -87,6 +125,37 @@ def register_stage(stage_id: str, fn: Callable, timeout_s: Optional[float] = Non
         raise ValueError(
             f"stage {stage_id!r}: implementation must be a top-level module "
             f"function, got __qualname__={qualname!r}"
+        )
+
+    if not inspect.isfunction(fn):
+        raise ValueError(
+            f"stage {stage_id!r}: implementation must be a plain top-level "
+            f"function, got {type(fn)!r} (functools.partial and callable "
+            "class instances are not importable by (module, qualname))"
+        )
+
+    module_name = getattr(fn, "__module__", None)
+    if module_name == "__main__":
+        raise ValueError(
+            f"stage {stage_id!r}: implementation must not be defined in "
+            "'__main__' — it must live in an importable top-level module so "
+            "a subprocess can re-import it by (module, qualname)"
+        )
+
+    try:
+        module = importlib.import_module(module_name)
+    except Exception as exc:
+        raise ValueError(
+            f"stage {stage_id!r}: could not import module {module_name!r} to "
+            f"verify {fn.__name__!r} is resolvable: {exc}"
+        ) from exc
+
+    resolved = getattr(module, fn.__name__, None)
+    if resolved is not fn:
+        raise ValueError(
+            f"stage {stage_id!r}: {module_name}.{fn.__name__} does not resolve "
+            "back to the registered function (it may be nested, reassigned, "
+            "or shadowed) — a subprocess re-import would not find it"
         )
 
     _REGISTRY[stage_id] = (fn, DEFAULT_STAGE_TIMEOUT_S if timeout_s is None else float(timeout_s))
@@ -110,6 +179,13 @@ def parse_groups_spec(spec: str) -> list[int]:
     """Parse a ``--groups`` spec such as ``'0-8'`` or ``'0,3,5'`` or ``'0-2,5'``.
 
     Returns a sorted, de-duplicated list of integer group ids.
+
+    Raises ``ValueError`` for an inverted range (end before start) or a range
+    spanning more than ``_MAX_GROUPS_RANGE_SPAN`` ids (guards against a typo
+    like ``'0-999999999'`` silently building a huge in-memory list). This is
+    purely a sanity cap on the *spec syntax*; it does not know about
+    ``CANONICAL_GROUPS`` — the CLI is responsible for rejecting ids outside
+    the canonical 0-8 domain.
     """
     groups: set[int] = set()
     for part in spec.split(","):
@@ -121,6 +197,11 @@ def parse_groups_spec(spec: str) -> list[int]:
             lo, hi = int(lo_s), int(hi_s)
             if hi < lo:
                 raise ValueError(f"invalid range {part!r}: end before start")
+            if hi - lo + 1 > _MAX_GROUPS_RANGE_SPAN:
+                raise ValueError(
+                    f"invalid range {part!r}: spans {hi - lo + 1} ids, "
+                    f"exceeds the {_MAX_GROUPS_RANGE_SPAN}-id cap"
+                )
             groups.update(range(lo, hi + 1))
         else:
             groups.add(int(part))
@@ -136,6 +217,19 @@ def _run_stage_subprocess(fn: Callable, group, timeout_s: float) -> tuple[str, s
 
     Returns (status, reason, elapsed_s) where status is one of
     'PASS' / 'FAIL' / 'TIMEOUT'.
+
+    Process-group hygiene: the child is launched in its own session
+    (``start_new_session=True``, POSIX), so it is the leader of a fresh
+    process group. If it exceeds *timeout_s*, we kill the WHOLE process
+    group (``os.killpg``), not just the direct child -- otherwise a stage
+    that spawns MODFLOW (or any other grandchild process) would leak that
+    grandchild past the timeout. The graded platform is JupyterHub-Linux;
+    macOS (also POSIX) is supported the same way.
+
+    Output hygiene: the child's stdout is discarded (``DEVNULL``) and its
+    stderr goes to an unnamed temp file (auto-cleaned on close) rather than
+    being buffered in parent memory. Only a bounded tail of stderr
+    (``_STDERR_TAIL_BYTES``) is ever read back, for the FAIL reason string.
     """
     module_name = fn.__module__
     qualname = fn.__qualname__
@@ -154,39 +248,52 @@ def _run_stage_subprocess(fn: Callable, group, timeout_s: float) -> tuple[str, s
     env["PYTHONPATH"] = os.pathsep.join(sys.path)
 
     t0 = time.monotonic()
-    try:
-        result = subprocess.run(
+
+    with tempfile.TemporaryFile(mode="w+b") as stderr_fh:
+        proc = subprocess.Popen(
             [sys.executable, "-c", code],
-            capture_output=True,
-            timeout=timeout_s,
+            stdout=subprocess.DEVNULL,
+            stderr=stderr_fh,
             env=env,
+            start_new_session=True,
         )
-    except subprocess.TimeoutExpired:
-        return "TIMEOUT", f"stage exceeded its {timeout_s:g}s timeout", time.monotonic() - t0
 
-    elapsed = time.monotonic() - t0
-    rc = result.returncode
-
-    if rc == 0:
-        return "PASS", "", elapsed
-
-    if rc < 0:
-        # Popen reports termination by signal N as returncode -N.
         try:
-            sig_name = signal.Signals(-rc).name
-        except ValueError:
-            sig_name = str(-rc)
-        return "FAIL", f"terminated by signal {sig_name} (exit code {rc})", elapsed
+            proc.communicate(timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass  # process (group) already gone
+            proc.communicate()  # reap, avoid a zombie
+            return "TIMEOUT", f"stage exceeded its {timeout_s:g}s timeout", time.monotonic() - t0
 
-    if rc == 132:
-        # 128 + SIGILL(4), as sometimes reported as a positive exit code.
-        return "FAIL", f"exit code {rc} (SIGILL)", elapsed
+        elapsed = time.monotonic() - t0
+        rc = proc.returncode
 
-    stderr_tail = (result.stderr or b"").decode(errors="replace").strip()
-    reason = f"exit code {rc}"
-    if stderr_tail:
-        reason += f": {stderr_tail[-500:]}"
-    return "FAIL", reason, elapsed
+        if rc == 0:
+            return "PASS", "", elapsed
+
+        if rc < 0:
+            # Popen reports termination by signal N as returncode -N.
+            try:
+                sig_name = signal.Signals(-rc).name
+            except ValueError:
+                sig_name = str(-rc)
+            return "FAIL", f"terminated by signal {sig_name} (exit code {rc})", elapsed
+
+        if rc == 132:
+            # 128 + SIGILL(4), as sometimes reported as a positive exit code.
+            return "FAIL", f"exit code {rc} (SIGILL)", elapsed
+
+        stderr_fh.seek(0, os.SEEK_END)
+        size = stderr_fh.tell()
+        stderr_fh.seek(max(0, size - _STDERR_TAIL_BYTES))
+        stderr_tail = stderr_fh.read().decode(errors="replace").strip()
+        reason = f"exit code {rc}"
+        if stderr_tail:
+            reason += f": {stderr_tail[-500:]}"
+        return "FAIL", reason, elapsed
 
 
 def _run_stage(stage_id: str, group, plan_only: bool) -> dict:
@@ -269,10 +376,15 @@ def run_validation(groups: list[int], stage: Optional[str] = None, plan_only: bo
 
 
 def is_green(report: dict) -> bool:
-    """True iff every required stage is present and PASS in every group.
+    """True iff every required stage is present AND has status == PASS, in
+    every group.
 
-    Any of FAIL / TIMEOUT / ERROR / NOT_IMPLEMENTED, or a required stage
-    missing entirely from a group's report, makes the report "not green".
+    This is a strict release gate: any status other than PASS -- including
+    SKIP -- or a required stage missing entirely from a group's report,
+    makes the report "not green". SKIP is deliberately treated as failing:
+    a stage that was merely skipped (e.g. via ``--stage`` restricting
+    execution to a different stage, or ``plan_only``) has not been verified
+    to pass, so a report built that way must never be reported as green.
     """
     required = set(REQUIRED_STAGES)
     for g in report.get("groups", []):

@@ -184,6 +184,142 @@ print("OK")
 """
 
 
+class TestLockPathInsideWorkspace:
+    def test_write_raises_when_lock_path_inside_workspace(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = ws / "sub" / "mother_model_lock.json"
+
+        with pytest.raises(ValueError, match="lock_path must not be inside workspace"):
+            write_mother_model_lock(ws, lock_path=lock_path)
+
+    def test_write_raises_when_lock_path_is_workspace_itself_child(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = ws / "mother_model_lock.json"
+
+        with pytest.raises(ValueError, match="lock_path must not be inside workspace"):
+            write_mother_model_lock(ws, lock_path=lock_path)
+
+
+class TestWorkspaceMustExist:
+    def test_write_raises_on_nonexistent_workspace(self, tmp_path):
+        missing = tmp_path / "does_not_exist"
+        with pytest.raises(FileNotFoundError):
+            write_mother_model_lock(missing, lock_path=tmp_path / "lock.json")
+
+    def test_write_raises_when_workspace_is_a_file(self, tmp_path):
+        not_a_dir = tmp_path / "im_a_file.txt"
+        not_a_dir.write_text("not a directory", encoding="utf-8")
+        with pytest.raises(FileNotFoundError):
+            write_mother_model_lock(not_a_dir, lock_path=tmp_path / "lock.json")
+
+    def test_verify_raises_on_nonexistent_workspace(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        write_mother_model_lock(ws, lock_path=lock_path)
+
+        missing = tmp_path / "does_not_exist"
+        with pytest.raises(FileNotFoundError):
+            verify_mother_model_lock(missing, lock_path=lock_path)
+
+    def test_verify_raises_when_workspace_is_a_file(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        write_mother_model_lock(ws, lock_path=lock_path)
+
+        not_a_dir = tmp_path / "im_a_file.txt"
+        not_a_dir.write_text("not a directory", encoding="utf-8")
+        with pytest.raises(FileNotFoundError):
+            verify_mother_model_lock(not_a_dir, lock_path=lock_path)
+
+
+class TestLockIntegrityValidation:
+    def test_aggregate_tampering_raises(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        write_mother_model_lock(ws, lock_path=lock_path)
+
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock["aggregate_hash"] = "0" * 64
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="internally inconsistent"):
+            verify_mother_model_lock(ws, lock_path=lock_path)
+
+    def test_good_file_hashes_but_stale_aggregate_raises(self, tmp_path):
+        """Hand-edit a file_hash entry without updating aggregate_hash: the
+        per-file map alone would look self-consistent (files == file_hashes
+        keys), but the aggregate no longer folds to the recorded value."""
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        write_mother_model_lock(ws, lock_path=lock_path)
+
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        some_key = lock["files"][0]
+        lock["file_hashes"][some_key] = "f" * 64
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="internally inconsistent"):
+            verify_mother_model_lock(ws, lock_path=lock_path)
+
+    def test_malformed_lock_missing_key_raises_value_error(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        write_mother_model_lock(ws, lock_path=lock_path)
+
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        del lock["aggregate_hash"]
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        with pytest.raises(ValueError):
+            verify_mother_model_lock(ws, lock_path=lock_path)
+
+    def test_malformed_lock_files_file_hashes_mismatch_raises(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        write_mother_model_lock(ws, lock_path=lock_path)
+
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock["files"].append("nonexistent_extra_entry.txt")
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        with pytest.raises(ValueError):
+            verify_mother_model_lock(ws, lock_path=lock_path)
+
+    def test_malformed_lock_invalid_json_raises_value_error_not_json_decode_error(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock_path.write_text("{not valid json", encoding="utf-8")
+
+        with pytest.raises(ValueError):
+            verify_mother_model_lock(ws, lock_path=lock_path)
+
+
+class TestSymlinkPolicy:
+    def test_symlink_is_skipped_from_hashing(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        real_file = ws / "limmat_valley.nam"
+        link = ws / "sub" / "link_to_nam.txt"
+        try:
+            link.symlink_to(real_file)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlinks not supported on this platform/filesystem")
+
+        lock_path = tmp_path / "lock.json"
+        lock = write_mother_model_lock(ws, lock_path=lock_path)
+
+        assert "sub/link_to_nam.txt" not in lock["files"]
+        assert "limmat_valley.nam" in lock["files"]
+
+        # Verify still passes with the symlink present...
+        assert verify_mother_model_lock(ws, lock_path=lock_path) is True
+
+        # ...and still passes once the symlink is removed, confirming it
+        # never participated in the lock.
+        link.unlink()
+        assert verify_mother_model_lock(ws, lock_path=lock_path) is True
+
+
 class TestFlopyFreeAndFast:
     def test_subprocess_is_flopy_and_pyemu_free(self):
         src_dir = str(Path(__file__).parent.parent / "src")

@@ -85,9 +85,32 @@ def main(argv=None) -> int:
         print(f"ERROR: --groups {args.groups!r} selected no group ids", file=sys.stderr)
         return 2
 
+    out_of_domain = sorted(g for g in groups if g not in cv.CANONICAL_GROUPS)
+    if out_of_domain:
+        print(
+            f"ERROR: --groups {args.groups!r} selected group id(s) outside the "
+            f"canonical domain {cv.CANONICAL_GROUPS}: {out_of_domain}",
+            file=sys.stderr,
+        )
+        return 2
+
     if args.stage is not None and args.stage not in cv.REQUIRED_STAGES:
         print(
             f"ERROR: unknown --stage {args.stage!r}; must be one of {cv.REQUIRED_STAGES}",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.require_green and args.stage is not None:
+        print(
+            "ERROR: --require-green runs all stages and cannot be combined with --stage",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.require_green and set(groups) != set(cv.CANONICAL_GROUPS):
+        print(
+            "ERROR: --require-green is a release gate and must cover all 9 groups 0-8",
             file=sys.stderr,
         )
         return 2

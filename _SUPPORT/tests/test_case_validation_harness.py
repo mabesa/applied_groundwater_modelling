@@ -65,6 +65,13 @@ def _stage_sleep_long(group):
     time.sleep(5)
 
 
+def _stage_main_style(group):
+    """A plain top-level function whose __module__ gets monkeypatched to
+    '__main__' in test_register_main_style_function_rejected, to simulate a
+    stage defined in a script run directly (`python script.py`)."""
+    return None
+
+
 @pytest.fixture(autouse=True)
 def _clean_registry():
     """Ensure no stage registration leaks between tests."""
@@ -127,12 +134,17 @@ class TestNotImplemented:
         # fresh interpreter with an empty registry too, but going through the
         # module directly keeps this test symmetric with the SIGILL test
         # below, which *needs* the shared in-process registry.
+        #
+        # --require-green is a release gate and now requires the full
+        # canonical 0-8 group set (case_validation.CANONICAL_GROUPS), so both
+        # invocations use "0-8" to exercise a real release-gate run rather
+        # than the single-group "0" used previously.
         import importlib
         sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
         vcsr = importlib.import_module("validate_case_study_redesign")
 
-        rc_plain = vcsr.main(["--groups", "0", "--out", str(Path.cwd() / "_unused_report.json")])
-        rc_green = vcsr.main(["--groups", "0", "--require-green"])
+        rc_plain = vcsr.main(["--groups", "0-8", "--out", str(Path.cwd() / "_unused_report.json")])
+        rc_green = vcsr.main(["--groups", "0-8", "--require-green"])
 
         assert rc_plain == 0
         assert rc_green != 0
@@ -168,14 +180,22 @@ class TestSigillStage:
                 assert stages_by_id[oid]["status"] == "NOT_IMPLEMENTED"
 
     def test_require_green_flips_exit_code_around_sigill_stage(self):
-        cv.register_stage("scenario", _stage_sigill)
+        # --require-green now (a) cannot be combined with --stage and (b)
+        # requires the full canonical 0-8 group set (see Fix 2 in
+        # case_validation / the CLI). So rc_plain exercises the old
+        # single-stage/single-group path (still allowed without
+        # --require-green), while rc_green registers every required stage
+        # (all passing except "scenario", which crashes via SIGILL) and runs
+        # the full release-gate invocation across all 9 groups.
+        for stage_id in REQUIRED_STAGES:
+            cv.register_stage(stage_id, _stage_sigill if stage_id == "scenario" else _stage_pass)
 
         import importlib
         sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
         vcsr = importlib.import_module("validate_case_study_redesign")
 
         rc_plain = vcsr.main(["--groups", "0", "--stage", "scenario"])
-        rc_green = vcsr.main(["--groups", "0", "--stage", "scenario", "--require-green"])
+        rc_green = vcsr.main(["--groups", "0-8", "--require-green"])
 
         assert rc_plain == 0
         assert rc_green != 0
@@ -229,3 +249,126 @@ class TestRegistryValidation:
         assert cv.registered_stages() == ["config"]
         cv.clear_registry()
         assert cv.registered_stages() == []
+
+    def test_register_functools_partial_rejected(self):
+        import functools
+
+        partial_fn = functools.partial(_stage_pass)
+        with pytest.raises(ValueError):
+            cv.register_stage("config", partial_fn)
+
+    def test_register_callable_class_instance_rejected(self):
+        class _CallableStage:
+            def __call__(self, group):
+                return None
+
+        with pytest.raises(ValueError):
+            cv.register_stage("config", _CallableStage())
+
+    def test_register_main_style_function_rejected(self):
+        # Simulate a function that was defined in a script run directly
+        # (`python script.py`), where CPython sets __module__ == "__main__".
+        # Uses a dedicated module-level function (not a nested def) so the
+        # __qualname__ check doesn't fire first for an unrelated reason.
+        original_module = _stage_main_style.__module__
+        _stage_main_style.__module__ = "__main__"
+        try:
+            with pytest.raises(ValueError):
+                cv.register_stage("config", _stage_main_style)
+        finally:
+            _stage_main_style.__module__ = original_module
+
+
+# =============================================================================
+# Fix 1 (BLOCKER): is_green must not be foolable by SKIP
+# =============================================================================
+
+class TestFalseGreenClosed:
+    def test_partial_skip_report_is_not_green(self):
+        """One required stage PASS, the other 9 SKIP -- must NOT be green.
+
+        This is the exact shape a `--stage config --require-green` run used
+        to produce before the fix (config PASS, everything else SKIP because
+        --stage restricts execution), which incorrectly reported green.
+        """
+        stages = []
+        for stage_id in REQUIRED_STAGES:
+            if stage_id == "config":
+                stages.append({"id": stage_id, "status": "PASS", "reason": "", "elapsed_s": 0.1})
+            else:
+                stages.append({
+                    "id": stage_id,
+                    "status": "SKIP",
+                    "reason": "not selected (--stage config)",
+                    "elapsed_s": 0.0,
+                })
+        report = {"schema_version": cv.SCHEMA_VERSION, "groups": [{"group": 0, "stages": stages}]}
+
+        assert cv.is_green(report) is False
+
+    def test_all_pass_report_is_green(self):
+        stages = [
+            {"id": stage_id, "status": "PASS", "reason": "", "elapsed_s": 0.1}
+            for stage_id in REQUIRED_STAGES
+        ]
+        report = {"schema_version": cv.SCHEMA_VERSION, "groups": [{"group": 0, "stages": stages}]}
+
+        assert cv.is_green(report) is True
+
+    def test_cli_rejects_require_green_combined_with_stage(self):
+        import importlib
+        sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
+        vcsr = importlib.import_module("validate_case_study_redesign")
+
+        cv.register_stage("config", _stage_pass)
+        rc = vcsr.main(["--stage", "config", "--require-green"])
+
+        assert rc == 2
+
+
+# =============================================================================
+# Fix 2: release-gate group-domain integrity (CANONICAL_GROUPS)
+# =============================================================================
+
+class TestGroupDomain:
+    def test_canonical_groups_is_0_through_8(self):
+        assert cv.CANONICAL_GROUPS == tuple(range(9))
+
+    def test_cli_rejects_out_of_domain_group_id(self):
+        import importlib
+        sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
+        vcsr = importlib.import_module("validate_case_study_redesign")
+
+        rc = vcsr.main(["--groups", "999", "--plan-only"])
+        assert rc == 2
+
+    def test_cli_rejects_huge_out_of_domain_range(self):
+        import importlib
+        sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
+        vcsr = importlib.import_module("validate_case_study_redesign")
+
+        rc = vcsr.main(["--groups", "0-999999999", "--plan-only"])
+        assert rc == 2
+
+    def test_cli_rejects_require_green_with_partial_group_set(self):
+        import importlib
+        sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
+        vcsr = importlib.import_module("validate_case_study_redesign")
+
+        rc = vcsr.main(["--groups", "0", "--require-green"])
+        assert rc == 2
+
+    def test_cli_require_green_full_group_set_but_unimplemented_is_nonzero(self):
+        import importlib
+        sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
+        vcsr = importlib.import_module("validate_case_study_redesign")
+
+        rc = vcsr.main(["--groups", "0-8", "--require-green"])
+        assert rc != 0
+
+    def test_parse_groups_spec_caps_absurd_range_span(self):
+        with pytest.raises(ValueError):
+            cv.parse_groups_spec("0-999999999")
+
+    def test_parse_groups_spec_still_accepts_normal_ranges(self):
+        assert cv.parse_groups_spec("0-8") == list(range(9))

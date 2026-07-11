@@ -39,8 +39,14 @@ _CHUNK_SIZE = 65536
 
 
 def _iter_files_sorted(workspace: Path) -> list[Path]:
-    """Return all regular files under *workspace*, sorted by POSIX relative path."""
-    files = [p for p in workspace.rglob("*") if p.is_file()]
+    """Return all regular, non-symlink files under *workspace*, sorted by POSIX
+    relative path.
+
+    Symlinks are deliberately excluded (``p.is_file() and not p.is_symlink()``)
+    so hashing never follows a link outside the tree and behavior is fully
+    deterministic. A frozen MF6 workspace is not expected to contain any.
+    """
+    files = [p for p in workspace.rglob("*") if p.is_file() and not p.is_symlink()]
     return sorted(files, key=lambda p: p.relative_to(workspace).as_posix())
 
 
@@ -51,6 +57,33 @@ def _hash_file(path: Path) -> str:
         for chunk in iter(lambda: fh.read(_CHUNK_SIZE), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def _fold_aggregate(rel_paths, file_hashes) -> str:
+    """Fold sorted (relative_path, file_hash) pairs into a single sha256 hex digest.
+
+    Shared by ``_compute_manifest`` (computing the aggregate over a live
+    workspace) and ``verify_mother_model_lock`` (recomputing the aggregate over
+    a lock file's own recorded ``files``/``file_hashes`` to detect tampering),
+    so the two can never drift apart.
+
+    *rel_paths* must already be sorted. Relative paths are encoded with
+    ``surrogateescape`` so unusual (non-UTF-8-decodable) POSIX filenames can't
+    crash hashing.
+    """
+    agg = hashlib.sha256()
+    for rel in rel_paths:
+        agg.update(rel.encode("utf-8", "surrogateescape"))
+        agg.update(b"\x00")
+        agg.update(file_hashes[rel].encode("utf-8", "surrogateescape"))
+        agg.update(b"\n")
+    return agg.hexdigest()
+
+
+def _require_existing_dir(workspace: Path) -> None:
+    """Raise FileNotFoundError if *workspace* is not an existing directory."""
+    if not workspace.is_dir():
+        raise FileNotFoundError(f"mother model workspace not found or not a directory: {workspace}")
 
 
 def _compute_manifest(workspace) -> dict:
@@ -66,17 +99,10 @@ def _compute_manifest(workspace) -> dict:
     rel_paths = [p.relative_to(workspace).as_posix() for p in files]
     file_hashes = {rel: _hash_file(p) for rel, p in zip(rel_paths, files)}
 
-    agg = hashlib.sha256()
-    for rel in rel_paths:  # already sorted
-        agg.update(rel.encode("utf-8"))
-        agg.update(b"\x00")
-        agg.update(file_hashes[rel].encode("utf-8"))
-        agg.update(b"\n")
-
     return {
         "files": rel_paths,
         "file_hashes": file_hashes,
-        "aggregate_hash": agg.hexdigest(),
+        "aggregate_hash": _fold_aggregate(rel_paths, file_hashes),
     }
 
 
@@ -86,11 +112,15 @@ def write_mother_model_lock(workspace, lock_path=None, sim_name: str = "limmat_v
     Parameters
     ----------
     workspace:
-        Directory whose current contents (recursively, all regular files)
-        are hashed and pinned.
+        Directory whose current contents (recursively, all regular,
+        non-symlink files) are hashed and pinned. Symlinks are skipped (see
+        ``_iter_files_sorted``).
     lock_path:
         Where to write the lock JSON. Defaults to ``DEFAULT_LOCK_PATH``. The
-        parent directory is created if it does not exist.
+        parent directory is created if it does not exist. Must NOT be inside
+        *workspace* — a lock written into the hashed tree can never verify
+        (it is an extra file on the first write, and a content-changed file
+        on every rewrite thereafter).
     sim_name:
         Free-form label recorded in the lock (e.g. the MODFLOW6 sim name).
 
@@ -98,9 +128,25 @@ def write_mother_model_lock(workspace, lock_path=None, sim_name: str = "limmat_v
     -------
     dict — the lock contents that were written (same structure as the JSON
     file).
+
+    Raises
+    ------
+    FileNotFoundError
+        If *workspace* does not exist or is not a directory.
+    ValueError
+        If *lock_path* resolves to a location inside *workspace*.
     """
     workspace = Path(workspace)
     lock_path = Path(lock_path) if lock_path is not None else DEFAULT_LOCK_PATH
+
+    _require_existing_dir(workspace)
+
+    resolved_workspace = workspace.resolve()
+    resolved_lock_path = lock_path.resolve()
+    if resolved_lock_path.is_relative_to(resolved_workspace):
+        raise ValueError(
+            f"lock_path must not be inside workspace: {lock_path} is inside {workspace}"
+        )
 
     manifest = _compute_manifest(workspace)
     lock = {
@@ -119,8 +165,84 @@ def write_mother_model_lock(workspace, lock_path=None, sim_name: str = "limmat_v
     return lock
 
 
+_REQUIRED_LOCK_KEYS = ("schema_version", "sim_name", "files", "file_hashes", "aggregate_hash")
+
+
+def _load_and_validate_lock(lock_path: Path) -> dict:
+    """Load the lock JSON at *lock_path* and validate its internal integrity.
+
+    Checks, in order:
+    (a) the JSON parses at all (a corrupt file raises a clean ``ValueError``,
+        never a raw ``json.JSONDecodeError``);
+    (b) all of ``_REQUIRED_LOCK_KEYS`` are present;
+    (c) ``files`` is a sorted, duplicate-free list and
+        ``set(files) == set(file_hashes)``;
+    (d) recomputing the aggregate hash from the lock's own ``files`` +
+        ``file_hashes`` (using the same folding as ``_compute_manifest``)
+        matches the recorded ``aggregate_hash``.
+
+    Raises ``ValueError`` (never ``KeyError``/``JSONDecodeError``/``TypeError``)
+    on any malformed or internally-inconsistent lock.
+    """
+    try:
+        with open(lock_path, "r", encoding="utf-8") as fh:
+            lock = json.load(fh)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"could not read mother model lock at {lock_path}: {exc}") from exc
+
+    if not isinstance(lock, dict):
+        raise ValueError(f"mother model lock at {lock_path} is not a JSON object")
+
+    missing = [k for k in _REQUIRED_LOCK_KEYS if k not in lock]
+    if missing:
+        raise ValueError(
+            f"mother model lock at {lock_path} is malformed: missing key(s) {missing!r}"
+        )
+
+    files = lock["files"]
+    file_hashes = lock["file_hashes"]
+
+    if not isinstance(files, list) or not isinstance(file_hashes, dict):
+        raise ValueError(
+            f"mother model lock at {lock_path} is malformed: "
+            "'files' must be a list and 'file_hashes' must be an object"
+        )
+
+    if files != sorted(files):
+        raise ValueError(f"mother model lock at {lock_path} is malformed: 'files' is not sorted")
+    if len(files) != len(set(files)):
+        raise ValueError(f"mother model lock at {lock_path} is malformed: 'files' has duplicates")
+    if set(files) != set(file_hashes.keys()):
+        raise ValueError(
+            f"mother model lock at {lock_path} is malformed: "
+            "'files' and 'file_hashes' keys do not match"
+        )
+
+    try:
+        recomputed_aggregate = _fold_aggregate(files, file_hashes)
+    except (AttributeError, TypeError) as exc:
+        raise ValueError(
+            f"mother model lock at {lock_path} is malformed: could not recompute aggregate hash: {exc}"
+        ) from exc
+
+    if recomputed_aggregate != lock["aggregate_hash"]:
+        raise ValueError(
+            "lock file is internally inconsistent (aggregate_hash mismatch / tampered): "
+            f"{lock_path}"
+        )
+
+    return lock
+
+
 def verify_mother_model_lock(workspace, lock_path=None) -> bool:
     """Verify that *workspace* exactly matches the lock at *lock_path*.
+
+    Before comparing against the workspace, the lock file itself is validated
+    for internal integrity (required keys present, ``files``/``file_hashes``
+    consistent, and the recorded ``aggregate_hash`` matches a fresh fold of
+    the lock's own contents) — see ``_load_and_validate_lock``. This catches
+    malformed and tampered locks with a clean ``ValueError`` rather than
+    silently trusting a doctored file or crashing with a raw ``KeyError``.
 
     Returns ``True`` when every locked file is present, unchanged, and no
     extra files exist. Raises ``ValueError`` naming the first (in sorted
@@ -129,8 +251,9 @@ def verify_mother_model_lock(workspace, lock_path=None) -> bool:
     workspace = Path(workspace)
     lock_path = Path(lock_path) if lock_path is not None else DEFAULT_LOCK_PATH
 
-    with open(lock_path, "r", encoding="utf-8") as fh:
-        lock = json.load(fh)
+    _require_existing_dir(workspace)
+
+    lock = _load_and_validate_lock(lock_path)
 
     locked_files = lock["files"]
     locked_hashes = lock["file_hashes"]
