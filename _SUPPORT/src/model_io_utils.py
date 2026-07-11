@@ -1991,10 +1991,13 @@ def generate_refined_grid(
     Returns
     -------
     dict
-        Spec consumed by :func:`assemble_gwf_from_spec`: ``gridprops``,
-        ``ncpl``, ``modelgrid``, ``top``, ``botm``, ``k``, ``strt``,
-        ``recharge``, ``chd_spd``, ``riv_spd``, ``wel_spd``, ``well_cells``,
-        ``crs``, and (optionally) ``baseline_heads``.
+        Plain-array spec consumed by :func:`assemble_gwf_from_spec` — no
+        live MF6 objects, no VertexGrid: ``gridprops``, ``ncpl``, ``top``,
+        ``botm``, ``k``, ``rch``, ``strt``, ``idomain``, ``chd_cellid``,
+        ``chd_head``, ``riv_cellid``, ``riv_stage``, ``riv_cond``,
+        ``riv_rbot``, ``wel_cellid``, ``wel_rate``, ``well_cells``,
+        ``refine_radius_used``, ``crs``, and (optionally)
+        ``baseline_heads``.
     """
     from scipy.interpolate import NearestNDInterpolator
     from shapely.geometry import Point as ShapelyPoint
@@ -2105,6 +2108,8 @@ def generate_refined_grid(
         if rec[0] not in seen:
             seen.add(rec[0])
             chd_dedup.append(rec)
+    chd_cellid = [rec[0] for rec in chd_dedup]
+    chd_head = [rec[1] for rec in chd_dedup]
     print(f"CHD cells: {len(chd_dedup)}")
 
     # ------------------------------------------------------------------
@@ -2118,7 +2123,7 @@ def generate_refined_grid(
     ])
     stage_nn = NearestNDInterpolator(riv_xy, [r['stage'] for r in riv_orig])
     rbot_nn = NearestNDInterpolator(riv_xy, [r['rbot'] for r in riv_orig])
-    riv_cond = np.array([r['cond'] for r in riv_orig])
+    riv_cond_orig = np.array([r['cond'] for r in riv_orig])
 
     orig_riv_areas = np.array([
         ShapelyPolygon(coarse_modelgrid.get_cell_vertices(
@@ -2132,46 +2137,55 @@ def generate_refined_grid(
     ].geometry.union_all()
     river_prep = shapely_prep(river_union)
 
-    riv_spd = []
+    riv_cellid = []
+    riv_stage = []
+    riv_cond = []
+    riv_rbot = []
     for i in range(ncpl):
         if river_prep.contains(ShapelyPoint(xc_ref[i], yc_ref[i])):
             dists = (riv_xy[:, 0] - xc_ref[i])**2 + (riv_xy[:, 1] - yc_ref[i])**2
             j = np.argmin(dists)
             area_new = ShapelyPolygon(mg_ref.get_cell_vertices(i)).area
-            cond_scaled = riv_cond[j] * area_new / orig_riv_areas[j]
-            riv_spd.append((
-                (0, i),
-                float(stage_nn(xc_ref[i], yc_ref[i])),
-                float(cond_scaled),
-                float(rbot_nn(xc_ref[i], yc_ref[i])),
-            ))
-    print(f"RIV cells: {len(riv_spd)}")
+            cond_scaled = riv_cond_orig[j] * area_new / orig_riv_areas[j]
+            riv_cellid.append((0, i))
+            riv_stage.append(float(stage_nn(xc_ref[i], yc_ref[i])))
+            riv_cond.append(float(cond_scaled))
+            riv_rbot.append(float(rbot_nn(xc_ref[i], yc_ref[i])))
+    print(f"RIV cells: {len(riv_cellid)}")
 
     # ------------------------------------------------------------------
     # 6. WEL
     # ------------------------------------------------------------------
     well_cells_out = []
-    wel_spd = []
+    wel_cellid = []
+    wel_rate = []
     if well_data:
         for wx, wy, rate in well_data:
             wc = int(np.argmin((xc_ref - wx)**2 + (yc_ref - wy)**2))
-            wel_spd.append(((0, wc), rate))
+            wel_cellid.append((0, wc))
+            wel_rate.append(rate)
             well_cells_out.append(wc)
-        print(f"WEL cells: {len(wel_spd)}")
+        print(f"WEL cells: {len(wel_cellid)}")
 
     spec: Dict[str, Any] = {
         'gridprops': gridprops,
         'ncpl': ncpl,
-        'modelgrid': mg_ref,
         'top': top_ref,
         'botm': botm_ref,
         'k': k_ref,
+        'rch': rch_ref,
         'strt': strt_ref,
-        'recharge': rch_ref,
-        'chd_spd': chd_dedup,
-        'riv_spd': riv_spd,
-        'wel_spd': wel_spd,
+        'idomain': np.ones(ncpl, dtype=int),
+        'chd_cellid': chd_cellid,
+        'chd_head': chd_head,
+        'riv_cellid': riv_cellid,
+        'riv_stage': riv_stage,
+        'riv_cond': riv_cond,
+        'riv_rbot': riv_rbot,
+        'wel_cellid': wel_cellid,
+        'wel_rate': wel_rate,
         'well_cells': well_cells_out,
+        'refine_radius_used': refine_radius,
         'crs': str(boundary_gdf.crs),
     }
     if bl_heads_ref is not None:
@@ -2187,8 +2201,12 @@ def assemble_gwf_from_spec(
     """
     Build, write, and run an MF6 GWF simulation from a frozen grid spec.
 
-    Pure MF6 construction — no interpolation or spatial reasoning happens
-    here.  *spec* is the dict produced by :func:`generate_refined_grid`.
+    Pure MF6 construction — no Triangle/Voronoi grid generation, no
+    NearestND interpolation, no spatial (point-in-polygon / nearest)
+    reassignment happens here.  *spec* is the frozen plain-array dict
+    produced by :func:`generate_refined_grid`; every required key is
+    accessed directly (no defaulting) so a spec missing a key fails with
+    a ``KeyError`` before anything is built.
 
     Parameters
     ----------
@@ -2240,7 +2258,7 @@ def assemble_gwf_from_spec(
     )
     _flopy.mf6.ModflowGwfdisv(
         ref_gwf, nlay=1, ncpl=ncpl, nvert=gridprops['nvert'],
-        top=spec['top'], botm=[spec['botm']],
+        top=spec['top'], botm=[spec['botm']], idomain=[spec['idomain']],
         vertices=gridprops['vertices'], cell2d=gridprops['cell2d'],
     )
     _flopy.mf6.ModflowGwfnpf(
@@ -2248,15 +2266,23 @@ def assemble_gwf_from_spec(
         save_specific_discharge=True, save_saturation=True,
     )
     _flopy.mf6.ModflowGwfic(ref_gwf, strt=spec['strt'])
-    _flopy.mf6.ModflowGwfrcha(ref_gwf, recharge=spec['recharge'])
+    _flopy.mf6.ModflowGwfrcha(ref_gwf, recharge=spec['rch'])
 
     # ------------------------------------------------------------------
-    # 2. CHD / RIV / WEL packages
+    # 2. CHD / RIV / WEL packages — built from frozen cellid/value arrays
     # ------------------------------------------------------------------
-    _flopy.mf6.ModflowGwfchd(ref_gwf, stress_period_data=spec['chd_spd'])
-    _flopy.mf6.ModflowGwfriv(ref_gwf, stress_period_data=spec['riv_spd'])
-    if spec['wel_spd']:
-        _flopy.mf6.ModflowGwfwel(ref_gwf, stress_period_data=spec['wel_spd'])
+    chd_spd = list(zip(spec['chd_cellid'], spec['chd_head']))
+    _flopy.mf6.ModflowGwfchd(ref_gwf, stress_period_data=chd_spd)
+
+    riv_spd = list(zip(
+        spec['riv_cellid'], spec['riv_stage'], spec['riv_cond'], spec['riv_rbot'],
+    ))
+    _flopy.mf6.ModflowGwfriv(ref_gwf, stress_period_data=riv_spd)
+
+    wel_cellid = spec['wel_cellid']
+    if wel_cellid:
+        wel_spd = list(zip(wel_cellid, spec['wel_rate']))
+        _flopy.mf6.ModflowGwfwel(ref_gwf, stress_period_data=wel_spd)
 
     # ------------------------------------------------------------------
     # 3. OC, write, run
@@ -2278,7 +2304,9 @@ def assemble_gwf_from_spec(
         )
 
     heads = ref_gwf.output.head().get_data().flatten()
-    ref_gwf.modelgrid.set_coord_info(crs=spec['crs'])
+    crs = spec.get('crs')
+    if crs is not None:
+        ref_gwf.modelgrid.set_coord_info(crs=crs)
     print(f"Refined model completed. Head range: "
           f"{heads.min():.2f} – {heads.max():.2f} m")
 
@@ -2368,10 +2396,10 @@ def build_refined_gwf_model(
     """
     import shutil
 
-    workspace = Path(workspace)
-    if workspace.exists():
-        shutil.rmtree(workspace)
-    workspace.mkdir(parents=True)
+    workspace_path = Path(workspace)
+    if workspace_path.exists():
+        shutil.rmtree(workspace_path)
+    workspace_path.mkdir(parents=True)
 
     spec = generate_refined_grid(
         gwf=gwf,
