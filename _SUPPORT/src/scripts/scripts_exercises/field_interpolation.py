@@ -113,7 +113,7 @@ def attribution_observation_well_student(resolution_interpolation):
     display(submit_button, output)
 
 
-def estimation_hydraulic_head(method_passed = 'linear', resolution_interpolation_passed = 1000):
+def estimation_hydraulic_head(method_passed = 'linear', resolution_interpolation_passed = 150):
     global heads_new
     heads_new = griddata(
     (x_all, y_all), head_all, (x_new, y_new), method=method_passed
@@ -128,7 +128,7 @@ def estimation_hydraulic_head(method_passed = 'linear', resolution_interpolation
 
 
 
-def plot_head_full_field_interactive(method_passed, resolution_interpolation_passed=1000):
+def plot_head_full_field_interactive(method_passed, resolution_interpolation_passed=150):
     xi = np.linspace(0, 100, resolution_interpolation_passed)
     yi = np.linspace(0, 100, resolution_interpolation_passed)
     xi_grid, yi_grid = np.meshgrid(xi, yi)
@@ -156,7 +156,7 @@ def plot_head_full_field_interactive(method_passed, resolution_interpolation_pas
         raise ValueError("Unknown interpolation method.")
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    contour = ax.contour(xi_grid, yi_grid, zi, 15, cmap=cmap)
+    contour = ax.contour(xi_grid, yi_grid, zi, 5, cmap=cmap)
     fmt = lambda x: f"{x:.1f} m"
     plt.clabel(contour, inline=True, fontsize=8, fmt=fmt)
     ax.scatter(x_new, y_new, c=heads_new, cmap=cmap, edgecolor='red', s=80, marker='.', label='A, B, C')
