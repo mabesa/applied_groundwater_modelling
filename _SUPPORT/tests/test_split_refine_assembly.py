@@ -425,6 +425,27 @@ class TestAssembleGwfFromSpec:
         assert [tuple(c) for c in wel["cellid"]] == spec["wel_cellid"]
         assert list(result["well_cells"]) == spec["well_cells"]
 
+    @pytest.mark.parametrize("missing", ["gridprops", "k", "chd_cellid"])
+    def test_missing_required_spec_key_raises(
+        self, monkeypatch, tmp_path, missing
+    ):
+        # ERROR PATH: assemble_gwf_from_spec builds FROM the spec arrays, so a
+        # spec missing a required key must fail loudly — a KeyError from the
+        # array access, or an explicit validation error. It must NOT silently
+        # build a wrong model (e.g. via spec.get(key, default)). MODFLOW is
+        # trip-wired so the failure is proven to occur before any solve.
+        import flopy
+        monkeypatch.setattr(
+            flopy.mf6.MFSimulation, "run_simulation",
+            lambda self, *a, **k: (_ for _ in ()).throw(
+                AssertionError("assemble must fail before running MODFLOW")
+            ),
+        )
+        bad_spec = self._spec()
+        del bad_spec[missing]
+        with pytest.raises((KeyError, ValueError)):
+            mio.assemble_gwf_from_spec(bad_spec, str(tmp_path / "bad"))
+
     def test_source_has_no_refinement_or_interpolation(self):
         # Criterion 2/5: the assemble half must not reference Triangle/Voronoi,
         # scipy NearestND, or any spatial reassignment machinery.
