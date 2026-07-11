@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 SCHEMA_VERSION = "1.0"
@@ -134,7 +135,10 @@ def write_mother_model_lock(workspace, lock_path=None, sim_name: str = "limmat_v
     FileNotFoundError
         If *workspace* does not exist or is not a directory.
     ValueError
-        If *lock_path* resolves to a location inside *workspace*.
+        If *lock_path* resolves to a location inside *workspace* (checked
+        case-insensitively, so this also catches a differently-cased escape
+        on a case-insensitive filesystem), or if *workspace* contains zero
+        regular files to lock.
     """
     workspace = Path(workspace)
     lock_path = Path(lock_path) if lock_path is not None else DEFAULT_LOCK_PATH
@@ -143,12 +147,25 @@ def write_mother_model_lock(workspace, lock_path=None, sim_name: str = "limmat_v
 
     resolved_workspace = workspace.resolve()
     resolved_lock_path = lock_path.resolve()
-    if resolved_lock_path.is_relative_to(resolved_workspace):
+    # Case-normalize before the is_relative_to check so a differently-cased
+    # lock path (e.g. on a case-insensitive filesystem such as default macOS
+    # HFS+/APFS or Windows) can't slip through the guard. os.path.normcase is
+    # a no-op on case-sensitive POSIX filesystems (e.g. Linux), so this is
+    # purely additive there. resolve() (above) already handles symlinks and
+    # relative paths.
+    normcased_workspace = Path(os.path.normcase(str(resolved_workspace)))
+    normcased_lock_path = Path(os.path.normcase(str(resolved_lock_path)))
+    if normcased_lock_path.is_relative_to(normcased_workspace):
         raise ValueError(
             f"lock_path must not be inside workspace: {lock_path} is inside {workspace}"
         )
 
     manifest = _compute_manifest(workspace)
+    if not manifest["files"]:
+        raise ValueError(
+            f"workspace contains no regular files to lock: {workspace}"
+        )
+
     lock = {
         "schema_version": SCHEMA_VERSION,
         "sim_name": sim_name,
@@ -175,9 +192,14 @@ def _load_and_validate_lock(lock_path: Path) -> dict:
     (a) the JSON parses at all (a corrupt file raises a clean ``ValueError``,
         never a raw ``json.JSONDecodeError``);
     (b) all of ``_REQUIRED_LOCK_KEYS`` are present;
-    (c) ``files`` is a sorted, duplicate-free list and
+    (c) ``schema_version`` matches the module's ``SCHEMA_VERSION`` exactly;
+    (d) ``files`` is a list and ``file_hashes`` is a dict, and every element
+        of ``files`` and every value of ``file_hashes`` is a ``str`` (a
+        doctored lock with e.g. a non-string entry raises a clean
+        ``ValueError`` here rather than a raw ``TypeError`` later);
+    (e) ``files`` is a sorted, duplicate-free list and
         ``set(files) == set(file_hashes)``;
-    (d) recomputing the aggregate hash from the lock's own ``files`` +
+    (f) recomputing the aggregate hash from the lock's own ``files`` +
         ``file_hashes`` (using the same folding as ``_compute_manifest``)
         matches the recorded ``aggregate_hash``.
 
@@ -199,6 +221,13 @@ def _load_and_validate_lock(lock_path: Path) -> dict:
             f"mother model lock at {lock_path} is malformed: missing key(s) {missing!r}"
         )
 
+    schema_version = lock["schema_version"]
+    if schema_version != SCHEMA_VERSION:
+        raise ValueError(
+            f"mother model lock at {lock_path} has incompatible schema_version "
+            f"{schema_version!r}; expected {SCHEMA_VERSION!r}"
+        )
+
     files = lock["files"]
     file_hashes = lock["file_hashes"]
 
@@ -206,6 +235,17 @@ def _load_and_validate_lock(lock_path: Path) -> dict:
         raise ValueError(
             f"mother model lock at {lock_path} is malformed: "
             "'files' must be a list and 'file_hashes' must be an object"
+        )
+
+    if not all(isinstance(p, str) for p in files):
+        raise ValueError(
+            f"mother model lock at {lock_path} is malformed: "
+            "'files' must be a list of strings"
+        )
+    if not all(isinstance(v, str) for v in file_hashes.values()):
+        raise ValueError(
+            f"mother model lock at {lock_path} is malformed: "
+            "'file_hashes' values must all be strings"
         )
 
     if files != sorted(files):

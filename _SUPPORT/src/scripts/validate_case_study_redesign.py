@@ -108,6 +108,14 @@ def main(argv=None) -> int:
         )
         return 2
 
+    if args.require_green and args.plan_only:
+        print(
+            "ERROR: --require-green runs and checks real stage results and cannot be "
+            "combined with --plan-only (which never executes a stage body)",
+            file=sys.stderr,
+        )
+        return 2
+
     if args.require_green and set(groups) != set(cv.CANONICAL_GROUPS):
         print(
             "ERROR: --require-green is a release gate and must cover all 9 groups 0-8",
@@ -119,7 +127,11 @@ def main(argv=None) -> int:
     report_json = json.dumps(report, indent=2)
 
     if args.out:
-        Path(args.out).write_text(report_json + "\n", encoding="utf-8")
+        try:
+            Path(args.out).write_text(report_json + "\n", encoding="utf-8")
+        except OSError as exc:
+            print(f"ERROR: could not write report to --out {args.out!r}: {exc}", file=sys.stderr)
+            return 2
     else:
         print(report_json)
 

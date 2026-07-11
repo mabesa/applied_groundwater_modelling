@@ -21,8 +21,10 @@ Run with: uv run pytest _SUPPORT/tests/test_case_validation_harness.py -v
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -372,3 +374,143 @@ class TestGroupDomain:
 
     def test_parse_groups_spec_still_accepts_normal_ranges(self):
         assert cv.parse_groups_spec("0-8") == list(range(9))
+
+
+# =============================================================================
+# Fix B1 (MAJOR): --plan-only combined with --require-green must be rejected
+# =============================================================================
+
+class TestPlanOnlyRequireGreenRejected:
+    def test_cli_rejects_plan_only_combined_with_require_green(self):
+        import importlib
+        sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
+        vcsr = importlib.import_module("validate_case_study_redesign")
+
+        rc = vcsr.main(["--plan-only", "--require-green", "--groups", "0-8"])
+        assert rc == 2
+
+
+# =============================================================================
+# Fix B2 (MAJOR): is_green is a strict PASS-whitelist
+# =============================================================================
+
+class TestIsGreenStrictWhitelist:
+    def test_empty_dict_report_is_not_green(self):
+        assert cv.is_green({}) is False
+
+    def test_empty_groups_list_is_not_green(self):
+        assert cv.is_green({"groups": []}) is False
+
+    def _passing_stages(self):
+        return [
+            {"id": stage_id, "status": "PASS", "reason": "", "elapsed_s": 0.1}
+            for stage_id in REQUIRED_STAGES
+        ]
+
+    def test_bogus_status_on_required_stage_is_not_green(self):
+        stages = self._passing_stages()
+        stages[0]["status"] = "BOGUS"
+        report = {"schema_version": cv.SCHEMA_VERSION, "groups": [{"group": 0, "stages": stages}]}
+
+        assert cv.is_green(report) is False
+
+    def test_group_missing_a_required_stage_is_not_green(self):
+        stages = [s for s in self._passing_stages() if s["id"] != REQUIRED_STAGES[0]]
+        report = {"schema_version": cv.SCHEMA_VERSION, "groups": [{"group": 0, "stages": stages}]}
+
+        assert cv.is_green(report) is False
+
+    def test_duplicate_stage_entry_one_pass_one_fail_is_not_green(self):
+        stages = self._passing_stages()
+        # Duplicate the first required stage's entry, but make the
+        # duplicate FAIL. A blacklist keyed only by "does some entry with
+        # this id have a bad status" done naively could still be fooled by
+        # ordering; the whitelist rejects as soon as ANY entry for a
+        # required id is not PASS.
+        dup = dict(stages[0])
+        dup["status"] = "FAIL"
+        stages.append(dup)
+        report = {"schema_version": cv.SCHEMA_VERSION, "groups": [{"group": 0, "stages": stages}]}
+
+        assert cv.is_green(report) is False
+
+
+# =============================================================================
+# Fix B3 (MINOR): --out I/O failure must not raise an uncaught traceback
+# =============================================================================
+
+class TestOutWriteFailureHandled:
+    def test_cli_out_to_unwritable_path_exits_2_not_traceback(self, tmp_path):
+        import importlib
+        sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
+        vcsr = importlib.import_module("validate_case_study_redesign")
+
+        # A path whose parent directory does not exist and cannot be
+        # created implicitly (Path.write_text does not mkdir parents) is a
+        # reliable, portable way to trigger an OSError (FileNotFoundError)
+        # on write, regardless of platform permission semantics.
+        bad_out = tmp_path / "does_not_exist" / "nested" / "report.json"
+
+        rc = vcsr.main(["--groups", "0", "--plan-only", "--out", str(bad_out)])
+        assert rc == 2
+        assert not bad_out.exists()
+
+
+# =============================================================================
+# Load-bearing regression: process-group kill on TIMEOUT reaps grandchildren
+# =============================================================================
+
+def _stage_spawns_grandchild(group):
+    """Spawn a long-lived grandchild, record its PID, then sleep past the
+    test's short stage timeout. Used to prove that _run_stage_subprocess's
+    TIMEOUT handling kills the WHOLE process group (os.killpg), not just the
+    direct child -- otherwise a stage that spawns e.g. MODFLOW would leak
+    that grandchild process past the timeout."""
+    import subprocess
+    import time
+
+    pid_file = group  # `group` is (ab)used to pass the pid-file path (a str)
+    grandchild = subprocess.Popen(["sleep", "120"])
+    with open(pid_file, "w", encoding="utf-8") as fh:
+        fh.write(str(grandchild.pid))
+    time.sleep(120)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX process-group semantics only")
+class TestGrandchildReapedOnTimeout:
+    def test_timeout_kills_whole_process_group_including_grandchild(self, tmp_path):
+        pid_file = tmp_path / "grandchild.pid"
+        cv.register_stage("cards", _stage_spawns_grandchild, timeout_s=1.0)
+
+        grandchild_pid = None
+        try:
+            report = cv.run_validation([str(pid_file)], stage="cards", plan_only=False)
+            cards = report["groups"][0]["stages"][REQUIRED_STAGES.index("cards")]
+            assert cards["status"] == "TIMEOUT"
+
+            # Give the killed grandchild a brief moment to actually be
+            # reaped by the OS after the SIGKILL.
+            deadline = time.monotonic() + 5.0
+            grandchild_pid = int(pid_file.read_text(encoding="utf-8").strip())
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(grandchild_pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.1)
+            else:
+                pytest.fail(
+                    f"grandchild pid {grandchild_pid} still alive after timeout+kill "
+                    "-- process-group kill did not reap it"
+                )
+
+            with pytest.raises(ProcessLookupError):
+                os.kill(grandchild_pid, 0)
+        finally:
+            # Best-effort cleanup so a test failure never leaks a real
+            # `sleep 120` process.
+            if grandchild_pid is not None:
+                try:
+                    os.kill(grandchild_pid, 9)
+                except (ProcessLookupError, PermissionError):
+                    pass

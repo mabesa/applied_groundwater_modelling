@@ -320,6 +320,146 @@ class TestSymlinkPolicy:
         assert verify_mother_model_lock(ws, lock_path=lock_path) is True
 
 
+class TestElementTypeValidation:
+    """Fix A1: a doctored lock with non-string elements must raise a clean
+    ValueError, never a raw TypeError (the 'never TypeError' contract)."""
+
+    def test_non_string_element_in_files_raises_value_error_not_type_error(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        write_mother_model_lock(ws, lock_path=lock_path)
+
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock["files"].append(1)
+        lock["file_hashes"]["1"] = "0" * 64
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="'files' must be a list of strings"):
+            verify_mother_model_lock(ws, lock_path=lock_path)
+
+    def test_non_string_value_in_file_hashes_raises_value_error_not_type_error(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        write_mother_model_lock(ws, lock_path=lock_path)
+
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        some_key = lock["files"][0]
+        lock["file_hashes"][some_key] = 12345
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="'file_hashes' values must all be strings"):
+            verify_mother_model_lock(ws, lock_path=lock_path)
+
+
+class TestSchemaVersionValidation:
+    """Fix A2: an incompatible schema_version must raise ValueError."""
+
+    def test_wrong_schema_version_raises(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        write_mother_model_lock(ws, lock_path=lock_path)
+
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        lock["schema_version"] = "2.0"
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="incompatible schema_version"):
+            verify_mother_model_lock(ws, lock_path=lock_path)
+
+
+class TestEmptyWorkspaceRejected:
+    """Fix A3: writing a lock over an empty directory must raise ValueError
+    rather than silently producing a lock that verifies vacuously."""
+
+    def test_write_raises_on_empty_directory(self, tmp_path):
+        empty_ws = tmp_path / "empty_ws"
+        empty_ws.mkdir()
+
+        with pytest.raises(ValueError, match="no regular files to lock"):
+            write_mother_model_lock(empty_ws, lock_path=tmp_path / "lock.json")
+
+    def test_write_raises_on_directory_containing_only_empty_subdirs(self, tmp_path):
+        ws = tmp_path / "ws_only_dirs"
+        (ws / "sub" / "deeper").mkdir(parents=True)
+
+        with pytest.raises(ValueError, match="no regular files to lock"):
+            write_mother_model_lock(ws, lock_path=tmp_path / "lock.json")
+
+
+class TestCaseNormalizedLockInsideWorkspace:
+    """Fix A4: the lock-inside-workspace guard is checked case-normalized so
+    a differently-cased path can't escape it on a case-insensitive
+    filesystem.
+
+    Not portably testable end-to-end via write_mother_model_lock: on a
+    genuinely case-sensitive filesystem (e.g. Linux), a differently-cased
+    path IS a different, non-existent location on disk, so resolve() would
+    not make it collide with the real workspace path regardless of the
+    guard's own logic. Instead we directly exercise the same normcase
+    comparison the fix performs, which is portable and locks in the fix
+    independent of the host filesystem's case sensitivity.
+    """
+
+    def test_exact_case_still_rejected(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = ws / "sub" / "mother_model_lock.json"
+
+        with pytest.raises(ValueError, match="lock_path must not be inside workspace"):
+            write_mother_model_lock(ws, lock_path=lock_path)
+
+    def test_normcase_comparison_treats_differently_cased_inside_path_as_inside(self, tmp_path):
+        import os as _os
+        from pathlib import Path as _Path
+
+        ws = _build_workspace(tmp_path)
+        inside = (ws / "sub" / "lock.json").resolve()
+
+        # Simulate the normcased form of a differently-cased equivalent path
+        # (what a case-insensitive filesystem would resolve a differently
+        # cased lock path to): same normcase(str(...)) as the exact-case
+        # inside path.
+        normcased_ws = _Path(_os.path.normcase(str(ws.resolve())))
+        normcased_inside_upper = _Path(_os.path.normcase(str(inside).upper()))
+        normcased_inside_exact = _Path(_os.path.normcase(str(inside)))
+
+        # On a case-insensitive normcase (e.g. Windows/macOS default), the
+        # upper-cased and exact-case forms normalize identically and both
+        # nest under the workspace.
+        if _os.path.normcase("A") == _os.path.normcase("a"):
+            assert normcased_inside_upper.is_relative_to(normcased_ws)
+        assert normcased_inside_exact.is_relative_to(normcased_ws)
+
+
+class TestContentTamperingWithConsistentAggregateStillCaught:
+    """Regression: a lock that is internally self-consistent (a file_hash
+    altered AND the aggregate_hash recomputed to match) must still be caught
+    -- not by _load_and_validate_lock's internal check, but by the live
+    workspace comparison in verify_mother_model_lock, which compares the
+    lock's recorded per-file hash against a fresh hash of the actual file on
+    disk. This locks in that defense-in-depth layer explicitly."""
+
+    def test_self_consistent_but_workspace_mismatched_lock_raises_content_changed(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "lock.json"
+        write_mother_model_lock(ws, lock_path=lock_path)
+
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        target = lock["files"][0]
+        # Alter one file's recorded hash to an arbitrary-but-valid-looking
+        # sha256 hex string, then recompute aggregate_hash so the lock is
+        # internally self-consistent (passes _load_and_validate_lock).
+        lock["file_hashes"][target] = "a" * 64
+        lock["aggregate_hash"] = mml._fold_aggregate(lock["files"], lock["file_hashes"])
+        lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+        # _load_and_validate_lock alone would accept this lock (internally
+        # consistent). verify_mother_model_lock must still catch it because
+        # the recorded hash for `target` no longer matches the real file on
+        # disk.
+        with pytest.raises(ValueError, match=f"content changed for file '{target}'"):
+            verify_mother_model_lock(ws, lock_path=lock_path)
+
+
 class TestFlopyFreeAndFast:
     def test_subprocess_is_flopy_and_pyemu_free(self):
         src_dir = str(Path(__file__).parent.parent / "src")

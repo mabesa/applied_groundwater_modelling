@@ -61,14 +61,6 @@ REQUIRED_STAGES: tuple[str, ...] = (
 
 VALID_STATUSES = frozenset({"PASS", "FAIL", "SKIP", "TIMEOUT", "ERROR", "NOT_IMPLEMENTED"})
 
-# Statuses that make a report "not green" for --require-green purposes.
-# NOTE: every status other than PASS is "bad" for green purposes -- SKIP
-# included. A stage that was never executed (e.g. because --stage restricted
-# execution to a different stage) must not count as green just because it
-# didn't fail; is_green() is the release gate and must not be foolable by
-# skipping stages.
-_BAD_STATUSES = frozenset({"FAIL", "TIMEOUT", "ERROR", "NOT_IMPLEMENTED", "SKIP"})
-
 DEFAULT_STAGE_TIMEOUT_S = 60.0
 
 # The canonical, closed set of case-study group ids (0-8). Used by the CLI to
@@ -376,22 +368,40 @@ def run_validation(groups: list[int], stage: Optional[str] = None, plan_only: bo
 
 
 def is_green(report: dict) -> bool:
-    """True iff every required stage is present AND has status == PASS, in
-    every group.
+    """True iff *report* has at least one group, and every required stage is
+    present with status EXACTLY ``"PASS"``, in every group.
 
-    This is a strict release gate: any status other than PASS -- including
-    SKIP -- or a required stage missing entirely from a group's report,
-    makes the report "not green". SKIP is deliberately treated as failing:
-    a stage that was merely skipped (e.g. via ``--stage`` restricting
-    execution to a different stage, or ``plan_only``) has not been verified
-    to pass, so a report built that way must never be reported as green.
+    Implemented as a strict PASS-whitelist rather than a "bad status"
+    blacklist, which closes several ways a blacklist could be fooled:
+
+    - an empty report -- ``report.get("groups")`` is ``None`` or ``[]`` --
+      is NEVER green, even though a for-loop over zero groups would
+      trivially satisfy a blacklist check (there would be nothing to find
+      "bad");
+    - a bogus/unknown status string (anything that is not literally
+      ``"PASS"``, including values outside ``VALID_STATUSES``) is rejected,
+      since the whitelist only accepts the one known-good value;
+    - SKIP is rejected the same way: a stage that was merely skipped (e.g.
+      via ``--stage`` restricting execution to a different stage, or
+      ``plan_only``) has not been verified to pass;
+    - a duplicate entry for the same required stage id, where at least one
+      of the duplicates is not PASS, is rejected -- a report is only green
+      if EVERY entry whose id is a required stage has status PASS, not just
+      "some" entry;
+    - a required stage id missing entirely from a group's stage list makes
+      that group (and therefore the whole report) not green.
     """
+    groups = report.get("groups")
+    if not groups:
+        return False
+
     required = set(REQUIRED_STAGES)
-    for g in report.get("groups", []):
-        seen_ids = {s["id"] for s in g.get("stages", [])}
+    for g in groups:
+        stages = g.get("stages", [])
+        seen_ids = {s["id"] for s in stages}
         if not required.issubset(seen_ids):
             return False
-        for s in g.get("stages", []):
-            if s["id"] in required and s["status"] in _BAD_STATUSES:
+        for s in stages:
+            if s["id"] in required and s["status"] != "PASS":
                 return False
     return True
