@@ -67,6 +67,29 @@ def _gridprops():
     }
 
 
+def _contains(values, expected):
+    """True if *expected* was threaded through (identity first, then equality).
+
+    Robust to numpy arrays and to sentinel ``object()`` values whose ``==``
+    returns ``NotImplemented``.  Used to assert that build_refined_gwf_model
+    forwards a given argument to a delegate without pinning positional vs.
+    keyword calling convention.
+    """
+    for v in values:
+        if v is expected:
+            return True
+    for v in values:
+        try:
+            if isinstance(v, np.ndarray) or isinstance(expected, np.ndarray):
+                if np.array_equal(v, expected):
+                    return True
+            elif v == expected:
+                return True
+        except Exception:
+            pass
+    return False
+
+
 def _build_coarse_gwf(tmp_path):
     """A real (but never-run) MF6 DISV GWF model to feed generate_refined_grid.
 
@@ -441,8 +464,9 @@ class TestBuildRefinedGwfModelContract:
 
     def test_delegates_generate_then_assemble(self, monkeypatch, tmp_path):
         # Implemented as generate_refined_grid followed by assemble_gwf_from_spec:
-        # the spec produced by generate must be the object handed to assemble,
-        # and build must return assemble's result.
+        # generate's spec must be handed verbatim to assemble, build must return
+        # assemble's result, AND build's own arguments must be threaded through
+        # to the delegates (not dropped or hardcoded).
         order = []
         sentinel_spec = {"_sentinel_spec": True}
         sentinel_result = {
@@ -450,33 +474,47 @@ class TestBuildRefinedGwfModelContract:
             "gridprops": _gridprops(), "ncpl": _NCPL,
             "heads": np.zeros(_NCPL), "well_cells": [3],
         }
-        received = {}
+        gen = {}
+        asm = {}
 
         def fake_generate(*a, **k):
             order.append("generate")
+            gen["args"], gen["kwargs"] = a, k
             return sentinel_spec
 
         def fake_assemble(spec, *a, **k):
             order.append("assemble")
-            received["spec"] = spec
+            asm["spec"], asm["args"], asm["kwargs"] = spec, a, k
             return sentinel_result
 
         monkeypatch.setattr(mio, "generate_refined_grid", fake_generate)
         monkeypatch.setattr(mio, "assemble_gwf_from_spec", fake_assemble)
 
+        # --- distinctive NON-default arguments: proves genuine threading ------
+        s_gwf, s_boundary, s_river, s_points, s_well = (object() for _ in range(5))
+        s_head = np.array([1.0, 2.0, 3.0, 4.0])
+        s_baseline = np.array([9.0, 8.0])
+        ws = str(tmp_path / "build_ws")
+
         result = mio.build_refined_gwf_model(
-            gwf=object(),
-            boundary_gdf=_domain_gdf(),
-            river_gdf=_river_gdf(),
-            refine_points=[(5.0, 5.0)],
-            head_array=np.full(_NCPL, 15.0),
-            workspace=str(tmp_path / "build"),
+            gwf=s_gwf,
+            boundary_gdf=s_boundary,
+            river_gdf=s_river,
+            refine_points=s_points,
+            head_array=s_head,
+            workspace=ws,
+            refine_radius=201.5,
+            base_cell_size=52.5,
+            refined_cell_size=11.5,
+            well_data=s_well,
+            sim_name="my_refined",
+            baseline_head_array=s_baseline,
         )
 
         assert order == ["generate", "assemble"], (
             "build must call generate_refined_grid then assemble_gwf_from_spec"
         )
-        assert received["spec"] is sentinel_spec, (
+        assert asm["spec"] is sentinel_spec, (
             "generate's spec must be forwarded verbatim to assemble"
         )
         for key in ("sim", "gwf", "modelgrid", "gridprops", "ncpl",
@@ -484,3 +522,45 @@ class TestBuildRefinedGwfModelContract:
             assert result[key] is sentinel_result[key] or np.all(
                 result[key] == sentinel_result[key]
             ), f"build must surface assemble's '{key}'"
+
+        gen_vals = list(gen["args"]) + list(gen["kwargs"].values())
+        asm_vals = [asm["spec"], *asm["args"], *asm["kwargs"].values()]
+        all_vals = gen_vals + asm_vals
+
+        # generate_refined_grid must receive the grid-generation inputs verbatim.
+        for expected, label in (
+            (s_gwf, "gwf"), (s_boundary, "boundary_gdf"), (s_river, "river_gdf"),
+            (s_points, "refine_points"), (s_head, "head_array"),
+            (s_well, "well_data"), (201.5, "refine_radius"),
+            (52.5, "base_cell_size"), (11.5, "refined_cell_size"),
+        ):
+            assert _contains(gen_vals, expected), (
+                f"build must forward {label} to generate_refined_grid"
+            )
+        # assemble_gwf_from_spec must receive workspace + sim_name verbatim.
+        assert _contains(asm_vals, ws), "build must forward workspace to assemble"
+        assert _contains(asm_vals, "my_refined"), (
+            "build must forward sim_name to assemble"
+        )
+        # baseline_head_array must not be silently dropped (destination is an
+        # implementation choice, so only require it reach one delegate).
+        assert _contains(all_vals, s_baseline), (
+            "build must forward baseline_head_array to a delegate"
+        )
+
+        # --- default call: keyword-only geom params have NO default in
+        # generate_refined_grid, so build MUST forward the documented defaults
+        # (catches hardcoding to a non-default value). --------------------------
+        order.clear(); gen.clear(); asm.clear()
+        ws2 = str(tmp_path / "build_ws2")
+        mio.build_refined_gwf_model(
+            gwf=object(), boundary_gdf=object(), river_gdf=object(),
+            refine_points=object(), head_array=np.zeros(_NCPL), workspace=ws2,
+        )
+        assert order == ["generate", "assemble"]
+        gen_vals2 = list(gen["args"]) + list(gen["kwargs"].values())
+        asm_vals2 = [asm["spec"], *asm["args"], *asm["kwargs"].values()]
+        assert _contains(gen_vals2, 200.0), "refine_radius default must forward"
+        assert _contains(gen_vals2, 50.0), "base_cell_size default must forward"
+        assert _contains(gen_vals2, 10.0), "refined_cell_size default must forward"
+        assert _contains(asm_vals2, ws2), "workspace must forward on default call"
