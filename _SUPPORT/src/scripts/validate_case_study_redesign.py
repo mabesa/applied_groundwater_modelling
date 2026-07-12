@@ -3,10 +3,11 @@
 validate_case_study_redesign — CLI driver for the case-study redesign
 validation harness (library: ``_SUPPORT/src/case_validation.py``).
 
-This is a SKELETON milestone: no stage bodies are registered yet, so every
-canonical stage (config, mother_model_load, flow_refinement, base_wells,
-scenario, prt, transport_handoff, export_v2, scratch_zip_rerun, cards)
-reports ``NOT_IMPLEMENTED``. Later milestones import real stage modules that
+``flow_refinement`` is now a real stage (registered via
+``case_stages.register_flow_stages()`` below); the remaining canonical
+stages (config, mother_model_load, base_wells, scenario, prt,
+transport_handoff, export_v2, scratch_zip_rerun, cards) still report
+``NOT_IMPLEMENTED`` until later milestones import their stage modules and
 call ``case_validation.register_stage(...)`` before this CLI (or its
 programmatic entry point) runs.
 
@@ -34,6 +35,7 @@ if str(_SUPPORT_SRC) not in sys.path:
     sys.path.insert(0, str(_SUPPORT_SRC))
 
 import case_validation as cv  # noqa: E402
+import case_stages  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -74,6 +76,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+
+    case_stages.register_flow_stages()
 
     try:
         groups = cv.parse_groups_spec(args.groups)
