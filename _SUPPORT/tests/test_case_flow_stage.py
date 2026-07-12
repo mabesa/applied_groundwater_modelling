@@ -448,3 +448,35 @@ class TestM1GuaranteesStillHold:
             env_extra={"AGM_MESHES_DIR": str(meshes)},
         )
         assert result.returncode != 0
+
+
+# =============================================================================
+# The composed release-gate path: register_flow_stages() + run_validation runs
+# flow_refinement in a REAL harness subprocess, resolving the artifact via the
+# AGM_MESHES_DIR env var. This is the whole point of the M2->M1 integration, so
+# it is guarded end-to-end (not only via the per-piece tests above).
+# =============================================================================
+class TestHarnessSubprocessEndToEnd:
+    @staticmethod
+    def _flow_status(report):
+        return next(
+            s for g in report["groups"] for s in g["stages"] if s["id"] == "flow_refinement"
+        )
+
+    def test_run_validation_passes_with_synthetic_artifact(self, tmp_path, monkeypatch):
+        import case_stages
+
+        _freeze_group(tmp_path, 0)
+        monkeypatch.setenv("AGM_MESHES_DIR", str(tmp_path))
+        case_stages.register_flow_stages()
+        report = cv.run_validation([0], stage="flow_refinement")
+        assert self._flow_status(report)["status"] == "PASS", report
+
+    def test_run_validation_fails_without_artifact(self, tmp_path, monkeypatch):
+        import case_stages
+
+        # Empty dir -> the subprocess stage raises FileNotFoundError -> FAIL.
+        monkeypatch.setenv("AGM_MESHES_DIR", str(tmp_path))
+        case_stages.register_flow_stages()
+        report = cv.run_validation([0], stage="flow_refinement")
+        assert self._flow_status(report)["status"] == "FAIL", report
