@@ -394,20 +394,18 @@ Given:
 """,
 
 "task_t02_checkpoint_2": r"""
-## Checkpoint 2 — Sorption Retardation Factor (OPTIONAL — reactive solutes)
-This is an **optional** checkpoint on **reactive (sorbing) solutes**. The core path of the
-course is a conservative tracer ($R = 1$); this checkpoint applies only when a solute sorbs.
+## Checkpoint 2 — Sorption Retardation Factor
+Five of the nine case-study contaminants are reactive. A **sorbing** solute is retarded by the
+**retardation factor** (dimensionless). Given group 4's contaminant, **chromium** (the strong-sorption case):
 
 Given:
-- Dry bulk density $\rho_b = 1900$ kg/m³
-- Distribution coefficient $K_d = 5 \times 10^{-4}$ m³/kg
+- Dry bulk density $\rho_b = 1800$ kg/m³
+- Distribution coefficient $K_d = 2.0$ mL/g $= 2.0 \times 10^{-3}$ m³/kg
 - Effective porosity $n_e = 0.20$ (dimensionless)
 
-The (dimensionless) sorption retardation factor for a linearly-sorbing solute at equilibrium is:
+$$R = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
 
-$$R_s = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
-
-**Calculate $R_s$ (dimensionless).**
+**Calculate $R$ (dimensionless).**
 """,
 
 "task_t02_checkpoint_pe": r"""
@@ -730,7 +728,7 @@ solutions = {
     # Checkpoints 1, 3, 4, 5, 6, 8 are multiple choice - handled separately
     # Transport Track — Notebook 2 checkpoints
     "task_t02_checkpoint_1": (10.0, 12.5),  # Correct solution 11.2 m/d (864 * 0.0026 / 0.20)
-    "task_t02_checkpoint_2": (5.4, 6.1),    # Correct solution 5.75 (1 + 1900*5e-4/0.20)
+    "task_t02_checkpoint_2": (18.0, 20.0),  # Correct solution 19.0 (1 + 1800*2e-3/0.20)
     "task_t02_checkpoint_pe": (9.0, 11.0),  # Correct solution 10.0 (Δx/α_L = 100/10)
     # task_t02_checkpoint_3 is multiple choice - handled separately
     # Transport Track — Notebook 3 checkpoints
@@ -833,7 +831,7 @@ solutions_exact = {
     "task08_checkpoint_8": "A) The capture zone expands",
     # Transport Track — Notebook 2 checkpoints
     "task_t02_checkpoint_1": "11.2",
-    "task_t02_checkpoint_2": "5.75",
+    "task_t02_checkpoint_2": "19",
     "task_t02_checkpoint_pe": "10.0",
     "task_t02_checkpoint_3": "B) Concentrated in the city centre",
     # Transport Track — Notebook 3 checkpoints
@@ -2176,20 +2174,20 @@ Note: the specific discharge $q = Ki = 2.25$ m/d is the flux per unit area. Divi
 """,
 
 "task_t02_checkpoint_2": r"""
-## Solution — Sorption Retardation Factor (OPTIONAL)
+## Solution — Sorption Retardation Factor
 
 For a linearly-sorbing solute at equilibrium, the (dimensionless) retardation factor is:
 
-$$R_s = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
+$$R = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
 
-Substituting $\rho_b = 1900$ kg/m³, $K_d = 5 \times 10^{-4}$ m³/kg, and $n_e = 0.20$:
+For chromium (group 4), substituting $\rho_b = 1800$ kg/m³, $K_d = 2.0 \times 10^{-3}$ m³/kg, and $n_e = 0.20$:
 
-$$R_s = 1 + \frac{1900 \times 5 \times 10^{-4}}{0.20} = 1 + \frac{0.95}{0.20} = 1 + 4.75 = 5.75$$
+$$R = 1 + \frac{1800 \times 2.0 \times 10^{-3}}{0.20} = 1 + \frac{3.6}{0.20} = 1 + 18 = 19$$
 
-The units cancel ($\text{kg/m}^3 \times \text{m}^3/\text{kg}$ is dimensionless), so $R_s$ is dimensionless.
-A sorbing solute's front travels about **5.75× slower** than the conservative tracer (front velocity $v / R_s$).
+The units cancel ($\text{kg/m}^3 \times \text{m}^3/\text{kg}$ is dimensionless), so $R$ is dimensionless.
+Chromium's front travels about **19× slower** than a conservative tracer (front velocity $v / R$) — strong retardation.
 
-This is **optional** background: the core path of the course is a conservative tracer ($R = 1$). In MODFLOW 6 GWT, sorption is activated in the **MST** package (`sorption`, `bulk_density`, `distcoef`); we keep it **off** for the conservative core path.
+Reactive transport is **in scope**: 5 of the 9 case studies sorb or decay. In MODFLOW 6 GWT, sorption is activated in the **MST** package (`sorption`, `bulk_density`, `distcoef`) and first-order decay via `decay`; your group's parameters are pinned in `case_config_transport.yaml`.
 <br>
 """,
 
@@ -2219,7 +2217,7 @@ The map shows that GWHE (groundwater-heat-exchange) doublet concessions (WPG = h
 2. **Favourable aquifer conditions** — the Limmat Valley gravel aquifer is productive and accessible
 3. **Proximity to the Limmat** — river filtrate provides a large, renewable resource
 
-Each doublet withdraws water at one well and reinjects it at another, setting up exactly the injection→abstraction flow path along which a conservative tracer could recirculate.
+Each doublet withdraws water at one well and returns it at another, setting up a forced-gradient flow field with a capture zone around the extraction well — the field that decides whether an upgradient contaminant spill is drawn into the monitoring well or bypasses it.
 <br>
 """,
 
