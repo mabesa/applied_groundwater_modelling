@@ -2581,7 +2581,9 @@ def _decode_flow_spec_from_npz(arrays: Dict[str, np.ndarray]) -> Dict[str, Any]:
         spec[key] = [tuple(int(x) for x in row) for row in arrays[key]]
 
     for key in _FLOW_SPEC_VALUE_FLOAT_KEYS + _FLOW_SPEC_VALUE_INT_KEYS:
-        spec[key] = arrays[key]
+        spec[key] = (
+            [int(x) for x in arrays[key]] if key == "well_cells" else arrays[key]
+        )
 
     for key in _FLOW_SPEC_OPTIONAL_STR_KEYS:
         spec[key] = str(arrays[key]) if key in arrays else None
