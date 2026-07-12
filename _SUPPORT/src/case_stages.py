@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Union
 
 import case_validation as cv
+from case_utils import lint_transport_config
 from model_io_utils import _FLOW_SPEC_REQUIRED_KEYS, load_flow_spec
 
 # Env var pointing at the directory of instructor-provided
@@ -84,6 +85,29 @@ def flow_refinement_stage(group) -> None:
     return None
 
 
+def config_stage(group) -> None:
+    """Validate the ``config`` stage for *group*.
+
+    Runs :func:`case_utils.lint_transport_config` scoped to just *group*
+    (``groups=[group]``) so a single group's config entry is linted without
+    also validating the other groups' entries.
+
+    Returns
+    -------
+    None
+        On success.
+
+    Raises
+    ------
+    ValueError
+        If the transport config file is missing, malformed, or the group's
+        entry fails linting (propagated from
+        :func:`case_utils.lint_transport_config`).
+    """
+    lint_transport_config(groups=[group])
+    return None
+
+
 def register_flow_stages() -> None:
     """Explicitly register the ``flow_refinement`` stage.
 
@@ -92,3 +116,5 @@ def register_flow_stages() -> None:
     """
     if "flow_refinement" not in cv.registered_stages():
         cv.register_stage("flow_refinement", flow_refinement_stage)
+    if "config" not in cv.registered_stages():
+        cv.register_stage("config", config_stage)
