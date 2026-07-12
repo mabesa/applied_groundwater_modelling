@@ -23,6 +23,11 @@ Functions:
     build_refined_gwf_model: Build locally-refined GWF model from coarse model
     build_prt_model: Build PRT particle-tracking simulation from GWF model
     load_prt_results: Load and classify PRT tracking results
+    freeze_flow_spec: Encode a refined-grid spec (incl. ragged DISV gridprops)
+        into an NPZ + hash-verified manifest via case_artifact_lock
+    load_flow_spec: Reconstruct a frozen flow spec from its NPZ/manifest pair
+    load_pinned_flow_model: Load a per-group pinned flow spec and assemble it
+        into a runnable GWF model without re-deriving geometry
 
 Author: Applied Groundwater Modelling Course
 """
@@ -2413,6 +2418,364 @@ def build_refined_gwf_model(
         well_data=well_data,
         baseline_head_array=baseline_head_array,
     )
+    return assemble_gwf_from_spec(spec, workspace=workspace, sim_name=sim_name)
+
+
+# =============================================================================
+# Pinned flow spec codec (freeze_flow_spec / load_flow_spec / load_pinned_flow_model)
+#
+# These functions let the GRADED path rebuild the refined MF6/DISV model from
+# a frozen, hash-verified .npz of plain numpy arrays -- without re-running
+# Triangle/Voronoi grid generation (disv_grid_utils) or scipy NearestND
+# interpolation. They compose the already-shipped case_artifact_lock (hash
+# manifest write/verify) with assemble_gwf_from_spec (pure MF6 construction).
+#
+# Spec schema (see generate_refined_grid docstring): 'gridprops', 'ncpl',
+# 'top', 'botm', 'k', 'rch', 'strt', 'idomain', 'chd_cellid', 'chd_head',
+# 'riv_cellid', 'riv_stage', 'riv_cond', 'riv_rbot', 'wel_cellid', 'wel_rate',
+# 'well_cells', 'refine_radius_used', 'crs', and (optionally) 'baseline_heads'.
+# 'gridprops' (flopy.utils.cvfdutil.get_disv_gridprops output) has keys
+# 'ncpl', 'nvert', 'vertices' (rectangular, one (i, x, y) row per vertex), and
+# 'cell2d' (RAGGED -- one [icell2d, xc, yc, nverts, *vertex_ids] row per cell,
+# row length = 4 + nverts, which varies cell to cell).
+# =============================================================================
+
+# Keys whose values are already plain 1-D arrays of length ncpl.
+_FLOW_SPEC_FLAT_ARRAY_KEYS = ("top", "botm", "k", "rch", "strt", "idomain")
+# Keys holding a list of (layer, cell) cellid tuples -> encoded as (n, 2) int arrays.
+_FLOW_SPEC_CELLID_KEYS = ("chd_cellid", "riv_cellid", "wel_cellid")
+# Keys holding a 1-D list of floats parallel to a cellid key above.
+_FLOW_SPEC_VALUE_FLOAT_KEYS = ("chd_head", "riv_stage", "riv_cond", "riv_rbot", "wel_rate")
+# Keys holding a 1-D list of flat cell indices (ints), not cellid tuples.
+_FLOW_SPEC_VALUE_INT_KEYS = ("well_cells",)
+# Optional keys, round-tripped only when present (and not None) in the spec.
+_FLOW_SPEC_OPTIONAL_STR_KEYS = ("crs",)
+_FLOW_SPEC_OPTIONAL_FLOAT_ARRAY_KEYS = ("baseline_heads",)
+
+_FLOW_SPEC_REQUIRED_KEYS = (
+    ("gridprops", "ncpl", "refine_radius_used")
+    + _FLOW_SPEC_FLAT_ARRAY_KEYS
+    + _FLOW_SPEC_CELLID_KEYS
+    + _FLOW_SPEC_VALUE_FLOAT_KEYS
+    + _FLOW_SPEC_VALUE_INT_KEYS
+)
+
+
+def _encode_gridprops_for_npz(gridprops: Dict[str, Any]) -> Dict[str, np.ndarray]:
+    """Encode a DISV ``gridprops`` dict (as returned by
+    ``flopy.utils.cvfdutil.get_disv_gridprops``) into NPZ-safe plain numpy
+    arrays, preserving the RAGGED ``cell2d`` row lengths as a CSR-style
+    (flat values + row lengths) pair.
+    """
+    vertices = np.asarray(
+        [[float(v[0]), float(v[1]), float(v[2])] for v in gridprops["vertices"]],
+        dtype=np.float64,
+    )
+    cell2d_rows = [[float(x) for x in row] for row in gridprops["cell2d"]]
+    cell2d_lengths = np.array([len(row) for row in cell2d_rows], dtype=np.int64)
+    cell2d_flat = (
+        np.concatenate([np.asarray(row, dtype=np.float64) for row in cell2d_rows])
+        if cell2d_rows
+        else np.zeros(0, dtype=np.float64)
+    )
+    return {
+        "gridprops__ncpl": np.array(int(gridprops["ncpl"]), dtype=np.int64),
+        "gridprops__nvert": np.array(int(gridprops["nvert"]), dtype=np.int64),
+        "gridprops__vertices": vertices,
+        "gridprops__cell2d_flat": cell2d_flat,
+        "gridprops__cell2d_lengths": cell2d_lengths,
+    }
+
+
+def _decode_gridprops_from_npz(arrays: Dict[str, np.ndarray]) -> Dict[str, Any]:
+    """Inverse of :func:`_encode_gridprops_for_npz` -- rebuilds a ``gridprops``
+    dict with the exact ragged ``cell2d`` row lengths restored, ready to pass
+    straight into ``flopy.mf6.ModflowGwfdisv``.
+    """
+    vertices_arr = arrays["gridprops__vertices"]
+    vertices = [
+        (int(round(row[0])), float(row[1]), float(row[2])) for row in vertices_arr
+    ]
+
+    lengths = arrays["gridprops__cell2d_lengths"]
+    flat = arrays["gridprops__cell2d_flat"]
+    cell2d = []
+    idx = 0
+    for n in lengths:
+        n = int(n)
+        row = flat[idx : idx + n]
+        idx += n
+        icell2d = int(round(row[0]))
+        xc, yc = float(row[1]), float(row[2])
+        nverts = int(round(row[3]))
+        ivert_ids = [int(round(v)) for v in row[4 : 4 + nverts]]
+        cell2d.append([icell2d, xc, yc, nverts] + ivert_ids)
+
+    return {
+        "ncpl": int(arrays["gridprops__ncpl"]),
+        "nvert": int(arrays["gridprops__nvert"]),
+        "vertices": vertices,
+        "cell2d": cell2d,
+    }
+
+
+def _encode_flow_spec_for_npz(spec: Dict[str, Any]) -> Dict[str, np.ndarray]:
+    """Encode a ``generate_refined_grid`` spec into a flat dict of NPZ-safe
+    (non-object-dtype) numpy arrays.
+
+    Raises
+    ------
+    KeyError
+        If *spec* is missing any of the fields documented in
+        ``generate_refined_grid`` / ``assemble_gwf_from_spec``.
+    """
+    missing = [k for k in _FLOW_SPEC_REQUIRED_KEYS if k not in spec]
+    if missing:
+        raise KeyError(f"flow spec is missing required key(s): {sorted(missing)!r}")
+
+    arrays: Dict[str, np.ndarray] = {}
+    arrays.update(_encode_gridprops_for_npz(spec["gridprops"]))
+    arrays["ncpl"] = np.array(int(spec["ncpl"]), dtype=np.int64)
+    arrays["refine_radius_used"] = np.array(
+        float(spec["refine_radius_used"]), dtype=np.float64
+    )
+
+    for key in _FLOW_SPEC_FLAT_ARRAY_KEYS:
+        arrays[key] = np.asarray(spec[key])
+
+    for key in _FLOW_SPEC_CELLID_KEYS:
+        rows = list(spec[key])
+        arrays[key] = (
+            np.array([[int(r[0]), int(r[1])] for r in rows], dtype=np.int64)
+            if rows
+            else np.zeros((0, 2), dtype=np.int64)
+        )
+
+    for key in _FLOW_SPEC_VALUE_FLOAT_KEYS:
+        arrays[key] = np.asarray(spec[key], dtype=np.float64)
+
+    for key in _FLOW_SPEC_VALUE_INT_KEYS:
+        arrays[key] = np.asarray(spec[key], dtype=np.int64)
+
+    for key in _FLOW_SPEC_OPTIONAL_STR_KEYS:
+        if spec.get(key) is not None:
+            arrays[key] = np.array(str(spec[key]))
+
+    for key in _FLOW_SPEC_OPTIONAL_FLOAT_ARRAY_KEYS:
+        if spec.get(key) is not None:
+            arrays[key] = np.asarray(spec[key], dtype=np.float64)
+
+    return arrays
+
+
+def _decode_flow_spec_from_npz(arrays: Dict[str, np.ndarray]) -> Dict[str, Any]:
+    """Inverse of :func:`_encode_flow_spec_for_npz`."""
+    spec: Dict[str, Any] = {"gridprops": _decode_gridprops_from_npz(arrays)}
+    spec["ncpl"] = int(arrays["ncpl"])
+    spec["refine_radius_used"] = float(arrays["refine_radius_used"])
+
+    for key in _FLOW_SPEC_FLAT_ARRAY_KEYS:
+        spec[key] = arrays[key]
+
+    for key in _FLOW_SPEC_CELLID_KEYS:
+        spec[key] = [tuple(int(x) for x in row) for row in arrays[key]]
+
+    for key in _FLOW_SPEC_VALUE_FLOAT_KEYS + _FLOW_SPEC_VALUE_INT_KEYS:
+        spec[key] = (
+            [int(x) for x in arrays[key]] if key == "well_cells" else arrays[key]
+        )
+
+    for key in _FLOW_SPEC_OPTIONAL_STR_KEYS:
+        spec[key] = str(arrays[key]) if key in arrays else None
+
+    for key in _FLOW_SPEC_OPTIONAL_FLOAT_ARRAY_KEYS:
+        if key in arrays:
+            spec[key] = arrays[key]
+
+    return spec
+
+
+def freeze_flow_spec(
+    spec: Dict[str, Any],
+    npz_path: Union[str, Path],
+    *,
+    caller_fields: Optional[Dict[str, Any]] = None,
+    manifest_path: Optional[Union[str, Path]] = None,
+) -> Dict[str, Any]:
+    """
+    Encode a ``generate_refined_grid`` spec (incl. ragged DISV ``gridprops``)
+    into an NPZ of plain numpy arrays and write a hash-verified manifest for
+    it via :mod:`case_artifact_lock`.
+
+    Parameters
+    ----------
+    spec : dict
+        Grid/property/boundary-condition spec, as returned by
+        :func:`generate_refined_grid` (or hand-built with the same schema).
+    npz_path : str or Path
+        Destination ``.npz`` path. Parent directories are created as needed.
+    caller_fields : dict, optional
+        Free-form fields (e.g. ``{"group": 3, "case": "flow"}``) merged into
+        the manifest JSON alongside the array hashes.
+    manifest_path : str or Path, optional
+        Where to write the manifest. Defaults to a sibling of *npz_path*
+        named ``<npz stem>.manifest.json`` (see
+        ``case_artifact_lock.write_artifact_manifest``).
+
+    Returns
+    -------
+    dict
+        The manifest contents that were written.
+
+    Raises
+    ------
+    KeyError
+        If *spec* is missing a required field.
+    """
+    from case_artifact_lock import write_artifact_manifest
+
+    npz_path = Path(npz_path)
+    arrays = _encode_flow_spec_for_npz(spec)
+
+    npz_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(npz_path, **arrays)
+
+    return write_artifact_manifest(npz_path, caller_fields or {}, manifest_path=manifest_path)
+
+
+def load_flow_spec(
+    npz_path: Union[str, Path],
+    manifest_path: Optional[Union[str, Path]] = None,
+    *,
+    verify: bool = True,
+) -> Dict[str, Any]:
+    """
+    Reconstruct a ``generate_refined_grid`` spec from a frozen ``.npz`` /
+    manifest pair written by :func:`freeze_flow_spec`.
+
+    Reconstruction is pure array decoding -- no Triangle/Voronoi grid
+    generation and no NearestND interpolation are used.
+
+    Parameters
+    ----------
+    npz_path : str or Path
+        Path to the frozen ``.npz`` bundle.
+    manifest_path : str or Path, optional
+        Path to the sibling manifest JSON. Defaults to
+        ``<npz stem>.manifest.json``.
+    verify : bool, optional
+        When True (default), the manifest must exist and every array must
+        hash-match it before decoding (via
+        ``case_artifact_lock.verify_artifact``). When False, the manifest is
+        neither required nor checked.
+
+    Returns
+    -------
+    dict
+        Spec dict with the same schema/shapes as the one passed to
+        :func:`freeze_flow_spec` (``gridprops['cell2d']`` restored with its
+        original ragged row lengths).
+
+    Raises
+    ------
+    FileNotFoundError
+        If *npz_path* does not exist.
+    ValueError
+        If ``verify=True`` and the manifest is missing, malformed, or does
+        not hash-match the ``.npz`` contents.
+    """
+    npz_path = Path(npz_path)
+    if not npz_path.exists():
+        raise FileNotFoundError(f"Frozen flow spec .npz not found: {npz_path}")
+
+    manifest_path = (
+        Path(manifest_path)
+        if manifest_path is not None
+        else npz_path.with_suffix("").with_suffix(".manifest.json")
+    )
+
+    if verify:
+        from case_artifact_lock import verify_artifact
+
+        if not manifest_path.exists():
+            raise ValueError(
+                f"Frozen flow spec manifest not found: {manifest_path}\n"
+                f"Cannot verify {npz_path} (pass verify=False to skip verification)."
+            )
+        verify_artifact(npz_path, manifest_path)
+
+    with np.load(npz_path, allow_pickle=False) as npz:
+        arrays = {name: npz[name] for name in npz.files}
+
+    return _decode_flow_spec_from_npz(arrays)
+
+
+def load_pinned_flow_model(
+    group: Union[int, str],
+    *,
+    meshes_dir: Optional[Union[str, Path]] = None,
+    workspace: Union[str, Path],
+    sim_name: str = "refined_model",
+    verify: bool = True,
+) -> Dict[str, Any]:
+    """
+    Load a per-group pinned flow spec and assemble it into a runnable GWF
+    model -- the graded/student counterpart to :func:`build_refined_gwf_model`
+    that never re-derives grid geometry.
+
+    Resolves ``<meshes_dir>/group<group>_flow.npz`` (+ its sibling manifest),
+    reconstructs the frozen spec via :func:`load_flow_spec`, and assembles it
+    via :func:`assemble_gwf_from_spec`. No Triangle/Voronoi grid generation
+    and no NearestND interpolation are used.
+
+    Parameters
+    ----------
+    group : int or str
+        Student group number/identifier; selects
+        ``group<group>_flow.npz`` within *meshes_dir*.
+    meshes_dir : str or Path, optional
+        Directory containing the instructor-provided ``group<n>_flow.npz`` /
+        ``.manifest.json`` pairs. Defaults to
+        ``<default-data-folder>/pinned_meshes``.
+    workspace : str or Path
+        Directory for the assembled simulation files (see
+        :func:`assemble_gwf_from_spec`).
+    sim_name : str, optional
+        MF6 simulation / model name.
+    verify : bool, optional
+        Passed through to :func:`load_flow_spec`. Default True.
+
+    Returns
+    -------
+    dict
+        Same return shape as :func:`build_refined_gwf_model` /
+        :func:`assemble_gwf_from_spec`.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the group's pinned ``.npz`` artifact does not exist.
+    ValueError
+        If ``verify=True`` and the artifact fails manifest verification.
+    """
+    if meshes_dir is None:
+        from data_utils import get_default_data_folder
+
+        meshes_dir = Path(get_default_data_folder()) / "pinned_meshes"
+    else:
+        meshes_dir = Path(meshes_dir)
+
+    npz_path = meshes_dir / f"group{group}_flow.npz"
+    manifest_path = npz_path.with_suffix("").with_suffix(".manifest.json")
+
+    if not npz_path.exists():
+        raise FileNotFoundError(
+            f"Pinned flow spec for group{group} not found: {npz_path}\n"
+            f"Ensure the instructor-provided mesh archive has been extracted "
+            f"into {meshes_dir}."
+        )
+
+    spec = load_flow_spec(npz_path, manifest_path, verify=verify)
     return assemble_gwf_from_spec(spec, workspace=workspace, sim_name=sim_name)
 
 
