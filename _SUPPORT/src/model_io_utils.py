@@ -21,6 +21,7 @@ Functions:
     load_base_simulation: Load pre-built MF6 simulation
     compare_water_balances: Compare two water balance DataFrames
     build_refined_gwf_model: Build locally-refined GWF model from coarse model
+    refine_with_retry: Retry build_refined_gwf_model over a set of refine radii
     build_prt_model: Build PRT particle-tracking simulation from GWF model
     load_prt_results: Load and classify PRT tracking results
     freeze_flow_spec: Encode a refined-grid spec (incl. ragged DISV gridprops)
@@ -38,7 +39,7 @@ import os
 import json
 import zipfile
 from pathlib import Path
-from typing import Union, Dict, List, Optional, Any
+from typing import Union, Dict, List, Optional, Any, Tuple, Sequence
 
 import numpy as np
 import pandas as pd
@@ -2419,6 +2420,63 @@ def build_refined_gwf_model(
         baseline_head_array=baseline_head_array,
     )
     return assemble_gwf_from_spec(spec, workspace=workspace, sim_name=sim_name)
+
+
+def refine_with_retry(
+    coarse_gwf,
+    boundary_gdf: gpd.GeoDataFrame,
+    river_gdf: gpd.GeoDataFrame,
+    refine_points: Union[List[tuple], gpd.GeoDataFrame],
+    head_array: np.ndarray,
+    workspace: Union[str, Path],
+    *,
+    refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+    base_cell_size: float = 50.0,
+    refined_cell_size: float = 10.0,
+    sim_name: str = "rg",
+) -> Tuple[Dict[str, Any], float]:
+    """Refine the corridor via :func:`build_refined_gwf_model`, retrying over a
+    small set of refine radii.
+
+    cs=10 local refinement SIGILL-crashes on a fraction of source locations
+    (macOS arm64 / mf6 6.7.0) and boundary-clipped circles can trip a Triangle
+    precision abort.  Both manifest as an exception out of
+    ``build_refined_gwf_model``.  Walking the radius slightly
+    (70 -> 62 -> 78 -> 56 -> 84 m) reliably dodges the crash for the validated
+    student doublets (the corridor stays well-resolved at any of these radii:
+    Pe_L <= 2 throughout).
+
+    Each radius attempt gets its own ``workspace/rg<k>`` subworkspace so a
+    failed attempt's partial files never collide with the next retry.
+
+    Returns
+    -------
+    (result_dict, radius_used)
+        ``result_dict`` is the ``build_refined_gwf_model`` return value for
+        the radius that succeeded; ``radius_used`` is that radius (float).
+
+    Raises
+    ------
+    RuntimeError
+        If every radius in *refine_radii* fails.
+    """
+    workspace = Path(workspace)
+    last_exc: Optional[Exception] = None
+    for k, rr in enumerate(refine_radii):
+        try:
+            res = build_refined_gwf_model(
+                coarse_gwf, boundary_gdf=boundary_gdf, river_gdf=river_gdf,
+                refine_points=refine_points, head_array=head_array,
+                workspace=str(workspace / f"rg{k}"), refine_radius=float(rr),
+                base_cell_size=base_cell_size, refined_cell_size=refined_cell_size,
+                sim_name=sim_name)
+            return res, float(rr)
+        except Exception as e:  # SIGILL / Triangle abort surface here
+            last_exc = e
+            continue
+    raise RuntimeError(
+        f"corridor refinement failed at all radii {tuple(refine_radii)}; "
+        f"last error: {last_exc!r}")
 
 
 # =============================================================================
