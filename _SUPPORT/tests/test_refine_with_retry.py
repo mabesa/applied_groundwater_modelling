@@ -230,51 +230,69 @@ def test_underlying_exception_not_leaked_on_total_failure(monkeypatch):
 
 
 # ===========================================================================
-# Criterion 2 — transport_base_model re-exports the promoted helper as the
-# module attribute _refine_with_retry, so build_spill_scenario /
-# build_doublet_base call the SAME logic.  We assert behavioral equivalence
-# (accepts either `_refine_with_retry = mio.refine_with_retry` or a thin
-# wrapper) — never a divergent private copy.
+# Criterion 2 — transport_base_model NO LONGER defines its own copy of the
+# retry body.  It re-exports the promoted helper as the module attribute
+# _refine_with_retry (either `_refine_with_retry = mio.refine_with_retry` OR a
+# thin wrapper that forwards), so build_spill_scenario / build_doublet_base call
+# the SAME promoted logic.  The acceptance point is DELEGATION: these tests must
+# FAIL while the divergent private copy still lives in transport_base_model, and
+# pass for BOTH accepted re-export forms.
 # ===========================================================================
-def test_transport_reexports_helper_attribute():
-    assert hasattr(tbm, "_refine_with_retry"), (
-        "transport_base_model must keep a module attribute _refine_with_retry "
-        "(the promoted helper) for build_spill_scenario/build_doublet_base"
+def test_transport_delegates_to_promoted_helper(monkeypatch):
+    # Never touch real refinement: neutralize the low-level builder up front so
+    # that IF a leftover private copy still ran its own radius-walk, it would use
+    # THIS fake (and, crucially, would NOT touch the promoted-helper spy below).
+    leftover_builder = _make_fake(lambda i, rr: object())
+    monkeypatch.setattr(mio, "build_refined_gwf_model", leftover_builder)
+
+    # Accepted form A — pure re-export: the module attribute IS the promoted
+    # helper object itself.  Identity settles delegation with nothing more to do.
+    if tbm._refine_with_retry is getattr(mio, "refine_with_retry", object()):
+        return
+
+    # Accepted form B — thin wrapper: it must FORWARD to mio.refine_with_retry.
+    # Spy on the promoted helper and prove the transport attribute routes through
+    # it (returning the spy's value), rather than executing an independent body.
+    marker = object()
+    spy_calls = []
+
+    def spy(*args, **kwargs):
+        spy_calls.append((args, kwargs))
+        return marker
+
+    monkeypatch.setattr(mio, "refine_with_retry", spy, raising=False)
+
+    out = tbm._refine_with_retry(COARSE, BOUNDARY, RIVER, POINTS, HEADS, "/ws")
+
+    assert spy_calls, (
+        "transport_base_model._refine_with_retry must delegate to "
+        "mio.refine_with_retry, not keep its own radius-walk body"
     )
-    assert callable(tbm._refine_with_retry)
+    assert out is marker, "the wrapper must forward the promoted helper's return"
+    assert leftover_builder.calls == [], (
+        "delegating wrapper must not call build_refined_gwf_model itself"
+    )
 
 
-@pytest.mark.parametrize("caller_name", ["refine_with_retry", "_refine_with_retry"])
-def test_promoted_and_transport_helpers_share_behavior(monkeypatch, caller_name):
-    # Same fake scenario driven through BOTH the public mio helper and the
-    # transport re-export must yield identical control flow.
-    caller = (mio.refine_with_retry if caller_name == "refine_with_retry"
-              else tbm._refine_with_retry)
+def test_transport_has_no_duplicate_retry_body():
+    # The retry BODY (the radius loop that calls build_refined_gwf_model) must
+    # live only in the promoted helper.  A pure re-export points its source at
+    # model_io_utils; a thin wrapper lives in transport_base_model but must NOT
+    # reference build_refined_gwf_model (i.e. must not re-implement the walk).
+    fn = tbm._refine_with_retry
+    src_file = os.path.basename(inspect.getsourcefile(fn) or "")
 
-    sentinel = object()
+    if src_file == "model_io_utils.py":
+        # pure re-export: same object as the promoted helper
+        assert fn is mio.refine_with_retry
+        return
 
-    def behavior(i, rr):
-        # succeed on the 2nd radius (62.0)
-        return sentinel if i == 1 else RuntimeError("retry")
-
-    fake = _make_fake(behavior)
-    monkeypatch.setattr(mio, "build_refined_gwf_model", fake)
-
-    res, radius = caller(COARSE, BOUNDARY, RIVER, POINTS, HEADS, "/ws")
-
-    assert res is sentinel
-    assert radius == 62.0
-    assert [c["refine_radius"] for c in fake.calls] == [70.0, 62.0]
-    assert _basenames(fake) == ["rg0", "rg1"]
-
-
-def test_transport_helper_total_failure_matches(monkeypatch):
-    # The transport re-export must also raise RuntimeError on total failure.
-    fake = _make_fake(lambda i, rr: ValueError("still-boom"))
-    monkeypatch.setattr(mio, "build_refined_gwf_model", fake)
-
-    with pytest.raises(RuntimeError) as exc:
-        tbm._refine_with_retry(
-            COARSE, BOUNDARY, RIVER, POINTS, HEADS, "/ws",
-            refine_radii=(70.0, 62.0))
-    assert "still-boom" in str(exc.value)
+    assert src_file == "transport_base_model.py", (
+        f"unexpected source file for the transport helper: {src_file!r}"
+    )
+    src = inspect.getsource(fn)
+    assert "build_refined_gwf_model" not in src, (
+        "transport_base_model must not keep its own copy of the retry body "
+        "(no direct build_refined_gwf_model call); delegate to the promoted "
+        "mio.refine_with_retry instead"
+    )
