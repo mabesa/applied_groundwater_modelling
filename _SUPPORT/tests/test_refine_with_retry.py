@@ -230,6 +230,60 @@ def test_underlying_exception_not_leaked_on_total_failure(monkeypatch):
 
 
 # ===========================================================================
+# FIX E regression: each failed radius is LOGGED (exception type + message)
+# so a deterministic bug in caller code isn't silently folded into "the
+# radius walk failed" -- distinguishable from a real SIGILL/Triangle abort.
+# ===========================================================================
+def test_each_failed_radius_is_logged_with_exception_type_and_message(
+    monkeypatch, caplog
+):
+    def behavior(i, rr):
+        if i < 2:
+            return TypeError(f"deterministic bug at radius {rr}")
+        return {"gwf": "SENTINEL"}
+
+    fake = _make_fake(behavior)
+    monkeypatch.setattr(mio, "build_refined_gwf_model", fake)
+
+    with caplog.at_level("WARNING", logger="model_io_utils"):
+        res, radius = mio.refine_with_retry(
+            COARSE, BOUNDARY, RIVER, POINTS, HEADS, "/ws")
+
+    assert radius == 78.0
+    warnings_ = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings_) == 2, (
+        f"expected one WARNING per failed radius, got {len(warnings_)}: "
+        f"{[r.getMessage() for r in caplog.records]}"
+    )
+    for record, rr in zip(warnings_, (70.0, 62.0)):
+        msg = record.getMessage()
+        assert str(rr) in msg, f"log record must name the failed radius: {msg!r}"
+        assert "TypeError" in msg, f"log record must name the exception TYPE: {msg!r}"
+        assert f"deterministic bug at radius {rr}" in msg, (
+            f"log record must include the exception MESSAGE: {msg!r}"
+        )
+
+
+def test_no_warning_logged_on_first_radius_success(monkeypatch, caplog):
+    fake = _make_fake(lambda i, rr: {"gwf": "SENTINEL"})  # always succeeds
+    monkeypatch.setattr(mio, "build_refined_gwf_model", fake)
+
+    with caplog.at_level("WARNING", logger="model_io_utils"):
+        mio.refine_with_retry(COARSE, BOUNDARY, RIVER, POINTS, HEADS, "/ws")
+
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]
+
+
+def test_docstring_notes_sigill_not_catchable_and_subprocess_requirement():
+    # FIX E: the docstring must make the SIGILL-vs-Python-exception distinction
+    # explicit, and name the subprocess mitigation for callers that must
+    # survive it -- so this isn't silently reported as "a radius-walk failure".
+    doc = (mio.refine_with_retry.__doc__ or "").upper()
+    assert "SIGILL" in doc
+    assert "SUBPROCESS" in doc
+
+
+# ===========================================================================
 # Criterion 2 — transport_base_model NO LONGER defines its own copy of the
 # retry body.  It re-exports the promoted helper as the module attribute
 # _refine_with_retry (either `_refine_with_retry = mio.refine_with_retry` OR a

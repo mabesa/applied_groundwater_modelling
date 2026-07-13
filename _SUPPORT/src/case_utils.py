@@ -142,10 +142,24 @@ def _lint_doublet(entry, group):
     return doublet
 
 
+_VALID_SOURCE_TYPES = {"point", "line", "area"}
+_VALID_SOURCE_RELEASE_TYPES = {"pulse", "continuous"}
+
+
 def _lint_source(entry, group):
     source = _require_block(entry, "source", group)
-    _get_required(source, "type", group, "source.type")
-    _get_required(source, "release_type", group, "source.release_type")
+    source_type = _get_required(source, "type", group, "source.type")
+    if source_type not in _VALID_SOURCE_TYPES:
+        raise ValueError(
+            f"group {group}: field 'source.type' must be one of "
+            f"{sorted(_VALID_SOURCE_TYPES)!r}, got {source_type!r}"
+        )
+    release_type = _get_required(source, "release_type", group, "source.release_type")
+    if release_type not in _VALID_SOURCE_RELEASE_TYPES:
+        raise ValueError(
+            f"group {group}: field 'source.release_type' must be one of "
+            f"{sorted(_VALID_SOURCE_RELEASE_TYPES)!r}, got {release_type!r}"
+        )
 
     location = source.get("location")
     if not isinstance(location, dict):

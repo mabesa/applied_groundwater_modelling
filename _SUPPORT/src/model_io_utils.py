@@ -22,6 +22,8 @@ Functions:
     compare_water_balances: Compare two water balance DataFrames
     build_refined_gwf_model: Build locally-refined GWF model from coarse model
     refine_with_retry: Retry build_refined_gwf_model over a set of refine radii
+    validate_flow_spec: Validate a flow assembly-spec for internal consistency
+        (array lengths, finite values, BC cellid bounds, crs presence)
     build_prt_model: Build PRT particle-tracking simulation from GWF model
     load_prt_results: Load and classify PRT tracking results
     freeze_flow_spec: Encode a refined-grid spec (incl. ragged DISV gridprops)
@@ -37,6 +39,7 @@ from __future__ import annotations
 
 import os
 import json
+import logging
 import zipfile
 from pathlib import Path
 from typing import Union, Dict, List, Optional, Any, Tuple, Sequence
@@ -49,6 +52,8 @@ import flopy
 from flopy.utils import Raster
 from flopy.mf6 import MFSimulation
 from shapely.geometry import LineString
+
+_LOGGER = logging.getLogger(__name__)
 
 
 # Canton Zurich shallow groundwater zone type-to-thickness mapping
@@ -2199,6 +2204,187 @@ def generate_refined_grid(
     return spec
 
 
+# Keys whose values must be finite (no NaN/Inf) 1-D property arrays of
+# length ncpl. 'idomain' is intentionally excluded (integer flag array, not
+# a float property).
+_FLOW_SPEC_FINITE_FLOAT_KEYS = ("top", "botm", "k", "rch", "strt")
+
+# (cellid-list key, matching value-array key(s)) pairs whose lengths must
+# match exactly -- see validate_flow_spec.
+_FLOW_SPEC_BC_LENGTH_GROUPS = (
+    ("chd_cellid", ("chd_head",)),
+    ("riv_cellid", ("riv_stage", "riv_cond", "riv_rbot")),
+    ("wel_cellid", ("wel_rate",)),
+)
+
+
+def _require_spec_key(spec: Dict[str, Any], key: str) -> Any:
+    if key not in spec:
+        raise ValueError(f"flow spec is missing required field {key!r}")
+    return spec[key]
+
+
+def _validate_flow_spec_cellids(key: str, cellids: Any, ncpl: int) -> None:
+    for i, cid in enumerate(cellids):
+        try:
+            layer, icell = cid
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"flow spec field {key!r}[{i}] must be a (layer, icell) pair, "
+                f"got {cid!r}"
+            )
+        if isinstance(layer, bool) or not isinstance(layer, (int, np.integer)):
+            raise ValueError(
+                f"flow spec field {key!r}[{i}] layer must be an int, got {layer!r}"
+            )
+        if isinstance(icell, bool) or not isinstance(icell, (int, np.integer)):
+            raise ValueError(
+                f"flow spec field {key!r}[{i}] icell must be an int, got {icell!r}"
+            )
+        if int(layer) < 0:
+            raise ValueError(
+                f"flow spec field {key!r}[{i}] layer must be >= 0, got {layer!r}"
+            )
+        if not (0 <= int(icell) < ncpl):
+            raise ValueError(
+                f"flow spec field {key!r}[{i}] icell={icell!r} out of range "
+                f"[0, {ncpl}) (ncpl={ncpl})"
+            )
+
+
+def validate_flow_spec(
+    spec: Dict[str, Any], *, require_crs: bool = True
+) -> Optional[Dict[str, Any]]:
+    """
+    Validate a flow assembly-spec (the dict produced by
+    :func:`generate_refined_grid` / decoded by :func:`load_flow_spec`) for
+    internal consistency, raising ``ValueError`` naming the offending field
+    on any violation.
+
+    This is the single, central gate against a spec whose ``gridprops``
+    / property arrays / boundary-condition arrays have silently gone out of
+    sync (e.g. a truncated/corrupt frozen ``.npz``) -- catching it here
+    means :func:`assemble_gwf_from_spec` fails loudly instead of building a
+    malformed or silently-wrong MF6 model.
+
+    Checks performed
+    -----------------
+    - ``'ncpl'`` is present, an int, and > 0.
+    - ``'gridprops'`` is present and contains ``'vertices'`` and ``'cell2d'``.
+    - ``top``, ``k``, ``rch``, ``strt``, ``idomain`` are array-likes of
+      length == ``ncpl``; ``botm`` is either length ``ncpl`` or shape
+      ``(nlay, ncpl)`` consistent with ``ncpl``.
+    - ``top``, ``botm``, ``k``, ``rch``, ``strt`` contain only finite values
+      (no NaN/Inf).
+    - Parallel boundary-condition array lengths match exactly:
+      ``len(chd_cellid) == len(chd_head)``;
+      ``len(riv_cellid) == len(riv_stage) == len(riv_cond) == len(riv_rbot)``;
+      ``len(wel_cellid) == len(wel_rate)``. Empty BC arrays are valid.
+    - Every cellid in ``chd_cellid`` / ``riv_cellid`` / ``wel_cellid`` is a
+      ``(layer, icell)`` pair of ints with ``0 <= icell < ncpl`` and
+      ``layer >= 0``. ``well_cells`` entries are ints in ``[0, ncpl)``.
+    - When ``require_crs`` (default True): ``'crs'`` is present.
+
+    Parameters
+    ----------
+    spec : dict
+        Flow assembly-spec to validate.
+    require_crs : bool, optional
+        Whether ``'crs'`` must be present. Default True.
+
+    Returns
+    -------
+    dict
+        *spec*, unchanged, on success (for convenient chaining).
+
+    Raises
+    ------
+    ValueError
+        Naming the offending field, on the first violation found.
+    """
+    ncpl_raw = _require_spec_key(spec, "ncpl")
+    if isinstance(ncpl_raw, bool) or not isinstance(ncpl_raw, (int, np.integer)):
+        raise ValueError(f"flow spec field 'ncpl' must be an int, got {ncpl_raw!r}")
+    ncpl = int(ncpl_raw)
+    if ncpl <= 0:
+        raise ValueError(f"flow spec field 'ncpl' must be > 0, got {ncpl!r}")
+
+    gridprops = _require_spec_key(spec, "gridprops")
+    if not isinstance(gridprops, dict):
+        raise ValueError(
+            f"flow spec field 'gridprops' must be a dict, got {type(gridprops)!r}"
+        )
+    for sub_key in ("vertices", "cell2d"):
+        if sub_key not in gridprops:
+            raise ValueError(
+                f"flow spec field 'gridprops' is missing required sub-key {sub_key!r}"
+            )
+
+    for key in ("top", "k", "rch", "strt", "idomain"):
+        arr = np.asarray(_require_spec_key(spec, key))
+        if arr.size != ncpl:
+            raise ValueError(
+                f"flow spec field {key!r} has length {arr.size}, expected ncpl={ncpl}"
+            )
+
+    botm_arr = np.asarray(_require_spec_key(spec, "botm"))
+    if botm_arr.ndim == 1:
+        if botm_arr.size != ncpl:
+            raise ValueError(
+                f"flow spec field 'botm' has length {botm_arr.size}, expected "
+                f"ncpl={ncpl}"
+            )
+    elif botm_arr.ndim == 2:
+        if botm_arr.shape[1] != ncpl:
+            raise ValueError(
+                f"flow spec field 'botm' has shape {botm_arr.shape}, expected "
+                f"(nlay, {ncpl})"
+            )
+    else:
+        raise ValueError(
+            f"flow spec field 'botm' must be 1-D (ncpl,) or 2-D (nlay, ncpl), "
+            f"got shape {botm_arr.shape}"
+        )
+
+    for key in _FLOW_SPEC_FINITE_FLOAT_KEYS:
+        arr = np.asarray(spec[key], dtype=float)
+        if not np.all(np.isfinite(arr)):
+            raise ValueError(
+                f"flow spec field {key!r} contains non-finite values (NaN/Inf)"
+            )
+
+    for cellid_key, value_keys in _FLOW_SPEC_BC_LENGTH_GROUPS:
+        cellid_len = len(_require_spec_key(spec, cellid_key))
+        value_lens = {vk: len(_require_spec_key(spec, vk)) for vk in value_keys}
+        if any(v != cellid_len for v in value_lens.values()):
+            lens_str = ", ".join(
+                [f"{cellid_key}={cellid_len}"] + [f"{k}={v}" for k, v in value_lens.items()]
+            )
+            raise ValueError(f"flow spec BC array length mismatch: {lens_str}")
+
+    for key in ("chd_cellid", "riv_cellid", "wel_cellid"):
+        _validate_flow_spec_cellids(key, spec[key], ncpl)
+
+    well_cells = _require_spec_key(spec, "well_cells")
+    for i, wc in enumerate(well_cells):
+        if isinstance(wc, bool) or not isinstance(wc, (int, np.integer)):
+            raise ValueError(
+                f"flow spec field 'well_cells'[{i}] must be an int, got {wc!r}"
+            )
+        if not (0 <= int(wc) < ncpl):
+            raise ValueError(
+                f"flow spec field 'well_cells'[{i}]={wc!r} out of range "
+                f"[0, {ncpl}) (ncpl={ncpl})"
+            )
+
+    if require_crs and spec.get("crs") is None:
+        raise ValueError(
+            "flow spec is missing required field 'crs' (require_crs=True)"
+        )
+
+    return spec
+
+
 def assemble_gwf_from_spec(
     spec: Dict[str, Any],
     workspace: Union[str, Path],
@@ -2210,9 +2396,14 @@ def assemble_gwf_from_spec(
     Pure MF6 construction — no Triangle/Voronoi grid generation, no
     NearestND interpolation, no spatial (point-in-polygon / nearest)
     reassignment happens here.  *spec* is the frozen plain-array dict
-    produced by :func:`generate_refined_grid`; every required key is
-    accessed directly (no defaulting) so a spec missing a key fails with
-    a ``KeyError`` before anything is built.
+    produced by :func:`generate_refined_grid`.  The spec is first passed
+    through :func:`validate_flow_spec` (internal-consistency checks: array
+    lengths, finite values, boundary-condition cellid bounds, ``crs``
+    presence) and then every required key is accessed directly (no
+    defaulting), so a spec that is missing or internally inconsistent fails
+    loudly with a ``ValueError`` (or ``KeyError``, for a field
+    :func:`validate_flow_spec` does not itself check) before anything is
+    built.
 
     Parameters
     ----------
@@ -2238,6 +2429,8 @@ def assemble_gwf_from_spec(
                              *spec* contains ``baseline_heads``)
     """
     import flopy as _flopy
+
+    validate_flow_spec(spec)
 
     workspace = Path(workspace)
     gridprops = spec['gridprops']
@@ -2449,6 +2642,20 @@ def refine_with_retry(
     Each radius attempt gets its own ``workspace/rg<k>`` subworkspace so a
     failed attempt's partial files never collide with the next retry.
 
+    Each failed radius is logged (via the standard :mod:`logging` module, at
+    WARNING level, logger name ``model_io_utils``) with the exception TYPE
+    and message before the next radius is tried, so a deterministic bug
+    (e.g. a real ``TypeError`` in caller code) is visible instead of being
+    silently folded into "the radius walk failed".
+
+    IMPORTANT -- this only catches PYTHON exceptions.  A real SIGILL (the
+    Triangle/MF6 crash this retry is designed to dodge) terminates the whole
+    process; it is a fatal signal, not a Python exception, and cannot be
+    caught by this (or any) ``try/except`` here.  Callers that must survive
+    a SIGILL (e.g. the M1 instructor validation harness, the M2b per-group
+    mesh generation script) MUST run each refinement attempt in a SEPARATE
+    SUBPROCESS so a crashed attempt cannot take down the whole run.
+
     Returns
     -------
     (result_dict, radius_used)
@@ -2473,6 +2680,10 @@ def refine_with_retry(
             return res, float(rr)
         except Exception as e:  # SIGILL / Triangle abort surface here
             last_exc = e
+            _LOGGER.warning(
+                "refine_with_retry: radius %.1f failed (%s: %s)",
+                rr, type(e).__name__, e,
+            )
             continue
     raise RuntimeError(
         f"corridor refinement failed at all radii {tuple(refine_radii)}; "
@@ -2511,7 +2722,7 @@ _FLOW_SPEC_OPTIONAL_STR_KEYS = ("crs",)
 _FLOW_SPEC_OPTIONAL_FLOAT_ARRAY_KEYS = ("baseline_heads",)
 
 _FLOW_SPEC_REQUIRED_KEYS = (
-    ("gridprops", "ncpl", "refine_radius_used")
+    ("gridprops", "ncpl", "refine_radius_used", "crs")
     + _FLOW_SPEC_FLAT_ARRAY_KEYS
     + _FLOW_SPEC_CELLID_KEYS
     + _FLOW_SPEC_VALUE_FLOAT_KEYS
@@ -2549,6 +2760,15 @@ def _decode_gridprops_from_npz(arrays: Dict[str, np.ndarray]) -> Dict[str, Any]:
     """Inverse of :func:`_encode_gridprops_for_npz` -- rebuilds a ``gridprops``
     dict with the exact ragged ``cell2d`` row lengths restored, ready to pass
     straight into ``flopy.mf6.ModflowGwfdisv``.
+
+    The ragged ``cell2d`` rows are stored CSR-style (a flat value array plus
+    a per-row length array). A corrupt/truncated ``.npz`` -- even one that
+    still hash-verifies against a manifest written over the corrupted content
+    -- can carry a ``cell2d_lengths`` vector that is inconsistent with
+    ``cell2d_flat`` (e.g. a bit-flipped length). Decoding that blindly would
+    silently reconstruct a malformed ``cell2d`` (wrong vertex ids attached to
+    the wrong cell). Instead this validates the CSR structure as it decodes
+    and raises ``ValueError`` naming the row/violation on any inconsistency.
     """
     vertices_arr = arrays["gridprops__vertices"]
     vertices = [
@@ -2559,15 +2779,38 @@ def _decode_gridprops_from_npz(arrays: Dict[str, np.ndarray]) -> Dict[str, Any]:
     flat = arrays["gridprops__cell2d_flat"]
     cell2d = []
     idx = 0
-    for n in lengths:
+    for row_i, n in enumerate(lengths):
         n = int(n)
+        if n < 4:
+            raise ValueError(
+                f"corrupt flow spec gridprops: cell2d row {row_i} has length "
+                f"{n} (< 4 -- every row needs at least [icell2d, xc, yc, nverts])"
+            )
         row = flat[idx : idx + n]
-        idx += n
+        if row.size != n:
+            raise ValueError(
+                f"corrupt flow spec gridprops: cell2d row {row_i} expects {n} "
+                f"values but only {row.size} remain in cell2d_flat "
+                f"(short/truncated flat payload)"
+            )
         icell2d = int(round(row[0]))
         xc, yc = float(row[1]), float(row[2])
         nverts = int(round(row[3]))
+        expected_n = 4 + nverts
+        if n != expected_n:
+            raise ValueError(
+                f"corrupt flow spec gridprops: cell2d row {row_i} has length "
+                f"{n}, expected 4 + nverts = {expected_n} (nverts={nverts})"
+            )
         ivert_ids = [int(round(v)) for v in row[4 : 4 + nverts]]
         cell2d.append([icell2d, xc, yc, nverts] + ivert_ids)
+        idx += n
+
+    if idx != len(flat):
+        raise ValueError(
+            f"corrupt flow spec gridprops: cell2d_lengths consume {idx} values "
+            f"but cell2d_flat has {len(flat)} (leftover/short flat payload)"
+        )
 
     return {
         "ncpl": int(arrays["gridprops__ncpl"]),
@@ -2689,8 +2932,13 @@ def freeze_flow_spec(
     ------
     KeyError
         If *spec* is missing a required field.
+    ValueError
+        If *spec* is internally inconsistent (see :func:`validate_flow_spec`)
+        -- checked before anything is written.
     """
     from case_artifact_lock import write_artifact_manifest
+
+    validate_flow_spec(spec)
 
     npz_path = Path(npz_path)
     arrays = _encode_flow_spec_for_npz(spec)
@@ -2740,7 +2988,13 @@ def load_flow_spec(
         If *npz_path* does not exist.
     ValueError
         If ``verify=True`` and the manifest is missing, malformed, or does
-        not hash-match the ``.npz`` contents.
+        not hash-match the ``.npz`` contents; or if the decoded ``cell2d``
+        CSR structure is internally inconsistent (corrupt/truncated
+        ``.npz``); or if the decoded spec fails :func:`validate_flow_spec`
+        (e.g. mismatched boundary-condition array lengths, non-finite
+        property values, an out-of-range cellid, or a missing ``crs``) --
+        this makes a hash-valid-but-corrupt or hash-valid-but-inconsistent
+        artifact fail loudly here instead of building a malformed model.
     """
     npz_path = Path(npz_path)
     if not npz_path.exists():
@@ -2765,7 +3019,8 @@ def load_flow_spec(
     with np.load(npz_path, allow_pickle=False) as npz:
         arrays = {name: npz[name] for name in npz.files}
 
-    return _decode_flow_spec_from_npz(arrays)
+    spec = _decode_flow_spec_from_npz(arrays)
+    return validate_flow_spec(spec)
 
 
 def load_pinned_flow_model(

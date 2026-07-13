@@ -395,6 +395,44 @@ class TestSourceValidation:
         with pytest.raises(ValueError):
             lint(config_path=str(path), groups=[gid])
 
+    # -- FIX D regression: enum VALUE validation, not just presence -----------
+    def test_invalid_release_type_value_raises_naming_group_field_value(self, tmp_path):
+        # A typo'd release_type ("pluse" instead of "pulse") must be rejected
+        # loudly, not silently treated as e.g. "continuous" downstream.
+        lint, path, gid = self._lint_broken(
+            tmp_path,
+            lambda c, e: e["source"].__setitem__("release_type", "pluse"),
+            gid=5,
+        )
+        with pytest.raises(ValueError) as exc:
+            lint(config_path=str(path), groups=[gid])
+        _assert_names_group_and_field(exc, gid, "source.release_type")
+        assert "pluse" in str(exc.value)
+
+    def test_invalid_source_type_value_raises_naming_group_field_value(self, tmp_path):
+        lint, path, gid = self._lint_broken(
+            tmp_path, lambda c, e: e["source"].__setitem__("type", "pt"), gid=7,
+        )
+        with pytest.raises(ValueError) as exc:
+            lint(config_path=str(path), groups=[gid])
+        _assert_names_group_and_field(exc, gid, "source.type")
+        assert "pt" in str(exc.value)
+
+    @pytest.mark.parametrize("valid_type", ["point", "line", "area"])
+    def test_valid_source_type_values_pass(self, tmp_path, valid_type):
+        lint, path, gid = self._lint_broken(
+            tmp_path, lambda c, e: e["source"].__setitem__("type", valid_type),
+        )
+        lint(config_path=str(path), groups=[gid])  # must not raise
+
+    @pytest.mark.parametrize("valid_release_type", ["pulse", "continuous"])
+    def test_valid_release_type_values_pass(self, tmp_path, valid_release_type):
+        lint, path, gid = self._lint_broken(
+            tmp_path,
+            lambda c, e: e["source"].__setitem__("release_type", valid_release_type),
+        )
+        lint(config_path=str(path), groups=[gid])  # must not raise
+
     def test_missing_location_easting_raises(self, tmp_path):
         lint, path, gid = self._lint_broken(
             tmp_path, lambda c, e: e["source"]["location"].pop("easting")

@@ -350,6 +350,7 @@ class TestAssembleGwfFromSpec:
             "wel_rate": [-50.0],
             "well_cells": [3],
             "refine_radius_used": 150.0,
+            "crs": "EPSG:2056",
         }
 
     def _assemble(self, monkeypatch, tmp_path):
