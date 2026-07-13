@@ -21,10 +21,14 @@ below lives at its own path so the legacy diagnostic survives:
   * ``run_group_determinism_check(group, runner, *, reruns=5) -> dict``
         PURE orchestration. Calls ``runner(group)`` ``reruns`` times; each call
         returns ``(spec_dict, radius_used, retried_bool)``. Reports PASS only if
-        every rerun agrees EXACTLY on ncpl, active-cell count, and every cellid
-        array (chd/riv/wel cellid + well_cells), the radius is identical, and
-        retried is False on every run. Else FAIL naming the first divergence.
-        Contains NO MODFLOW and NO subprocess.
+        every rerun agrees EXACTLY on ncpl, active-cell count, every cellid
+        array (chd/riv/wel cellid + well_cells), and the radius. A
+        DETERMINISTIC fallback -- every rerun independently lands on the SAME
+        non-first retry radius, producing the identical mesh -- PASSES and is
+        safe to freeze; ``retried`` no longer gates the verdict, it only feeds
+        the informational ``first_radius_fallback`` result field. Only genuine
+        divergence across reruns (or a runner that raises) FAILs, naming the
+        first divergence. Contains NO MODFLOW and NO subprocess.
 
   * ``subprocess_refine_runner(group, *, mother_model, work_dir) -> tuple``
         REAL runner. Runs the refinement in a FRESH SUBPROCESS and returns
@@ -200,6 +204,9 @@ def test_determinism_pass_on_identical_runs():
     assert not result.get("reason"), "PASS must have no divergence reason"
     assert float(result["radius_used"]) == 70.0
     assert int(result["group"]) == 3
+    assert result["first_radius_fallback"] is False, (
+        "the first RETRY_RADII entry must NOT be flagged as a fallback"
+    )
 
 
 def test_determinism_calls_runner_exactly_reruns_times_with_group():
@@ -226,28 +233,42 @@ def test_determinism_is_pure_no_subprocess(monkeypatch):
     assert status_of(result) == "PASS"
 
 
-def test_determinism_fail_on_retry_fallback():
-    # Any retried=True on any run means a first-radius fallback -> not freezable.
-    runner = SeqRunner([
-        (make_spec(), 70.0, False),
-        (make_spec(), 70.0, True),   # fallback fired here
-        (make_spec(), 70.0, False),
-    ])
+def test_determinism_pass_on_deterministic_fallback():
+    """A DETERMINISTIC fallback -- every rerun independently lands on the
+    SAME non-first retry radius, producing the identical mesh -- is safe to
+    freeze and must PASS. This supersedes the old zero-fallback rule: the
+    JupyterHub run proved a group can deterministically fall back from
+    radius 70 -> 62 (a Triangle boundary-clip abort caught by
+    refine_with_retry, not intermittent nondeterminism -- 8/8 independent
+    samples gave radius=62), and that reproducible mesh is freezable.
+    `first_radius_fallback` surfaces this informationally without gating
+    the verdict; genuine divergence across reruns still FAILs (see
+    test_determinism_fail_on_differing_radius below)."""
+    fallback_radius = rc.RETRY_RADII[1]
+    runner = const_runner(radius=fallback_radius, retried=True)
     result = rc.run_group_determinism_check(2, runner, reruns=3)
-    assert status_of(result) == "FAIL"
-    reason = (result.get("reason") or "").lower()
-    assert reason, "FAIL must name a reason"
-    assert ("retr" in reason) or ("fallback" in reason), f"reason should name the fallback: {reason!r}"
+    assert status_of(result) == "PASS"
+    assert not result.get("reason"), "PASS must have no divergence reason"
+    assert float(result["radius_used"]) == fallback_radius
+    assert result["first_radius_fallback"] is True, (
+        "first_radius_fallback must surface the fallback informationally"
+    )
 
 
 def test_determinism_fail_on_differing_radius():
+    """Genuine nondeterminism -- reruns landing on DIFFERENT radii -- must
+    still FAIL even though a deterministic fallback now PASSes (see
+    test_determinism_pass_on_deterministic_fallback above)."""
     runner = SeqRunner([
         (make_spec(), 70.0, False),
-        (make_spec(), 62.0, False),  # radius walked
+        (make_spec(), 62.0, False),  # radius walked -- differs from run 0
     ])
     result = rc.run_group_determinism_check(4, runner, reruns=2)
     assert status_of(result) == "FAIL"
     assert "radius" in (result.get("reason") or "").lower()
+    assert "first_radius_fallback" in result, (
+        "the informational flag must still be reported on a FAIL where a radius is known"
+    )
 
 
 def test_determinism_fail_on_differing_ncpl():
@@ -347,13 +368,15 @@ def test_subprocess_runner_derives_retried_false_at_first_radius(tmp_path, monke
     assert retried is False
 
 
-def test_determinism_check_fails_on_derived_retried_via_real_runner(tmp_path, monkeypatch):
+def test_determinism_check_passes_on_derived_retried_true_via_real_runner(tmp_path, monkeypatch):
     """End-to-end through the REAL `subprocess_refine_runner` (driven by the
     AGM_FAKE_SPEC_NPZ hook, so still MODFLOW-free): a frozen spec whose
-    `refine_radius_used` is a fallback radius must make
-    `run_group_determinism_check` FAIL on the zero-fallback rule -- proving
-    `retried` is correctly derived AND enforced end-to-end, with no manifest
-    'retried' field involved anywhere in the chain."""
+    `refine_radius_used` is a fallback radius, reproduced IDENTICALLY across
+    every rerun (the fake hook always returns the same frozen spec), is a
+    DETERMINISTIC fallback and must PASS -- superseding the old zero-fallback
+    rule. Proves `retried`/`first_radius_fallback` is correctly derived and
+    surfaced WITHOUT gating the verdict, with no manifest 'retried' field
+    involved anywhere in the chain."""
     fallback_radius = rc.RETRY_RADII[2]
     npz = freeze_synthetic_spec(
         tmp_path / "fake", "fake_spec.npz", refine_radius_used=fallback_radius
@@ -366,15 +389,18 @@ def test_determinism_check_fails_on_derived_retried_via_real_runner(tmp_path, mo
         )
 
     result = rc.run_group_determinism_check(9, runner, reruns=2)
-    assert status_of(result) == "FAIL"
-    reason = (result.get("reason") or "").lower()
-    assert ("retr" in reason) or ("fallback" in reason), f"reason should name the fallback: {reason!r}"
+    assert status_of(result) == "PASS"
+    assert float(result["radius_used"]) == fallback_radius
+    assert result["first_radius_fallback"] is True, (
+        "a deterministic fallback must still surface first_radius_fallback=True informationally"
+    )
 
 
 def test_determinism_check_passes_on_derived_retried_false_via_real_runner(tmp_path, monkeypatch):
-    """Positive mirror of the fallback-FAIL test above: a spec frozen at
-    `RETRY_RADII[0]` derives retried=False and, being identical across
-    reruns (the fake hook always returns the same frozen spec), PASSes."""
+    """Positive mirror of the fallback-PASS test above: a spec frozen at
+    `RETRY_RADII[0]` derives retried=False / first_radius_fallback=False
+    and, being identical across reruns (the fake hook always returns the
+    same frozen spec), PASSes."""
     npz = freeze_synthetic_spec(
         tmp_path / "fake", "fake_spec.npz", refine_radius_used=rc.RETRY_RADII[0]
     )
@@ -387,6 +413,7 @@ def test_determinism_check_passes_on_derived_retried_false_via_real_runner(tmp_p
 
     result = rc.run_group_determinism_check(9, runner, reruns=2)
     assert status_of(result) == "PASS"
+    assert result["first_radius_fallback"] is False
 
 
 def test_subprocess_runner_actually_spawns_a_fresh_child(tmp_path, monkeypatch):

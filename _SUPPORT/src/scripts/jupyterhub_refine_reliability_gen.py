@@ -14,9 +14,15 @@ that legacy diagnostic is left untouched.
 
 Scope (M2b-1): the PURE determinism-check core.
     - ``run_group_determinism_check`` -- reruns a caller-supplied runner and
-      verifies exact agreement on the grid/BC structure (ncpl, active-cell
-      count, chd/riv/wel cellids, well_cells) and on the refine radius, and
-      enforces that no run silently fell back to a wider retry radius.
+      verifies exact agreement, across EVERY rerun, on the grid/BC structure
+      (ncpl, active-cell count, chd/riv/wel cellids, well_cells) and on the
+      refine radius actually used. A deterministic fallback (every rerun
+      independently lands on the SAME non-first retry radius, producing the
+      identical mesh) PASSES and is safe to freeze; only genuine divergence
+      across reruns -- or a runner that raises, e.g. a SIGILL child death --
+      fails. The informational ``first_radius_fallback`` field on the result
+      surfaces (without gating) whether the agreed-upon radius was a
+      fallback.
     - ``assert_flow_specs_equal`` -- exact freeze/load (or rerun) equivalence
       helper for a flow spec, via ``np.array_equal``.
 
@@ -41,7 +47,8 @@ Scope (M2b-2): subprocess-isolated runner + freeze-on-PASS orchestration.
       canonical spec (via ``model_io_utils.freeze_flow_spec``, which itself
       calls ``validate_flow_spec`` and never writes on an invalid spec) to
       ``<meshes_dir>/group<N>_flow.npz`` + manifest, recording ``group``,
-      ``platform.node()``, best-effort tool versions, and ``radius_used``.
+      ``platform.node()``, best-effort tool versions, ``radius_used``, and
+      the informational ``first_radius_fallback`` flag.
 
 Scope (M2b-3): the CLI entry point.
     - ``main(argv=None) -> int`` -- argparse CLI wiring ``--groups`` (comma
@@ -58,8 +65,9 @@ Scope (M2b-3): the CLI entry point.
       optionally freezes the PASSing spec via
       ``freeze_group_flow_artifact`` when ``--freeze`` is given, and writes
       one machine-readable JSON report entry per group to ``--out``
-      (determinism status/reason, freeze status, node, tool versions, and
-      radius). Exits nonzero ONLY when ``--require-green-style`` is set and
+      (determinism status/reason, freeze status, node, tool versions, radius,
+      and the informational ``first_radius_fallback`` flag). Exits nonzero
+      ONLY when ``--require-green-style`` is set and
       at least one selected group failed determinism; without that flag a
       failing group is reported but the run still exits 0. The model-loading
       / subprocess body only ever executes inside ``main()`` -- importing
@@ -120,8 +128,13 @@ RETRY_RADII = (70.0, 62.0, 78.0, 56.0, 84.0)
 
 def _was_retried(radius_used: float) -> bool:
     """True iff *radius_used* differs from ``RETRY_RADII[0]`` -- i.e. the
-    refinement fell back to a wider retry radius and is therefore NOT safe
-    to freeze as a pinned artifact."""
+    refinement fell back to a wider retry radius.
+
+    PURELY INFORMATIONAL (see ``first_radius_fallback`` on the
+    ``run_group_determinism_check`` result): a deterministic fallback is
+    safe to freeze, so this no longer gates PASS/FAIL -- it just lets an
+    instructor see, from the report/manifest, that a group froze at a
+    fallback radius rather than the first-attempted one."""
     return not math.isclose(float(radius_used), RETRY_RADII[0])
 
 
@@ -140,7 +153,9 @@ def _fail(group: Group, radius_used: Any = None, reason: str = "") -> Dict[str, 
     (never ``float('nan')``) when no real radius is available -- e.g. a
     runner-exception path that never got as far as reading a spec -- so
     that a NaN can never leak into a JSON report or a freeze call. When
-    ``None`` the ``radius_used`` key is simply omitted."""
+    ``None`` the ``radius_used`` (and ``first_radius_fallback``) keys are
+    simply omitted; when a radius IS known, ``first_radius_fallback`` is
+    included alongside it (informational only -- see ``_was_retried``)."""
     result: Dict[str, Any] = {
         "status": "FAIL",
         "group": int(group),
@@ -148,6 +163,7 @@ def _fail(group: Group, radius_used: Any = None, reason: str = "") -> Dict[str, 
     }
     if radius_used is not None:
         result["radius_used"] = float(radius_used)
+        result["first_radius_fallback"] = _was_retried(radius_used)
     return result
 
 
@@ -163,13 +179,19 @@ def run_group_determinism_check(
     a pure comparison over whatever the runner returns.
 
     A run is only reported PASS if, across every rerun:
-      - ``retried`` is False (no run silently fell back to a wider radius);
       - ``radius_used`` is identical;
       - ``ncpl`` is identical;
       - the active-cell count (``sum(idomain != 0)``) is identical;
       - ``chd_cellid`` / ``riv_cellid`` / ``wel_cellid`` are identical
         (element-wise, order-sensitive);
       - ``well_cells`` is identical.
+
+    A deterministic fallback (every rerun lands on the SAME non-first
+    radius, producing the identical mesh) PASSES and is safe to freeze;
+    only genuine divergence across reruns -- or a runner that raises, e.g.
+    a SIGILL child death -- fails. ``retried`` is therefore NOT part of the
+    gate; it only feeds the informational ``first_radius_fallback`` field
+    (see ``_was_retried``), which never affects the PASS/FAIL verdict.
 
     Otherwise FAIL, naming the first divergence found.
 
@@ -187,7 +209,10 @@ def run_group_determinism_check(
     -------
     dict
         ``status`` ("PASS"/"FAIL"), ``group``, ``reason`` (empty on PASS),
-        ``radius_used`` (from the first run), and ``reruns``.
+        ``radius_used`` (from the first run, when known),
+        ``first_radius_fallback`` (informational -- True iff ``radius_used``
+        is not ``RETRY_RADII[0]``; never gates PASS/FAIL), and ``reruns``
+        (PASS only).
     """
     if reruns < 1:
         raise ValueError(f"reruns must be >= 1, got {reruns!r}")
@@ -202,15 +227,6 @@ def run_group_determinism_check(
 
     spec0, radius0, _ = runs[0]
     radius0 = float(radius0)
-
-    for i, (_spec, _radius, retried) in enumerate(runs):
-        if retried:
-            return _fail(
-                group,
-                radius0,
-                f"run {i} reported a retried/fallback refinement "
-                "(retried=True); a first-radius fallback is not safe to freeze",
-            )
 
     for i, (_spec, radius, _retried) in enumerate(runs[1:], start=1):
         if float(radius) != radius0:
@@ -263,6 +279,7 @@ def run_group_determinism_check(
         "group": int(group),
         "reason": "",
         "radius_used": radius0,
+        "first_radius_fallback": _was_retried(radius0),
         "reruns": reruns,
     }
 
@@ -661,7 +678,8 @@ def subprocess_refine_runner(
 # =============================================================================
 
 def freeze_group_flow_artifact(
-    spec: Dict[str, Any], *, group: Group, meshes_dir: Any, radius_used: float
+    spec: Dict[str, Any], *, group: Group, meshes_dir: Any, radius_used: float,
+    first_radius_fallback: bool = False,
 ) -> Dict[str, Any]:
     """Freeze *spec* to ``<meshes_dir>/group<N>_flow.npz`` (+ manifest) --
     the canonical PINNED artifact ``model_io_utils.load_pinned_flow_model``
@@ -671,7 +689,8 @@ def freeze_group_flow_artifact(
     (``run_group_determinism_check``); this function does not itself gate
     on that -- it just refuses to write anything for an invalid spec
     (``model_io_utils.freeze_flow_spec`` calls ``validate_flow_spec`` before
-    writing).
+    writing). A PASS may itself be a deterministic fallback (see
+    ``first_radius_fallback``) -- that is safe to freeze.
 
     Parameters
     ----------
@@ -684,13 +703,18 @@ def freeze_group_flow_artifact(
         Destination directory (created if missing).
     radius_used : float
         The refine radius that produced *spec*; recorded in the manifest.
+    first_radius_fallback : bool, optional
+        Informational flag (from the determinism-check result) recording
+        whether *radius_used* was a fallback (not the first-attempted)
+        radius. Purely for instructor visibility in the manifest; does not
+        affect freezing. Default False.
 
     Returns
     -------
     dict
         The manifest that was written (includes ``group``,
-        ``platform.node()``, best-effort tool ``versions``, and
-        ``radius_used`` alongside the array hashes).
+        ``platform.node()``, best-effort tool ``versions``, ``radius_used``,
+        and ``first_radius_fallback`` alongside the array hashes).
 
     Raises
     ------
@@ -705,6 +729,7 @@ def freeze_group_flow_artifact(
         "group": int(group),
         "node": platform.node(),
         "radius_used": float(radius_used),
+        "first_radius_fallback": bool(first_radius_fallback),
         "versions": _best_effort_versions(),
     }
     return mio.freeze_flow_spec(spec, npz_path, caller_fields=caller_fields)
@@ -870,6 +895,7 @@ def main(argv=None) -> int:
             spec = calls[0][0]
             manifest = freeze_group_flow_artifact(
                 spec, group=group, meshes_dir=meshes_dir, radius_used=entry["radius_used"],
+                first_radius_fallback=entry.get("first_radius_fallback", False),
             )
             entry["manifest"] = manifest
             frozen = True
