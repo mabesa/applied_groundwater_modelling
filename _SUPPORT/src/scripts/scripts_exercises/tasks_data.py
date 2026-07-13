@@ -2294,7 +2294,7 @@ Quantities fall into two camps by how they respond to refinement:
 |---|---|---|
 | **Receptor breakthrough / threshold timing** (A) | longitudinal; resolved on the refined corridor ($Pe_L \le 2$) | **Yes** |
 | **Peak concentration at the well** | grid-sensitive; under-predicted on coarse grids, recovers once the corridor is refined | With caution — refine first |
-| **Lateral plume width / exact contour** (B, C) | set by transverse dispersion; $Pe_T \approx 6$–$13 \gg 2$ at any feasible grid | **No** — numerical artefact |
+| **Lateral plume width / exact contour** (B, C) | numerical: the physical plume is **sub-cell** and the convergent flow is **oblique to the grid** (cross-wind dispersion); $Pe_T \gg 2$ | **No** — numerical artefact |
 
 A coarse grid dilutes concentration (large cells), so it under-reads the **peak at the well**; refining the source→well corridor **recovers the longitudinal breakthrough** — but it **cannot** fix the transverse under-resolution (so D is wrong): $Pe_T$ stays far above 2 at any affordable grid. So *whether and when* the plume reaches the well above the threshold is defensible once the corridor is refined; the *exact width or contour* of the contaminated area is not. For the genuine **lateral / wellfield-protection** question, use **particle tracking** (a capture zone) — advective and free of the numerical-dispersion artefact — not the smeared concentration field (Step 8). This "which claims does the grid support?" judgment is exactly what you carry into your project's interpretation and limitations.
 <br>
