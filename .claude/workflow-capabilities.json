@@ -1,0 +1,12 @@
+{
+  "_comment": "vision-build (WF2) gate manifest for applied_groundwater_modelling. Package manager is uv (never bare pytest). Tests live in _SUPPORT/tests and run green in ~8s (282 tests). ruff/mypy/bandit/diff-cover are NOT installed, so lint/typecheck/SAST/mutation/changed-cov gates are omitted; coverage is report-only. {testIgnore} = flags to exclude the milestone's not-yet-satisfied locked acceptance tests during a per-step regression run.",
+  "version": 1,
+  "testRoots": ["_SUPPORT/tests"],
+  "lockedTestExclusion": { "supported": true, "note": "pytest supports --ignore=<path>" },
+  "gates": [
+    { "id": "regression", "scope": "step",      "command": "uv run pytest -q -p no:cacheprovider _SUPPORT/tests {testIgnore}",                              "timeoutMinutes": 10, "required": true },
+    { "id": "acceptance", "scope": "milestone", "command": "uv run pytest -q -p no:cacheprovider _SUPPORT/tests",                                            "timeoutMinutes": 20, "required": true },
+    { "id": "coverage",   "scope": "milestone", "command": "uv run pytest -q -p no:cacheprovider _SUPPORT/tests --cov=_SUPPORT/src --cov-report=term-missing", "timeoutMinutes": 20, "required": false }
+  ],
+  "ci": { "provider": "github", "required": false }
+}
