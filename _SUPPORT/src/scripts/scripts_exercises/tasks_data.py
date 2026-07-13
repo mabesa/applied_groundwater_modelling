@@ -458,15 +458,15 @@ In a MODFLOW 6 GWT (solute transport) model:
 "task_t04_checkpoint_1": r"""
 ## Checkpoint 1 — Grid Péclet Number (predict, then compute)
 
-The native grid carries the inherited ~50 m resolution into the source→receptor corridor. The **grid Péclet number** measures how well the grid resolves the dispersive spreading length $\alpha_L$:
+The **grid Péclet number** measures how well the grid resolves the dispersive spreading length $\alpha_L$:
 
 $$Pe_L = \frac{\Delta x}{\alpha_L}$$
 
-where $\Delta x$ is the local cell size (here the cell $\sqrt{\text{area}}$ at the doublet) and $\alpha_L = 10$ m.
+The inherited flow grid has ~50 m cells; we **refine the source→well corridor to ~10 m**. With $\alpha_L = 10$ m:
 
-**Step 1 — Predict (no calculation):** Before computing, decide — do you expect the native grid to be *above* or *below* the $Pe_L \le 2$ accuracy threshold? What would being *above* it mean for the simulated plume?
+**Step 1 — Predict (no calculation):** Before computing, decide — do you expect the *inherited ~50 m* grid to be *above* or *below* the $Pe_L \le 2$ accuracy threshold? What would being above it do to the simulated plume?
 
-**Step 2 — Compute:** Using the printed near-doublet cell size $\Delta x \approx 54$ m and $\alpha_L = 10$ m, calculate $Pe_L$.
+**Step 2 — Compute:** Calculate $Pe_L$ for the **refined corridor** ($\Delta x \approx 10$ m, $\alpha_L = 10$ m). Is it resolved?
 """,
 
 "task_t04_checkpoint_2": r"""
@@ -484,7 +484,7 @@ $$\Delta t_{max} = \frac{\Delta s}{v}$$
 "task_t04_checkpoint_3": r"""
 ## Checkpoint 3 — Which Threshold Claim is Defensible?
 
-You report the doublet results to a regulator. Even on the **refined** grid the transverse grid Péclet stays $Pe_T \approx 12 \gg 2$, so lateral spreading is never fully resolved. **Which one of the following claims can you defend?**
+You report the spill→capture result to a regulator. Even on the **refined** grid the transverse grid Péclet stays $Pe_T \approx 12 \gg 2$, so lateral spreading is never fully resolved. **Which one of the following claims can you defend?**
 """,
 
 # ── Transport Track — Notebook 5 checkpoints ──
@@ -736,7 +736,7 @@ solutions = {
     # task_t03_checkpoint_1 is multiple choice - handled separately
     # task_t03_checkpoint_3 is multiple choice - handled separately
     # Transport Track — Notebook 4 checkpoints
-    "task_t04_checkpoint_1": (4.4, 6.4),    # Pe_L = dx/alpha_L = ~54/10 = 5.4 (b010191 native, > 2)
+    "task_t04_checkpoint_1": (0.5, 1.5),    # Pe_L = dx/alpha_L = ~10/10 = 1 (refined corridor, <= 2)
     "task_t04_checkpoint_2": (0.30, 0.50),  # dt_max = ds/v = 10.8/28.3 = 0.38 d (refined well-adj cell)
     # task_t04_checkpoint_3 is multiple choice - handled separately
     # Transport Track — Notebook 5 checkpoints
@@ -839,9 +839,9 @@ solutions_exact = {
     "task_t03_checkpoint_2": "30",
     "task_t03_checkpoint_3": "A) MST",
     # Transport Track — Notebook 4 checkpoints
-    "task_t04_checkpoint_1": "≈ 5.4",
+    "task_t04_checkpoint_1": "≈ 1",
     "task_t04_checkpoint_2": "≈ 0.38",
-    "task_t04_checkpoint_3": "A) Recirculation reaches the abstraction well",
+    "task_t04_checkpoint_3": "A) The well breakthrough & threshold timing",
     # Transport Track — Notebook 5 checkpoints
     "task_t05_checkpoint_1": "A) Sparse plume data plus parameter trade-offs leave the inverse problem under-constrained",
     "task_t05_checkpoint_2": "See output",
@@ -1158,8 +1158,8 @@ multiple_choice_options = {
     ],
     # Transport Track — Notebook 4 checkpoints
     "task_t04_checkpoint_3": [
-        ("A) Recirculation reaches the abstraction well",
-         "A) \"A meaningful fraction (~0.30 of c_inj) of the injected solute recirculates to the abstraction well\" — a longitudinal/flux-integrated arrival quantity that CONVERGES under refinement (native ~0.18 → refined ~0.30): the coarse grid under-reads it, but refining recovers a trustworthy value, unlike the transverse width/contour claims."),
+        ("A) The well breakthrough & threshold timing",
+         "A) \"The plume reaches the monitoring well and exceeds the threshold at ~day D\" — a longitudinal receptor-breakthrough quantity resolved on the refined corridor (Pe_L <= 2): arrival time, peak and threshold-exceedance timing are defensible, unlike the transverse width/contour claims."),
         ("B) Contaminated zone is exactly 80 m wide",
          "B) \"The contaminated zone is exactly 80 m wide at the 10% contour\" — lateral width is governed by transverse dispersion (Pe_T ≈ 12 ≫ 2 even refined): a numerical-dispersion artefact."),
         ("C) The 0.1 contour passes through a specific parcel",
@@ -2266,11 +2266,11 @@ DSP handles dispersion ($\alpha_L$/`alh`, $\alpha_T$/`ath1`, $D_m^*$/`diffc`), A
 "task_t04_checkpoint_1": r"""
 ## Solution — Grid Péclet Number
 
-With the near-doublet cell size $\Delta x \approx 54$ m and $\alpha_L = 10$ m:
+For the **refined corridor** ($\Delta x \approx 10$ m, $\alpha_L = 10$ m):
 
-$$Pe_L = \frac{\Delta x}{\alpha_L} = \frac{54}{10} \approx 5.4$$
+$$Pe_L = \frac{\Delta x}{\alpha_L} = \frac{10}{10} = 1$$
 
-This is **above** the $Pe_L \le 2$ accuracy threshold. Crucially, **$Pe_L \le 2$ is an *accuracy* criterion, not a stability one** — the TVD scheme with implicit (IMS) advection stays stable far above $Pe = 2$; it does **not** blow up. Instead, a coarse grid adds *numerical dispersion* that artificially smears the plume — most damagingly **across** the flow direction — and dilutes the concentrations near the corridor centre-line. The consequence you predicted: the native grid will **under-predict the peak concentration** along the source→receptor corridor.
+This is **at/below** the $Pe_L \le 2$ accuracy threshold — the corridor is resolved. (The *inherited* ~50 m grid would give $Pe_L \approx 5$, well above 2 — which is exactly why we refine.) Crucially, **$Pe_L \le 2$ is an *accuracy* criterion, not a stability one** — the TVD scheme with implicit (IMS) advection stays stable far above $Pe = 2$; it does **not** blow up. Instead, a coarse grid adds *numerical dispersion* that artificially smears the plume — most damagingly **across** the flow direction — and dilutes the concentrations near the corridor centre-line. On a coarse (unrefined) grid the consequence is an **under-predicted peak concentration** along the source→well corridor — which is why the corridor is refined before we read the breakthrough.
 <br>
 """,
 
@@ -2286,17 +2286,17 @@ Like $Pe \le 2$, **$Cr \le 1$ is an accuracy criterion, not a stability one** �
 "task_t04_checkpoint_3": r"""
 ## Solution — Defensible Threshold Claims
 
-**Correct answer: A** — the recirculation of injected solute back to the abstraction well.
+**Correct answer: A** — the receptor breakthrough at the monitoring well (arrival, peak, threshold-exceedance timing).
 
 Quantities fall into two camps by how they respond to refinement:
 
 | Quantity | Grid behaviour | Defensible? |
 |---|---|---|
-| **Recirculation / arrival at the well** (A) | longitudinal/flux-integrated; under-read on coarse grids but **converges** on refinement (native ~0.18 → refined ~0.30) | **Yes** — refine, then quote the converged value |
-| **Peak concentration in the plume body** | grid-sensitive; under-predicted on coarse grids, recovers on refinement (0.84 → 0.98) | With caution — refine first |
-| **Lateral plume width / exact contour** (B, C) | set by transverse dispersion; $Pe_T \approx 11 \gg 2$ at any feasible grid | **No** — numerical artefact |
+| **Receptor breakthrough / threshold timing** (A) | longitudinal; resolved on the refined corridor ($Pe_L \le 2$) | **Yes** |
+| **Peak concentration at the well** | grid-sensitive; under-predicted on coarse grids, recovers once the corridor is refined | With caution — refine first |
+| **Lateral plume width / exact contour** (B, C) | set by transverse dispersion; $Pe_T \approx 6$–$13 \gg 2$ at any feasible grid | **No** — numerical artefact |
 
-The coarse grid under-reads *both* the recirculation and the peak (large cells dilute concentration), but refinement **recovers** the longitudinal/flux-integrated quantities — it **cannot** fix the transverse under-resolution (so D is wrong): $Pe_T$ stays far above 2. A claim about *whether and roughly how much* solute returns to the well is defensible once you have refined; a claim about the *exact width or contour* of the contaminated area is not — at any resolution you can afford. This is a **graded** judgment in your final report (Results & Interpretation — limitations; Conceptual Model — assumptions).
+A coarse grid dilutes concentration (large cells), so it under-reads the **peak at the well**; refining the source→well corridor **recovers the longitudinal breakthrough** — but it **cannot** fix the transverse under-resolution (so D is wrong): $Pe_T$ stays far above 2 at any affordable grid. So *whether and when* the plume reaches the well above the threshold is defensible once the corridor is refined; the *exact width or contour* of the contaminated area is not. For the genuine **lateral / wellfield-protection** question, use **particle tracking** (a capture zone) — advective and free of the numerical-dispersion artefact — not the smeared concentration field (Step 8). This "which claims does the grid support?" judgment is exactly what you carry into your project's interpretation and limitations.
 <br>
 """,
 

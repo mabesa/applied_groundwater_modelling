@@ -1,0 +1,567 @@
+"""
+Finite-pulse SRC (mass-loading) spill -> capture demo for MODFLOW 6 GWT.
+
+Self-contained teaching demo (UNGRADED) for the transport track (charter milestone
+M2).  Builds and runs a coupled steady-GWF / transient-GWT simulation on a
+corridor-refined DISV grid:
+
+    * A representative geothermal DOUBLET (spare concession ``b010191``) is active
+      for FLOW ONLY -- a clean injection well (+Q) and an extraction / monitoring
+      well (-Q) shape a forced-gradient flow field.  No solute rides the wells.
+    * A finite-duration point SPILL is placed ~90 m UPGRADIENT of the extraction
+      well (upgradient computed from the local regional flow direction).  The
+      solute is introduced with the MODFLOW 6 **SRC** package (mass loading,
+      g/d) rather than a fixed concentration (CNC).  The pulse is ON for the
+      first stress period (duration ``pulse_days``) and OFF thereafter, so the
+      plume migrates freely toward the pumping well.
+
+Units: the flow model runs in metres / day, so mg/L == g/m^3 and SRC mass rates
+are in **grams per day**.  A released mass ``M`` [g] over a pulse ``T`` [d] gives a
+per-cell loading ``smassrate = M / (n_src_cells * T)`` [g/d].
+
+Diagnostics returned: breakthrough at the extraction well (mg/L), peak + arrival,
+a mass-balance table from the GWT listing budget (SRC in, well out, boundary out,
+storage, % imbalance), a solubility guardrail (emergent source-cell concentration
+vs a stated solubility), and the grid Peclet numbers Pe_L / Pe_T on the corridor.
+
+OWNERSHIP: this module imports the shared grid utility ``model_io_utils`` only.
+It does NOT import ``transport_base_model`` -- the corridor radius-walk retry,
+Courant sizing and helpers are re-implemented inline here.
+
+Author: Applied Groundwater Modelling Course (transport track, M2 SRC demo)
+"""
+from __future__ import annotations
+
+import os
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+
+import numpy as np
+import geopandas as gpd
+import flopy
+from shapely.geometry import LineString, Point, Polygon
+
+import model_io_utils as mio  # shared grid utility (grid + property interpolation)
+
+
+# ---------------------------------------------------------------------------
+# LOCKED transport parameters (replicated from transport_base_model.LOCKED_PARAMS)
+# ---------------------------------------------------------------------------
+LOCKED_PARAMS: Dict[str, Any] = {
+    "alh": 10.0,            # longitudinal dispersivity [m]
+    "ath1": 1.0,            # transverse horizontal dispersivity [m]
+    "diffc": 8.64e-5,       # effective molecular diffusion [m^2/d] (= 1e-9 m^2/s)
+    "porosity": 0.20,       # effective porosity n_e [-]
+    "scheme": "TVD",        # ADV weighting
+    "xt3d_off": False,      # XT3D default-on for DSP
+    "refined_cell_size": 10.0,
+    "base_cell_size": 50.0,
+    "refine_radius": 70.0,  # corridor half-width [m]
+    "time_units": "DAYS",
+}
+
+# Solver policy (replicated from transport_base_model)
+_GWF_NEWTON = "NEWTON"
+_GWF_IMS = dict(complexity="COMPLEX", outer_maximum=200, inner_maximum=100,
+                outer_dvclose=1e-4, inner_dvclose=1e-5, linear_acceleration="BICGSTAB")
+_GWT_IMS = dict(complexity="MODERATE", linear_acceleration="BICGSTAB",
+                outer_dvclose=1e-6, inner_dvclose=1e-7)
+
+# Representative spare doublet b010191 (LV95) -- FLOW ONLY, not assigned to any group.
+INJ_XY: Tuple[float, float] = (2681297.0, 1248917.0)   # injection well  (Rückgabe)
+ABS_XY: Tuple[float, float] = (2681487.0, 1248981.0)   # extraction well (Entnahme)
+DOUBLET_Q: float = 1370.0                              # doublet rate [m^3/d]
+SPILL_UPGRADIENT_M: float = 90.0                       # spill offset upgradient of ABS [m]
+
+_MF6_FALLBACK = os.path.expanduser("~/.local/share/flopy/bin/mf6")
+
+
+# ---------------------------------------------------------------------------
+# result container
+# ---------------------------------------------------------------------------
+@dataclass
+class SrcPulseDemo:
+    """Diagnostics from the SRC finite-pulse spill -> capture demo."""
+    times: np.ndarray                       # output times [d]
+    breakthrough: np.ndarray                # C at extraction well [mg/L]
+    peak_mgL: float                         # peak breakthrough [mg/L]
+    arrival_day: float                      # time of peak [d]
+    mass_balance: Dict[str, float]          # cumulative mass terms [g] + % imbalance
+    solubility_ok: bool                     # emergent C < solubility ?
+    emergent_C_mgL: float                   # emergent source-cell concentration [mg/L]
+    solubility_mgL: float                   # stated solubility [mg/L]
+    solubility_margin: float                # solubility / emergent_C
+    PeL_min: float
+    PeL_max: float
+    PeT_min: float
+    PeT_max: float
+    mass_g: float
+    pulse_days: float
+    total_days: float
+    smassrate_gpd: float                    # per-cell SRC loading [g/d]
+    src_cells: List[int]
+    ext_cell: int
+    inj_cell: int
+    spill_xy: Tuple[float, float]
+    meta: Dict[str, Any] = field(default_factory=dict)
+    locked: Dict[str, Any] = field(default_factory=lambda: dict(LOCKED_PARAMS))
+
+
+# ---------------------------------------------------------------------------
+# inline helpers (re-implemented; NOT imported from transport_base_model)
+# ---------------------------------------------------------------------------
+def _cellsize(mg, ncpl) -> np.ndarray:
+    """Representative cell edge length sqrt(area) per cell."""
+    return np.array([np.sqrt(Polygon(mg.get_cell_vertices(i)).area) for i in range(ncpl)])
+
+
+def _run_failure_tail(ws: Union[str, Path], buf, n: int = 40) -> str:
+    """Assemble a readable failure message from the MF6 listing tails."""
+    ws = Path(ws)
+    chunks = []
+    for name in ("mfsim.lst", "gwf.lst", "gwt.lst"):
+        p = ws / name
+        if p.exists():
+            try:
+                lines = p.read_text(errors="replace").splitlines()
+            except OSError:
+                continue
+            if lines:
+                chunks.append(f"--- {name} (last {n} lines) ---\n" + "\n".join(lines[-n:]))
+    buf_tail = "\n".join(buf[-12:]) if buf else ""
+    if buf_tail.strip():
+        chunks.append("--- run_simulation buffer (tail) ---\n" + buf_tail)
+    return "\n\n".join(chunks) if chunks else "(no listing output found)"
+
+
+def _corridor_points(a_xy, b_xy, step: float = 40.0, pad: float = 40.0):
+    """Evenly-spaced refine points along a->b (padded past both ends)."""
+    a, b = np.array(a_xy, float), np.array(b_xy, float)
+    L = float(np.hypot(*(b - a)))
+    u = (b - a) / L
+    n = max(int((L + 2 * pad) // step) + 1, 2)
+    return [tuple(a + s * u) for s in np.linspace(-pad, L + pad, n)], u, L
+
+
+def _refine_with_retry(coarse_gwf, boundary_gdf, river_gdf, refine_points, head_array,
+                       workspace: Union[str, Path], *,
+                       refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+                       base_cell_size: float = 50.0, refined_cell_size: float = 10.0,
+                       sim_name: str = "rg") -> Tuple[Dict[str, Any], float]:
+    """Corridor refine, walking the refine radius to dodge the cs=10 SIGILL /
+    Triangle-precision abort (macOS arm64 / mf6 6.7.0).
+
+    Re-implemented inline (charter constraint: do NOT import transport_base_model).
+    Returns (build_refined_gwf_model result dict, radius actually used).
+    """
+    workspace = Path(workspace)
+    last_exc: Optional[Exception] = None
+    for k, rr in enumerate(refine_radii):
+        try:
+            res = mio.build_refined_gwf_model(
+                coarse_gwf, boundary_gdf=boundary_gdf, river_gdf=river_gdf,
+                refine_points=refine_points, head_array=head_array,
+                workspace=str(workspace / f"rg{k}"), refine_radius=float(rr),
+                base_cell_size=base_cell_size, refined_cell_size=refined_cell_size,
+                sim_name=sim_name)
+            return res, float(rr)
+        except Exception as e:  # SIGILL / Triangle abort surfaces here
+            last_exc = e
+            continue
+    raise RuntimeError(
+        f"corridor refinement failed at all radii {tuple(refine_radii)}; "
+        f"last error: {last_exc!r}")
+
+
+def _courant_nstp(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
+                  total_time: float, cr_target: float = 0.9, nstp_cap: int = 2000,
+                  sliver_floor_frac: float = 0.4) -> Tuple[int, float, float, Dict[str, float]]:
+    """Size fixed time steps from a per-cell Courant number Cr_i = v_i*dt/ds_i.
+
+    Slivers below sliver_floor_frac * refined_cell_size are excluded (they carry
+    negligible pore volume but would force an impractically tiny dt).
+    """
+    floor = sliver_floor_frac * LOCKED_PARAMS["refined_cell_size"]
+    sel = mask & (size_cells >= floor)
+    if not sel.any():                       # degenerate: fall back to whole mask
+        sel = mask
+    ratio = v_cells[sel] / size_cells[sel]
+    critical = float(ratio.max())
+    dt_need = cr_target / critical
+    nstp = min(int(np.ceil(total_time / dt_need)), nstp_cap)
+    nstp = max(nstp, 1)
+    dt = total_time / nstp
+    j = np.where(sel)[0][int(np.argmax(ratio))]
+    diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
+                ds_true_min=float(size_cells[mask].min()), floor=floor)
+    return nstp, dt, critical * dt, diag
+
+
+def _load_calibrated_flow():
+    """Load the 05f-calibrated coarse flow model + GIS (boundary, Limmat/Sihl)."""
+    from data_utils import download_named_file
+    flow_ws = mio.ensure_flow_model()
+    exe = _MF6_FALLBACK
+    csim = flopy.mf6.MFSimulation.load(sim_ws=str(flow_ws), exe_name=exe, verbosity_level=0)
+    cgwf = csim.get_model("limmat_valley")
+    # exe from the loaded sim if it resolves, else the flopy-bin fallback
+    exe = csim.exe_name or _MF6_FALLBACK
+    boundary = gpd.read_file(download_named_file(name="model_boundary", data_type="gis"))
+    rivers = gpd.read_file(download_named_file(name="rivers", data_type="gis"))
+    rivers = rivers[rivers["GEWAESSERNAME"].isin(["Limmat", "Sihl"])
+                    & rivers.intersects(boundary.geometry.iloc[0])]
+    return cgwf, boundary, rivers, exe
+
+
+def _default_case_ws() -> Path:
+    from data_utils import get_default_data_folder
+    return Path(get_default_data_folder()) / "transport_srcpulse_demo"
+
+
+# ---------------------------------------------------------------------------
+# build + run
+# ---------------------------------------------------------------------------
+def build_srcpulse_demo(
+    mass_g: float = 3.0e5,
+    pulse_days: float = 30.0,
+    total_days: float = 120.0,
+    solubility_mgL: float = 1000.0,
+    *,
+    case_ws: Optional[Union[str, Path]] = None,
+    cr_target: float = 0.9,
+    nstp_cap: int = 2000,
+    refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+    force: bool = False,
+) -> SrcPulseDemo:
+    """Build + run the SRC finite-pulse spill -> capture demo; return diagnostics.
+
+    Parameters
+    ----------
+    mass_g : float
+        Total solute mass released over the pulse [g].
+    pulse_days : float
+        Pulse duration T [d] (SRC active in stress period 0, off afterwards).
+    total_days : float
+        Total simulated time [d] (period 0 = pulse, period 1 = migration).
+    solubility_mgL : float
+        Stated aqueous solubility [mg/L] for the guardrail assertion.
+    case_ws : path, optional
+        Workspace for the refined grid + coupled sim + cache.  Defaults to
+        ``<data>/transport_srcpulse_demo``.
+    force : bool
+        Rebuild even if a matching cache exists.
+
+    Returns
+    -------
+    SrcPulseDemo
+    """
+    case_ws = Path(case_ws) if case_ws is not None else _default_case_ws()
+    case_ws.mkdir(parents=True, exist_ok=True)
+
+    params = dict(mass_g=float(mass_g), pulse_days=float(pulse_days),
+                  total_days=float(total_days), solubility_mgL=float(solubility_mgL))
+    cache = case_ws / "srcpulse_cache.npz"
+    if cache.exists() and not force:
+        cached = _load_cache(cache, params)
+        if cached is not None:
+            return cached
+
+    cgwf, boundary, rivers, exe = _load_calibrated_flow()
+    heads_array = cgwf.output.head().get_data().flatten()
+
+    # ---- regional flow direction at the extraction well -> upgradient spill ----
+    mg0 = cgwf.modelgrid
+    xc0 = np.array(mg0.xcellcenters); yc0 = np.array(mg0.ycellcenters)
+    spd0 = cgwf.output.budget().get_data(text="DATA-SPDIS")[0]
+    ia = int(np.argmin((xc0 - ABS_XY[0]) ** 2 + (yc0 - ABS_XY[1]) ** 2))
+    u_reg = np.array([spd0["qx"][ia], spd0["qy"][ia]], float)
+    u_reg = u_reg / np.hypot(*u_reg)                     # flow (downgradient) unit vector
+    spill_xy = (ABS_XY[0] - SPILL_UPGRADIENT_M * u_reg[0],
+                ABS_XY[1] - SPILL_UPGRADIENT_M * u_reg[1])
+
+    # ---- corridor refinement (spill->extraction corridor + injection well) ----
+    corr_pts, u, L = _corridor_points(spill_xy, ABS_XY)
+    refine_points = corr_pts + [tuple(INJ_XY)]
+    res, refine_radius_used = _refine_with_retry(
+        cgwf, boundary, rivers, refine_points, heads_array, case_ws / "refgrid",
+        refine_radii=refine_radii, base_cell_size=LOCKED_PARAMS["base_cell_size"],
+        refined_cell_size=LOCKED_PARAMS["refined_cell_size"], sim_name="rg")
+    rgwf = res["gwf"]; mg = res["modelgrid"]; gp = res["gridprops"]; ncpl = res["ncpl"]
+    xc = np.array(mg.xcellcenters); yc = np.array(mg.ycellcenters)
+    csz = _cellsize(mg, ncpl)
+
+    k_ref = rgwf.npf.k.array; top_ref = rgwf.disv.top.array; botm_ref = rgwf.disv.botm.array
+    heads_ref = rgwf.output.head().get_data().flatten()
+    chd = rgwf.get_package("CHD").stress_period_data.get_data(0)
+    riv = rgwf.get_package("RIV").stress_period_data.get_data(0)
+    rch = rgwf.get_package("RCHA").recharge.get_data()
+
+    injc = int(np.argmin((xc - INJ_XY[0]) ** 2 + (yc - INJ_XY[1]) ** 2))
+    extc = int(np.argmin((xc - ABS_XY[0]) ** 2 + (yc - ABS_XY[1]) ** 2))
+    src_cells = [int(np.argmin((xc - spill_xy[0]) ** 2 + (yc - spill_xy[1]) ** 2))]
+    n_src = len(src_cells)
+    smassrate = float(mass_g) / (n_src * float(pulse_days))   # per-cell SRC loading [g/d]
+
+    line = LineString([tuple(spill_xy), tuple(ABS_XY)])
+    corridor_mask = np.array([line.distance(Point(xc[i], yc[i])) < refine_radius_used
+                              for i in range(ncpl)])
+
+    def _make_sim(nstp_per_period):
+        ws = str(case_ws / "sim")
+        sim = flopy.mf6.MFSimulation(sim_name="srcpulse", exe_name=exe, sim_ws=ws)
+        # TDIS: 2 periods -> pulse ON (T), then OFF (migration)
+        n_on = max(int(nstp_per_period * float(pulse_days) / float(total_days)), 1)
+        n_off = max(nstp_per_period - n_on, 1)
+        perioddata = [(float(pulse_days), n_on, 1.0),
+                      (float(total_days) - float(pulse_days), n_off, 1.0)]
+        nper = len(perioddata)
+        flopy.mf6.ModflowTdis(sim, time_units=LOCKED_PARAMS["time_units"],
+                              nper=nper, perioddata=perioddata)
+        flopy.mf6.ModflowIms(sim, filename="gwf.ims", **_GWF_IMS)
+        gwf = flopy.mf6.ModflowGwf(sim, modelname="gwf", save_flows=True,
+                                   newtonoptions=_GWF_NEWTON)
+        flopy.mf6.ModflowGwfdisv(gwf, nlay=1, ncpl=ncpl, nvert=gp["nvert"], top=top_ref,
+                                 botm=botm_ref, vertices=gp["vertices"], cell2d=gp["cell2d"])
+        flopy.mf6.ModflowGwfnpf(gwf, icelltype=1, k=k_ref, save_flows=True,
+                                save_specific_discharge=True)
+        flopy.mf6.ModflowGwfic(gwf, strt=np.maximum(heads_ref, botm_ref[0] + 0.01))
+        flopy.mf6.ModflowGwfsto(gwf, steady_state={i: True for i in range(nper)})
+        flopy.mf6.ModflowGwfrcha(gwf, recharge=rch)
+        flopy.mf6.ModflowGwfchd(gwf, stress_period_data=[(tuple(r["cellid"]), float(r["head"]))
+                                                         for r in chd])
+        flopy.mf6.ModflowGwfriv(gwf, stress_period_data=[(tuple(r["cellid"]), float(r["stage"]),
+                                float(r["cond"]), float(r["rbot"])) for r in riv])
+        # ---- doublet wells: FLOW ONLY (clean injection, no concentration) ----
+        flopy.mf6.ModflowGwfwel(gwf, pname="injw",
+                                stress_period_data={0: [[(0, injc), abs(DOUBLET_Q)]]})
+        flopy.mf6.ModflowGwfwel(gwf, pname="absw",
+                                stress_period_data={0: [[(0, extc), -abs(DOUBLET_Q)]]})
+        flopy.mf6.ModflowGwfoc(gwf, head_filerecord="gwf.hds", budget_filerecord="gwf.cbc",
+                               saverecord=[("HEAD", "LAST"), ("BUDGET", "LAST")])
+        # ---- GWT (solute = the spill, introduced via SRC mass loading) ----
+        gwt = flopy.mf6.ModflowGwt(sim, modelname="gwt", save_flows=True)
+        flopy.mf6.ModflowGwtdisv(gwt, nlay=1, ncpl=ncpl, nvert=gp["nvert"], top=top_ref,
+                                 botm=botm_ref, vertices=gp["vertices"], cell2d=gp["cell2d"])
+        flopy.mf6.ModflowGwtic(gwt, strt=0.0)
+        flopy.mf6.ModflowGwtmst(gwt, porosity=LOCKED_PARAMS["porosity"])
+        flopy.mf6.ModflowGwtadv(gwt, scheme=LOCKED_PARAMS["scheme"])
+        flopy.mf6.ModflowGwtdsp(gwt, alh=LOCKED_PARAMS["alh"], ath1=LOCKED_PARAMS["ath1"],
+                                diffc=LOCKED_PARAMS["diffc"], xt3d_off=LOCKED_PARAMS["xt3d_off"])
+        # bare SSM: CHD/RIV/RCHA/WEL flows carry default (0 inflow / cell-conc outflow)
+        flopy.mf6.ModflowGwtssm(gwt)
+        # SRC finite pulse: mass loading [g/d] in period 0, OFF in period 1
+        src_spd = {0: [[(0, c), smassrate] for c in src_cells], 1: []}
+        flopy.mf6.ModflowGwtsrc(gwt, stress_period_data=src_spd)
+        flopy.mf6.ModflowGwtoc(gwt, concentration_filerecord="gwt.ucn",
+                               budget_filerecord="gwt.cbc",
+                               saverecord=[("CONCENTRATION", "ALL"), ("BUDGET", "ALL")])
+        flopy.mf6.ModflowIms(sim, filename="gwt.ims", **_GWT_IMS)
+        sim.register_ims_package(sim.get_package("gwt.ims"), ["gwt"])
+        flopy.mf6.ModflowGwfgwt(sim, exgtype="GWF6-GWT6", exgmnamea="gwf", exgmnameb="gwt",
+                                filename="srcpulse.gwfgwt")
+        sim.write_simulation(silent=True)
+        ok, buf = sim.run_simulation(silent=True)
+        return sim, gwf, gwt, ok, buf
+
+    # ---- pilot: read velocity, size Courant, then production ----
+    sim, gwf, gwt, ok, buf = _make_sim(20)
+    if not ok:
+        raise RuntimeError("pilot run failed; listing tail:\n"
+                           + _run_failure_tail(case_ws / "sim", buf))
+    spd = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
+    vmag = np.sqrt(spd["qx"] ** 2 + spd["qy"] ** 2) / LOCKED_PARAMS["porosity"]
+    # exclude BOTH doublet wells (inj + ext) AND the source cells from Courant binding
+    corr_no_wells = corridor_mask.copy()
+    for c in src_cells + [injc, extc]:
+        corr_no_wells[c] = False
+    nstp, dt, cr_act, cdiag = _courant_nstp(vmag, csz, corr_no_wells, float(total_days),
+                                            cr_target, nstp_cap)
+
+    sim, gwf, gwt, ok, buf = _make_sim(nstp)
+    if not ok:
+        raise RuntimeError("production run failed; listing tail:\n"
+                           + _run_failure_tail(case_ws / "sim", buf))
+
+    # ---- breakthrough at the extraction well ----
+    cobj = gwt.output.concentration(); times = np.array(cobj.get_times())
+    bt = np.maximum(np.array([cobj.get_data(totim=t)[0, 0, extc] for t in times]), 0.0)
+    peak = float(bt.max()) if bt.size else float("nan")
+    arrival = float(times[int(np.argmax(bt))]) if bt.size else float("nan")
+
+    # ---- emergent source-cell concentration vs solubility ----
+    q_src = float(np.hypot(spd["qx"][src_cells[0]], spd["qy"][src_cells[0]]))  # Darcy [m/d]
+    b_src = float(max(heads_ref[src_cells[0]] - botm_ref[0][src_cells[0]], 0.1))
+    ds_src = float(csz[src_cells[0]])
+    q_cell = max(q_src * ds_src * b_src, 1e-6)                # advective throughflow [m^3/d]
+    emergent_C = smassrate / q_cell                          # [g/m^3] == [mg/L]
+    solubility_ok = bool(emergent_C < solubility_mgL)
+    sol_margin = float(solubility_mgL / emergent_C) if emergent_C > 0 else float("inf")
+
+    # ---- mass balance from the GWT listing budget ----
+    mb = _mass_balance(case_ws / "sim" / "gwt.lst")
+
+    # ---- grid Peclet on the corridor ----
+    csz_corr = csz[corridor_mask]
+    PeL_min = float(csz_corr.min() / LOCKED_PARAMS["alh"])
+    PeL_max = float(csz_corr.max() / LOCKED_PARAMS["alh"])
+    PeT_min = float(csz_corr.min() / LOCKED_PARAMS["ath1"])
+    PeT_max = float(csz_corr.max() / LOCKED_PARAMS["ath1"])
+
+    meta = dict(ncpl=ncpl, nstp=nstp, dt=dt, Cr=cr_act, n_src=n_src,
+                q_src_darcy=q_src, b_src=b_src, ds_src=ds_src, q_cell=q_cell,
+                v_bind=cdiag["v_bind"], ds_bind=cdiag["ds_bind"],
+                ds_true_min=cdiag["ds_true_min"], courant_floor=cdiag["floor"],
+                refine_radius_used=refine_radius_used, u_reg=tuple(u_reg),
+                cr_capped=bool(cr_act > 1.001))
+
+    result = SrcPulseDemo(
+        times=times, breakthrough=bt, peak_mgL=peak, arrival_day=arrival,
+        mass_balance=mb, solubility_ok=solubility_ok, emergent_C_mgL=emergent_C,
+        solubility_mgL=float(solubility_mgL), solubility_margin=sol_margin,
+        PeL_min=PeL_min, PeL_max=PeL_max, PeT_min=PeT_min, PeT_max=PeT_max,
+        mass_g=float(mass_g), pulse_days=float(pulse_days), total_days=float(total_days),
+        smassrate_gpd=smassrate, src_cells=src_cells, ext_cell=extc, inj_cell=injc,
+        spill_xy=(float(spill_xy[0]), float(spill_xy[1])), meta=meta)
+
+    _save_cache(cache, result, params)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# mass balance from the GWT listing file
+# ---------------------------------------------------------------------------
+def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
+    """Cumulative GWT mass budget: SRC in, well out, boundary out, storage, % imbalance.
+
+    Reads the final cumulative budget from the GWT listing via Mf6ListBudget.
+    Terms are grouped: source (SRC), extraction-well out (WEL), boundary out
+    (RIV + CHD + RCHA / GHB), storage (STORAGE / MST), and the reported percent
+    discrepancy.  Units are grams (model mg/L -> g/m^3, m/day).
+    """
+    from flopy.utils import Mf6ListBudget
+    out: Dict[str, float] = {}
+    try:
+        # GWT listings use the MASS (not VOLUME) budget key.
+        lst = Mf6ListBudget(str(gwt_lst), budgetkey="MASS BUDGET FOR ENTIRE MODEL")
+        inc, cum = lst.get_dataframes()
+        row = cum.iloc[-1]
+    except Exception as e:                       # keep the demo robust
+        return {"error": repr(e)}
+
+    def _grab(substr_in, substr_out=None):
+        _in = sum(float(row[c]) for c in row.index if substr_in in c.upper() and c.upper().endswith("_IN"))
+        key_out = substr_out if substr_out is not None else substr_in
+        _out = sum(float(row[c]) for c in row.index if key_out in c.upper() and c.upper().endswith("_OUT"))
+        return _in, _out
+
+    src_in, src_out = _grab("SRC")
+    wel_in, wel_out = _grab("WEL")
+    riv_in, riv_out = _grab("RIV")
+    chd_in, chd_out = _grab("CHD")
+    rch_in, rch_out = _grab("RCH")
+    sto_in, sto_out = 0.0, 0.0
+    for c in row.index:
+        cu = c.upper()
+        if "STORAGE" in cu or cu.startswith("MST"):
+            if cu.endswith("_IN"):
+                sto_in += float(row[c])
+            elif cu.endswith("_OUT"):
+                sto_out += float(row[c])
+
+    total_in = float(row["TOTAL_IN"]) if "TOTAL_IN" in row.index else None
+    total_out = float(row["TOTAL_OUT"]) if "TOTAL_OUT" in row.index else None
+    if "PERCENT_DISCREPANCY" in row.index:
+        pct = float(row["PERCENT_DISCREPANCY"])
+    elif total_in is not None and (total_in + total_out) != 0:
+        pct = 100.0 * (total_in - total_out) / (0.5 * (total_in + total_out))
+    else:
+        pct = float("nan")
+
+    out.update(
+        src_in_g=src_in,
+        well_out_g=wel_out,
+        boundary_out_g=riv_out + chd_out + rch_out,
+        storage_g=sto_out - sto_in,           # net into storage (accumulation) [g]
+        total_in_g=total_in if total_in is not None else float("nan"),
+        total_out_g=total_out if total_out is not None else float("nan"),
+        pct_imbalance=pct,
+    )
+    return out
+
+
+# ---------------------------------------------------------------------------
+# cache (solve-free re-call)
+# ---------------------------------------------------------------------------
+def _save_cache(path: Path, r: SrcPulseDemo, params: Dict[str, float]) -> None:
+    np.savez(str(path), times=r.times, breakthrough=r.breakthrough,
+             peak_mgL=r.peak_mgL, arrival_day=r.arrival_day,
+             mass_balance=r.mass_balance, solubility_ok=r.solubility_ok,
+             emergent_C_mgL=r.emergent_C_mgL, solubility_mgL=r.solubility_mgL,
+             solubility_margin=r.solubility_margin,
+             PeL_min=r.PeL_min, PeL_max=r.PeL_max, PeT_min=r.PeT_min, PeT_max=r.PeT_max,
+             mass_g=r.mass_g, pulse_days=r.pulse_days, total_days=r.total_days,
+             smassrate_gpd=r.smassrate_gpd, src_cells=np.array(r.src_cells),
+             ext_cell=r.ext_cell, inj_cell=r.inj_cell, spill_xy=np.array(r.spill_xy),
+             meta=r.meta, params=params, allow_pickle=True)
+
+
+def _load_cache(path: Path, params: Dict[str, float]) -> Optional[SrcPulseDemo]:
+    try:
+        z = np.load(str(path), allow_pickle=True)
+        stored = dict(z["params"].item())
+    except Exception:
+        return None
+    if any(abs(stored.get(k, np.nan) - v) > 1e-9 for k, v in params.items()):
+        return None                          # params changed -> rebuild
+    return SrcPulseDemo(
+        times=z["times"], breakthrough=z["breakthrough"],
+        peak_mgL=float(z["peak_mgL"]), arrival_day=float(z["arrival_day"]),
+        mass_balance=dict(z["mass_balance"].item()), solubility_ok=bool(z["solubility_ok"]),
+        emergent_C_mgL=float(z["emergent_C_mgL"]), solubility_mgL=float(z["solubility_mgL"]),
+        solubility_margin=float(z["solubility_margin"]),
+        PeL_min=float(z["PeL_min"]), PeL_max=float(z["PeL_max"]),
+        PeT_min=float(z["PeT_min"]), PeT_max=float(z["PeT_max"]),
+        mass_g=float(z["mass_g"]), pulse_days=float(z["pulse_days"]),
+        total_days=float(z["total_days"]), smassrate_gpd=float(z["smassrate_gpd"]),
+        src_cells=[int(c) for c in z["src_cells"]], ext_cell=int(z["ext_cell"]),
+        inj_cell=int(z["inj_cell"]), spill_xy=tuple(z["spill_xy"]),
+        meta=dict(z["meta"].item()))
+
+
+# ---------------------------------------------------------------------------
+# demo / smoke anchor
+# ---------------------------------------------------------------------------
+if __name__ == "__main__":
+    import sys
+    t0 = time.time()
+    r = build_srcpulse_demo(mass_g=3.0e5, pulse_days=30.0, total_days=120.0,
+                            solubility_mgL=1000.0, force=("--force" in sys.argv))
+    dt = time.time() - t0
+    print("SRC FINITE-PULSE SPILL -> CAPTURE DEMO")
+    print(f"  released mass M      = {r.mass_g:.4g} g  over T = {r.pulse_days:.0f} d "
+          f"(total {r.total_days:.0f} d)")
+    print(f"  per-cell SRC loading = {r.smassrate_gpd:.4g} g/d  ({r.meta['n_src']} src cell)")
+    print(f"  spill_xy             = ({r.spill_xy[0]:.1f}, {r.spill_xy[1]:.1f})  "
+          f"[{SPILL_UPGRADIENT_M:.0f} m upgradient of ABS]")
+    print(f"  peak breakthrough    = {r.peak_mgL:.4g} mg/L  at day {r.arrival_day:.1f}")
+    print(f"  emergent source C    = {r.emergent_C_mgL:.4g} mg/L  "
+          f"(solubility {r.solubility_mgL:.0f} mg/L; margin x{r.solubility_margin:.1f}) -> "
+          f"{'PASS' if r.solubility_ok else 'FAIL'}")
+    mb = r.mass_balance
+    print("  mass balance [g]:")
+    print(f"    SRC in       = {mb.get('src_in_g', float('nan')):.4g}")
+    print(f"    well out     = {mb.get('well_out_g', float('nan')):.4g}")
+    print(f"    boundary out = {mb.get('boundary_out_g', float('nan')):.4g}")
+    print(f"    storage      = {mb.get('storage_g', float('nan')):.4g}")
+    print(f"    % imbalance  = {mb.get('pct_imbalance', float('nan')):.3f}")
+    print(f"  Pe_L corridor = {r.PeL_min:.2f}..{r.PeL_max:.2f}   "
+          f"Pe_T = {r.PeT_min:.2f}..{r.PeT_max:.2f}")
+    print(f"  Cr peak = {r.meta['Cr']:.2f}  nstp={r.meta['nstp']}  "
+          f"refine_radius={r.meta['refine_radius_used']:.0f} m")
+    print(f"  wall-clock = {dt:.0f}s")
+    ok = (r.solubility_ok and r.peak_mgL > 0
+          and abs(mb.get("pct_imbalance", 99)) < 5.0 and r.PeL_max <= 2.0)
+    print("  SMOKE:", "PASS" if ok else "FAIL")
+    sys.exit(0 if ok else 1)
