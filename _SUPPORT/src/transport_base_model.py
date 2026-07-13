@@ -138,39 +138,9 @@ def _corridor_points(a_xy, b_xy, step: float = 40.0, pad: float = 40.0):
     return [tuple(a + s * u) for s in np.linspace(-pad, L + pad, n)], u, L
 
 
-def _refine_with_retry(coarse_gwf, boundary_gdf, river_gdf, refine_points, head_array,
-                       workspace: Union[str, Path], *,
-                       refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
-                       base_cell_size: float = 50.0, refined_cell_size: float = 10.0,
-                       sim_name: str = "rg") -> Tuple[Dict[str, Any], float]:
-    """Refine the corridor, retrying over a small set of refine radii.
-
-    cs=10 local refinement SIGILL-crashes on a fraction of source locations
-    (macOS arm64 / mf6 6.7.0) and boundary-clipped circles can trip a Triangle
-    precision abort.  Both manifest as an exception out of build_refined_gwf_model.
-    Walking the radius slightly (70 -> 62 -> 78 -> 56 -> 84 m) reliably dodges the
-    crash for the validated student doublets (the corridor stays well-resolved at
-    any of these radii: Pe_L <= 2 throughout).
-
-    Returns (build_refined_gwf_model result dict, radius actually used).
-    """
-    workspace = Path(workspace)
-    last_exc: Optional[Exception] = None
-    for k, rr in enumerate(refine_radii):
-        try:
-            res = mio.build_refined_gwf_model(
-                coarse_gwf, boundary_gdf=boundary_gdf, river_gdf=river_gdf,
-                refine_points=refine_points, head_array=head_array,
-                workspace=str(workspace / f"rg{k}"), refine_radius=float(rr),
-                base_cell_size=base_cell_size, refined_cell_size=refined_cell_size,
-                sim_name=sim_name)
-            return res, float(rr)
-        except Exception as e:  # SIGILL / Triangle abort surface here
-            last_exc = e
-            continue
-    raise RuntimeError(
-        f"corridor refinement failed at all radii {tuple(refine_radii)}; "
-        f"last error: {last_exc!r}")
+# Promoted to model_io_utils.refine_with_retry (public, reusable outside transport);
+# kept as a thin local alias so existing callers in this module are unchanged.
+_refine_with_retry = mio.refine_with_retry
 
 
 def courant_nstp(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,

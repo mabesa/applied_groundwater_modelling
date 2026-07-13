@@ -81,6 +81,219 @@ def get_scenario_for_group(config_path, group_number):
     
     return None
 
+
+# Default location of the (all-groups) transport case-study config, relative
+# to the repo root. Overridable per-call (``config_path``) or via the
+# ``AGM_TRANSPORT_CONFIG`` env var (useful for tests / alternate deployments).
+_DEFAULT_TRANSPORT_CONFIG = (
+    Path(__file__).resolve().parents[2] / "PROJECT" / "workspace" / "template" / "case_config_transport.yaml"
+)
+AGM_TRANSPORT_CONFIG_ENV_VAR = "AGM_TRANSPORT_CONFIG"
+
+
+def _resolve_transport_config_path(config_path=None) -> Path:
+    """Resolve the transport config path: explicit arg > env var > default."""
+    if config_path is not None:
+        return Path(config_path)
+    env_value = os.environ.get(AGM_TRANSPORT_CONFIG_ENV_VAR)
+    if env_value:
+        return Path(env_value)
+    return _DEFAULT_TRANSPORT_CONFIG
+
+
+def _require_numeric(value, group, field):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"group {group}: field {field!r} must be numeric, got {value!r}")
+    return value
+
+
+def _get_required(block, key, group, field_label):
+    if key not in block or block[key] is None:
+        raise ValueError(f"group {group}: missing required field {field_label!r}")
+    return block[key]
+
+
+def _require_block(entry, key, group):
+    block = entry.get(key)
+    if not isinstance(block, dict):
+        raise ValueError(f"group {group}: missing or invalid {key!r} block")
+    return block
+
+
+def _lint_doublet(entry, group):
+    doublet = _require_block(entry, "doublet", group)
+    for key in ("injection_easting", "injection_northing", "extraction_easting", "extraction_northing"):
+        value = _get_required(doublet, key, group, f"doublet.{key}")
+        _require_numeric(value, group, f"doublet.{key}")
+
+    pumping_rate = _get_required(doublet, "pumping_rate_m3_d", group, "doublet.pumping_rate_m3_d")
+    _require_numeric(pumping_rate, group, "doublet.pumping_rate_m3_d")
+    if pumping_rate <= 0:
+        raise ValueError(
+            f"group {group}: field 'doublet.pumping_rate_m3_d' must be > 0, got {pumping_rate!r}"
+        )
+
+    recirc = _get_required(doublet, "recirculation_fraction", group, "doublet.recirculation_fraction")
+    _require_numeric(recirc, group, "doublet.recirculation_fraction")
+    if not (0 <= recirc <= 1):
+        raise ValueError(
+            f"group {group}: field 'doublet.recirculation_fraction' must be in [0, 1], got {recirc!r}"
+        )
+    return doublet
+
+
+_VALID_SOURCE_TYPES = {"point", "line", "area"}
+_VALID_SOURCE_RELEASE_TYPES = {"pulse", "continuous"}
+
+
+def _lint_source(entry, group):
+    source = _require_block(entry, "source", group)
+    source_type = _get_required(source, "type", group, "source.type")
+    if source_type not in _VALID_SOURCE_TYPES:
+        raise ValueError(
+            f"group {group}: field 'source.type' must be one of "
+            f"{sorted(_VALID_SOURCE_TYPES)!r}, got {source_type!r}"
+        )
+    release_type = _get_required(source, "release_type", group, "source.release_type")
+    if release_type not in _VALID_SOURCE_RELEASE_TYPES:
+        raise ValueError(
+            f"group {group}: field 'source.release_type' must be one of "
+            f"{sorted(_VALID_SOURCE_RELEASE_TYPES)!r}, got {release_type!r}"
+        )
+
+    location = source.get("location")
+    if not isinstance(location, dict):
+        raise ValueError(f"group {group}: missing or invalid 'source.location' block")
+    for key in ("easting", "northing", "layer"):
+        value = _get_required(location, key, group, f"source.location.{key}")
+        _require_numeric(value, group, f"source.location.{key}")
+
+    duration = _get_required(source, "duration_days", group, "source.duration_days")
+    _require_numeric(duration, group, "source.duration_days")
+    if duration < 1:
+        raise ValueError(f"group {group}: field 'source.duration_days' must be >= 1, got {duration!r}")
+
+    concentration = _get_required(source, "concentration_mg_L", group, "source.concentration_mg_L")
+    _require_numeric(concentration, group, "source.concentration_mg_L")
+    return source
+
+
+def _lint_simulation(entry, group):
+    simulation = _require_block(entry, "simulation", group)
+    duration = _get_required(simulation, "duration_days", group, "simulation.duration_days")
+    _require_numeric(duration, group, "simulation.duration_days")
+    if duration <= 0:
+        raise ValueError(f"group {group}: field 'simulation.duration_days' must be > 0, got {duration!r}")
+
+    output_times = simulation.get("output_times_days")
+    if not isinstance(output_times, list) or len(output_times) == 0:
+        raise ValueError(f"group {group}: field 'simulation.output_times_days' must be a non-empty list")
+    for t in output_times:
+        _require_numeric(t, group, "simulation.output_times_days")
+    if any(b <= a for a, b in zip(output_times, output_times[1:])):
+        raise ValueError(
+            f"group {group}: field 'simulation.output_times_days' must be strictly increasing, "
+            f"got {output_times!r}"
+        )
+    return simulation
+
+
+def _lint_submodel(entry, group):
+    submodel = _require_block(entry, "submodel", group)
+    cell_size = _get_required(submodel, "cell_size_m", group, "submodel.cell_size_m")
+    _require_numeric(cell_size, group, "submodel.cell_size_m")
+    if cell_size <= 0:
+        raise ValueError(f"group {group}: field 'submodel.cell_size_m' must be > 0, got {cell_size!r}")
+    return submodel
+
+
+def _lint_monitoring(entry, group):
+    monitoring = _require_block(entry, "monitoring", group)
+    threshold = _get_required(monitoring, "threshold_mg_L", group, "monitoring.threshold_mg_L")
+    _require_numeric(threshold, group, "monitoring.threshold_mg_L")
+    return monitoring
+
+
+def lint_transport_config(config_path=None, groups=range(9)):
+    """
+    Validate per-group scenario coverage in the transport case-study config.
+
+    Loads ``case_config_transport.yaml`` (default path resolved from the repo
+    layout, overridable via ``config_path`` or the ``AGM_TRANSPORT_CONFIG``
+    env var) and, for each requested group id, asserts that exactly one
+    ``transport_scenarios.options`` entry exists with a complete and valid
+    ``doublet``, ``source``, ``simulation``, ``submodel`` and ``monitoring``
+    block.
+
+    Parameters
+    ----------
+    config_path : str or Path, optional
+        Path to ``case_config_transport.yaml``. If None, uses the
+        ``AGM_TRANSPORT_CONFIG`` env var if set, else the repo default at
+        ``PROJECT/workspace/template/case_config_transport.yaml``.
+    groups : iterable of int, default range(9)
+        Group ids to validate.
+
+    Returns
+    -------
+    dict
+        ``{group_id: {...resolved values...}}`` coverage report, one entry
+        per successfully validated group.
+
+    Raises
+    ------
+    ValueError
+        On any missing/invalid field, or a group id with zero or more than
+        one matching config entry. The message names the group and the
+        offending field/reason.
+    """
+    path = _resolve_transport_config_path(config_path)
+    if not Path(path).is_file():
+        raise ValueError(f"transport config file not found: {path}")
+
+    cfg = load_yaml(path)
+    options = (cfg or {}).get("transport_scenarios", {}).get("options", [])
+    if not isinstance(options, list):
+        raise ValueError(f"'transport_scenarios.options' must be a list, got {type(options)!r}")
+
+    by_id = {}
+    for entry in options:
+        gid = entry.get("id") if isinstance(entry, dict) else None
+        if gid is None:
+            continue
+        by_id.setdefault(gid, []).append(entry)
+
+    report = {}
+    for group in groups:
+        matches = by_id.get(group, [])
+        if len(matches) == 0:
+            raise ValueError(f"group {group}: no matching 'transport_scenarios.options' entry with id == {group}")
+        if len(matches) > 1:
+            raise ValueError(
+                f"group {group}: expected exactly one 'transport_scenarios.options' entry with "
+                f"id == {group}, found {len(matches)}"
+            )
+        entry = matches[0]
+
+        doublet = _lint_doublet(entry, group)
+        source = _lint_source(entry, group)
+        simulation = _lint_simulation(entry, group)
+        submodel = _lint_submodel(entry, group)
+        monitoring = _lint_monitoring(entry, group)
+
+        report[group] = {
+            "id": group,
+            "title": entry.get("title"),
+            "doublet": doublet,
+            "source": source,
+            "simulation": simulation,
+            "submodel": submodel,
+            "monitoring": monitoring,
+        }
+
+    return report
+
+
 def filter_wells_by_concession(wells_gdf, concession_id):
     """Filter wells by concession ID."""
     # Work on a copy to avoid SettingWithCopyWarning
