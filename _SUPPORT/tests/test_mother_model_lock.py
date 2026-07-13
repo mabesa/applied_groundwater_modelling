@@ -460,6 +460,28 @@ class TestContentTamperingWithConsistentAggregateStillCaught:
             verify_mother_model_lock(ws, lock_path=lock_path)
 
 
+class TestWriteRequiresExplicitLockPath:
+    """Fix (2026-07): write_mother_model_lock must not default to writing
+    inside the repo tree (DEFAULT_LOCK_PATH) -- unsafe on a read-only Hub /
+    student checkout. Writes must always name an explicit destination;
+    DEFAULT_LOCK_PATH remains the default for *reads* (verify)."""
+
+    def test_write_with_no_lock_path_raises_value_error(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        with pytest.raises(ValueError, match="requires an explicit lock_path"):
+            write_mother_model_lock(ws)
+
+    def test_write_with_explicit_lock_path_still_works(self, tmp_path):
+        ws = _build_workspace(tmp_path)
+        lock_path = tmp_path / "explicit_lock.json"
+
+        lock = write_mother_model_lock(ws, lock_path=lock_path, sim_name="explicit_check")
+
+        assert lock_path.is_file()
+        assert lock["sim_name"] == "explicit_check"
+        assert verify_mother_model_lock(ws, lock_path=lock_path) is True
+
+
 class TestFlopyFreeAndFast:
     def test_subprocess_is_flopy_and_pyemu_free(self):
         src_dir = str(Path(__file__).parent.parent / "src")

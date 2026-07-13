@@ -741,6 +741,185 @@ def test_cli_failed_group_without_require_green_exits_zero(tmp_path, monkeypatch
     assert report.exists(), "a report must still be written"
 
 
+def test_cli_groups_oversized_range_exits_2(tmp_path):
+    """--groups '0-999999999' must be rejected (a typo/malicious range span,
+    not a legitimate wide selection) with a clear error and exit code 2 --
+    caught before any subprocess is ever spawned, so no AGM_FAKE_SPEC_NPZ
+    hook is needed here."""
+    rv = rc.main([
+        "--groups", "0-999999999", "--meshes-dir", str(tmp_path / "meshes"),
+        "--out", str(tmp_path / "report.json"),
+    ])
+    assert rv == 2
+
+
+def test_cli_groups_out_of_domain_single_id_exits_2(tmp_path):
+    """--groups '9' is a syntactically valid single id, but this script's
+    frozen artifacts only ever cover the canonical 0-8 group domain -- must
+    be rejected with exit code 2."""
+    rv = rc.main([
+        "--groups", "9", "--meshes-dir", str(tmp_path / "meshes"),
+        "--out", str(tmp_path / "report.json"),
+    ])
+    assert rv == 2
+
+
+def test_cli_groups_full_canonical_range_is_accepted(tmp_path, monkeypatch):
+    """'0-8' is exactly the canonical domain and must be accepted (not
+    rejected as 'out of domain' or 'oversized')."""
+    npz = freeze_synthetic_spec(tmp_path / "fake", "fake_spec.npz")
+    monkeypatch.setenv("AGM_FAKE_SPEC_NPZ", str(npz))
+
+    rv = rc.main([
+        "--groups", "0-8", "--reruns", "1",
+        "--meshes-dir", str(tmp_path / "meshes"),
+        "--out", str(tmp_path / "report.json"),
+    ])
+    assert rv == 0
+
+
+class TestParseGroupsCanonicalDomain:
+    """Unit-level coverage of `_parse_groups` itself (Fix 3): it now shares
+    case_validation.parse_groups_spec's range-span cap and additionally
+    restricts to case_validation.CANONICAL_GROUPS (0-8)."""
+
+    def test_rejects_oversized_range(self):
+        with pytest.raises(ValueError):
+            rc._parse_groups("0-999999999")
+
+    def test_rejects_out_of_domain_single_id(self):
+        with pytest.raises(ValueError):
+            rc._parse_groups("9")
+
+    def test_rejects_out_of_domain_within_otherwise_valid_list(self):
+        with pytest.raises(ValueError):
+            rc._parse_groups("0,3,9")
+
+    def test_accepts_full_canonical_range(self):
+        assert rc._parse_groups("0-8") == list(range(9))
+
+    def test_accepts_canonical_comma_list(self):
+        assert rc._parse_groups("0,3,5") == [0, 3, 5]
+
+
+# =============================================================================
+# Fix 1: refine_points must be DERIVED from the group's doublet, not a random
+# interior point -- group_refine_points is a small MODFLOW-free helper.
+# =============================================================================
+class TestGroupRefinePoints:
+    def test_returns_doublet_coords_for_group_0(self):
+        import case_utils as cu
+
+        doublet = cu.lint_transport_config(groups=[0])[0]["doublet"]
+        expected = [
+            (float(doublet["injection_easting"]), float(doublet["injection_northing"])),
+            (float(doublet["extraction_easting"]), float(doublet["extraction_northing"])),
+        ]
+        assert rc.group_refine_points(0) == expected
+
+    def test_returns_doublet_coords_for_group_3(self):
+        import case_utils as cu
+
+        doublet = cu.lint_transport_config(groups=[3])[3]["doublet"]
+        expected = [
+            (float(doublet["injection_easting"]), float(doublet["injection_northing"])),
+            (float(doublet["extraction_easting"]), float(doublet["extraction_northing"])),
+        ]
+        assert rc.group_refine_points(3) == expected
+
+    def test_returns_exactly_two_points(self):
+        points = rc.group_refine_points(1)
+        assert isinstance(points, list)
+        assert len(points) == 2
+        for pt in points:
+            assert isinstance(pt, tuple) and len(pt) == 2
+            assert all(isinstance(v, float) for v in pt)
+
+    def test_is_deterministic_across_calls(self):
+        """No randomness: reruns of the SAME group must return identical
+        points (required for run_group_determinism_check to ever PASS)."""
+        assert rc.group_refine_points(2) == rc.group_refine_points(2)
+
+    def test_is_modflow_free_no_subprocess_spawned(self, monkeypatch):
+        """Trip-wire: group_refine_points must be a pure config lookup --
+        no MODFLOW, no subprocess. Mirror of
+        test_determinism_is_pure_no_subprocess."""
+        def boom(*a, **k):
+            raise AssertionError("group_refine_points must not spawn a subprocess")
+
+        monkeypatch.setattr(subprocess, "run", boom)
+        monkeypatch.setattr(subprocess, "Popen", boom)
+        points = rc.group_refine_points(0)
+        assert len(points) == 2
+
+
+# =============================================================================
+# Fix 2: subprocess_refine_runner must not hang forever -- a bounded,
+# CLI-configurable --child-timeout kills the child's WHOLE process group and
+# surfaces the group as a FAILED run.
+# =============================================================================
+class TestSubprocessChildTimeout:
+    def test_hung_child_is_killed_and_surfaced_as_failure_without_hanging(self, tmp_path, monkeypatch):
+        """Replace the real child command with one that sleeps far longer
+        than a short --child-timeout, so subprocess_refine_runner must kill
+        it (process group SIGKILL) rather than block until it exits on its
+        own. Asserts: (a) a RuntimeError naming the timeout is raised, (b)
+        the call returns well within a small bound (never hangs), and (c)
+        the killed child's pid no longer exists afterwards (no leaked
+        process)."""
+        import time as time_mod
+
+        real_popen = subprocess.Popen
+        captured: dict = {}
+
+        class _SleepyPopen(real_popen):
+            """Ignore the real refinement child command; spawn a plain
+            Python process that sleeps well past the test's timeout, so we
+            can prove it gets killed instead of the parent hanging."""
+
+            def __init__(self, _cmd, *a, **k):
+                super().__init__(
+                    [sys.executable, "-c", "import time; time.sleep(60)"], *a, **k
+                )
+                captured["pid"] = self.pid
+
+        monkeypatch.setattr(subprocess, "Popen", _SleepyPopen)
+
+        t0 = time_mod.monotonic()
+        with pytest.raises(RuntimeError, match="timeout"):
+            rc.subprocess_refine_runner(
+                0, mother_model=tmp_path / "no_such_mother", work_dir=tmp_path / "work",
+                timeout_s=0.5,
+            )
+        elapsed = time_mod.monotonic() - t0
+        assert elapsed < 30.0, (
+            f"subprocess_refine_runner must not hang past its timeout: took {elapsed:.1f}s"
+        )
+
+        assert "pid" in captured, "the (fake) child process must actually have been spawned"
+        pid = captured["pid"]
+        deadline = time_mod.monotonic() + 5.0
+        while time_mod.monotonic() < deadline:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                break
+            time_mod.sleep(0.1)
+        else:
+            pytest.fail(f"child pid {pid} still alive after timeout+kill -- process leaked")
+
+    def test_child_timeout_default_is_a_positive_bound(self):
+        assert rc.DEFAULT_CHILD_TIMEOUT_S > 0
+
+    def test_cli_exposes_child_timeout_flag(self):
+        parser = rc._build_arg_parser()
+        args = parser.parse_args([
+            "--groups", "0", "--meshes-dir", "/tmp/x", "--out", "/tmp/y.json",
+            "--child-timeout", "42",
+        ])
+        assert args.child_timeout == 42.0
+
+
 def test_cli_runner_exception_before_any_spec_reports_fail_no_freeze_no_nan(tmp_path, monkeypatch):
     """Directly exercises the `runner raised` branch in `main()` (as opposed
     to the nonzero-child-exit route above): a runner that raises before ANY

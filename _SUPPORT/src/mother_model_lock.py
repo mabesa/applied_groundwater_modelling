@@ -117,11 +117,15 @@ def write_mother_model_lock(workspace, lock_path=None, sim_name: str = "limmat_v
         non-symlink files) are hashed and pinned. Symlinks are skipped (see
         ``_iter_files_sorted``).
     lock_path:
-        Where to write the lock JSON. Defaults to ``DEFAULT_LOCK_PATH``. The
-        parent directory is created if it does not exist. Must NOT be inside
-        *workspace* — a lock written into the hashed tree can never verify
-        (it is an extra file on the first write, and a content-changed file
-        on every rewrite thereafter).
+        Where to write the lock JSON. REQUIRED — there is no default for
+        writes (see ``ValueError`` below): ``DEFAULT_LOCK_PATH`` points inside
+        the repo tree, and silently writing there is unsafe on a read-only
+        JupyterHub checkout or a student clone. ``DEFAULT_LOCK_PATH`` remains
+        the default for *reads* via ``verify_mother_model_lock``. The parent
+        directory of *lock_path* is created if it does not exist. Must NOT be
+        inside *workspace* — a lock written into the hashed tree can never
+        verify (it is an extra file on the first write, and a content-changed
+        file on every rewrite thereafter).
     sim_name:
         Free-form label recorded in the lock (e.g. the MODFLOW6 sim name).
 
@@ -132,16 +136,20 @@ def write_mother_model_lock(workspace, lock_path=None, sim_name: str = "limmat_v
 
     Raises
     ------
+    ValueError
+        If *lock_path* is ``None`` (writes must name an explicit destination
+        — see above), if *lock_path* resolves to a location inside
+        *workspace* (checked case-insensitively, so this also catches a
+        differently-cased escape on a case-insensitive filesystem), or if
+        *workspace* contains zero regular files to lock.
     FileNotFoundError
         If *workspace* does not exist or is not a directory.
-    ValueError
-        If *lock_path* resolves to a location inside *workspace* (checked
-        case-insensitively, so this also catches a differently-cased escape
-        on a case-insensitive filesystem), or if *workspace* contains zero
-        regular files to lock.
     """
+    if lock_path is None:
+        raise ValueError("write_mother_model_lock requires an explicit lock_path")
+
     workspace = Path(workspace)
-    lock_path = Path(lock_path) if lock_path is not None else DEFAULT_LOCK_PATH
+    lock_path = Path(lock_path)
 
     _require_existing_dir(workspace)
 

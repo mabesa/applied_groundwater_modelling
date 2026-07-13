@@ -45,9 +45,14 @@ Scope (M2b-2): subprocess-isolated runner + freeze-on-PASS orchestration.
 
 Scope (M2b-3): the CLI entry point.
     - ``main(argv=None) -> int`` -- argparse CLI wiring ``--groups`` (comma
-      list and/or ``lo-hi`` ranges, e.g. ``"0-8"`` or ``"0,3,5"``),
-      ``--reruns``, ``--meshes-dir``, ``--freeze``, ``--out`` and
-      ``--require-green-style``. For each selected group it runs
+      list and/or ``lo-hi`` ranges, e.g. ``"0-8"`` or ``"0,3,5"``, restricted
+      to the canonical 0-8 group domain via
+      ``case_validation.parse_groups_spec`` / ``CANONICAL_GROUPS`` -- exits 2
+      on a malformed or out-of-domain spec), ``--reruns``, ``--meshes-dir``,
+      ``--freeze``, ``--out``, ``--require-green-style`` and
+      ``--child-timeout`` (bounds how long a single subprocess child may run
+      before its process group is killed and the group recorded FAILED;
+      default 1800s). For each selected group it runs
       ``run_group_determinism_check`` against ``subprocess_refine_runner``
       (subprocess-isolated -- a child SIGILL never kills the orchestrator),
       optionally freezes the PASSing spec via
@@ -90,6 +95,7 @@ if _SRC_DIR not in sys.path:
     sys.path.insert(0, _SRC_DIR)
 
 import model_io_utils as mio  # noqa: E402
+import case_validation as cv  # noqa: E402
 
 # Private CLI flag that re-invokes this file as the subprocess_refine_runner
 # child. Not part of the public API.
@@ -379,19 +385,59 @@ def _best_effort_versions() -> Dict[str, str]:
     return versions
 
 
+def group_refine_points(group: Group, *, config_path: Any = None) -> List[Tuple[float, float]]:
+    """Derive the refine-mesh anchor points for *group* from its configured
+    injection/extraction doublet.
+
+    The frozen mesh must be finely resolved AROUND THE GROUP'S ACTUAL WELLS
+    (needed for drawdown / capture-zone analysis downstream), not at an
+    arbitrary interior point unrelated to the doublet. Reads
+    ``case_config_transport.yaml`` via ``case_utils.lint_transport_config``
+    and returns the doublet's two well coordinates.
+
+    Reruns of the SAME group are reproducible for
+    ``run_group_determinism_check`` because the doublet coordinates in the
+    config are fixed -- no randomness is involved.
+
+    Pure data lookup: no MODFLOW, no geopandas/Triangle, no subprocess --
+    safe to unit test without loading the mother model.
+
+    Parameters
+    ----------
+    group : Any
+        Group id (int-like), passed straight through to
+        ``case_utils.lint_transport_config(groups=[group])``.
+    config_path : str or Path, optional
+        Override for the transport case config path (see
+        ``case_utils.lint_transport_config``); mainly for tests.
+
+    Returns
+    -------
+    list of (easting, northing) float tuples
+        Exactly two points: the injection well, then the extraction well.
+    """
+    import case_utils as cu
+
+    doublet = cu.lint_transport_config(config_path=config_path, groups=[group])[group]["doublet"]
+    return [
+        (float(doublet["injection_easting"]), float(doublet["injection_northing"])),
+        (float(doublet["extraction_easting"]), float(doublet["extraction_northing"])),
+    ]
+
+
 def _real_refine_group(
     group: Group, *, mother_model: Path, work_dir: Path
 ) -> RunnerResult:
     """Real (non-fake) refinement for *group*.
 
-    Loads the mother GWF simulation, deterministically picks a
-    deep-interior refine point for *group* (seeded on the group id, so
-    reruns of the SAME group are reproducible -- required for
-    ``run_group_determinism_check`` to ever PASS), and retries
-    ``generate_refined_grid`` + ``assemble_gwf_from_spec`` over a small set
-    of refine radii (mirrors ``model_io_utils.refine_with_retry``, but
-    keeps the plain-array spec -- rather than discarding it after
-    assembly -- so it can be frozen).
+    Loads the mother GWF simulation, derives the refine-mesh anchor points
+    for *group* from its configured injection/extraction doublet (see
+    ``group_refine_points`` -- reruns of the SAME group are reproducible
+    because the doublet coordinates are fixed in config, not randomly
+    sampled), and retries ``generate_refined_grid`` +
+    ``assemble_gwf_from_spec`` over a small set of refine radii (mirrors
+    ``model_io_utils.refine_with_retry``, but keeps the plain-array spec --
+    rather than discarding it after assembly -- so it can be frozen).
 
     HUB-ONLY in practice (loads MF6 + geopandas + Triangle); the local test
     suite never reaches this function -- it drives the ``AGM_FAKE_SPEC_NPZ``
@@ -399,7 +445,6 @@ def _real_refine_group(
     """
     import flopy
     import geopandas as gpd
-    from shapely.geometry import Point
 
     import case_utils as cu
 
@@ -417,7 +462,6 @@ def _real_refine_group(
 
     sim = flopy.mf6.MFSimulation.load(sim_ws=str(mother_model), verbosity_level=0)
     gwf = sim.get_model()
-    mg = gwf.modelgrid
     heads = gwf.output.head().get_data().flatten()
 
     gis_dir = Path(mother_model).parent / "gis"
@@ -427,30 +471,18 @@ def _real_refine_group(
         river_all["GEWAESSERNAME"].isin(["Limmat", "Sihl"])
         & river_all.intersects(boundary_gdf.geometry.iloc[0])
     ]
-    bpoly = boundary_gdf.geometry.iloc[0]
-    ext = bpoly.boundary
 
-    rng = np.random.default_rng(1000 + int(group))
-    xmin, xmax, ymin, ymax = mg.extent
-    point = None
-    for _ in range(8000):
-        px, py = rng.uniform(xmin, xmax), rng.uniform(ymin, ymax)
-        p = Point(px, py)
-        if bpoly.contains(p) and p.distance(ext) > 350.0:
-            point = (float(px), float(py))
-            break
-    if point is None:
-        raise RuntimeError(
-            f"group {group}: could not find a deep-interior refine point "
-            "inside the model boundary after 8000 samples"
-        )
+    # Refine AROUND THE DOUBLET, not an arbitrary interior point -- the
+    # capture-zone/drawdown analysis downstream needs the mesh finely
+    # resolved at the group's actual wells.
+    refine_points = group_refine_points(group)
 
     last_exc: Any = None
     for k, radius in enumerate(RETRY_RADII):
         try:
             spec = mio.generate_refined_grid(
                 gwf, boundary_gdf=boundary_gdf, river_gdf=river_gdf,
-                refine_points=[point], head_array=heads, refine_radius=radius,
+                refine_points=refine_points, head_array=heads, refine_radius=radius,
                 well_data=well_data,
             )
             mio.assemble_gwf_from_spec(
@@ -509,8 +541,16 @@ def _child_refine_main(argv) -> int:
     return 0
 
 
+# Default bound on how long a single subprocess_refine_runner child (real
+# MF6/Triangle refinement) may run before it is killed and the group is
+# recorded as a FAILED run -- a hang in Triangle/MF6 must never hang the
+# whole orchestration. CLI-configurable via --child-timeout.
+DEFAULT_CHILD_TIMEOUT_S = 1800.0
+
+
 def subprocess_refine_runner(
-    group: Group, *, mother_model: Any, work_dir: Any
+    group: Group, *, mother_model: Any, work_dir: Any,
+    timeout_s: float = DEFAULT_CHILD_TIMEOUT_S,
 ) -> RunnerResult:
     """Run the refinement for *group* in a FRESH Python subprocess and
     return ``(spec, radius_used, retried)`` via a freeze -> load IPC hop.
@@ -521,11 +561,20 @@ def subprocess_refine_runner(
     function surfaces that -- or any nonzero exit -- as a normal Python
     exception instead of taking the parent process down.
 
+    The child is launched as the leader of a fresh process group
+    (``start_new_session=True``, mirroring
+    ``case_validation._run_stage_subprocess``). If it does not finish within
+    *timeout_s*, the WHOLE process group is killed (``os.killpg`` +
+    ``SIGKILL``) -- not just the direct child -- so a grandchild (e.g. a
+    hung ``mf6``/Triangle binary spawned by the child) can never be leaked
+    past the timeout, and a ``RuntimeError`` is raised so the caller records
+    this group as FAILED instead of hanging forever.
+
     Honours two child-side test hooks so the IPC path is exercisable with
     NO MODFLOW (see module docstring): ``AGM_FAKE_SPEC_NPZ`` and
     ``AGM_FAKE_CHILD_SIGNAL``. These are read from the current process
-    environment and inherited by the child (subprocess.run's default
-    ``env=None`` behaviour).
+    environment and inherited by the child (``env=None`` default inherits
+    the parent's environment).
 
     Parameters
     ----------
@@ -536,6 +585,9 @@ def subprocess_refine_runner(
     work_dir : str or Path
         Scratch directory for the child (created if missing); also holds
         the temporary IPC ``.npz`` + manifest.
+    timeout_s : float, optional
+        Seconds to wait for the child before killing its process group.
+        Default ``DEFAULT_CHILD_TIMEOUT_S`` (1800s).
 
     Returns
     -------
@@ -544,8 +596,8 @@ def subprocess_refine_runner(
     Raises
     ------
     RuntimeError
-        If the child exits nonzero or dies by signal, naming the exit
-        code / signal.
+        If the child exits nonzero, dies by signal, or exceeds *timeout_s*
+        (naming the exit code / signal / timeout respectively).
     """
     work_dir = Path(work_dir)
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -558,7 +610,24 @@ def subprocess_refine_runner(
         "--work-dir", str(work_dir),
         "--out-npz", str(out_npz),
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        start_new_session=True,
+    )
+
+    try:
+        _stdout, stderr = proc.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass  # process (group) already gone
+        proc.communicate()  # reap, avoid a zombie
+        raise RuntimeError(
+            f"subprocess_refine_runner: child for group {group} exceeded its "
+            f"{timeout_s:g}s --child-timeout and was killed (process group "
+            "SIGKILL); this group is recorded as FAILED"
+        ) from None
 
     if proc.returncode < 0:
         signum = -proc.returncode
@@ -568,12 +637,12 @@ def subprocess_refine_runner(
             signame = str(signum)
         raise RuntimeError(
             f"subprocess_refine_runner: child for group {group} died by "
-            f"signal {signum} ({signame}); stderr:\n{proc.stderr}"
+            f"signal {signum} ({signame}); stderr:\n{stderr}"
         )
     if proc.returncode != 0:
         raise RuntimeError(
             f"subprocess_refine_runner: child for group {group} exited with "
-            f"nonzero return code {proc.returncode}; stderr:\n{proc.stderr}"
+            f"nonzero return code {proc.returncode}; stderr:\n{stderr}"
         )
 
     spec = mio.load_flow_spec(out_npz, verify=True)
@@ -647,45 +716,40 @@ def freeze_group_flow_artifact(
 # =============================================================================
 
 def _parse_groups(spec: str) -> List[int]:
-    """Parse ``--groups`` into an ordered list of group ids.
+    """Parse ``--groups`` into a sorted, de-duplicated list of group ids,
+    restricted to the canonical group domain.
 
-    Accepts a comma-separated mix of single ids and ``lo-hi`` INCLUSIVE
-    ranges, e.g. ``"0-8"`` -> ``[0, 1, ..., 8]`` or ``"0,3,5"`` -> ``[0, 3,
-    5]`` (a comma-list is never treated as a range). Duplicates are
-    collapsed, order of first appearance is preserved.
+    Delegates the comma-list / ``lo-hi`` INCLUSIVE range syntax -- and the
+    huge-range-span sanity cap (e.g. rejecting a typo like ``"0-999999999"``)
+    -- to ``case_validation.parse_groups_spec``, the same parser the
+    instructor validation harness CLI uses, so the two tools can never drift
+    on what a valid ``--groups`` spec means. On top of that shared parser,
+    every resulting id is additionally checked against
+    ``case_validation.CANONICAL_GROUPS`` (0-8) -- this script's frozen
+    artifacts only ever cover that closed set of case-study groups, so an
+    out-of-domain id (e.g. ``"9"``) is rejected here too, not just an
+    oversized range.
 
     Raises
     ------
     ValueError
-        If *spec* is empty or contains a non-integer / malformed token.
+        If *spec* is empty/malformed (from ``parse_groups_spec``) or selects
+        any id outside the canonical 0-8 domain.
     """
     if not spec or not spec.strip():
         raise ValueError("--groups must not be empty")
 
-    seen: Dict[int, None] = {}
-    for token in spec.split(","):
-        token = token.strip()
-        if not token:
-            continue
-        if "-" in token[1:]:  # allow a leading '-' for a negative id itself
-            lo_s, hi_s = token.split("-", 1)
-            try:
-                lo, hi = int(lo_s), int(hi_s)
-            except ValueError:
-                raise ValueError(f"--groups: malformed range {token!r}") from None
-            if hi < lo:
-                raise ValueError(f"--groups: malformed range {token!r} (hi < lo)")
-            for g in range(lo, hi + 1):
-                seen.setdefault(g, None)
-        else:
-            try:
-                seen.setdefault(int(token), None)
-            except ValueError:
-                raise ValueError(f"--groups: malformed group id {token!r}") from None
-
-    if not seen:
+    groups = cv.parse_groups_spec(spec)
+    if not groups:
         raise ValueError(f"--groups produced no group ids from {spec!r}")
-    return list(seen)
+
+    out_of_domain = sorted(g for g in groups if g not in cv.CANONICAL_GROUPS)
+    if out_of_domain:
+        raise ValueError(
+            f"--groups {spec!r} selected group id(s) outside the canonical "
+            f"domain {cv.CANONICAL_GROUPS}: {out_of_domain}"
+        )
+    return groups
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -743,6 +807,13 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help="Scratch directory for subprocess runner children "
              "(default: <meshes-dir>/_work).",
     )
+    parser.add_argument(
+        "--child-timeout", type=float, default=DEFAULT_CHILD_TIMEOUT_S,
+        help="Seconds to wait for a single subprocess_refine_runner child "
+             "(one refinement attempt) before killing its process group and "
+             f"recording that group as FAILED (default {DEFAULT_CHILD_TIMEOUT_S:g}s). "
+             "Prevents a hung MF6/Triangle child from hanging the whole run.",
+    )
     return parser
 
 
@@ -753,11 +824,17 @@ def main(argv=None) -> int:
     Returns
     -------
     int
-        0 unless ``--require-green-style`` is set and at least one selected
-        group failed its determinism check, in which case 1.
+        2 if ``--groups`` is malformed or selects an id outside the
+        canonical 0-8 domain; otherwise 0 unless ``--require-green-style``
+        is set and at least one selected group failed its determinism
+        check, in which case 1.
     """
     args = _build_arg_parser().parse_args(argv)
-    groups = _parse_groups(args.groups)
+    try:
+        groups = _parse_groups(args.groups)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
     meshes_dir = Path(args.meshes_dir)
     work_dir = Path(args.work_dir) if args.work_dir else meshes_dir / "_work"
 
@@ -770,6 +847,7 @@ def main(argv=None) -> int:
         def runner(g: Group, _calls=calls) -> RunnerResult:
             result = subprocess_refine_runner(
                 g, mother_model=args.mother_model, work_dir=work_dir,
+                timeout_s=args.child_timeout,
             )
             _calls.append(result)
             return result

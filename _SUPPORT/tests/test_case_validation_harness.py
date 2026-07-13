@@ -130,7 +130,7 @@ class TestNotImplemented:
             assert s["status"] == "NOT_IMPLEMENTED"
         assert cv.is_green(report) is False
 
-    def test_require_green_nonzero_when_unimplemented(self):
+    def test_require_green_nonzero_when_unimplemented(self, tmp_path):
         # Exercise via the CLI's main() so the in-process registry (or lack
         # thereof) is honored -- a subprocess CLI invocation would run in a
         # fresh interpreter with an empty registry too, but going through the
@@ -145,14 +145,14 @@ class TestNotImplemented:
         sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
         vcsr = importlib.import_module("validate_case_study_redesign")
 
-        rc_plain = vcsr.main(["--groups", "0-8", "--out", str(Path.cwd() / "_unused_report.json")])
+        # Write the incidental report into the test's own tmp_path -- never
+        # into Path.cwd() (which may be the repo root during a local run) --
+        # so the test leaves nothing behind on disk anywhere.
+        rc_plain = vcsr.main(["--groups", "0-8", "--out", str(tmp_path / "_unused_report.json")])
         rc_green = vcsr.main(["--groups", "0-8", "--require-green"])
 
         assert rc_plain == 0
         assert rc_green != 0
-
-        # Clean up the incidental report file written above.
-        Path.cwd().joinpath("_unused_report.json").unlink(missing_ok=True)
 
 
 # =============================================================================
