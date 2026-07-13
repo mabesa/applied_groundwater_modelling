@@ -199,3 +199,6 @@ _SUPPORT/src/scripts/reliability_sweep/
 
 # WF2 (vision-build) detached gate-runner artifacts
 .claude/workflow-runs/
+
+# Internal redesign handoff/design doc — kept local, not shipped to student branches
+.flow_redesign_handoff.md
