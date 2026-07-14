@@ -2453,7 +2453,7 @@ Retardation slows the *plume's* velocity to $v/R$ (R=2 halves it), so the arriva
 
 Rung A also runs a **separate** decay-only variant ($\lambda = \ln 2/30$ d, R = 1, no sorption) — this checkpoint is not about that curve, but the contrast is the key teaching point: decay-only gives peak ≈ **2.80 mg/L**, at **essentially the same arrival time** as the conservative run. In other words, **retardation delays arrival** (it slows the plume itself), while **decay does not** (it only removes mass in transit, it does not slow anything) — both lower the peak, but only retardation shifts *when* the peak shows up.
 
-Neither variant drops the peak below `THRESHOLD_MGL = 1.0` mg/L — retardation and decay at these values **delay and/or damp** the exceedance, they do not eliminate it.
+Neither variant drops the peak below `THRESHOLD_MGL = 1.0` mg/L, but they do not act the same way: **retardation delays AND damps** the exceedance (it slows the plume itself, and sorption removes mass), while **decay damps it WITHOUT materially delaying arrival** (it only removes mass in transit). Either way the exceedance is not eliminated.
 
 - **B** is wrong: sorption/retardation never *speeds up* transport — $R \ge 1$ always.
 - **C** is wrong: sorption also reduces the aqueous peak concentration (mass partitions onto the solid phase), it is not timing-only.

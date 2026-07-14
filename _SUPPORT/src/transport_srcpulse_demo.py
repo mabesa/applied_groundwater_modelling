@@ -34,8 +34,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
+import shutil
 import time
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -60,7 +63,6 @@ LOCKED_PARAMS: Dict[str, Any] = {
     "xt3d_off": False,      # XT3D default-on for DSP
     "refined_cell_size": 10.0,
     "base_cell_size": 50.0,
-    "refine_radius": 70.0,  # corridor half-width [m]
     "time_units": "DAYS",
 }
 
@@ -197,11 +199,20 @@ def _courant_nstp(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
         sel = mask
     ratio = v_cells[sel] / size_cells[sel]
     critical = float(ratio.max())
+    j = np.where(sel)[0][int(np.argmax(ratio))]
+    if critical <= 0.0:
+        # degenerate zero-velocity field on the selected cells: cr_target /
+        # critical would ZeroDivisionError.  Fall back to the step cap -- there
+        # is no advective signal to size dt against.
+        nstp = max(nstp_cap, 1)
+        dt = total_time / nstp
+        diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
+                    ds_true_min=float(size_cells[mask].min()), floor=floor)
+        return nstp, dt, critical * dt, diag
     dt_need = cr_target / critical
     nstp = min(int(np.ceil(total_time / dt_need)), nstp_cap)
     nstp = max(nstp, 1)
     dt = total_time / nstp
-    j = np.where(sel)[0][int(np.argmax(ratio))]
     diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
                 ds_true_min=float(size_cells[mask].min()), floor=floor)
     return nstp, dt, critical * dt, diag
@@ -211,11 +222,10 @@ def _load_calibrated_flow():
     """Load the 05f-calibrated coarse flow model + GIS (boundary, Limmat/Sihl)."""
     from data_utils import download_named_file
     flow_ws = mio.ensure_flow_model()
-    exe = _MF6_FALLBACK
+    # prefer an mf6 already on PATH; fall back to the flopy-bin install location.
+    exe = shutil.which("mf6") or _MF6_FALLBACK
     csim = flopy.mf6.MFSimulation.load(sim_ws=str(flow_ws), exe_name=exe, verbosity_level=0)
     cgwf = csim.get_model("limmat_valley")
-    # exe from the loaded sim if it resolves, else the flopy-bin fallback
-    exe = csim.exe_name or _MF6_FALLBACK
     boundary = gpd.read_file(download_named_file(name="model_boundary", data_type="gis"))
     rivers = gpd.read_file(download_named_file(name="rivers", data_type="gis"))
     rivers = rivers[rivers["GEWAESSERNAME"].isin(["Limmat", "Sihl"])
@@ -290,6 +300,19 @@ def build_srcpulse_demo(
     -------
     SrcPulseDemo
     """
+    # NaN/inf defeat every "<" / "<=" guard below (they are False for NaN), so a
+    # NaN would sail through validation and then silently take a wrong branch
+    # downstream (e.g. `R > 1.0` is False for R=nan -> falls back to a
+    # CONSERVATIVE run mislabelled "R=nan").  Reject non-finite values up front.
+    for _name, _val in (("mass_g", mass_g), ("pulse_days", pulse_days),
+                         ("total_days", total_days), ("solubility_mgL", solubility_mgL),
+                         ("R", R), ("rho_b", rho_b), ("lam", lam),
+                         ("cr_target", cr_target)):
+        if not math.isfinite(_val):
+            raise ValueError(f"{_name} must be finite (got {_val!r})")
+    if alpha_L is not None and not math.isfinite(alpha_L):
+        raise ValueError(f"alpha_L must be finite (got {alpha_L!r})")
+
     if R < 1.0:
         raise ValueError(f"R must be >= 1.0 (got {R!r})")
     if lam < 0.0:
@@ -314,7 +337,10 @@ def build_srcpulse_demo(
             "period 1 (post-pulse migration) would otherwise have zero/negative length")
 
     alpha_L_eff = float(LOCKED_PARAMS["alh"]) if alpha_L is None else float(alpha_L)
-    alpha_T_eff = alpha_L_eff / 10.0
+    # Derive the transverse ratio FROM LOCKED_PARAMS (currently 1.0 / 10.0 = 0.1)
+    # rather than hardcoding "/ 10.0" -- that hardcode previously matched the
+    # locked ratio only by coincidence, and silently ignored LOCKED_PARAMS["ath1"].
+    alpha_T_eff = alpha_L_eff * (float(LOCKED_PARAMS["ath1"]) / float(LOCKED_PARAMS["alh"]))
     porosity = float(LOCKED_PARAMS["porosity"])
     Kd = (float(R) - 1.0) * porosity / float(rho_b) if R > 1.0 else 0.0
 
@@ -333,7 +359,15 @@ def build_srcpulse_demo(
                   # json.dumps(..., sort_keys=True) below sorts this nested dict's
                   # keys too, so the hash is deterministic regardless of
                   # LOCKED_PARAMS's declaration order.
-                  locked=dict(LOCKED_PARAMS))
+                  locked=dict(LOCKED_PARAMS),
+                  # Fold a fingerprint of THIS MODULE's own source into the cache
+                  # identity too.  LOCKED_PARAMS only covers edits to that one
+                  # dict -- editing DOUBLET_Q, SPILL_UPGRADIENT_M, INJ_XY/ABS_XY,
+                  # the Kd formula, the MST decay wiring, SRC cell placement,
+                  # _courant_nstp, or _mass_balance would otherwise leave the
+                  # hash (and every warm cache, notebook users included) unchanged
+                  # while the model itself changed underneath it.
+                  src_sha=hashlib.sha1(Path(__file__).read_bytes()).hexdigest()[:16])
     cache_hash = hashlib.sha1(
         json.dumps(params, sort_keys=True).encode("utf-8")).hexdigest()[:16]
     cache = case_ws / f"srcpulse_cache_{cache_hash}.npz"
@@ -472,7 +506,17 @@ def build_srcpulse_demo(
     cobj = gwt.output.concentration(); times = np.array(cobj.get_times())
     bt = np.maximum(np.array([cobj.get_data(totim=t)[0, 0, extc] for t in times]), 0.0)
     peak = float(bt.max()) if bt.size else float("nan")
-    arrival = float(times[int(np.argmax(bt))]) if bt.size else float("nan")
+    # `arrival_day = times[argmax(bt)]` with no guard is wrong-but-plausible in
+    # two degenerate cases: (1) the plume never arrives (bt is all-zero) ->
+    # argmax(bt) is 0 -> arrival is reported as "day <first output time>", not
+    # "never"; (2) the breakthrough curve is STILL RISING at the end of a
+    # too-short window -> the last sample (not a real peak) is reported as the
+    # arrival.  Guard (1) with `peak <= 0.0` -> NaN; flag (2) via
+    # `peak_at_last_step` below so callers (the notebook) can warn instead of
+    # silently trusting a still-rising curve's last point.
+    peak_at_last_step = bool(bt.size and int(np.argmax(bt)) == bt.size - 1)
+    arrival = (float(times[int(np.argmax(bt))]) if (bt.size and peak > 0.0)
+               else float("nan"))
 
     # ---- emergent source-cell concentration vs solubility ----
     q_src = float(np.hypot(spd["qx"][src_cells[0]], spd["qy"][src_cells[0]]))  # Darcy [m/d]
@@ -493,12 +537,27 @@ def build_srcpulse_demo(
     PeT_min = float(csz_corr.min() / alpha_T_eff)
     PeT_max = float(csz_corr.max() / alpha_T_eff)
 
+    # cr_capped must flag BOTH ways the target Courant number can be missed:
+    # (a) Cr_actual overshoots cr_target (the old `cr_act > 1.001` check), and
+    # (b) nstp hit nstp_cap and truncated the step count before cr_target was
+    # reached at all (e.g. nstp==nstp_cap with cr_act=0.96 > cr_target=0.9 --
+    # the old check reports "not capped" even though the cap is exactly why
+    # the target was missed).  `nstp >= nstp_cap` catches both: case (a) drives
+    # nstp up until it saturates at the cap, and case (b) IS the cap binding.
+    cr_capped = bool(nstp >= nstp_cap)
+    if cr_capped:
+        warnings.warn(
+            f"srcpulse demo: nstp hit nstp_cap ({nstp_cap}); the target Courant "
+            f"number cr_target={cr_target:g} may not have been reached "
+            f"(Cr_actual={cr_act:.3f}). Diagnostics/results may be under-resolved "
+            "in time -- consider raising nstp_cap.", RuntimeWarning, stacklevel=2)
+
     meta = dict(ncpl=ncpl, nstp=nstp, dt=dt, Cr=cr_act, n_src=n_src,
                 q_src_darcy=q_src, b_src=b_src, ds_src=ds_src, q_cell=q_cell,
                 v_bind=cdiag["v_bind"], ds_bind=cdiag["ds_bind"],
                 ds_true_min=cdiag["ds_true_min"], courant_floor=cdiag["floor"],
                 refine_radius_used=refine_radius_used, u_reg=tuple(u_reg),
-                cr_capped=bool(cr_act > 1.001))
+                cr_capped=cr_capped, peak_at_last_step=peak_at_last_step)
 
     result = SrcPulseDemo(
         times=times, breakthrough=bt, peak_mgL=peak, arrival_day=arrival,
@@ -545,7 +604,20 @@ def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
         inc, cum = lst.get_dataframes()
         row = cum.iloc[-1]
     except Exception as e:                       # keep the demo robust
-        return {"error": repr(e)}
+        # Return the expected NUMERIC keys as NaN alongside "error".  The
+        # notebook does `for k, v in res.mass_balance.items(): print(f"{v:14.4g}")`
+        # -- returning only {"error": ...} means that format spec crashes with
+        # "ValueError: Unknown format code 'g' for object of type 'str'",
+        # which hides the REAL MF6 parse error (this except's `e`) behind an
+        # unrelated formatting traceback.
+        return {
+            "error": repr(e),
+            "src_in_g": float("nan"), "well_out_g": float("nan"),
+            "boundary_out_g": float("nan"), "storage_g": float("nan"),
+            "decay_g": float("nan"), "total_in_g": float("nan"),
+            "total_out_g": float("nan"), "pct_imbalance": float("nan"),
+            "grouped_residual_g": float("nan"),
+        }
 
     def _grab(substr_in, substr_out=None):
         _in = sum(float(row[c]) for c in row.index if substr_in in c.upper() and c.upper().endswith("_IN"))
@@ -565,8 +637,9 @@ def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
         # both storage flavours a reactive (sorbing) run emits -- STORAGE-AQUEOUS and
         # STORAGE-SORBED -- share the "STORAGE" substring with the conservative-run
         # "STORAGE" term, so this single branch already catches all of them (verified
-        # against a real R>1 gwt.lst).
-        if "STORAGE" in cu or cu.startswith("MST"):
+        # against a real R>1 gwt.lst).  (MF6 emits STORAGE-AQUEOUS/STORAGE-SORBED,
+        # never an "MST"-prefixed budget column, so that alternative is dead code.)
+        if "STORAGE" in cu:
             if cu.endswith("_IN"):
                 sto_in += float(row[c])
             elif cu.endswith("_OUT"):
@@ -583,7 +656,7 @@ def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
     total_out = float(row["TOTAL_OUT"]) if "TOTAL_OUT" in row.index else None
     if "PERCENT_DISCREPANCY" in row.index:
         pct = float(row["PERCENT_DISCREPANCY"])
-    elif total_in is not None and (total_in + total_out) != 0:
+    elif total_in is not None and total_out is not None and (total_in + total_out) != 0:
         pct = 100.0 * (total_in - total_out) / (0.5 * (total_in + total_out))
     else:
         pct = float("nan")
@@ -634,48 +707,69 @@ def _save_cache(path: Path, r: SrcPulseDemo, params: Dict[str, Any]) -> None:
 
 
 def _load_cache(path: Path, params: Dict[str, Any]) -> Optional[SrcPulseDemo]:
+    # The WHOLE body (params-key check, value comparison, AND the SrcPulseDemo
+    # construction/z[...] reads below) lives inside this one try.  Previously
+    # only np.load + z["params"].item() were guarded: the 29 z[...] reads below
+    # sat OUTSIDE the try, protected only by the params key-set check above.
+    # That means a future dataclass field added WITHOUT touching the hashed
+    # `params` dict would pass the key-set guard on every existing warm cache
+    # and then KeyError on the read -- crashing instead of cleanly rebuilding.
+    # Wrapping everything means any bad/incomplete/legacy cache just MISSES.
     try:
         z = np.load(str(path), allow_pickle=True)
         stored = dict(z["params"].item())
+        # A missing/extra key must NOT silently count as a match (e.g.
+        # stored.get(k, nan) comparing "> 1e-9" as False for a missing key
+        # would look like equality).
+        if set(stored) != set(params):
+            return None                      # key set changed -> rebuild
+        for k, v in params.items():
+            sv = stored[k]
+            if k == "refine_radii":
+                # non-scalar entry: compare as arrays, not via a bare "abs(list - list)".
+                sv_arr = np.asarray(sv, dtype=float)
+                v_arr = np.asarray(v, dtype=float)
+                if sv_arr.shape != v_arr.shape or np.any(np.abs(sv_arr - v_arr) > 1e-9):
+                    return None
+            elif k == "locked":
+                # non-scalar (nested dict) entry: mixed str/float/bool values, so
+                # compare via a canonical JSON dump rather than a bare "==" (which
+                # would work here too, but this stays robust if a future
+                # LOCKED_PARAMS value becomes a list/array).
+                if json.dumps(sv, sort_keys=True) != json.dumps(v, sort_keys=True):
+                    return None
+            elif isinstance(v, str) or isinstance(sv, str):
+                # e.g. src_sha: a plain string value.  The numeric branch below
+                # does `abs(float(sv) - float(v))`, which would crash (or worse,
+                # silently coerce) on a non-numeric string -- compare by equality.
+                if str(sv) != str(v):
+                    return None
+            else:
+                if abs(float(sv) - float(v)) > 1e-9:
+                    return None              # params changed -> rebuild
+        return SrcPulseDemo(
+            times=z["times"], breakthrough=z["breakthrough"],
+            peak_mgL=float(z["peak_mgL"]), arrival_day=float(z["arrival_day"]),
+            mass_balance=dict(z["mass_balance"].item()), solubility_ok=bool(z["solubility_ok"]),
+            emergent_C_mgL=float(z["emergent_C_mgL"]), solubility_mgL=float(z["solubility_mgL"]),
+            solubility_margin=float(z["solubility_margin"]),
+            PeL_min=float(z["PeL_min"]), PeL_max=float(z["PeL_max"]),
+            PeT_min=float(z["PeT_min"]), PeT_max=float(z["PeT_max"]),
+            mass_g=float(z["mass_g"]), pulse_days=float(z["pulse_days"]),
+            total_days=float(z["total_days"]), smassrate_gpd=float(z["smassrate_gpd"]),
+            src_cells=[int(c) for c in z["src_cells"]], ext_cell=int(z["ext_cell"]),
+            inj_cell=int(z["inj_cell"]),
+            # Cast to plain Python float (not np.float64): the build path
+            # produces Python floats, and _save_cache round-trips through
+            # np.array(r.spill_xy) -- without this cast, a cache HIT returns a
+            # tuple of np.float64 that compares equal (np.float64(x) == x) but
+            # is a different TYPE, which bites e.g. json.dumps(demo.spill_xy).
+            spill_xy=(float(z["spill_xy"][0]), float(z["spill_xy"][1])),
+            alpha_L=float(z["alpha_L"]), alpha_T=float(z["alpha_T"]),
+            R=float(z["R"]), rho_b=float(z["rho_b"]), Kd=float(z["Kd"]), lam=float(z["lam"]),
+            meta=dict(z["meta"].item()), locked=dict(z["locked"].item()))
     except Exception:
         return None
-    # A missing/extra key must NOT silently count as a match (e.g. stored.get(k, nan)
-    # comparing "> 1e-9" as False for a missing key would look like equality).
-    if set(stored) != set(params):
-        return None                          # key set changed -> rebuild
-    for k, v in params.items():
-        sv = stored[k]
-        if k == "refine_radii":
-            # non-scalar entry: compare as arrays, not via a bare "abs(list - list)".
-            sv_arr = np.asarray(sv, dtype=float)
-            v_arr = np.asarray(v, dtype=float)
-            if sv_arr.shape != v_arr.shape or np.any(np.abs(sv_arr - v_arr) > 1e-9):
-                return None
-        elif k == "locked":
-            # non-scalar (nested dict) entry: mixed str/float/bool values, so
-            # compare via a canonical JSON dump rather than a bare "==" (which
-            # would work here too, but this stays robust if a future
-            # LOCKED_PARAMS value becomes a list/array).
-            if json.dumps(sv, sort_keys=True) != json.dumps(v, sort_keys=True):
-                return None
-        else:
-            if abs(float(sv) - float(v)) > 1e-9:
-                return None                  # params changed -> rebuild
-    return SrcPulseDemo(
-        times=z["times"], breakthrough=z["breakthrough"],
-        peak_mgL=float(z["peak_mgL"]), arrival_day=float(z["arrival_day"]),
-        mass_balance=dict(z["mass_balance"].item()), solubility_ok=bool(z["solubility_ok"]),
-        emergent_C_mgL=float(z["emergent_C_mgL"]), solubility_mgL=float(z["solubility_mgL"]),
-        solubility_margin=float(z["solubility_margin"]),
-        PeL_min=float(z["PeL_min"]), PeL_max=float(z["PeL_max"]),
-        PeT_min=float(z["PeT_min"]), PeT_max=float(z["PeT_max"]),
-        mass_g=float(z["mass_g"]), pulse_days=float(z["pulse_days"]),
-        total_days=float(z["total_days"]), smassrate_gpd=float(z["smassrate_gpd"]),
-        src_cells=[int(c) for c in z["src_cells"]], ext_cell=int(z["ext_cell"]),
-        inj_cell=int(z["inj_cell"]), spill_xy=tuple(z["spill_xy"]),
-        alpha_L=float(z["alpha_L"]), alpha_T=float(z["alpha_T"]),
-        R=float(z["R"]), rho_b=float(z["rho_b"]), Kd=float(z["Kd"]), lam=float(z["lam"]),
-        meta=dict(z["meta"].item()), locked=dict(z["locked"].item()))
 
 
 # ---------------------------------------------------------------------------
