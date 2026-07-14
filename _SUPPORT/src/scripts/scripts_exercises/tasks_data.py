@@ -585,6 +585,14 @@ Rung B (optional, `RUN_ALPHA_L`) reruns the spill with the longitudinal dispersi
 The keystone breakthrough is a finite **pulse** — it rises from zero, peaks, and falls away again — not a steady plateau. **Before running Rung B** — how do you expect doubling α_L to reshape that pulse at the compliance well?
 """,
 
+"task_t08_checkpoint_4": r"""
+## Checkpoint 4 — Predict the PRT capture-zone verdict (before running Rung D)
+
+Rung D (optional, `RUN_PRT`) runs MODFLOW 6 **PRT** particle tracking: a disc of particles is released across the spill's realistic ~10 m footprint, 90 m **upgradient** of the doublet's extraction (compliance) well, with the doublet pumping. Each particle either terminates in the extraction well's cell (captured) or escapes elsewhere.
+
+**Before running Rung D** — do you expect the spill footprint to be captured by the extraction well, and what would that capture verdict tell you (and *not* tell you) about the compliance question from the Keystone?
+""",
+
 "task_exercise_flow_net_1": r"""
 ## Task 1
 Compute the hydraulic head at point A (in meter)
@@ -855,6 +863,7 @@ solutions_exact = {
     "task_t08_checkpoint_1": "A) Yes, exceeds within ~1-2 months",
     "task_t08_checkpoint_2": "A) Later and lower peak",
     "task_t08_checkpoint_3": "A) Earlier toe, broader front, lower peak",
+    "task_t08_checkpoint_4": "A) Yes, fully captured — capture is not exceedance",
     "task_exercise_flow_net_1": "21",
     "task_exercise_flow_net_2": "-2",
     "task_exercise_flow_net_3": "100",
@@ -966,6 +975,7 @@ solution_unit = {
     "task_t08_checkpoint_1": "multiple choice",
     "task_t08_checkpoint_2": "multiple choice",
     "task_t08_checkpoint_3": "multiple choice",
+    "task_t08_checkpoint_4": "multiple choice",
     # Exercises implemented in notebooks from theory
     "task_exercise_flow_net_1": " m",
     "task_exercise_flow_net_2": " kPa/m",
@@ -1229,6 +1239,16 @@ multiple_choice_options = {
          "C) No change — dispersivity only matters for steady-state recirculation problems, not a finite pulse"),
         ("D) Same timing, peak doubles",
          "D) Timing is unchanged, but the peak concentration doubles because the dispersion coefficient doubles"),
+    ],
+    "task_t08_checkpoint_4": [
+        ("A) Yes, fully captured — capture is not exceedance",
+         "A) Yes, fully captured — every particle in the footprint reaches the well; capture alone says the water arrives, not that concentration exceeds a threshold"),
+        ("B) No, the spill is outside the capture zone",
+         "B) No — at 90 m upgradient the spill sits outside the doublet's capture zone, so the footprint bypasses the well and drifts downgradient"),
+        ("C) Partially captured, roughly half",
+         "C) Partially captured — roughly half the footprint reaches the well and half escapes, the split the wider capture-zone probe shows"),
+        ("D) Yes, fully captured, which proves exceedance",
+         "D) Yes, fully captured — and since every particle reaches the well, the compliance well must also see the concentration exceed the threshold"),
     ],
 
     "K_increase_sandstone_1": [
@@ -2473,6 +2493,21 @@ Running Rung B confirms it: peak ≈ **4.21 mg/L at ≈ day 38.8** (vs. the α_L
 - **B** is wrong: more dispersion spreads (does not sharpen) the front, and brings the toe *earlier*, not later.
 - **C** is wrong: dispersivity reshapes any breakthrough curve, pulse or plateau, doublet or 1D column.
 - **D** is wrong: the pulse concentration is diluted (the same mass spread over a larger mixing volume), not doubled — mass is conserved, concentration is not.
+<br>
+""",
+
+"task_t08_checkpoint_4": r"""
+## Solution — Is the spill footprint captured?
+
+**Correct answer: A) Yes, fully captured — capture is not exceedance.**
+
+Running Rung D confirms it: every one of the 200 particles released across the realistic ~10 m spill footprint terminates in the extraction well's cell — capture fraction **1.000** (200/200) — with a median advective travel time of **25.8 d** (p10 22.7, p90 28.6). The spill sits entirely inside the doublet's capture zone, which independently corroborates the Keystone's exceedance verdict by a completely different mechanism (particle tracking, not concentration transport) — but only as a **geometry** check: PRT says the advective water gets to the well, not what concentration it carries. The threshold-exceedance verdict (peak 4.95 mg/L at day 41) is, and remains, the ADE model's job.
+
+The reconciliation is a genuine cross-check, not a coincidence: the ADE releases a finite 30-day pulse whose centre of mass leaves the source at t = 15 d; 15 d + the PRT median advective travel time of 25.8 d = 40.8 d ≈ the ADE's day-41 concentration peak. Two structurally different MODFLOW models — advection-dispersion and particle tracking — agree to within a day, and nothing was tuned to make that happen.
+
+- **B** is wrong: the spill sits directly on the spill→well axis, well inside the capture zone measured at this distance (half-width ≈ 83 m at 90 m upgradient) — nothing here escapes.
+- **C** is wrong: partial capture (fraction ≈ 0.72) is what the WIDER, 120 m capture-zone probe shows, deliberately built to straddle the capture-zone boundary — the realistic 10 m footprint is far narrower and sits entirely inside the zone.
+- **D** is wrong: full capture never by itself proves an exceedance — PRT carries no concentration information at all. Only because the ADE model was run separately, and its answer cross-checked against PRT's travel time, can both be said to agree here.
 <br>
 """,
 
