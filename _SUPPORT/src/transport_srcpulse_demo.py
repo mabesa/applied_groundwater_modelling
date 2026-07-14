@@ -298,6 +298,20 @@ def build_srcpulse_demo(
         raise ValueError(f"alpha_L must be > 0 (got {alpha_L!r})")
     if rho_b <= 0.0:
         raise ValueError(f"rho_b must be > 0 (got {rho_b!r})")
+    if mass_g <= 0.0:
+        raise ValueError(f"mass_g must be > 0 (got {mass_g!r})")
+    if solubility_mgL <= 0.0:
+        raise ValueError(f"solubility_mgL must be > 0 (got {solubility_mgL!r})")
+    if cr_target <= 0.0:
+        raise ValueError(f"cr_target must be > 0 (got {cr_target!r})")
+    if nstp_cap < 1:
+        raise ValueError(f"nstp_cap must be >= 1 (got {nstp_cap!r})")
+    if pulse_days <= 0.0:
+        raise ValueError(f"pulse_days must be > 0 (got {pulse_days!r})")
+    if total_days <= pulse_days:
+        raise ValueError(
+            f"total_days ({total_days!r}) must be > pulse_days ({pulse_days!r}); "
+            "period 1 (post-pulse migration) would otherwise have zero/negative length")
 
     alpha_L_eff = float(LOCKED_PARAMS["alh"]) if alpha_L is None else float(alpha_L)
     alpha_T_eff = alpha_L_eff / 10.0
@@ -311,9 +325,17 @@ def build_srcpulse_demo(
                   total_days=float(total_days), solubility_mgL=float(solubility_mgL),
                   alpha_L=alpha_L_eff, R=float(R), rho_b=float(rho_b), lam=float(lam),
                   cr_target=float(cr_target), nstp_cap=int(nstp_cap),
-                  refine_radii=list(map(float, refine_radii)))
+                  refine_radii=list(map(float, refine_radii)),
+                  # Fold a snapshot of LOCKED_PARAMS into the cache identity so an
+                  # edit to LOCKED_PARAMS (porosity, scheme, xt3d_off, diffc,
+                  # base_cell_size, refined_cell_size, time_units, ath1, ...) busts
+                  # every existing cache instead of being silently ignored.
+                  # json.dumps(..., sort_keys=True) below sorts this nested dict's
+                  # keys too, so the hash is deterministic regardless of
+                  # LOCKED_PARAMS's declaration order.
+                  locked=dict(LOCKED_PARAMS))
     cache_hash = hashlib.sha1(
-        json.dumps(params, sort_keys=True).encode("utf-8")).hexdigest()[:8]
+        json.dumps(params, sort_keys=True).encode("utf-8")).hexdigest()[:16]
     cache = case_ws / f"srcpulse_cache_{cache_hash}.npz"
     if cache.exists() and not force:
         cached = _load_cache(cache, params)
@@ -507,6 +529,13 @@ def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
     verified against a real reactive (R>1) and a real decaying (lam>0) GWT
     listing -- MF6 emits "STORAGE-SORBED" (not "STORAGE-SORBATE").  Units are
     grams (model mg/L -> g/m^3, m/day).
+
+    ``pct_imbalance`` is MF6's own PERCENT_DISCREPANCY -- it reflects only
+    MF6's internal solve, not whether OUR substring grouping above actually
+    captured every budget column without missing or double-counting one.
+    ``grouped_residual_g`` is a separate self-check: it reconciles the sum of
+    our grouped _IN / _OUT terms against MF6's own TOTAL_IN / TOTAL_OUT and
+    should be ~0 g when the grouping is complete and non-overlapping.
     """
     from flopy.utils import Mf6ListBudget
     out: Dict[str, float] = {}
@@ -559,6 +588,20 @@ def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
     else:
         pct = float("nan")
 
+    # ---- self-check: reconcile OUR substring-grouped terms against MF6's own
+    # TOTAL_IN / TOTAL_OUT. pct_imbalance above is MF6's own PERCENT_DISCREPANCY --
+    # it says nothing about whether the grouping just above (SRC/WEL/RIV/CHD/RCH,
+    # "STORAGE" in cu, "DECAY" in cu) missed or double-counted a budget column.
+    # If it did, the sum of our grouped _IN terms will drift from MF6's TOTAL_IN
+    # (and likewise for _OUT), even while pct_imbalance stays ~0%.
+    grouped_total_in = src_in + wel_in + riv_in + chd_in + rch_in + sto_in + dcy_in
+    grouped_total_out = src_out + wel_out + riv_out + chd_out + rch_out + sto_out + dcy_out
+    if total_in is not None and total_out is not None:
+        grouped_residual_g = float(abs(grouped_total_in - total_in)
+                                    + abs(grouped_total_out - total_out))
+    else:
+        grouped_residual_g = float("nan")
+
     out.update(
         src_in_g=src_in,
         well_out_g=wel_out,
@@ -568,6 +611,7 @@ def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
         total_in_g=total_in if total_in is not None else float("nan"),
         total_out_g=total_out if total_out is not None else float("nan"),
         pct_imbalance=pct,
+        grouped_residual_g=grouped_residual_g,
     )
     return out
 
@@ -586,7 +630,7 @@ def _save_cache(path: Path, r: SrcPulseDemo, params: Dict[str, Any]) -> None:
              smassrate_gpd=r.smassrate_gpd, src_cells=np.array(r.src_cells),
              ext_cell=r.ext_cell, inj_cell=r.inj_cell, spill_xy=np.array(r.spill_xy),
              alpha_L=r.alpha_L, alpha_T=r.alpha_T, R=r.R, rho_b=r.rho_b, Kd=r.Kd, lam=r.lam,
-             meta=r.meta, params=params, allow_pickle=True)
+             meta=r.meta, locked=r.locked, params=params, allow_pickle=True)
 
 
 def _load_cache(path: Path, params: Dict[str, Any]) -> Optional[SrcPulseDemo]:
@@ -607,6 +651,13 @@ def _load_cache(path: Path, params: Dict[str, Any]) -> Optional[SrcPulseDemo]:
             v_arr = np.asarray(v, dtype=float)
             if sv_arr.shape != v_arr.shape or np.any(np.abs(sv_arr - v_arr) > 1e-9):
                 return None
+        elif k == "locked":
+            # non-scalar (nested dict) entry: mixed str/float/bool values, so
+            # compare via a canonical JSON dump rather than a bare "==" (which
+            # would work here too, but this stays robust if a future
+            # LOCKED_PARAMS value becomes a list/array).
+            if json.dumps(sv, sort_keys=True) != json.dumps(v, sort_keys=True):
+                return None
         else:
             if abs(float(sv) - float(v)) > 1e-9:
                 return None                  # params changed -> rebuild
@@ -624,7 +675,7 @@ def _load_cache(path: Path, params: Dict[str, Any]) -> Optional[SrcPulseDemo]:
         inj_cell=int(z["inj_cell"]), spill_xy=tuple(z["spill_xy"]),
         alpha_L=float(z["alpha_L"]), alpha_T=float(z["alpha_T"]),
         R=float(z["R"]), rho_b=float(z["rho_b"]), Kd=float(z["Kd"]), lam=float(z["lam"]),
-        meta=dict(z["meta"].item()))
+        meta=dict(z["meta"].item()), locked=dict(z["locked"].item()))
 
 
 # ---------------------------------------------------------------------------

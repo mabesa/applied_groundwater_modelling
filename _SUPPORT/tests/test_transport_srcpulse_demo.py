@@ -4,6 +4,7 @@ The model build+run is expensive (~15 s), so it runs once via a module-scoped
 fixture and every test reads its diagnostics.  Re-calls hit the npz cache and are
 solve-free.  Run with:  uv run pytest _SUPPORT/tests/test_transport_srcpulse_demo.py
 """
+import dataclasses
 import math
 import os
 import sys
@@ -241,3 +242,133 @@ def test_decay_only(demo, decay_demo):
     recovered_base = (demo.mass_balance["well_out_g"]
                        + demo.mass_balance["boundary_out_g"])
     assert recovered_decay < recovered_base
+
+
+# ---------------------------------------------------------------------------
+# FIX 3 (cache identity) + FIX 6 (grouped mass-balance reconciliation) regressions
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="module")
+def reactive_decay_demo():
+    """R=2 AND lam>0 together -- the reactive-transport case with the MOST GWT
+    budget terms (STORAGE-AQUEOUS, STORAGE-SORBED, DECAY-AQUEOUS, DECAY-SORBED
+    all appear at once), used to pin the FIX 6 grouped mass-balance
+    reconciliation self-check."""
+    return tsd.build_srcpulse_demo(
+        mass_g=MASS_G, pulse_days=PULSE_DAYS, total_days=REACTIVE_TOTAL_DAYS,
+        solubility_mgL=SOLUBILITY_MGL, R=REACTIVE_R, lam=DECAY_LAM, force=False)
+
+
+@pytest.mark.slow
+def test_grouped_mass_balance_reconciles(reactive_decay_demo):
+    """FIX 6 regression: `pct_imbalance` is MF6's own PERCENT_DISCREPANCY, which
+    says nothing about whether OUR substring grouping (SRC/WEL/RIV/CHD/RCH,
+    "STORAGE" in cu, "DECAY" in cu) missed or double-counted a budget column.
+    `grouped_residual_g` reconciles the sum of our grouped terms against MF6's
+    own TOTAL_IN/TOTAL_OUT directly, and must be ~0 g -- checked on the
+    reactive+decaying run, which has the most budget terms to mis-group."""
+    mb = reactive_decay_demo.mass_balance
+    residual = mb.get("grouped_residual_g")
+    assert residual is not None and np.isfinite(residual)
+    # near-zero in grams, against a released mass of order 1e5 g: a missed or
+    # double-counted column would show up as a residual many orders larger
+    # than listing-file rounding noise.
+    assert abs(residual) < 1.0
+    # sanity: pct_imbalance (MF6's own number) still closes too, and the two
+    # self-checks are not the same computation.
+    pct = mb.get("pct_imbalance")
+    assert pct is not None and np.isfinite(pct) and abs(pct) < 1.0
+
+
+def test_save_load_cache_restores_locked_exactly(tmp_path):
+    """FIX 3 regression, isolated and FAST (no MF6 solve): exercises
+    `_save_cache`/`_load_cache` directly with a synthetic `locked` snapshot
+    that deliberately differs from the live `tsd.LOCKED_PARAMS`. If `locked`
+    were dropped from the save/load round trip (the exact FIX 3 bug -- it was
+    silently resurrected from the CURRENT LOCKED_PARAMS default factory
+    instead of the value actually saved), `restored.locked` would come back
+    equal to the LIVE global instead of the saved snapshot, and this test
+    would fail. Complements `test_cache_round_trip_fidelity` /
+    `test_locked_params_change_busts_cache` below, which exercise the same
+    bug through the full (slow) build_srcpulse_demo path."""
+    fake_locked = dict(tsd.LOCKED_PARAMS)
+    fake_locked["porosity"] = 0.123456  # deliberately NOT the live LOCKED_PARAMS value
+    assert fake_locked["porosity"] != tsd.LOCKED_PARAMS["porosity"]
+
+    dummy = tsd.SrcPulseDemo(
+        times=np.array([0.0, 1.0]), breakthrough=np.array([0.0, 1.0]),
+        peak_mgL=1.0, arrival_day=1.0, mass_balance={"a": 1.0}, solubility_ok=True,
+        emergent_C_mgL=1.0, solubility_mgL=1.0, solubility_margin=1.0,
+        PeL_min=1.0, PeL_max=1.0, PeT_min=1.0, PeT_max=1.0,
+        mass_g=1.0, pulse_days=1.0, total_days=2.0, smassrate_gpd=1.0,
+        src_cells=[0], ext_cell=1, inj_cell=2, spill_xy=(0.0, 0.0),
+        alpha_L=10.0, alpha_T=1.0, R=1.0, rho_b=1800.0, Kd=0.0, lam=0.0,
+        meta={"k": "v"}, locked=fake_locked)
+
+    params = {"mass_g": 1.0, "locked": fake_locked}
+    cache_path = tmp_path / "unit_cache.npz"
+    tsd._save_cache(cache_path, dummy, params)
+    restored = tsd._load_cache(cache_path, params)
+
+    assert restored is not None
+    assert restored.locked == fake_locked
+    # the crux: must NOT have been silently resurrected from the live global
+    assert restored.locked["porosity"] != tsd.LOCKED_PARAMS["porosity"]
+
+
+@pytest.mark.slow
+def test_cache_round_trip_fidelity(tmp_path):
+    """FIX 3 regression: a fresh (real) solve and a cache-hit re-call with
+    IDENTICAL args, in an isolated workspace, must return dataclass objects
+    that are equal field-for-field -- including `locked` and `meta` -- not
+    just equal on a few spot-checked attributes.  Iterates
+    dataclasses.fields() so a newly added SrcPulseDemo field is automatically
+    covered, rather than hand-listed here.  This is the test that would have
+    caught FIX 3's dropped `locked` field (previously resurrected from the
+    CURRENT LOCKED_PARAMS default factory instead of the cached value)."""
+    ws = tmp_path / "srcpulse_ws"
+    fresh = tsd.build_srcpulse_demo(
+        mass_g=MASS_G, pulse_days=PULSE_DAYS, total_days=TOTAL_DAYS,
+        solubility_mgL=SOLUBILITY_MGL, case_ws=ws, force=True)
+    cached = tsd.build_srcpulse_demo(
+        mass_g=MASS_G, pulse_days=PULSE_DAYS, total_days=TOTAL_DAYS,
+        solubility_mgL=SOLUBILITY_MGL, case_ws=ws, force=False)
+
+    for f in dataclasses.fields(tsd.SrcPulseDemo):
+        fv, cv = getattr(fresh, f.name), getattr(cached, f.name)
+        if isinstance(fv, np.ndarray):
+            np.testing.assert_array_equal(cv, fv, err_msg=f"field {f.name!r} mismatch")
+        else:
+            assert cv == fv, f"field {f.name!r} mismatch: fresh={fv!r} cached={cv!r}"
+
+
+@pytest.mark.slow
+def test_locked_params_change_busts_cache(tmp_path, monkeypatch):
+    """FIX 3 regression: editing LOCKED_PARAMS (e.g. porosity) must NOT be
+    silently masked by an existing cache file.  Cache identity now folds in a
+    LOCKED_PARAMS snapshot, so changing ONLY a LOCKED_PARAMS value must
+    produce a DIFFERENT cache file and force a real rebuild, rather than
+    returning the stale entry computed under the old locked params."""
+    ws = tmp_path / "srcpulse_ws_locked"
+    baseline = tsd.build_srcpulse_demo(
+        mass_g=MASS_G, pulse_days=PULSE_DAYS, total_days=TOTAL_DAYS,
+        solubility_mgL=SOLUBILITY_MGL, case_ws=ws, force=True)
+    baseline_caches = set(ws.glob("srcpulse_cache_*.npz"))
+    assert len(baseline_caches) == 1
+
+    patched_locked = dict(tsd.LOCKED_PARAMS)
+    patched_locked["porosity"] = tsd.LOCKED_PARAMS["porosity"] * 1.5
+    monkeypatch.setattr(tsd, "LOCKED_PARAMS", patched_locked)
+
+    changed = tsd.build_srcpulse_demo(
+        mass_g=MASS_G, pulse_days=PULSE_DAYS, total_days=TOTAL_DAYS,
+        solubility_mgL=SOLUBILITY_MGL, case_ws=ws, force=False)
+
+    changed_caches = set(ws.glob("srcpulse_cache_*.npz"))
+    # a NEW cache file must exist -- the old (now params-mismatched) one must
+    # not have been reused.
+    assert changed_caches != baseline_caches
+    assert len(changed_caches) == 2
+    # the result must actually reflect the new porosity -- solved fresh under
+    # the patched LOCKED_PARAMS, not resurrected from the stale cache.
+    assert changed.locked["porosity"] == pytest.approx(patched_locked["porosity"])
+    assert changed.locked["porosity"] != pytest.approx(baseline.locked["porosity"])

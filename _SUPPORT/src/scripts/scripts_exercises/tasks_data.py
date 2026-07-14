@@ -1212,9 +1212,9 @@ multiple_choice_options = {
     ],
     "task_t08_checkpoint_2": [
         ("A) Later and lower peak",
-         "A) Later and lower — retardation (R=2) slows the plume's effective velocity by a factor of R, delaying arrival, while both retardation and decay reduce the mass reaching the well per unit time, lowering the peak"),
+         "A) Later and lower — retardation (R=2) slows the plume's effective velocity by a factor of R, delaying arrival, and sorption also partitions mass onto the solid phase, removing it from the mobile aqueous phase, so the aqueous peak reaching the well is both later and lower"),
         ("B) Earlier and lower peak",
-         "B) Earlier and lower — sorption would have to speed the plume up, which retardation never does"),
+         "B) Earlier and lower — sorbed mass reduces the plume's effective bulk, so the thinner plume moves through the matrix faster even as its peak concentration drops"),
         ("C) Later peak, same height",
          "C) Later, but the peak height is unaffected — sorption only shifts timing, not mass delivered"),
         ("D) No effect",
@@ -1222,7 +1222,7 @@ multiple_choice_options = {
     ],
     "task_t08_checkpoint_3": [
         ("A) Earlier toe, broader front, lower peak",
-         "A) The leading edge (toe) arrives earlier and the rise/fall is more gradual (broader front, longer tail); doubling α_L alone spreads the same finite pulse out over more time, which already makes the PEAK LOWER, and because α_T doubles too (locked 10:1 ratio) transverse dilution also contributes -- this one run can't separate how much each mechanism contributes"),
+         "A) The toe arrives earlier, the front broadens (more gradual rise and fall, longer tail), and the peak is lower"),
         ("B) Later toe, sharper peak, higher peak",
          "B) The toe arrives later, the front is sharper, and the peak is higher"),
         ("C) No change",
