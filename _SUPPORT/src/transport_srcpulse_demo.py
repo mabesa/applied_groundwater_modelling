@@ -32,6 +32,8 @@ Author: Applied Groundwater Modelling Course (transport track, M2 SRC demo)
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import time
 from dataclasses import dataclass, field
@@ -105,6 +107,12 @@ class SrcPulseDemo:
     ext_cell: int
     inj_cell: int
     spill_xy: Tuple[float, float]
+    alpha_L: float                          # effective longitudinal dispersivity [m]
+    alpha_T: float                          # effective transverse dispersivity [m] (alpha_L / 10)
+    R: float                                # retardation factor [-]
+    rho_b: float                            # dry bulk density [kg/m^3]
+    Kd: float                               # distribution coefficient [m^3/kg] (0.0 when R==1)
+    lam: float                              # first-order decay rate [1/d] (0.0 = no decay)
     meta: Dict[str, Any] = field(default_factory=dict)
     locked: Dict[str, Any] = field(default_factory=lambda: dict(LOCKED_PARAMS))
 
@@ -229,6 +237,10 @@ def build_srcpulse_demo(
     total_days: float = 120.0,
     solubility_mgL: float = 1000.0,
     *,
+    alpha_L: Optional[float] = None,
+    R: float = 1.0,
+    rho_b: float = 1800.0,
+    lam: float = 0.0,
     case_ws: Optional[Union[str, Path]] = None,
     cr_target: float = 0.9,
     nstp_cap: int = 2000,
@@ -247,6 +259,27 @@ def build_srcpulse_demo(
         Total simulated time [d] (period 0 = pulse, period 1 = migration).
     solubility_mgL : float
         Stated aqueous solubility [mg/L] for the guardrail assertion.
+    alpha_L : float, optional
+        Override longitudinal dispersivity [m].  ``None`` (default) uses the
+        LOCKED value (10.0 m).  Scales BOTH dispersivities to preserve the
+        course's locked 10:1 anisotropy ratio: ``alh = alpha_L`` and
+        ``ath1 = alpha_L / 10.0``.  Feeds the DSP package and the Pe_L / Pe_T
+        grid-Peclet diagnostics (``PeL = cellsize / alpha_L``,
+        ``PeT = cellsize / (alpha_L / 10)``).
+    R : float
+        Retardation factor [-] (students reason in R, not Kd).  ``R == 1.0``
+        (default) is conservative transport -- no sorption args are passed to
+        MST at all.  ``R > 1`` enables MODFLOW 6 MST linear sorption with
+        ``Kd = (R - 1) * porosity / rho_b``.
+    rho_b : float
+        Dry bulk density [kg/m^3], used only for the Kd conversion when
+        ``R > 1``.
+    lam : float
+        First-order decay rate [1/d] (e.g. ``ln(2) / half_life``).  ``lam >
+        0`` enables MST first-order decay.  ``decay_sorbed`` is only valid
+        when sorption is active (MF6 constraint), so it is set equal to
+        ``lam`` only when ``R > 1`` as well; otherwise only the aqueous
+        ``decay`` is passed.
     case_ws : path, optional
         Workspace for the refined grid + coupled sim + cache.  Defaults to
         ``<data>/transport_srcpulse_demo``.
@@ -257,12 +290,31 @@ def build_srcpulse_demo(
     -------
     SrcPulseDemo
     """
+    if R < 1.0:
+        raise ValueError(f"R must be >= 1.0 (got {R!r})")
+    if lam < 0.0:
+        raise ValueError(f"lam must be >= 0.0 (got {lam!r})")
+    if alpha_L is not None and alpha_L <= 0.0:
+        raise ValueError(f"alpha_L must be > 0 (got {alpha_L!r})")
+    if rho_b <= 0.0:
+        raise ValueError(f"rho_b must be > 0 (got {rho_b!r})")
+
+    alpha_L_eff = float(LOCKED_PARAMS["alh"]) if alpha_L is None else float(alpha_L)
+    alpha_T_eff = alpha_L_eff / 10.0
+    porosity = float(LOCKED_PARAMS["porosity"])
+    Kd = (float(R) - 1.0) * porosity / float(rho_b) if R > 1.0 else 0.0
+
     case_ws = Path(case_ws) if case_ws is not None else _default_case_ws()
     case_ws.mkdir(parents=True, exist_ok=True)
 
     params = dict(mass_g=float(mass_g), pulse_days=float(pulse_days),
-                  total_days=float(total_days), solubility_mgL=float(solubility_mgL))
-    cache = case_ws / "srcpulse_cache.npz"
+                  total_days=float(total_days), solubility_mgL=float(solubility_mgL),
+                  alpha_L=alpha_L_eff, R=float(R), rho_b=float(rho_b), lam=float(lam),
+                  cr_target=float(cr_target), nstp_cap=int(nstp_cap),
+                  refine_radii=list(map(float, refine_radii)))
+    cache_hash = hashlib.sha1(
+        json.dumps(params, sort_keys=True).encode("utf-8")).hexdigest()[:8]
+    cache = case_ws / f"srcpulse_cache_{cache_hash}.npz"
     if cache.exists() and not force:
         cached = _load_cache(cache, params)
         if cached is not None:
@@ -345,9 +397,19 @@ def build_srcpulse_demo(
         flopy.mf6.ModflowGwtdisv(gwt, nlay=1, ncpl=ncpl, nvert=gp["nvert"], top=top_ref,
                                  botm=botm_ref, vertices=gp["vertices"], cell2d=gp["cell2d"])
         flopy.mf6.ModflowGwtic(gwt, strt=0.0)
-        flopy.mf6.ModflowGwtmst(gwt, porosity=LOCKED_PARAMS["porosity"])
+        # ---- MST: porosity always; sorption only when R > 1; decay only when lam > 0.
+        # decay_sorbed is only MF6-valid when sorption is active (decay_sorbed requires
+        # sorption="linear"/"freundlich"/"langmuir"), so it is gated on R > 1 as well.
+        mst_kwargs: Dict[str, Any] = dict(porosity=LOCKED_PARAMS["porosity"])
+        if R > 1.0:
+            mst_kwargs.update(sorption="linear", bulk_density=rho_b, distcoef=Kd)
+        if lam > 0.0:
+            mst_kwargs.update(first_order_decay=True, decay=lam)
+            if R > 1.0:
+                mst_kwargs.update(decay_sorbed=lam)
+        flopy.mf6.ModflowGwtmst(gwt, **mst_kwargs)
         flopy.mf6.ModflowGwtadv(gwt, scheme=LOCKED_PARAMS["scheme"])
-        flopy.mf6.ModflowGwtdsp(gwt, alh=LOCKED_PARAMS["alh"], ath1=LOCKED_PARAMS["ath1"],
+        flopy.mf6.ModflowGwtdsp(gwt, alh=alpha_L_eff, ath1=alpha_T_eff,
                                 diffc=LOCKED_PARAMS["diffc"], xt3d_off=LOCKED_PARAMS["xt3d_off"])
         # bare SSM: CHD/RIV/RCHA/WEL flows carry default (0 inflow / cell-conc outflow)
         flopy.mf6.ModflowGwtssm(gwt)
@@ -402,12 +464,12 @@ def build_srcpulse_demo(
     # ---- mass balance from the GWT listing budget ----
     mb = _mass_balance(case_ws / "sim" / "gwt.lst")
 
-    # ---- grid Peclet on the corridor ----
+    # ---- grid Peclet on the corridor (uses the EFFECTIVE dispersivities) ----
     csz_corr = csz[corridor_mask]
-    PeL_min = float(csz_corr.min() / LOCKED_PARAMS["alh"])
-    PeL_max = float(csz_corr.max() / LOCKED_PARAMS["alh"])
-    PeT_min = float(csz_corr.min() / LOCKED_PARAMS["ath1"])
-    PeT_max = float(csz_corr.max() / LOCKED_PARAMS["ath1"])
+    PeL_min = float(csz_corr.min() / alpha_L_eff)
+    PeL_max = float(csz_corr.max() / alpha_L_eff)
+    PeT_min = float(csz_corr.min() / alpha_T_eff)
+    PeT_max = float(csz_corr.max() / alpha_T_eff)
 
     meta = dict(ncpl=ncpl, nstp=nstp, dt=dt, Cr=cr_act, n_src=n_src,
                 q_src_darcy=q_src, b_src=b_src, ds_src=ds_src, q_cell=q_cell,
@@ -423,7 +485,9 @@ def build_srcpulse_demo(
         PeL_min=PeL_min, PeL_max=PeL_max, PeT_min=PeT_min, PeT_max=PeT_max,
         mass_g=float(mass_g), pulse_days=float(pulse_days), total_days=float(total_days),
         smassrate_gpd=smassrate, src_cells=src_cells, ext_cell=extc, inj_cell=injc,
-        spill_xy=(float(spill_xy[0]), float(spill_xy[1])), meta=meta)
+        spill_xy=(float(spill_xy[0]), float(spill_xy[1])),
+        alpha_L=alpha_L_eff, alpha_T=alpha_T_eff, R=float(R), rho_b=float(rho_b),
+        Kd=float(Kd), lam=float(lam), meta=meta)
 
     _save_cache(cache, result, params)
     return result
@@ -433,12 +497,16 @@ def build_srcpulse_demo(
 # mass balance from the GWT listing file
 # ---------------------------------------------------------------------------
 def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
-    """Cumulative GWT mass budget: SRC in, well out, boundary out, storage, % imbalance.
+    """Cumulative GWT mass budget: SRC in, well out, boundary out, storage, decay, % imbalance.
 
     Reads the final cumulative budget from the GWT listing via Mf6ListBudget.
     Terms are grouped: source (SRC), extraction-well out (WEL), boundary out
-    (RIV + CHD + RCHA / GHB), storage (STORAGE / MST), and the reported percent
-    discrepancy.  Units are grams (model mg/L -> g/m^3, m/day).
+    (RIV + CHD + RCHA / GHB), storage (STORAGE-AQUEOUS always; STORAGE-SORBED
+    too when R > 1), decay (DECAY-AQUEOUS when lam > 0; DECAY-SORBED too when
+    R > 1 as well), and the reported percent discrepancy.  Column names were
+    verified against a real reactive (R>1) and a real decaying (lam>0) GWT
+    listing -- MF6 emits "STORAGE-SORBED" (not "STORAGE-SORBATE").  Units are
+    grams (model mg/L -> g/m^3, m/day).
     """
     from flopy.utils import Mf6ListBudget
     out: Dict[str, float] = {}
@@ -462,13 +530,25 @@ def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
     chd_in, chd_out = _grab("CHD")
     rch_in, rch_out = _grab("RCH")
     sto_in, sto_out = 0.0, 0.0
+    dcy_in, dcy_out = 0.0, 0.0
     for c in row.index:
         cu = c.upper()
+        # both storage flavours a reactive (sorbing) run emits -- STORAGE-AQUEOUS and
+        # STORAGE-SORBED -- share the "STORAGE" substring with the conservative-run
+        # "STORAGE" term, so this single branch already catches all of them (verified
+        # against a real R>1 gwt.lst).
         if "STORAGE" in cu or cu.startswith("MST"):
             if cu.endswith("_IN"):
                 sto_in += float(row[c])
             elif cu.endswith("_OUT"):
                 sto_out += float(row[c])
+        # decay terms (DECAY / DECAY-AQUEOUS / DECAY-SORBED) only appear when
+        # first_order_decay=True on MST; net mass loss usually lands in _OUT.
+        if "DECAY" in cu:
+            if cu.endswith("_IN"):
+                dcy_in += float(row[c])
+            elif cu.endswith("_OUT"):
+                dcy_out += float(row[c])
 
     total_in = float(row["TOTAL_IN"]) if "TOTAL_IN" in row.index else None
     total_out = float(row["TOTAL_OUT"]) if "TOTAL_OUT" in row.index else None
@@ -484,6 +564,7 @@ def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
         well_out_g=wel_out,
         boundary_out_g=riv_out + chd_out + rch_out,
         storage_g=sto_out - sto_in,           # net into storage (accumulation) [g]
+        decay_g=dcy_out - dcy_in,             # net mass removed by decay [g] (0 if no decay)
         total_in_g=total_in if total_in is not None else float("nan"),
         total_out_g=total_out if total_out is not None else float("nan"),
         pct_imbalance=pct,
@@ -494,7 +575,7 @@ def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
 # ---------------------------------------------------------------------------
 # cache (solve-free re-call)
 # ---------------------------------------------------------------------------
-def _save_cache(path: Path, r: SrcPulseDemo, params: Dict[str, float]) -> None:
+def _save_cache(path: Path, r: SrcPulseDemo, params: Dict[str, Any]) -> None:
     np.savez(str(path), times=r.times, breakthrough=r.breakthrough,
              peak_mgL=r.peak_mgL, arrival_day=r.arrival_day,
              mass_balance=r.mass_balance, solubility_ok=r.solubility_ok,
@@ -504,17 +585,31 @@ def _save_cache(path: Path, r: SrcPulseDemo, params: Dict[str, float]) -> None:
              mass_g=r.mass_g, pulse_days=r.pulse_days, total_days=r.total_days,
              smassrate_gpd=r.smassrate_gpd, src_cells=np.array(r.src_cells),
              ext_cell=r.ext_cell, inj_cell=r.inj_cell, spill_xy=np.array(r.spill_xy),
+             alpha_L=r.alpha_L, alpha_T=r.alpha_T, R=r.R, rho_b=r.rho_b, Kd=r.Kd, lam=r.lam,
              meta=r.meta, params=params, allow_pickle=True)
 
 
-def _load_cache(path: Path, params: Dict[str, float]) -> Optional[SrcPulseDemo]:
+def _load_cache(path: Path, params: Dict[str, Any]) -> Optional[SrcPulseDemo]:
     try:
         z = np.load(str(path), allow_pickle=True)
         stored = dict(z["params"].item())
     except Exception:
         return None
-    if any(abs(stored.get(k, np.nan) - v) > 1e-9 for k, v in params.items()):
-        return None                          # params changed -> rebuild
+    # A missing/extra key must NOT silently count as a match (e.g. stored.get(k, nan)
+    # comparing "> 1e-9" as False for a missing key would look like equality).
+    if set(stored) != set(params):
+        return None                          # key set changed -> rebuild
+    for k, v in params.items():
+        sv = stored[k]
+        if k == "refine_radii":
+            # non-scalar entry: compare as arrays, not via a bare "abs(list - list)".
+            sv_arr = np.asarray(sv, dtype=float)
+            v_arr = np.asarray(v, dtype=float)
+            if sv_arr.shape != v_arr.shape or np.any(np.abs(sv_arr - v_arr) > 1e-9):
+                return None
+        else:
+            if abs(float(sv) - float(v)) > 1e-9:
+                return None                  # params changed -> rebuild
     return SrcPulseDemo(
         times=z["times"], breakthrough=z["breakthrough"],
         peak_mgL=float(z["peak_mgL"]), arrival_day=float(z["arrival_day"]),
@@ -527,6 +622,8 @@ def _load_cache(path: Path, params: Dict[str, float]) -> Optional[SrcPulseDemo]:
         total_days=float(z["total_days"]), smassrate_gpd=float(z["smassrate_gpd"]),
         src_cells=[int(c) for c in z["src_cells"]], ext_cell=int(z["ext_cell"]),
         inj_cell=int(z["inj_cell"]), spill_xy=tuple(z["spill_xy"]),
+        alpha_L=float(z["alpha_L"]), alpha_T=float(z["alpha_T"]),
+        R=float(z["R"]), rho_b=float(z["rho_b"]), Kd=float(z["Kd"]), lam=float(z["lam"]),
         meta=dict(z["meta"].item()))
 
 

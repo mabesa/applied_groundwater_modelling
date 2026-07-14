@@ -562,29 +562,27 @@ When transferring calibrated parameters from a heat transport model to a solute 
 # ── Transport Track — Notebook 8 (keystone doublet) checkpoints ──
 
 "task_t08_checkpoint_1": r"""
-## Checkpoint 1 — Predict the failure mode (before running the toy)
+## Checkpoint 1 — Predict the keystone outcome (before running the model)
 
-You are about to run the **provided 1D scheme-verification toy** and compare its breakthrough curve to the two-term first-type Ogata–Banks analytical solution, using a **front-sensitive** gate (≤5% rising-limb C/C₀ error **and** ≤5% t₅₀ error).
+A contaminant spill releases a known mass as a finite pulse (MODFLOW 6 **SRC**) about 90 m **upgradient** of the extraction well of a flow-only geothermal doublet. The extraction well is the **compliance / monitoring well**: no solute rides the doublet's own wells, but the extraction well still **pumps groundwater**, and whatever the ambient groundwater carries comes with it.
 
-Suppose the numerical breakthrough **failed** that ±5% front gate — the simulated front came out too smeared and shifted. **What would be the most likely cause?**
-
-*(Recall from 02t/04t that $Pe = \Delta x / \alpha_L \le 2$ is an **accuracy** criterion — a coarse grid adds numerical dispersion; it does not make the implicit solver unstable.)*
+**Before running the model** — do you expect the plume to reach the compliance well **above** the stated threshold `THRESHOLD_MGL`, and roughly **when**?
 """,
 
 "task_t08_checkpoint_2": r"""
-## Checkpoint 2 — Predict the recirculation-fraction band (before reading the result)
+## Checkpoint 2 — Predict the effect of retardation (before the toggled rerun)
 
-The loaded geothermal doublet reinjects a conservative tracer (c_inj = 1) and pumps from an extraction well 200 m away, in the regional Limmat flow field. You will read the **steady-state plateau ratio C∞/c_inj** at the extraction well.
+The keystone run is **conservative** — no sorption, no decay. Rung A (optional, `RUN_REACTIVE`) reruns the same spill as **two separate variants**: (1) **retardation R = 2** (linear sorption, no decay), and (2), independently, **first-order decay** with a 30-day half-life (no sorption). This checkpoint is about variant (1) only — the **retardation (R = 2, sorption-only)** curve.
 
-**Before** looking — predict which band the recirculation fraction falls into:
+**Before running Rung A** — how do you expect the **R = 2, sorption-only** breakthrough curve to compare to the conservative one at the compliance well?
 """,
 
 "task_t08_checkpoint_3": r"""
-## Checkpoint 3 — Predict the effect of doubling α_L (before the toggled rerun)
+## Checkpoint 3 — Predict the effect of doubling α_L on the pulse (before the toggled rerun)
 
-You are about to (optionally) rerun the doublet with α_L doubled from 10 m to 20 m. The locked ratio keeps α_T = α_L/10, so **α_T doubles as well**.
+Rung B (optional, `RUN_ALPHA_L`) reruns the spill with the longitudinal dispersivity doubled, α_L = 20 m instead of the locked 10 m. The helper preserves the locked 10:1 anisotropy ratio, so the transverse dispersivity **α_T also doubles** (1 m → 2 m).
 
-**Which description best captures the expected change in the extraction-well breakthrough curve?**
+The keystone breakthrough is a finite **pulse** — it rises from zero, peaks, and falls away again — not a steady plateau. **Before running Rung B** — how do you expect doubling α_L to reshape that pulse at the compliance well?
 """,
 
 "task_exercise_flow_net_1": r"""
@@ -854,9 +852,9 @@ solutions_exact = {
     "task_t05_checkpoint_nonunique": "B) The tracer test constrains n_e independently",
     "task_t05_checkpoint_transfer": "C) Thermal retardation factor",
     # Transport Track — Notebook 8 (keystone doublet) checkpoints
-    "task_t08_checkpoint_1": "A) Grid Péclet too high",
-    "task_t08_checkpoint_2": "B) 10–70%",
-    "task_t08_checkpoint_3": "A) Earlier toe, broader front, longer tail; plateau may drop",
+    "task_t08_checkpoint_1": "A) Yes, exceeds within ~1-2 months",
+    "task_t08_checkpoint_2": "A) Later and lower peak",
+    "task_t08_checkpoint_3": "A) Earlier toe, broader front, lower peak",
     "task_exercise_flow_net_1": "21",
     "task_exercise_flow_net_2": "-2",
     "task_exercise_flow_net_3": "100",
@@ -1203,34 +1201,34 @@ multiple_choice_options = {
     ],
     # Transport Track — Notebook 8 (keystone doublet) checkpoints
     "task_t08_checkpoint_1": [
-        ("A) Grid Péclet too high",
-         "A) The grid Péclet number Δx/α_L is too high — a coarse grid adds numerical dispersion that smears and shifts the front (tie to the Pe ≤ 2 accuracy criterion from 02t/04t)"),
-        ("B) Molecular diffusion too large",
-         "B) The molecular diffusion D_m* was set too large — it dominates the dispersion coefficient"),
-        ("C) Ogata–Banks is wrong",
-         "C) The Ogata–Banks analytical solution itself is incorrect for a continuous source"),
-        ("D) Courant number causes a crash",
-         "D) The Courant number Cr > 1 makes the implicit solver unstable and the run crashes"),
+        ("A) Yes, exceeds within ~1-2 months",
+         "A) Yes — the spill is close (~90 m) and the doublet's extraction well actively pulls groundwater toward itself, so the plume arrives and clears the threshold within roughly a month or two"),
+        ("B) Yes, but not for ~a year",
+         "B) Yes, but only after nearly a year — at this scale dispersion should smear the arrival out that far"),
+        ("C) No, stays below threshold",
+         "C) No — dilution and dispersion keep the peak concentration below the threshold throughout the simulation"),
+        ("D) No, the well can't capture solute",
+         "D) No — the extraction well is flow-only (pumps groundwater, not solute), so it cannot draw the plume toward itself"),
     ],
     "task_t08_checkpoint_2": [
-        ("A) <10%",
-         "A) <10% — the doublet essentially does not short-circuit; nearly all reinjected tracer is swept downgradient"),
-        ("B) 10–70%",
-         "B) 10–70% — a substantial but partial fraction of the reinjected tracer returns to the extraction well"),
-        ("C) >90%",
-         "C) >90% — the doublet is almost fully closed; nearly all reinjected tracer recirculates"),
-        ("D) Cannot be bounded",
-         "D) The fraction cannot be bounded even roughly without first running a transient particle-tracking model"),
+        ("A) Later and lower peak",
+         "A) Later and lower — retardation (R=2) slows the plume's effective velocity by a factor of R, delaying arrival, while both retardation and decay reduce the mass reaching the well per unit time, lowering the peak"),
+        ("B) Earlier and lower peak",
+         "B) Earlier and lower — sorption would have to speed the plume up, which retardation never does"),
+        ("C) Later peak, same height",
+         "C) Later, but the peak height is unaffected — sorption only shifts timing, not mass delivered"),
+        ("D) No effect",
+         "D) No effect — R and lambda only matter for exact regulated contaminants, not for a generic spill demo"),
     ],
     "task_t08_checkpoint_3": [
-        ("A) Earlier toe, broader front, longer tail; plateau may drop",
-         "A) Earlier toe and a more gradual/broader front with a longer tail; and because α_T doubles too, transverse dilution may LOWER the plateau (which can never exceed c_inj)"),
-        ("B) Later toe, sharper front, plateau exceeds c_inj",
-         "B) A later toe and sharper front, with the plateau rising above c_inj"),
-        ("C) No change for a doublet",
-         "C) No change — α_L only affects 1D columns, not a doublet geometry"),
-        ("D) Plateau doubles",
-         "D) The plateau concentration doubles because the dispersion coefficient doubles"),
+        ("A) Earlier toe, broader front, lower peak",
+         "A) The leading edge (toe) arrives earlier and the rise/fall is more gradual (broader front, longer tail); doubling α_L alone spreads the same finite pulse out over more time, which already makes the PEAK LOWER, and because α_T doubles too (locked 10:1 ratio) transverse dilution also contributes -- this one run can't separate how much each mechanism contributes"),
+        ("B) Later toe, sharper peak, higher peak",
+         "B) The toe arrives later, the front is sharper, and the peak is higher"),
+        ("C) No change",
+         "C) No change — dispersivity only matters for steady-state recirculation problems, not a finite pulse"),
+        ("D) Same timing, peak doubles",
+         "D) Timing is unchanged, but the peak concentration doubles because the dispersion coefficient doubles"),
     ],
 
     "K_increase_sandstone_1": [
@@ -2430,43 +2428,51 @@ Dispersivity and porosity transfer directly because they describe the physical p
 # ── Transport Track — Notebook 8 (keystone doublet) solutions ──
 
 "task_t08_checkpoint_1": r"""
-## Solution — Predicted failure mode
+## Solution — Predicted keystone outcome
 
-**Correct answer: A) Grid Péclet too high.**
+**Correct answer: A) Yes, exceeds within ~1-2 months.**
 
-A front that comes out too smeared and shifted is the signature of **numerical dispersion**, which a coarse grid (high grid Péclet $Pe = \Delta x/\alpha_L > 2$) adds on top of the physical dispersion. This is exactly the **accuracy** criterion you met in 02t/04t — and it is what the toy is built to avoid (it uses $\Delta x/\alpha_L = 0.5$).
+Running the model: the breakthrough at the extraction well peaks at **≈4.95 mg/L around day 41** — comfortably inside "a month or two" from the spill. Against a stated threshold of `THRESHOLD_MGL = 1.0` mg/L that is a clear **EXCEEDANCE**, and it happens well before a year.
 
-- **B** is wrong: $D_m^*$ is fixed and tiny ($8.64\times10^{-5}$ m²/d); it is negligible next to $\alpha_L v$.
-- **C** is wrong: Ogata–Banks is the *reference* truth here; we verify the numerics against it, not the other way round.
-- **D** is wrong: $Cr \le 1$ (like $Pe \le 2$) is an **accuracy** criterion, not a stability one. MF6 solves advection implicitly, so $Cr > 1$ smears the curve in time but does **not** crash the run.
+- **B** is wrong: with the spill only ~90 m upgradient of a pumping well, dispersion at this scale does not push the arrival out to ~a year; the doublet's forced gradient pulls the plume in comparatively quickly.
+- **C** is wrong: the finite pulse mass (3×10⁵ g over a 30-day release) is large enough that the peak clears 1.0 mg/L by a wide margin — dilution alone does not save you here.
+- **D** is wrong: "flow-only" describes the *doublet* — no solute rides the injection/extraction wells themselves — but the extraction well still **pumps groundwater**, and whatever the ambient groundwater carries (including a plume from an unrelated upgradient spill) comes with it. Flow-only wells are not solute-proof.
 
-So a failed front gate points you at the **grid**, not the solver or the analytical solution.
+So before running anything you should expect a "yes, exceeds, and soon" answer — which the keystone below confirms.
 <br>
 """,
 
 "task_t08_checkpoint_2": r"""
-## Solution — Recirculation-fraction band
+## Solution — Effect of retardation (R = 2, sorption-only)
 
-**Correct answer: B) 10–70%.**
+**Correct answer: A) Later and lower peak.**
 
-Reading the steady-state plateau at the extraction well gives $C_\infty/c_\text{inj} \approx 0.30$ — about **a third** of the reinjected tracer recirculates. This is the **partial-recirculation** regime: a finite-spacing doublet in regional flow neither fully captures its own reinjected water (which would push toward >90%) nor cleanly avoids it (which would give <10%). For a GWHE installation this is the operationally important middle ground.
+Retardation slows the *plume's* velocity to $v/R$ (R=2 halves it), so the arrival is delayed. Sorption (via R) removes mass from the mobile (aqueous) phase before it reaches the well, so the peak concentration also drops. Running Rung A confirms this:
 
-- **A (<10%)** would mean a well-separated doublet with negligible short-circuiting.
-- **C (>90%)** would mean an almost closed loop — not the case at this spacing and regional gradient.
-- **D** is wrong: the recirculation fraction is a robust, flux-integrated quantity read directly from the breakthrough plateau; no extra particle-tracking model is needed to bound it.
+- **R = 2, sorption-only**: peak ≈ **2.99 mg/L at ≈ day 61** (vs. the conservative 4.95 mg/L @ day 41) — later AND lower.
+
+Rung A also runs a **separate** decay-only variant ($\lambda = \ln 2/30$ d, R = 1, no sorption) — this checkpoint is not about that curve, but the contrast is the key teaching point: decay-only gives peak ≈ **2.80 mg/L**, at **essentially the same arrival time** as the conservative run. In other words, **retardation delays arrival** (it slows the plume itself), while **decay does not** (it only removes mass in transit, it does not slow anything) — both lower the peak, but only retardation shifts *when* the peak shows up.
+
+Neither variant drops the peak below `THRESHOLD_MGL = 1.0` mg/L — retardation and decay at these values **delay and/or damp** the exceedance, they do not eliminate it.
+
+- **B** is wrong: sorption/retardation never *speeds up* transport — $R \ge 1$ always.
+- **C** is wrong: sorption also reduces the aqueous peak concentration (mass partitions onto the solid phase), it is not timing-only.
+- **D** is wrong: R is exactly the reactive-transport parameter this rung exists to demonstrate; it visibly reshapes the curve.
 <br>
 """,
 
 "task_t08_checkpoint_3": r"""
-## Solution — Effect of doubling α_L
+## Solution — Effect of doubling α_L on the pulse
 
-**Correct answer: A) Earlier toe, broader front, longer tail; plateau may drop.**
+**Correct answer: A) Earlier toe, broader front, lower peak.**
 
-More longitudinal dispersion spreads the front: the **toe arrives earlier** (faster leading edge), the rise is **more gradual/broader**, and the **tail is longer**. Because the locked ratio keeps $\alpha_T = \alpha_L/10$, doubling $\alpha_L$ **also doubles $\alpha_T$**, so *transverse* dilution increases — which can **lower** the steady-state plateau rather than raise it.
+More longitudinal dispersion spreads the finite pulse out **in time**: the **toe arrives earlier** (the leading edge of the plume outruns the mean advective front), the **rise and fall are more gradual**, and the pulse leaves a **longer tail** — and on its own, spreading the same released mass over more time already lowers the peak. Because the locked ratio keeps $\alpha_T = \alpha_L/10$, doubling $\alpha_L$ to 20 m also doubles $\alpha_T$ to 2 m, so **transverse dilution also contributes** to the lower peak (the same mass spread over a wider swath of the corridor). Both mechanisms act together here — and because this helper always moves $\alpha_L$ and $\alpha_T$ in lockstep (the locked 10:1 ratio), **this single run cannot apportion how much of the peak drop comes from longitudinal spreading vs. transverse dilution**; separating them would need a run that changes one dispersivity while holding the other fixed.
 
-- **B** is wrong: more dispersion brings the toe *earlier*, not later, and smears (not sharpens) the front.
-- **C** is wrong: dispersivity reshapes the breakthrough in any geometry, doublet included.
-- **D** is wrong: the plateau is a concentration *ratio* bounded by mixing — it **can never exceed $c_\text{inj}$**, let alone double.
+Running Rung B confirms it: peak ≈ **4.21 mg/L at ≈ day 38.8** (vs. the α_L=10 m keystone's 4.95 mg/L @ day 41) — earlier and lower, with both grid Péclet numbers (Pe_L and Pe_T) halved (a larger dispersivity is easier to resolve on the same grid).
+
+- **B** is wrong: more dispersion spreads (does not sharpen) the front, and brings the toe *earlier*, not later.
+- **C** is wrong: dispersivity reshapes any breakthrough curve, pulse or plateau, doublet or 1D column.
+- **D** is wrong: the pulse concentration is diluted (the same mass spread over a larger mixing volume), not doubled — mass is conserved, concentration is not.
 <br>
 """,
 
