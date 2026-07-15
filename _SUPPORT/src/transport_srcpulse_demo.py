@@ -254,6 +254,218 @@ def _src_sha() -> str:
 
 
 # ---------------------------------------------------------------------------
+# PUBLIC builders -- the visible, teachable model-construction API.
+#
+# ``build_srcpulse_demo`` below is exactly these composed in order:
+#     load_limmat_flow -> refine_corridor
+#       -> (pilot)      new_sim -> add_flow_model -> add_transport_model -> couple_and_run
+#       -> (production) new_sim -> add_flow_model -> add_transport_model -> couple_and_run
+# The messy corridor-refinement SIGILL retry stays hidden inside
+# ``refine_corridor``; every FloPy package call is the verbatim, real construction
+# a notebook can render and read.
+# ---------------------------------------------------------------------------
+def load_limmat_flow():
+    """Load the 05f-calibrated coarse **Limmat valley** GWF + GIS.
+
+    Thin public wrapper over ``_load_calibrated_flow``.  Returns
+    ``(cgwf, boundary_gdf, rivers_gdf, exe)``: the coarse Limmat GWF model, the
+    model-boundary polygon, the Limmat/Sihl river lines, and the resolved mf6
+    executable path.
+    """
+    return _load_calibrated_flow()
+
+
+def refine_corridor(cgwf, boundary, rivers, spill_xy=None, *,
+                    refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+                    case_ws: Optional[Union[str, Path]] = None) -> Dict[str, Any]:
+    """Refine the spill->extraction corridor and return a **GridBundle** dict.
+
+    Computes the local regional-flow direction at the extraction well (to place
+    the spill ``SPILL_UPGRADIENT_M`` upgradient, unless ``spill_xy`` is given),
+    then corridor-refines the DISV grid via ``_refine_with_retry`` (the macOS
+    arm64 SIGILL / Triangle-precision radius-walk stays INSIDE this call).
+
+    The returned dict carries everything the sim builders need -- modelgrid,
+    gridprops, cell arrays, boundary stress data, and the injection / extraction /
+    source cell indices -- so nothing downstream reaches back into the coarse or
+    refined GWF objects.
+    """
+    heads_array = cgwf.output.head().get_data().flatten()
+
+    # ---- regional flow direction at the extraction well -> upgradient spill ----
+    mg0 = cgwf.modelgrid
+    xc0 = np.array(mg0.xcellcenters); yc0 = np.array(mg0.ycellcenters)
+    spd0 = cgwf.output.budget().get_data(text="DATA-SPDIS")[0]
+    ia = int(np.argmin((xc0 - ABS_XY[0]) ** 2 + (yc0 - ABS_XY[1]) ** 2))
+    u_reg = np.array([spd0["qx"][ia], spd0["qy"][ia]], float)
+    u_reg = u_reg / np.hypot(*u_reg)                     # flow (downgradient) unit vector
+    if spill_xy is None:
+        spill_xy = (ABS_XY[0] - SPILL_UPGRADIENT_M * u_reg[0],
+                    ABS_XY[1] - SPILL_UPGRADIENT_M * u_reg[1])
+
+    # ---- corridor refinement (spill->extraction corridor + injection well) ----
+    case_ws = Path(case_ws) if case_ws is not None else _default_case_ws()
+    corr_pts, u, L = _corridor_points(spill_xy, ABS_XY)
+    refine_points = corr_pts + [tuple(INJ_XY)]
+    res, refine_radius_used = _refine_with_retry(
+        cgwf, boundary, rivers, refine_points, heads_array, case_ws / "refgrid",
+        refine_radii=refine_radii, base_cell_size=LOCKED_PARAMS["base_cell_size"],
+        refined_cell_size=LOCKED_PARAMS["refined_cell_size"], sim_name="rg")
+    rgwf = res["gwf"]; mg = res["modelgrid"]; gp = res["gridprops"]; ncpl = res["ncpl"]
+    xc = np.array(mg.xcellcenters); yc = np.array(mg.ycellcenters)
+    csz = _cellsize(mg, ncpl)
+
+    k_ref = rgwf.npf.k.array; top_ref = rgwf.disv.top.array; botm_ref = rgwf.disv.botm.array
+    heads_ref = rgwf.output.head().get_data().flatten()
+    chd = rgwf.get_package("CHD").stress_period_data.get_data(0)
+    riv = rgwf.get_package("RIV").stress_period_data.get_data(0)
+    rch = rgwf.get_package("RCHA").recharge.get_data()
+
+    injc = int(np.argmin((xc - INJ_XY[0]) ** 2 + (yc - INJ_XY[1]) ** 2))
+    extc = int(np.argmin((xc - ABS_XY[0]) ** 2 + (yc - ABS_XY[1]) ** 2))
+    src_cells = [int(np.argmin((xc - spill_xy[0]) ** 2 + (yc - spill_xy[1]) ** 2))]
+
+    line = LineString([tuple(spill_xy), tuple(ABS_XY)])
+    corridor_mask = np.array([line.distance(Point(xc[i], yc[i])) < refine_radius_used
+                              for i in range(ncpl)])
+
+    return dict(
+        modelgrid=mg, gridprops=gp, ncpl=ncpl, nvert=gp["nvert"],
+        top=top_ref, botm=botm_ref, k=k_ref, heads=heads_ref,
+        chd=chd, riv=riv, rch=rch, cellsize=csz, xc=xc, yc=yc,
+        inj_cell=injc, ext_cell=extc, src_cells=src_cells,
+        spill_xy=(float(spill_xy[0]), float(spill_xy[1])),
+        corridor_mask=corridor_mask, u_reg=tuple(u_reg),
+        refine_radius_used=refine_radius_used, rgwf=rgwf)
+
+
+def new_sim(case_ws: Union[str, Path], *, pulse_days: float, total_days: float,
+            nstp_per_period: int, exe: str):
+    """Create the ``MFSimulation`` + TDIS (2 periods: pulse ON / migration) + the
+    GWF IMS solver.
+
+    TDIS period 0 is the ON pulse (duration ``pulse_days``), period 1 the
+    post-pulse migration (``total_days - pulse_days``); ``nstp_per_period`` is
+    split between them in proportion to their durations.  The GWT IMS solver is
+    added later (in ``add_transport_model``, after the GWT model exists, to
+    preserve the original construction order).
+    """
+    ws = str(Path(case_ws) / "sim")
+    sim = flopy.mf6.MFSimulation(sim_name="srcpulse", exe_name=exe, sim_ws=ws)
+    # TDIS: 2 periods -> pulse ON (T), then OFF (migration)
+    n_on = max(int(nstp_per_period * float(pulse_days) / float(total_days)), 1)
+    n_off = max(nstp_per_period - n_on, 1)
+    perioddata = [(float(pulse_days), n_on, 1.0),
+                  (float(total_days) - float(pulse_days), n_off, 1.0)]
+    nper = len(perioddata)
+    flopy.mf6.ModflowTdis(sim, time_units=LOCKED_PARAMS["time_units"],
+                          nper=nper, perioddata=perioddata)
+    flopy.mf6.ModflowIms(sim, filename="gwf.ims", **_GWF_IMS)
+    return sim
+
+
+def add_flow_model(sim, grid: Dict[str, Any]):
+    """Add the GWF flow model (DISV, NPF, IC, STO, RCHA, CHD, RIV, WEL x2 doublet,
+    OC) to ``sim`` and return it.  The doublet wells are FLOW ONLY (no solute)."""
+    ncpl = grid["ncpl"]; gp = grid["gridprops"]
+    top_ref = grid["top"]; botm_ref = grid["botm"]; k_ref = grid["k"]
+    heads_ref = grid["heads"]; rch = grid["rch"]; chd = grid["chd"]; riv = grid["riv"]
+    injc = grid["inj_cell"]; extc = grid["ext_cell"]
+    nper = int(sim.tdis.nper.get_data())
+
+    gwf = flopy.mf6.ModflowGwf(sim, modelname="gwf", save_flows=True,
+                               newtonoptions=_GWF_NEWTON)
+    flopy.mf6.ModflowGwfdisv(gwf, nlay=1, ncpl=ncpl, nvert=gp["nvert"], top=top_ref,
+                             botm=botm_ref, vertices=gp["vertices"], cell2d=gp["cell2d"])
+    flopy.mf6.ModflowGwfnpf(gwf, icelltype=1, k=k_ref, save_flows=True,
+                            save_specific_discharge=True)
+    flopy.mf6.ModflowGwfic(gwf, strt=np.maximum(heads_ref, botm_ref[0] + 0.01))
+    flopy.mf6.ModflowGwfsto(gwf, steady_state={i: True for i in range(nper)})
+    flopy.mf6.ModflowGwfrcha(gwf, recharge=rch)
+    flopy.mf6.ModflowGwfchd(gwf, stress_period_data=[(tuple(r["cellid"]), float(r["head"]))
+                                                     for r in chd])
+    flopy.mf6.ModflowGwfriv(gwf, stress_period_data=[(tuple(r["cellid"]), float(r["stage"]),
+                            float(r["cond"]), float(r["rbot"])) for r in riv])
+    # ---- doublet wells: FLOW ONLY (clean injection, no concentration) ----
+    flopy.mf6.ModflowGwfwel(gwf, pname="injw",
+                            stress_period_data={0: [[(0, injc), abs(DOUBLET_Q)]]})
+    flopy.mf6.ModflowGwfwel(gwf, pname="absw",
+                            stress_period_data={0: [[(0, extc), -abs(DOUBLET_Q)]]})
+    flopy.mf6.ModflowGwfoc(gwf, head_filerecord="gwf.hds", budget_filerecord="gwf.cbc",
+                           saverecord=[("HEAD", "LAST"), ("BUDGET", "LAST")])
+    return gwf
+
+
+def add_transport_model(sim, gwf, grid: Dict[str, Any], *, mass_g: float,
+                        pulse_days: float, R: float = 1.0, rho_b: float = 1800.0,
+                        lam: float = 0.0, alpha_L: Optional[float] = None):
+    """Add the GWT solute-transport model (DISV, IC, MST, ADV/TVD, DSP, SSM, SRC,
+    OC) + the GWT IMS solver to ``sim`` and return it.
+
+    The spill enters via the SRC package as a per-cell mass loading
+    ``smassrate = mass_g / (n_src_cells * pulse_days)`` [g/d], ON in period 0 and
+    OFF in period 1.  ``alpha_L`` defaults to the LOCKED longitudinal dispersivity;
+    ``alpha_T`` is derived from the LOCKED 10:1 ratio.  MST sorption is gated on
+    ``R > 1`` (``Kd = (R-1)*porosity/rho_b``) and first-order decay on ``lam > 0``.
+    """
+    ncpl = grid["ncpl"]; gp = grid["gridprops"]
+    top_ref = grid["top"]; botm_ref = grid["botm"]
+    src_cells = grid["src_cells"]
+
+    alpha_L_eff = float(LOCKED_PARAMS["alh"]) if alpha_L is None else float(alpha_L)
+    alpha_T_eff = alpha_L_eff * (float(LOCKED_PARAMS["ath1"]) / float(LOCKED_PARAMS["alh"]))
+    porosity = float(LOCKED_PARAMS["porosity"])
+    Kd = (float(R) - 1.0) * porosity / float(rho_b) if R > 1.0 else 0.0
+    n_src = len(src_cells)
+    smassrate = float(mass_g) / (n_src * float(pulse_days))   # per-cell SRC loading [g/d]
+
+    gwt = flopy.mf6.ModflowGwt(sim, modelname="gwt", save_flows=True)
+    flopy.mf6.ModflowGwtdisv(gwt, nlay=1, ncpl=ncpl, nvert=gp["nvert"], top=top_ref,
+                             botm=botm_ref, vertices=gp["vertices"], cell2d=gp["cell2d"])
+    flopy.mf6.ModflowGwtic(gwt, strt=0.0)
+    # ---- MST: porosity always; sorption only when R > 1; decay only when lam > 0.
+    # decay_sorbed is only MF6-valid when sorption is active (decay_sorbed requires
+    # sorption="linear"/"freundlich"/"langmuir"), so it is gated on R > 1 as well.
+    mst_kwargs: Dict[str, Any] = dict(porosity=LOCKED_PARAMS["porosity"])
+    if R > 1.0:
+        mst_kwargs.update(sorption="linear", bulk_density=rho_b, distcoef=Kd)
+    if lam > 0.0:
+        mst_kwargs.update(first_order_decay=True, decay=lam)
+        if R > 1.0:
+            mst_kwargs.update(decay_sorbed=lam)
+    flopy.mf6.ModflowGwtmst(gwt, **mst_kwargs)
+    flopy.mf6.ModflowGwtadv(gwt, scheme=LOCKED_PARAMS["scheme"])
+    flopy.mf6.ModflowGwtdsp(gwt, alh=alpha_L_eff, ath1=alpha_T_eff,
+                            diffc=LOCKED_PARAMS["diffc"], xt3d_off=LOCKED_PARAMS["xt3d_off"])
+    # bare SSM: CHD/RIV/RCHA/WEL flows carry default (0 inflow / cell-conc outflow)
+    flopy.mf6.ModflowGwtssm(gwt)
+    # SRC finite pulse: mass loading [g/d] in period 0, OFF in period 1
+    src_spd = {0: [[(0, c), smassrate] for c in src_cells], 1: []}
+    flopy.mf6.ModflowGwtsrc(gwt, stress_period_data=src_spd)
+    flopy.mf6.ModflowGwtoc(gwt, concentration_filerecord="gwt.ucn",
+                           budget_filerecord="gwt.cbc",
+                           saverecord=[("CONCENTRATION", "ALL"), ("BUDGET", "ALL")])
+    flopy.mf6.ModflowIms(sim, filename="gwt.ims", **_GWT_IMS)
+    sim.register_ims_package(sim.get_package("gwt.ims"), ["gwt"])
+    return gwt
+
+
+def couple_and_run(sim, gwf, gwt, grid: Dict[str, Any],
+                   case_ws: Union[str, Path]) -> Tuple[bool, Any, Any]:
+    """Register the GWF6-GWT6 exchange, write, and run the coupled simulation.
+
+    Returns ``(ok, buf, sim)`` -- the ``run_simulation`` success flag, its output
+    buffer, and the (run) simulation object.  ``gwf`` / ``gwt`` make the coupled
+    pair explicit even though the exchange references them by model name.
+    """
+    flopy.mf6.ModflowGwfgwt(sim, exgtype="GWF6-GWT6", exgmnamea="gwf", exgmnameb="gwt",
+                            filename="srcpulse.gwfgwt")
+    sim.write_simulation(silent=True)
+    ok, buf = sim.run_simulation(silent=True)
+    return ok, buf, sim
+
+
+# ---------------------------------------------------------------------------
 # build + run
 # ---------------------------------------------------------------------------
 def build_srcpulse_demo(
@@ -394,111 +606,29 @@ def build_srcpulse_demo(
         if cached is not None:
             return cached
 
-    cgwf, boundary, rivers, exe = _load_calibrated_flow()
-    heads_array = cgwf.output.head().get_data().flatten()
-
-    # ---- regional flow direction at the extraction well -> upgradient spill ----
-    mg0 = cgwf.modelgrid
-    xc0 = np.array(mg0.xcellcenters); yc0 = np.array(mg0.ycellcenters)
-    spd0 = cgwf.output.budget().get_data(text="DATA-SPDIS")[0]
-    ia = int(np.argmin((xc0 - ABS_XY[0]) ** 2 + (yc0 - ABS_XY[1]) ** 2))
-    u_reg = np.array([spd0["qx"][ia], spd0["qy"][ia]], float)
-    u_reg = u_reg / np.hypot(*u_reg)                     # flow (downgradient) unit vector
-    spill_xy = (ABS_XY[0] - SPILL_UPGRADIENT_M * u_reg[0],
-                ABS_XY[1] - SPILL_UPGRADIENT_M * u_reg[1])
-
-    # ---- corridor refinement (spill->extraction corridor + injection well) ----
-    corr_pts, u, L = _corridor_points(spill_xy, ABS_XY)
-    refine_points = corr_pts + [tuple(INJ_XY)]
-    res, refine_radius_used = _refine_with_retry(
-        cgwf, boundary, rivers, refine_points, heads_array, case_ws / "refgrid",
-        refine_radii=refine_radii, base_cell_size=LOCKED_PARAMS["base_cell_size"],
-        refined_cell_size=LOCKED_PARAMS["refined_cell_size"], sim_name="rg")
-    rgwf = res["gwf"]; mg = res["modelgrid"]; gp = res["gridprops"]; ncpl = res["ncpl"]
-    xc = np.array(mg.xcellcenters); yc = np.array(mg.ycellcenters)
-    csz = _cellsize(mg, ncpl)
-
-    k_ref = rgwf.npf.k.array; top_ref = rgwf.disv.top.array; botm_ref = rgwf.disv.botm.array
-    heads_ref = rgwf.output.head().get_data().flatten()
-    chd = rgwf.get_package("CHD").stress_period_data.get_data(0)
-    riv = rgwf.get_package("RIV").stress_period_data.get_data(0)
-    rch = rgwf.get_package("RCHA").recharge.get_data()
-
-    injc = int(np.argmin((xc - INJ_XY[0]) ** 2 + (yc - INJ_XY[1]) ** 2))
-    extc = int(np.argmin((xc - ABS_XY[0]) ** 2 + (yc - ABS_XY[1]) ** 2))
-    src_cells = [int(np.argmin((xc - spill_xy[0]) ** 2 + (yc - spill_xy[1]) ** 2))]
+    # ---- load + refine (the visible builders; SIGILL retry stays inside) ----
+    cgwf, boundary, rivers, exe = load_limmat_flow()
+    grid = refine_corridor(cgwf, boundary, rivers, refine_radii=refine_radii,
+                           case_ws=case_ws)
+    ncpl = grid["ncpl"]
+    csz = grid["cellsize"]
+    heads_ref = grid["heads"]; botm_ref = grid["botm"]
+    injc = grid["inj_cell"]; extc = grid["ext_cell"]; src_cells = grid["src_cells"]
+    corridor_mask = grid["corridor_mask"]
+    refine_radius_used = grid["refine_radius_used"]
+    u_reg = np.array(grid["u_reg"], float)
+    spill_xy = grid["spill_xy"]
     n_src = len(src_cells)
     smassrate = float(mass_g) / (n_src * float(pulse_days))   # per-cell SRC loading [g/d]
 
-    line = LineString([tuple(spill_xy), tuple(ABS_XY)])
-    corridor_mask = np.array([line.distance(Point(xc[i], yc[i])) < refine_radius_used
-                              for i in range(ncpl)])
-
     def _make_sim(nstp_per_period):
-        ws = str(case_ws / "sim")
-        sim = flopy.mf6.MFSimulation(sim_name="srcpulse", exe_name=exe, sim_ws=ws)
-        # TDIS: 2 periods -> pulse ON (T), then OFF (migration)
-        n_on = max(int(nstp_per_period * float(pulse_days) / float(total_days)), 1)
-        n_off = max(nstp_per_period - n_on, 1)
-        perioddata = [(float(pulse_days), n_on, 1.0),
-                      (float(total_days) - float(pulse_days), n_off, 1.0)]
-        nper = len(perioddata)
-        flopy.mf6.ModflowTdis(sim, time_units=LOCKED_PARAMS["time_units"],
-                              nper=nper, perioddata=perioddata)
-        flopy.mf6.ModflowIms(sim, filename="gwf.ims", **_GWF_IMS)
-        gwf = flopy.mf6.ModflowGwf(sim, modelname="gwf", save_flows=True,
-                                   newtonoptions=_GWF_NEWTON)
-        flopy.mf6.ModflowGwfdisv(gwf, nlay=1, ncpl=ncpl, nvert=gp["nvert"], top=top_ref,
-                                 botm=botm_ref, vertices=gp["vertices"], cell2d=gp["cell2d"])
-        flopy.mf6.ModflowGwfnpf(gwf, icelltype=1, k=k_ref, save_flows=True,
-                                save_specific_discharge=True)
-        flopy.mf6.ModflowGwfic(gwf, strt=np.maximum(heads_ref, botm_ref[0] + 0.01))
-        flopy.mf6.ModflowGwfsto(gwf, steady_state={i: True for i in range(nper)})
-        flopy.mf6.ModflowGwfrcha(gwf, recharge=rch)
-        flopy.mf6.ModflowGwfchd(gwf, stress_period_data=[(tuple(r["cellid"]), float(r["head"]))
-                                                         for r in chd])
-        flopy.mf6.ModflowGwfriv(gwf, stress_period_data=[(tuple(r["cellid"]), float(r["stage"]),
-                                float(r["cond"]), float(r["rbot"])) for r in riv])
-        # ---- doublet wells: FLOW ONLY (clean injection, no concentration) ----
-        flopy.mf6.ModflowGwfwel(gwf, pname="injw",
-                                stress_period_data={0: [[(0, injc), abs(DOUBLET_Q)]]})
-        flopy.mf6.ModflowGwfwel(gwf, pname="absw",
-                                stress_period_data={0: [[(0, extc), -abs(DOUBLET_Q)]]})
-        flopy.mf6.ModflowGwfoc(gwf, head_filerecord="gwf.hds", budget_filerecord="gwf.cbc",
-                               saverecord=[("HEAD", "LAST"), ("BUDGET", "LAST")])
-        # ---- GWT (solute = the spill, introduced via SRC mass loading) ----
-        gwt = flopy.mf6.ModflowGwt(sim, modelname="gwt", save_flows=True)
-        flopy.mf6.ModflowGwtdisv(gwt, nlay=1, ncpl=ncpl, nvert=gp["nvert"], top=top_ref,
-                                 botm=botm_ref, vertices=gp["vertices"], cell2d=gp["cell2d"])
-        flopy.mf6.ModflowGwtic(gwt, strt=0.0)
-        # ---- MST: porosity always; sorption only when R > 1; decay only when lam > 0.
-        # decay_sorbed is only MF6-valid when sorption is active (decay_sorbed requires
-        # sorption="linear"/"freundlich"/"langmuir"), so it is gated on R > 1 as well.
-        mst_kwargs: Dict[str, Any] = dict(porosity=LOCKED_PARAMS["porosity"])
-        if R > 1.0:
-            mst_kwargs.update(sorption="linear", bulk_density=rho_b, distcoef=Kd)
-        if lam > 0.0:
-            mst_kwargs.update(first_order_decay=True, decay=lam)
-            if R > 1.0:
-                mst_kwargs.update(decay_sorbed=lam)
-        flopy.mf6.ModflowGwtmst(gwt, **mst_kwargs)
-        flopy.mf6.ModflowGwtadv(gwt, scheme=LOCKED_PARAMS["scheme"])
-        flopy.mf6.ModflowGwtdsp(gwt, alh=alpha_L_eff, ath1=alpha_T_eff,
-                                diffc=LOCKED_PARAMS["diffc"], xt3d_off=LOCKED_PARAMS["xt3d_off"])
-        # bare SSM: CHD/RIV/RCHA/WEL flows carry default (0 inflow / cell-conc outflow)
-        flopy.mf6.ModflowGwtssm(gwt)
-        # SRC finite pulse: mass loading [g/d] in period 0, OFF in period 1
-        src_spd = {0: [[(0, c), smassrate] for c in src_cells], 1: []}
-        flopy.mf6.ModflowGwtsrc(gwt, stress_period_data=src_spd)
-        flopy.mf6.ModflowGwtoc(gwt, concentration_filerecord="gwt.ucn",
-                               budget_filerecord="gwt.cbc",
-                               saverecord=[("CONCENTRATION", "ALL"), ("BUDGET", "ALL")])
-        flopy.mf6.ModflowIms(sim, filename="gwt.ims", **_GWT_IMS)
-        sim.register_ims_package(sim.get_package("gwt.ims"), ["gwt"])
-        flopy.mf6.ModflowGwfgwt(sim, exgtype="GWF6-GWT6", exgmnamea="gwf", exgmnameb="gwt",
-                                filename="srcpulse.gwfgwt")
-        sim.write_simulation(silent=True)
-        ok, buf = sim.run_simulation(silent=True)
+        """Compose the public builders into one coupled GWF+GWT solve."""
+        sim = new_sim(case_ws, pulse_days=pulse_days, total_days=total_days,
+                      nstp_per_period=nstp_per_period, exe=exe)
+        gwf = add_flow_model(sim, grid)
+        gwt = add_transport_model(sim, gwf, grid, mass_g=mass_g, pulse_days=pulse_days,
+                                  R=R, rho_b=rho_b, lam=lam, alpha_L=alpha_L_eff)
+        ok, buf, sim = couple_and_run(sim, gwf, gwt, grid, case_ws)
         return sim, gwf, gwt, ok, buf
 
     # ---- pilot: read velocity, size Courant, then production ----

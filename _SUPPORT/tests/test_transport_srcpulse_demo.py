@@ -586,3 +586,74 @@ def test_locked_params_change_busts_cache(tmp_path, monkeypatch):
     # the patched LOCKED_PARAMS, not resurrected from the stale cache.
     assert changed.locked["porosity"] == pytest.approx(patched_locked["porosity"])
     assert changed.locked["porosity"] != pytest.approx(baseline.locked["porosity"])
+
+
+# ---------------------------------------------------------------------------
+# extract-method refactor: public builders compose to build_srcpulse_demo
+# ---------------------------------------------------------------------------
+@pytest.mark.slow
+def test_public_builders_compose_to_build_srcpulse_demo(tmp_path):
+    """Composition-equivalence lock: assembling the coupled model by calling the
+    PUBLIC builder functions in order --
+
+        load_limmat_flow -> refine_corridor
+          -> (pilot)      new_sim -> add_flow_model -> add_transport_model -> couple_and_run
+          -> (production) new_sim -> add_flow_model -> add_transport_model -> couple_and_run
+
+    with the same pilot -> Courant-sizing -> production control flow -- must
+    reproduce build_srcpulse_demo's peak, arrival, and mass-balance discrepancy
+    to machine precision.  This is the guard that the extract-method refactor is
+    faithful: build_srcpulse_demo IS exactly these steps composed, so the two
+    paths write byte-identical MF6 inputs and solve to identical numbers.  Two
+    isolated COLD workspaces, so this costs its own real solves (pilot +
+    production on each path) and never hits an ambient cache.
+    """
+    # reference path
+    ref_ws = tmp_path / "reference"
+    reference = tsd.build_srcpulse_demo(
+        mass_g=MASS_G, pulse_days=PULSE_DAYS, total_days=TOTAL_DAYS,
+        solubility_mgL=SOLUBILITY_MGL, case_ws=ref_ws, force=True)
+
+    # composed path: call the public builders directly, mirroring the control flow
+    comp_ws = tmp_path / "composed"
+    comp_ws.mkdir(parents=True, exist_ok=True)
+    cgwf, boundary, rivers, exe = tsd.load_limmat_flow()
+    grid = tsd.refine_corridor(cgwf, boundary, rivers, case_ws=comp_ws)
+
+    def _compose_and_run(nstp):
+        sim = tsd.new_sim(comp_ws, pulse_days=PULSE_DAYS, total_days=TOTAL_DAYS,
+                          nstp_per_period=nstp, exe=exe)
+        gwf = tsd.add_flow_model(sim, grid)
+        gwt = tsd.add_transport_model(
+            sim, gwf, grid, mass_g=MASS_G, pulse_days=PULSE_DAYS, R=1.0,
+            rho_b=1800.0, lam=0.0, alpha_L=float(tsd.LOCKED_PARAMS["alh"]))
+        ok, buf, sim = tsd.couple_and_run(sim, gwf, gwt, grid, comp_ws)
+        assert ok, "composed run did not converge"
+        return sim, gwf, gwt
+
+    # pilot -> Courant sizing (identical to build_srcpulse_demo)
+    _, gwf, _ = _compose_and_run(20)
+    spd = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
+    vmag = np.sqrt(spd["qx"] ** 2 + spd["qy"] ** 2) / tsd.LOCKED_PARAMS["porosity"]
+    corr_no_wells = grid["corridor_mask"].copy()
+    for c in grid["src_cells"] + [grid["inj_cell"], grid["ext_cell"]]:
+        corr_no_wells[c] = False
+    nstp, _dt, _cr, _diag = tsd._courant_nstp(
+        vmag, grid["cellsize"], corr_no_wells, float(TOTAL_DAYS), 0.9, 2000)
+
+    # production
+    _, _, gwt = _compose_and_run(nstp)
+    cobj = gwt.output.concentration()
+    times = np.array(cobj.get_times())
+    bt = np.maximum(
+        np.array([cobj.get_data(totim=t)[0, 0, grid["ext_cell"]] for t in times]), 0.0)
+    peak = float(bt.max())
+    arrival = float(times[int(np.argmax(bt))])
+    mb = tsd._mass_balance(comp_ws / "sim" / "gwt.lst")
+
+    assert peak == pytest.approx(reference.peak_mgL, rel=1e-9), (
+        f"composed peak {peak} != build_srcpulse_demo peak {reference.peak_mgL}")
+    assert arrival == pytest.approx(reference.arrival_day, rel=1e-9), (
+        f"composed arrival {arrival} != build arrival {reference.arrival_day}")
+    assert mb["pct_imbalance"] == pytest.approx(
+        reference.mass_balance["pct_imbalance"], rel=1e-9, abs=1e-9)
