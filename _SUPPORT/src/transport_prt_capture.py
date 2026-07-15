@@ -681,16 +681,23 @@ def _bisect_halfwidth(flow: Dict[str, Any], s_along_axis_m: float, probe_ws: Pat
     contiguous = bool(idx.size > 0 and np.all(np.diff(idx) == 1)
                       and cap[int(np.argmin(np.abs(scan)))])
 
+    # the axis point itself (offset 0) must be captured, else lo=0 is a false floor.
+    axis_captured = bool(cap[int(np.argmin(np.abs(scan)))])
+
     n_runs = 1
     sides: Dict[str, float] = {}
+    bracketed: Dict[str, bool] = {}
+    converged: Dict[str, bool] = {}
     for sign, name in ((+1.0, "plus"), (-1.0, "minus")):
         lo, hi = 0.0, float(max_offset_m)          # lo = captured, hi = escaped
         fate = {round(float(scan[i]), 9): bool(cap[i]) for i in range(scan.size)}
+        found_escape = False
         for a in sorted(abs(float(v)) for v in scan if v * sign > 0):
             if fate[round(sign * a, 9)]:
                 lo = a
             else:
                 hi = a
+                found_escape = True   # a captured->escaped transition exists within max_offset
                 break
         it = 0
         while hi - lo > tol_m and it < 30:
@@ -702,10 +709,20 @@ def _bisect_halfwidth(flow: Dict[str, Any], s_along_axis_m: float, probe_ws: Pat
             it += 1
             n_runs += 1
         sides[name] = 0.5 * (lo + hi)
+        # a side is only meaningful if the axis is captured AND we actually bracketed
+        # an escape within max_offset (else the zone runs past the probe on this side).
+        bracketed[name] = bool(axis_captured and found_escape)
+        converged[name] = bool(hi - lo <= tol_m)
 
     half = 0.5 * (sides["plus"] + sides["minus"])
+    is_bracketed = bool(bracketed["plus"] and bracketed["minus"])
+    is_converged = bool(converged["plus"] and converged["minus"])
+    # a single half-width only describes the boundary when the scan is monotone AND
+    # both sides bracketed an escape AND bisection converged; otherwise refuse to
+    # return a number the caller would over-trust (NaN, with the flags to explain why).
+    valid = bool(contiguous and is_bracketed and is_converged)
     return dict(
-        halfwidth_m=float(half),
+        halfwidth_m=float(half) if valid else float("nan"),
         halfwidth_plus_m=float(sides["plus"]),
         halfwidth_minus_m=float(sides["minus"]),
         s_along_axis_m=float(s_along_axis_m),
@@ -713,6 +730,9 @@ def _bisect_halfwidth(flow: Dict[str, Any], s_along_axis_m: float, probe_ws: Pat
         max_offset_m=float(max_offset_m),
         n_scan=int(n_scan),
         scan_contiguous=contiguous,
+        bracketed=is_bracketed,
+        converged=is_converged,
+        valid=valid,
         n_prt_runs=int(n_runs),
     )
 
@@ -786,9 +806,18 @@ def _axis_seepage(flow: Dict[str, Any], n_samples: int = 91) -> Dict[str, float]
     the GWF budget and ``n_e`` is the locked porosity, so nothing here touches the
     particle tracker.  Returns the travel-time integral ``T = integral(ds / v)`` over the
     90 m axis and the equivalent path-averaged velocity ``L / T``.
+
+    ``v`` is the local seepage SPEED ``|q| / n_e`` (magnitude), deliberately -- it is
+    compared against PRT's path-averaged speed ``v_prt_path = arc_len / travel_time``,
+    which is itself the average of ``|q| / n_e`` along the (curved) particle path, so the
+    two are like-for-like SPEEDS.  Along the spill->well axis the flow is near-axis-aligned
+    (the axis projection ``q.u_hat / n_e`` differs from ``|q| / n_e`` by <1% here), so the
+    choice does not move the number.
     """
     L = float(flow["axis_len"])
     n_e = float(flow["porosity"])
+    if int(n_samples) < 2:
+        raise ValueError(f"n_samples must be >= 2 (got {n_samples!r})")
     s = np.linspace(0.0, L, int(n_samples))
     v = np.empty_like(s)
     for j, sj in enumerate(s):
