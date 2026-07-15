@@ -678,11 +678,11 @@ def _bisect_halfwidth(flow: Dict[str, Any], s_along_axis_m: float, probe_ws: Pat
     scan = np.linspace(-float(max_offset_m), float(max_offset_m), int(n_scan))
     cap = _fates(scan, "scan")
     idx = np.where(cap)[0]
-    contiguous = bool(idx.size > 0 and np.all(np.diff(idx) == 1)
-                      and cap[int(np.argmin(np.abs(scan)))])
-
     # the axis point itself (offset 0) must be captured, else lo=0 is a false floor.
-    axis_captured = bool(cap[int(np.argmin(np.abs(scan)))])
+    # Evaluate offset 0 EXPLICITLY -- np.linspace with an even n_scan never samples the
+    # midpoint, so cap[argmin(|scan|)] would silently test the nearest off-axis point.
+    axis_captured = bool(_fates([0.0], "axis")[0])
+    contiguous = bool(idx.size > 0 and np.all(np.diff(idx) == 1) and axis_captured)
 
     n_runs = 1
     sides: Dict[str, float] = {}
@@ -697,7 +697,7 @@ def _bisect_halfwidth(flow: Dict[str, Any], s_along_axis_m: float, probe_ws: Pat
                 lo = a
             else:
                 hi = a
-                found_escape = True   # a captured->escaped transition exists within max_offset
+                found_escape = True   # an escaped sample beyond the captured axis, within max_offset
                 break
         it = 0
         while hi - lo > tol_m and it < 30:
