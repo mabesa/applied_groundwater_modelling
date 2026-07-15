@@ -1246,7 +1246,7 @@ multiple_choice_options = {
         ("B) No, the spill is outside the capture zone",
          "B) No — at 90 m upgradient the spill sits outside the doublet's capture zone, so the footprint bypasses the well and drifts downgradient"),
         ("C) Partially captured, roughly half",
-         "C) Partially captured — roughly half the footprint reaches the well and half escapes, the split the wider capture-zone probe shows"),
+         "C) Partially captured — roughly half the footprint reaches the well and half escapes, because the spill straddles the edge of the capture zone"),
         ("D) Yes, fully captured, which proves exceedance",
          "D) Yes, fully captured — and since every particle reaches the well, the compliance well must also see the concentration exceed the threshold"),
     ],
@@ -2501,13 +2501,15 @@ Running Rung B confirms it: peak ≈ **4.21 mg/L at ≈ day 38.8** (vs. the α_L
 
 **Correct answer: A) Yes, fully captured — capture is not exceedance.**
 
-Running Rung D confirms it: every one of the 200 particles released across the realistic ~10 m spill footprint terminates in the extraction well's cell — capture fraction **1.000** (200/200) — with a median advective travel time of **25.8 d** (p10 22.7, p90 28.6). The spill sits entirely inside the doublet's capture zone, which independently corroborates the Keystone's exceedance verdict by a completely different mechanism (particle tracking, not concentration transport) — but only as a **geometry** check: PRT says the advective water gets to the well, not what concentration it carries. The threshold-exceedance verdict (peak 4.95 mg/L at day 41) is, and remains, the ADE model's job.
+Running Rung D confirms it: every one of the 200 particles released across the realistic ~10 m spill footprint terminates in the extraction well's cell — capture fraction **1.000** (200/200) — with a median advective travel time of **25.8 d** (p10 22.7, p90 28.6). The spill sits entirely inside the doublet's capture zone.
 
-The reconciliation is a genuine cross-check, not a coincidence: the ADE releases a finite 30-day pulse whose centre of mass leaves the source at t = 15 d; 15 d + the PRT median advective travel time of 25.8 d = 40.8 d ≈ the ADE's day-41 concentration peak. Two structurally different MODFLOW models — advection-dispersion and particle tracking — agree to within a day, and nothing was tuned to make that happen.
+**What that verdict does — and does not — corroborate.** Full advective capture corroborates the Keystone's **arrival and timing**: the water carrying the spill really does reach *this* well, on an advective timescale of weeks. It says **nothing whatsoever about concentration**, so it cannot corroborate the **exceedance** verdict. That verdict (peak 4.95 mg/L at day 41) is, and remains, the ADE model's alone. What full capture *does* buy the ADE is a narrower, honest claim: because the entire footprint stays inside the well's streamtube, the ADE's un-defensible **lateral** smearing is not diverting mass *out* of the well — so the lateral limitation does not undermine its peak-concentration result.
 
-- **B** is wrong: the spill sits directly on the spill→well axis, well inside the capture zone measured at this distance (half-width ≈ 83 m at 90 m upgradient) — nothing here escapes.
-- **C** is wrong: partial capture (fraction ≈ 0.72) is what the WIDER, 120 m capture-zone probe shows, deliberately built to straddle the capture-zone boundary — the realistic 10 m footprint is far narrower and sits entirely inside the zone.
-- **D** is wrong: full capture never by itself proves an exceedance — PRT carries no concentration information at all. Only because the ADE model was run separately, and its answer cross-checked against PRT's travel time, can both be said to agree here.
+**How PRT is verified here.** Not by arithmetic against the ADE's day-41 peak — an advective travel time and a dispersive concentration peak are different quantities, and no simple identity connects them in a converging 2-D flow field. PRT is checked against **the flow field it was handed**: integrating the seepage velocity v = q/n_e straight from the GWF budget (`DATA-SPDIS`, locked porosity 0.20) along the spill→well axis gives a path-averaged **3.21 m/d**, and PRT's particles report **3.24 m/d** — agreement to ~1%, from two independent computations, nothing tuned. (Note that PRT and the ADE share the same flow field, grid and porosity, so this verifies the *particle tracker*, not the flow solution; the track's end-to-end transport verification is 04t §5's analytical benchmark.)
+
+- **B** is wrong: the spill sits directly on the spill→well axis, and the capture zone's **bisected half-width at the spill transect is ≈ 79 m** — the 10 m footprint is nowhere near escaping it.
+- **C** is wrong twice over. (i) The footprint does not straddle anything: a 10 m disc centred on the axis sits ~79 m inside the boundary, so *nothing* in it escapes. (ii) And do not carry away "the probe shows roughly half" either — the wider 120 m probe returns a fraction of **0.719**, not ~0.5, and that number is not a physical split at all: it is a property of **that probe disc** ("the fraction of a 120 m disc that happens to lie inside the capture zone"), a disc that even reaches ~30 m *downgradient* of the well, where capture is impossible. The scalar is an artefact of where we chose to release; the captured/escaped **scatter** and the bisected half-width are the real results.
+- **D** is wrong: full capture never by itself proves an exceedance — PRT carries no concentration information at all. Only the ADE model, run separately, answers the threshold question.
 <br>
 """,
 

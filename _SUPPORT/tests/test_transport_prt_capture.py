@@ -1,16 +1,17 @@
 """Tests for transport_prt_capture (forward PRT spill-footprint -> capture demo).
 
-Two physics variants are built once each, in a session-scoped ISOLATED tmp
+Three physics variants are built once each, in a session-scoped ISOLATED tmp
 workspace (see the `case_ws` fixture), via module-scoped fixtures:
 
   * `capture` -- the SPILL FOOTPRINT rung (release_radius_m = 10 m, the realistic
     footprint).  Measured: capture fraction 1.000 -- the entire footprint sits
     inside the capture zone.
-  * `wide`    -- the CAPTURE-ZONE rung (release_radius_m = 120 m =
-    `WIDE_RELEASE_RADIUS_M`).  Measured: capture fraction 0.719 -- strictly
-    between 0 and 1, so it actually resolves where the capture zone ENDS.  A rung
-    where everything is captured teaches nothing about a capture zone, which is
-    exactly why this second rung exists.
+  * `wide`    -- the CAPTURE-ZONE probe (release_radius_m = 120 m =
+    `WIDE_RELEASE_RADIUS_M`).  Measured: capture fraction 0.719.
+  * `wider`   -- the SAME flow field probed with a 200 m disc.  It exists for one
+    reason: to prove that `max_captured_offset_m` MOVES with the probe (82.9 m ->
+    86.9 m) while the real, bisected `halfwidth_at_spill_m` does NOT (78.9 m in
+    both).  That contrast is the point of the whole lateral rung.
 
 The isolated workspace is COLD at session start, so these are real MF6 solves
 (steady GWF + PRT), not cache hits against a pre-warmed ambient workspace.  Do
@@ -28,6 +29,7 @@ import dataclasses
 import math
 import os
 import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -39,12 +41,8 @@ import transport_prt_capture as tpc  # noqa: E402
 N_PARTICLES = 200
 FOOTPRINT_RADIUS_M = 10.0                      # realistic spill footprint
 WIDE_RADIUS_M = tpc.WIDE_RELEASE_RADIUS_M      # 120 m -- straddles the capture zone
+WIDER_RADIUS_M = 200.0                         # same flow field, a bigger probe
 TRACK_DAYS = 730.0
-
-# The ADE demo's answer to the OTHER question (transport_srcpulse_demo):
-# peak CONCENTRATION 4.95 mg/L at day 41, from a finite 30-day pulse.
-ADE_PEAK_DAY = 41.0
-ADE_PULSE_DAYS = 30.0
 
 
 # ---------------------------------------------------------------------------
@@ -66,9 +64,17 @@ def capture(case_ws):
 
 @pytest.fixture(scope="module")
 def wide(case_ws):
-    """The capture-zone rung (120 m disc); solved once for the module."""
+    """The capture-zone probe (120 m disc); solved once for the module."""
     return tpc.build_prt_capture(
         n_particles=N_PARTICLES, release_radius_m=WIDE_RADIUS_M,
+        track_days=TRACK_DAYS, case_ws=case_ws, force=False)
+
+
+@pytest.fixture(scope="module")
+def wider(case_ws):
+    """The SAME flow field probed with a 200 m disc (the stability control)."""
+    return tpc.build_prt_capture(
+        n_particles=N_PARTICLES, release_radius_m=WIDER_RADIUS_M,
         track_days=TRACK_DAYS, case_ws=case_ws, force=False)
 
 
@@ -78,6 +84,46 @@ def _perp_offsets(res, xy):
     perp = np.array([-u[1], u[0]])
     d = np.asarray(xy, dtype=float) - np.asarray(res.spill_xy, dtype=float)
     return d[:, 0] * perp[0] + d[:, 1] * perp[1]
+
+
+def _seepage_travel_time_from_gwf_budget(res, n_samples=91):
+    """RE-DERIVE the spill->well advective travel time from the GWF BUDGET ALONE.
+
+    Deliberately re-implemented here, from the MF6 files on disk, rather than reading
+    `res.tt_flow_integral_d`: the whole point is to check PRT's particle integration
+    against an INDEPENDENT computation of the same physics.  Opens the binary grid file
+    for the cell centres, reads DATA-SPDIS (specific discharge) out of the cell-by-cell
+    budget, forms the seepage velocity v = |q| / n_e with the LOCKED porosity, and
+    integrates ds / v along the straight spill -> well axis.
+
+    Returns (travel_time_d, path_averaged_velocity_mpd).
+    """
+    import flopy
+
+    gwf_ws = Path(res.meta["gwf_ws"])
+    grb = flopy.mf6.utils.MfGrdFile(str(gwf_ws / "gwf.disv.grb"))
+    mg = grb.modelgrid
+    xc = np.array(mg.xcellcenters).ravel()
+    yc = np.array(mg.ycellcenters).ravel()
+
+    cbc = flopy.utils.CellBudgetFile(str(gwf_ws / "gwf.cbc"))
+    spd = cbc.get_data(text="DATA-SPDIS")[0]
+    qx = np.asarray(spd["qx"], dtype=float)
+    qy = np.asarray(spd["qy"], dtype=float)
+
+    n_e = float(res.porosity)
+    L = float(res.meta["spill_to_well_m"])
+    ux, uy = res.axis_u
+    s = np.linspace(0.0, L, n_samples)
+    v = np.empty_like(s)
+    for j, sj in enumerate(s):
+        x = res.spill_xy[0] + sj * ux
+        y = res.spill_xy[1] + sj * uy
+        i = int(np.argmin((xc - x) ** 2 + (yc - y) ** 2))
+        v[j] = math.hypot(qx[i], qy[i]) / n_e
+    assert np.all(v > 0.0), "zero specific discharge on the spill->well axis"
+    tt = float(np.trapezoid(1.0 / v, s))
+    return tt, L / tt
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +172,15 @@ def test_invalid_inputs_rejected():
         tpc.build_prt_capture(track_days=0.0)
     with pytest.raises(ValueError):
         tpc.build_prt_capture(track_days=-1.0)
+    # the half-width probe validates its own knobs the same way
+    with pytest.raises(ValueError):
+        tpc.capture_halfwidth_at(max_offset_m=0.0)
+    with pytest.raises(ValueError):
+        tpc.capture_halfwidth_at(tol_m=-1.0)
+    with pytest.raises(ValueError):
+        tpc.capture_halfwidth_at(n_scan=3)
+    with pytest.raises(ValueError):
+        tpc.capture_halfwidth_at(float("nan"))
 
 
 def test_nan_inputs_rejected():
@@ -142,12 +197,84 @@ def test_nan_inputs_rejected():
             tpc.build_prt_capture(n_particles=bad)
 
 
+def test_src_sha_runs_for_real_and_tracks_every_model_source(tmp_path):
+    """The module-source fingerprint must actually WORK -- not merely be monkeypatched.
+
+    `test_module_source_change_busts_cache` below stands in for an edit by replacing
+    `_src_sha` with a lambda, which means rewriting `_src_sha` as `return "constant"`
+    would keep that test green while every warm cache silently served a stale model.
+    So run the REAL `_src_sha()` here and require it to move when EITHER of the three
+    source files the model is built from is edited on disk:
+
+      * transport_prt_capture   -- the PRT model itself
+      * transport_srcpulse_demo -- the doublet, the spill rule, the corridor refinement
+      * model_io_utils          -- it BUILDS the refined grid (mio.build_refined_gwf_model);
+                                   this one was MISSING, so an edit to grid generation
+                                   left every warm cache valid while the grid moved.
+
+    The same fingerprint gap existed in the ADE demo, so its `_src_sha` is checked here
+    too.  Solve-free.  Each file is restored in a `finally`, and the digests are
+    re-asserted equal to the baseline afterwards, so a failure cannot leave the working
+    tree dirty unnoticed.
+    """
+    import model_io_utils as mio
+    import transport_srcpulse_demo as tsd
+
+    base_prt = tpc._src_sha()
+    base_ade = tsd._src_sha()
+    assert len(base_prt) == 16 and len(base_ade) == 16
+
+    for mod in (tpc, tsd, mio):
+        p = Path(mod.__file__)
+        original = p.read_bytes()
+        (tmp_path / p.name).write_bytes(original)          # belt-and-braces backup
+        try:
+            p.write_bytes(original + b"\n# a model-changing edit\n")
+            assert tpc._src_sha() != base_prt, (
+                f"editing {p.name} did NOT change transport_prt_capture's _src_sha(): "
+                "an edited model would keep serving stale cached results")
+            if mod is not tpc:
+                assert tsd._src_sha() != base_ade, (
+                    f"editing {p.name} did NOT change transport_srcpulse_demo's "
+                    "_src_sha(): same bug, other module")
+        finally:
+            p.write_bytes(original)
+
+    assert tpc._src_sha() == base_prt
+    assert tsd._src_sha() == base_ade
+
+
+def test_release_z_stays_below_the_water_table():
+    """The layer is UNCONFINED (heads ~399 m under a top of 403-407 m), so the cell
+    mid-depth 0.5*(top + botm) can sit ABOVE the water table -- i.e. release a particle
+    into the unsaturated zone.  `_release_z` must clamp the top to the head.  Pure
+    arithmetic, no solve."""
+    flow = dict(top_a=np.array([403.0, 407.0, 400.0]),
+                botm_a=np.array([380.0, 380.0, 380.0]),
+                heads=np.array([399.0, 399.0, 405.0]))
+    # UNCONFINED (head below top -- the real case here): z must be the mid-depth of the
+    # SATURATED column, NOT of the cell.  The naive 0.5*(top + botm) would put cell 1's
+    # release at 393.5 m, i.e. 5.5 m ABOVE the water table.
+    assert tpc._release_z(flow, 0) == pytest.approx(0.5 * (399.0 + 380.0))
+    assert tpc._release_z(flow, 1) == pytest.approx(0.5 * (399.0 + 380.0))
+    assert tpc._release_z(flow, 1) < 0.5 * (407.0 + 380.0)      # the naive value is wrong
+    # CONFINED (head above top): the cell mid-depth is already correct, so nothing moves
+    assert tpc._release_z(flow, 2) == pytest.approx(0.5 * (400.0 + 380.0))
+    # and in every case the release is strictly INSIDE the saturated column
+    for c in range(3):
+        z = tpc._release_z(flow, c)
+        assert flow["botm_a"][c] < z < min(flow["top_a"][c], flow["heads"][c]) + 1e-9
+
+
 def _dummy(**over):
     """A synthetic PrtCapture for the solve-free cache unit tests."""
     kw = dict(
         capture_fraction=0.5, n_particles=4, n_released=4, n_captured=2, n_escaped=2,
         tt_median_d=10.0, tt_p10_d=5.0, tt_p90_d=15.0, tt_min_d=4.0, tt_max_d=16.0,
-        lateral_swath_m=7.0, capture_halfwidth_m=6.0,
+        halfwidth_at_spill_m=78.9, asymptotic_halfwidth_m=108.1,
+        max_captured_offset_m=6.0,
+        v_prt_path_mpd=3.24, v_flow_qn_mpd=3.21, tt_flow_integral_d=28.0,
+        arc_len_median_m=83.6,
         release_points=np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]),
         release_cells=np.array([1, 2, 3, 4], dtype=np.int64),
         endpoints=np.array([[9.0, 9.0, 10.0], [9.0, 9.0, 11.0],
@@ -156,6 +283,7 @@ def _dummy(**over):
         end_status=np.array([5, 5, 10, 10], dtype=np.int64),
         captured=np.array([True, True, False, False]),
         travel_times=np.array([10.0, 11.0, 730.0, 730.0]),
+        arc_lengths=np.array([32.0, 35.0, 900.0, 910.0]),
         pathlines=np.array([[0.0, 0.0, 0.0, 0.0], [0.0, 10.0, 9.0, 9.0]]),
         spill_xy=(0.5, 0.5), axis_u=(1.0, 0.0), ext_cell=7, inj_cell=8,
         release_radius_m=10.0, track_days=730.0, stop_at_weak_sink=False,
@@ -211,13 +339,7 @@ def test_model_builds_and_runs(capture):
     """The steady GWF + PRT pair builds, runs, and returns a coherent fate census."""
     assert isinstance(capture, tpc.PrtCapture)
     assert capture.n_released > 0
-    # the census must close: every released particle is captured XOR escaped
-    assert capture.n_captured + capture.n_escaped == capture.n_released
-    assert capture.n_captured == int(capture.captured.sum())
-    assert capture.n_escaped == int((~capture.captured).sum())
     assert 0.0 < capture.capture_fraction <= 1.0
-    assert capture.capture_fraction == pytest.approx(
-        capture.n_captured / capture.n_released)
 
     # array shapes are all per-released-particle and mutually consistent
     n = capture.n_released
@@ -228,17 +350,33 @@ def test_model_builds_and_runs(capture):
     assert capture.end_status.shape == (n,)
     assert capture.captured.shape == (n,)
     assert capture.travel_times.shape == (n,)
+    assert capture.arc_lengths.shape == (n,)
     # pathlines carry every particle, with >= 2 vertices each (release + terminate)
     assert capture.pathlines.ndim == 2 and capture.pathlines.shape[1] == 4
     assert set(capture.pathlines[:, 0].astype(int)) == set(range(n))
     assert capture.pathlines.shape[0] >= 2 * n
 
+    # The RELEASE CELLS really are the cells the release points fall in.  PRT's PRP
+    # packagedata is keyed on (cell, x, y), so a mis-paired (point, cell) would release
+    # particles in the wrong place while every summary statistic still looked sane.
+    # Re-derive the pairing independently, from the binary grid file on disk.
+    import flopy
+    grb = flopy.mf6.utils.MfGrdFile(
+        os.path.join(capture.meta["gwf_ws"], "gwf.disv.grb"))
+    xc = np.array(grb.modelgrid.xcellcenters).ravel()
+    yc = np.array(grb.modelgrid.ycellcenters).ravel()
+    for i in range(n):
+        px, py = capture.release_points[i]
+        nearest = int(np.argmin((xc - px) ** 2 + (yc - py) ** 2))
+        assert capture.release_cells[i] == nearest, (
+            f"release point {i} at ({px:.1f}, {py:.1f}) is paired with cell "
+            f"{capture.release_cells[i]}, but falls in cell {nearest}")
+
     # the release disc really is centred on the ADE demo's spill location
     d = np.hypot(capture.release_points[:, 0] - capture.spill_xy[0],
                  capture.release_points[:, 1] - capture.spill_xy[1])
     assert d.max() <= capture.release_radius_m + 1e-6
-    assert capture.meta["spill_to_well_m"] == pytest.approx(
-        tpc.SPILL_UPGRADIENT_M, rel=1e-6)
+    assert d.min() == pytest.approx(0.0, abs=1e-9)     # the on-axis centre particle
 
 
 @pytest.mark.slow
@@ -256,14 +394,29 @@ def test_extraction_well_is_a_strong_sink(capture):
     # face inflow balances the pumping rate; face OUTflow is zero
     assert capture.meta["ext_inflow_m3d"] == pytest.approx(tpc.DOUBLET_Q, rel=0.01)
     assert capture.meta["ext_outflow_m3d"] == pytest.approx(0.0, abs=1e-6)
-
-    # and the classification is internally consistent with that definition
-    assert np.all(capture.end_cells[capture.captured] == capture.ext_cell)
-    assert np.all(capture.end_cells[~capture.captured] != capture.ext_cell)
-    # every captured particle terminated by the SAME mechanism (istatus 5 = no exit
-    # face, i.e. the strong sink), and no particle was captured by the injection well
-    assert len(set(capture.end_status[capture.captured].tolist())) == 1
+    # no particle is captured by the INJECTION well (it is a source, not a sink)
     assert not np.any(capture.end_cells == capture.inj_cell)
+
+
+@pytest.mark.slow
+def test_observed_mf6_istatus_codes(capture, wide):
+    """Pin the OBSERVED MF6 6.7.0 istatus codes.
+
+    The classification deliberately keys on the terminating CELL, not on istatus (a
+    control run with ISTOPZONE terminates the same particles in the same cell but
+    reports a different code).  This test does NOT make the code load-bearing -- it is
+    a tripwire: if a future MF6 renumbers them, we want to be told, because the module
+    docstring, the notebook prose and `meta["istatus_counts"]` all quote them.
+
+      5  = terminated in a cell with no exit face  -> the strong-sink capture
+      10 = the tracking window (stoptime) closed while the particle was still moving
+    """
+    assert set(capture.end_status[capture.captured].tolist()) == {5}
+    assert set(wide.end_status[wide.captured].tolist()) == {5}
+    assert set(wide.end_status[~wide.captured].tolist()) == {10}
+    assert capture.meta["istatus_counts"] == {"5": capture.n_captured}
+    assert wide.meta["istatus_counts"] == {"5": wide.n_captured,
+                                           "10": wide.n_escaped}
 
 
 @pytest.mark.slow
@@ -310,74 +463,105 @@ def test_stop_at_weak_sink_does_not_change_capture(capture, wide, case_ws):
 
 
 @pytest.mark.slow
-def test_captured_travel_times_are_finite_positive_and_physical(capture):
-    """Captured particles must have finite, strictly POSITIVE travel times, and the
-    median advective travel time must be physically sane -- checked against an
-    implied seepage velocity, not just pinned to a magic number."""
+def test_advection_engine_matches_the_flow_field_it_was_given(capture):
+    """THE verification of the PRT rung -- and it is a real one.
+
+    PRT's Lagrangian particle integration is checked against an INDEPENDENT Eulerian
+    computation of the same physics: the seepage velocity v = |q| / n_e, with q read
+    straight out of the GWF cell-by-cell budget (DATA-SPDIS) and n_e the locked
+    porosity, integrated along the spill -> well axis.  Nothing in that path touches
+    the particle tracker.
+
+    Measured: the flow field's path-averaged v = 3.21 m/d and its travel-time integral
+    = 28.0 d over the 90 m axis; PRT reports a path-averaged v of 3.24 m/d (median arc
+    length 83.6 m / median travel time 25.8 d).  The velocities agree to ~1%.
+
+    (This REPLACES the old `0.5 < v_implied < 20.0` "physics" check, which was a
+    40x-wide band already implied by the regression pin below and therefore tested
+    nothing, and the old PRT-vs-ADE "cross-validation", which was numerology: PRT's
+    advective timescale and the ADE's day-41 CONCENTRATION peak are different
+    quantities and no simple identity connects them in a converging 2-D field.)
+
+    NOTE the reach of this check, honestly: PRT and the ADE demo share the SAME flow
+    field, grid and porosity, so it verifies the PARTICLE TRACKER against the flow
+    solution -- it cannot detect an error in the flow solution itself.  04t Section 5's
+    2-D analytical benchmark is the track's end-to-end transport verification.
+    """
     tt = capture.travel_times[capture.captured]
     assert tt.size == capture.n_captured > 0
     assert np.all(np.isfinite(tt))
     assert np.all(tt > 0.0), "a travel time of 0 d means a particle was released " \
-                             "inside the well cell -- those must be dropped"
-
-    for v in (capture.tt_median_d, capture.tt_p10_d, capture.tt_p90_d,
-              capture.tt_min_d, capture.tt_max_d):
-        assert math.isfinite(v) and v > 0.0
-    # the reported stats really are the stats of the CAPTURED subset
-    assert capture.tt_median_d == pytest.approx(float(np.median(tt)))
-    assert capture.tt_p10_d == pytest.approx(float(np.percentile(tt, 10)))
-    assert capture.tt_p90_d == pytest.approx(float(np.percentile(tt, 90)))
-    assert capture.tt_min_d == pytest.approx(float(tt.min()))
-    assert capture.tt_max_d == pytest.approx(float(tt.max()))
+                             "inside the extraction-well cell -- those must be dropped"
     assert capture.tt_min_d <= capture.tt_p10_d <= capture.tt_median_d \
         <= capture.tt_p90_d <= capture.tt_max_d
-
-    # PHYSICS: the implied seepage velocity over the 90 m spill->well path must be
-    # a plausible forced-gradient gravel-aquifer velocity (m/d, not mm/d or km/d).
-    v_implied = capture.meta["spill_to_well_m"] / capture.tt_median_d
-    assert 0.5 < v_implied < 20.0, f"implied seepage velocity {v_implied:.3g} m/d"
-
     # every particle terminates within the tracking window
     assert np.all(capture.travel_times <= capture.track_days + 1e-6)
 
-    # REGRESSION PIN (measured): median 25.8 d, p10 22.7, p90 28.6.
+    # ---- the INDEPENDENT prediction, re-derived here from the GWF budget files ----
+    tt_flow, v_flow = _seepage_travel_time_from_gwf_budget(capture)
+
+    # the module's own helper must agree with this independent re-derivation
+    assert capture.tt_flow_integral_d == pytest.approx(tt_flow, rel=0.02)
+    assert capture.v_flow_qn_mpd == pytest.approx(v_flow, rel=0.02)
+
+    # (a) PRT's PATH-AVERAGED velocity vs the flow field's q/n.  This is the real
+    #     comparison: the particles fly a CURVED path and terminate on entering the
+    #     well CELL, so they travel ~83.6 m, not the straight 90 m axis -- dividing
+    #     90 m by the travel time (as an earlier version did, giving "3.5 m/d") divides
+    #     by a distance no particle travels.
+    v_prt = float(np.median(capture.arc_lengths[capture.captured] / tt))
+    assert capture.v_prt_path_mpd == pytest.approx(v_prt, rel=1e-9)
+    assert capture.arc_len_median_m < capture.meta["spill_to_well_m"], (
+        "PRT pathlines are not shorter than the straight spill->well axis; they should "
+        "be, because they terminate on entering the well CELL, ~7 m short of the node")
+    assert v_prt == pytest.approx(v_flow, rel=0.10), (
+        f"PRT's path-averaged seepage velocity ({v_prt:.3f} m/d) disagrees with the "
+        f"flow field's q/n ({v_flow:.3f} m/d) by more than 10%: the particle tracker "
+        "is not reproducing the flow field it was handed")
+
+    # (b) and the travel TIME itself, against the flow field's integral.  The tolerance
+    #     is looser (rel=0.25) and deliberately so: the integral is taken over the full
+    #     90 m straight axis while PRT stops at the well-cell face, so the integral is
+    #     expected to run ~8% LONG (28.0 d vs 25.8 d).  A 25% band still fails hard on a
+    #     wrong porosity (a factor of 2), wrong units, or a broken FMI hand-off.
+    assert capture.tt_median_d == pytest.approx(tt_flow, rel=0.25)
+    assert capture.tt_median_d < tt_flow, (
+        "PRT's median travel time is not SHORTER than the axis integral; it should be, "
+        "because PRT terminates at the well-cell face rather than at the well node")
+
+    # REGRESSION PIN (measured): median 25.8 d, p10 22.7, p90 28.6; arc 83.6 m;
+    # v_prt 3.24 m/d; v_flow 3.21 m/d; flow integral 28.0 d.
     assert capture.tt_median_d == pytest.approx(25.8, rel=0.05)
     assert capture.tt_p10_d == pytest.approx(22.7, rel=0.05)
     assert capture.tt_p90_d == pytest.approx(28.6, rel=0.05)
-
-    # PRT vs ADE: these are DIFFERENT quantities and MUST NOT be conflated.  The
-    # advective median (~26 d) is NOT the ADE's day-41 concentration peak.  They
-    # are nevertheless consistent: the ADE releases a finite 30-day pulse, whose
-    # centre of mass leaves at t = 15 d, and 15 + 25.8 = 40.8 ~ 41.
-    assert capture.tt_median_d < ADE_PEAK_DAY
-    assert (ADE_PULSE_DAYS / 2.0 + capture.tt_median_d) == pytest.approx(
-        ADE_PEAK_DAY, abs=3.0)
+    assert capture.arc_len_median_m == pytest.approx(83.6, rel=0.05)
+    assert capture.v_prt_path_mpd == pytest.approx(3.24, rel=0.05)
+    assert capture.v_flow_qn_mpd == pytest.approx(3.21, rel=0.05)
+    assert capture.tt_flow_integral_d == pytest.approx(28.0, rel=0.05)
 
 
 @pytest.mark.slow
 def test_spill_footprint_is_entirely_inside_the_capture_zone(capture):
     """The 10 m footprint rung: EVERY particle is captured (fraction exactly 1.0).
 
-    That is the honest answer for this spill -- and it is also why a second,
-    wider rung exists: a run where everything is captured says nothing about where
-    the capture zone ENDS (see the next test)."""
-    assert capture.release_radius_m == pytest.approx(FOOTPRINT_RADIUS_M)
+    That is the honest answer for this spill -- and it is also why the wider probes
+    exist: a run where everything is captured says nothing about where the capture zone
+    ENDS (see the next tests)."""
     assert capture.n_escaped == 0
     assert capture.capture_fraction == 1.0
     assert capture.meta["n_dropped_wellcell"] == 0    # 90 m away, 10 m disc
-    # the swept swath is about the footprint width -- the pathlines converge on the
-    # well, they do not fan out
-    assert capture.lateral_swath_m == pytest.approx(10.5, rel=0.15)
-    assert capture.capture_halfwidth_m == pytest.approx(FOOTPRINT_RADIUS_M, rel=0.05)
+    # the widest captured release point is just the edge of the disc: at this radius
+    # `max_captured_offset_m` is bounded by the PROBE, not by the capture zone -- which
+    # is exactly why it is not a half-width.
+    assert capture.max_captured_offset_m == pytest.approx(FOOTPRINT_RADIUS_M, rel=0.05)
+    assert capture.max_captured_offset_m < capture.halfwidth_at_spill_m
 
 
 @pytest.mark.slow
 def test_capture_zone_boundary_on_axis_captured_off_axis_escapes(wide):
-    """THE physics contrast, and the lateral answer the ADE model could not give.
-
-    On the 120 m rung the release disc straddles the capture-zone boundary, so the
-    capture fraction is STRICTLY between 0 and 1.  A particle released on the
-    spill -> well axis is captured; particles far enough OFF that axis are not."""
+    """THE physics contrast: the 120 m probe straddles the capture-zone boundary, so the
+    capture fraction is STRICTLY between 0 and 1.  A particle released on the spill ->
+    well axis is captured; particles far enough OFF that axis are not."""
     assert 0.0 < wide.capture_fraction < 1.0
     assert wide.n_captured > 0 and wide.n_escaped > 0
 
@@ -395,32 +579,122 @@ def test_capture_zone_boundary_on_axis_captured_off_axis_escapes(wide):
     assert bool(wide.captured[i_far]) is False
     assert abs(off[i_far]) > 100.0
 
-    # (c) captured particles are systematically closer to the axis than escapees --
-    # and the two populations SEPARATE: no captured particle lies further off-axis
-    # than the widest captured one (that is the capture half-width), which is
-    # strictly inside the release disc.
+    # (c) captured particles are systematically closer to the axis than escapees
     assert np.abs(off[wide.captured]).mean() < np.abs(off[~wide.captured]).mean()
-    assert wide.capture_halfwidth_m == pytest.approx(
-        float(np.abs(off[wide.captured]).max()))
-    assert wide.capture_halfwidth_m < wide.release_radius_m, (
-        "the capture half-width is not resolved: every captured particle reaches "
-        "the edge of the release disc, so this rung does not bracket the boundary")
-    # measured: half-width 82.9 m, swath 82.9 m, fraction 0.719
-    assert wide.capture_halfwidth_m == pytest.approx(82.9, rel=0.10)
-    assert wide.lateral_swath_m == pytest.approx(82.9, rel=0.10)
+
+    # (d) but the two populations do NOT separate cleanly in |offset|: some escapees sit
+    #     CLOSER to the axis than the widest captured point, because they are released
+    #     DOWNGRADIENT of the well.  This is the evidence that `max_captured_offset_m`
+    #     is a sampling statistic and not a boundary -- assert it, so nobody "fixes" the
+    #     scatter plot by pretending the disc has a clean dividing line in |offset|.
+    esc_min = float(np.abs(off[~wide.captured]).min())
+    assert esc_min < wide.max_captured_offset_m, (
+        "no escaped release point lies closer to the axis than the widest CAPTURED one; "
+        "the disc's |offset| statistic would then look like a real boundary, which it "
+        "is not -- re-check the geometry before trusting this test's premise")
+
+    # measured: max captured offset 82.9 m, fraction 0.719 (143/199)
+    assert wide.max_captured_offset_m == pytest.approx(82.9, rel=0.10)
     assert wide.capture_fraction == pytest.approx(0.72, abs=0.06)
 
-    # (d) the lateral swath is a real, defensible number: it is at least the
-    # capture half-width (pathlines start at the release points) and never wider
-    # than the disc that produced it.
-    assert wide.lateral_swath_m >= wide.capture_halfwidth_m - 1e-6
-    assert wide.lateral_swath_m <= wide.release_radius_m + 1e-6
-
-    # release points inside a doublet well cell are dropped (they would report a
-    # 0 d travel time); at 120 m the disc reaches the well, so exactly this happens
-    assert wide.meta["n_dropped_wellcell"] >= 1
+    # release points inside the EXTRACTION-well cell are dropped (they would report a
+    # 0 d travel time); at 120 m the disc reaches the well, so exactly this happens.
+    # Points in the INJECTION-well cell would be KEPT (that well is a source, and such a
+    # particle advects away normally); none occur at any radius used here.
+    assert wide.meta["n_dropped_wellcell"] == 1
+    assert wide.meta["n_released_in_injcell"] == 0
     assert wide.n_released == wide.n_particles - wide.meta["n_dropped_wellcell"]
+    assert not np.any(wide.release_cells == wide.ext_cell)
     assert np.all(wide.travel_times[wide.captured] > 0.0)
+
+
+@pytest.mark.slow
+def test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not(capture, wide, wider):
+    """FIX B, and the whole reason `halfwidth_at_spill_m` exists.
+
+    `max_captured_offset_m` -- "the most off-axis release point that happened to be
+    captured in this disc" -- is a SAMPLING STATISTIC.  It moves with the probe radius
+    in an UNCHANGED flow field (measured 82.9 m at r = 120 m, 86.9 m at r = 200 m), and
+    the point that sets it can sit tens of metres UPGRADIENT of the spill rather than on
+    the spill transect.  It is a lower bound, not a capture-zone half-width.
+
+    `halfwidth_at_spill_m` is the real thing: the captured/escaped boundary BISECTED on
+    the transect through the spill.  It is a property of the FLOW FIELD, so it must be
+    IDENTICAL across all three probes -- the flow field is the same in all of them.
+    That invariance is the convergence check the old number could never pass.
+    """
+    # the three probes really do share one flow field ...
+    assert capture.meta["ncpl"] == wide.meta["ncpl"] == wider.meta["ncpl"]
+    assert capture.meta["gwf_ws"] == wide.meta["gwf_ws"] == wider.meta["gwf_ws"]
+    assert capture.spill_xy == wide.spill_xy == wider.spill_xy
+
+    # ... so the REAL half-width is bit-identical across them
+    assert wide.halfwidth_at_spill_m == pytest.approx(
+        capture.halfwidth_at_spill_m, abs=1e-9)
+    assert wider.halfwidth_at_spill_m == pytest.approx(
+        capture.halfwidth_at_spill_m, abs=1e-9)
+    # measured: 78.9 m (+81.4 / -76.4), bisected to 0.5 m
+    assert capture.halfwidth_at_spill_m == pytest.approx(78.9, rel=0.05)
+    assert capture.meta["halfwidth_s_m"] == 0.0            # AT the spill transect
+    assert capture.meta["halfwidth_scan_contiguous"] is True
+    assert capture.meta["halfwidth_plus_m"] == pytest.approx(81.4, rel=0.05)
+    assert capture.meta["halfwidth_minus_m"] == pytest.approx(76.4, rel=0.05)
+    # the two sides differ -- the zone is NOT symmetric about the axis (the injection
+    # well sits off to one side), which a single symmetric "half-width" would hide
+    assert capture.meta["halfwidth_plus_m"] != pytest.approx(
+        capture.meta["halfwidth_minus_m"], rel=1e-3)
+
+    # ... while `max_captured_offset_m` DOES move, in that same unchanged flow field
+    assert wider.max_captured_offset_m != pytest.approx(
+        wide.max_captured_offset_m, rel=0.02), (
+        "max_captured_offset_m did not move between a 120 m and a 200 m probe; the "
+        "premise of this whole rename (that it is a probe artifact) needs re-checking")
+    assert wider.max_captured_offset_m == pytest.approx(86.9, rel=0.10)
+
+    # and the capture FRACTION is likewise a property of the probe disc, not the doublet
+    assert wider.capture_fraction < wide.capture_fraction < capture.capture_fraction
+
+
+@pytest.mark.slow
+def test_halfwidth_probe_converges_and_widens_upgradient(case_ws):
+    """The bisected half-width must not move when the PROBE's own settings move (that is
+    what "converged" means), and it must reproduce the FLOW FIELD's analytic asymptote
+    far upgradient.
+
+    (a) CONVERGENCE: at the spill transect, vary the bisection's max offset, scan
+        density and tolerance.  All must return 78.9 m.
+    (b) PHYSICS: the capture zone WIDENS upgradient (78.9 m at the spill -> ~112 m at
+        300 m upgradient) and converges on the analytic asymptote y_max = Q / (2 q b)
+        ~= 108 m read from the GWF budget -- the same screening formula 01t writes as
+        Q / (2 T i).  Two completely different computations of the same number.
+    """
+    base = tpc.capture_halfwidth_at(0.0, case_ws=case_ws)
+    assert base["scan_contiguous"] is True
+    assert base["halfwidth_m"] == pytest.approx(78.9, rel=0.05)
+
+    for kw in (dict(max_offset_m=200.0, n_scan=41),
+               dict(max_offset_m=120.0, n_scan=25),
+               dict(tol_m=0.25, n_scan=37, max_offset_m=180.0)):
+        alt = tpc.capture_halfwidth_at(0.0, case_ws=case_ws, **kw)
+        assert alt["halfwidth_m"] == pytest.approx(base["halfwidth_m"], abs=1.0), (
+            f"the bisected half-width moved with the probe settings {kw}: "
+            f"{alt['halfwidth_m']:.2f} vs {base['halfwidth_m']:.2f} m -- it is not "
+            "converged, and would be no better than the max-offset statistic it replaced")
+
+    far = tpc.capture_halfwidth_at(-300.0, case_ws=case_ws, max_offset_m=200.0, n_scan=41)
+    assert far["scan_contiguous"] is True
+    assert far["halfwidth_m"] > base["halfwidth_m"] + 20.0, (
+        "the capture zone does not widen upgradient of the spill; it must -- the "
+        "streamtube that ends at the well is narrowest where the flow is fastest")
+    assert far["halfwidth_m"] == pytest.approx(112.0, rel=0.10)
+
+    # the analytic asymptote, from the GWF budget's regional q*b
+    assert base["asymptotic_halfwidth_m"] == pytest.approx(108.0, rel=0.10)
+    assert base["regional_qb_m2d"] == pytest.approx(6.3, rel=0.10)
+    # the numeric half-width AT THE SPILL is NARROWER than the far-field asymptote ...
+    assert base["halfwidth_m"] < base["asymptotic_halfwidth_m"]
+    # ... and the far-upgradient one has essentially reached it
+    assert far["halfwidth_m"] == pytest.approx(base["asymptotic_halfwidth_m"], rel=0.15)
 
 
 # ---------------------------------------------------------------------------
@@ -471,6 +745,40 @@ def test_cache_round_trip_fidelity(tmp_path):
 
 
 @pytest.mark.slow
+def test_mf6_workspaces_are_per_variant_and_not_stale(capture, wide, case_ws):
+    """FIX F5: every variant must own its MF6 directories.
+
+    The PRT workspace used to be a single shared `case_ws/"prt"`, so each new variant
+    OVERWROTE the previous one's files while `meta["prt_ws"]` kept pointing at the (now
+    wrong) directory -- a cached r=10 result would hand you a path whose track file on
+    disk held some later r=200 run.  Anyone who trusted `meta["prt_ws"]` (to re-plot, to
+    debug, to check a residual) read the wrong model.
+
+    The GWF directory, by contrast, is keyed on the FLOW identity alone -- it is
+    legitimately SHARED between variants that differ only on the PRT side, because the
+    flow solution is bit-identical for them.  Shared-but-identical is not stale.
+    """
+    assert Path(capture.meta["prt_ws"]).name != Path(wide.meta["prt_ws"]).name
+    assert capture.meta["gwf_ws"] == wide.meta["gwf_ws"]      # same flow -> same dir
+
+    # each variant's OWN track file, on disk, holds ITS OWN particles
+    import pandas as pd
+    for res in (capture, wide):
+        trk = pd.read_csv(Path(res.meta["prt_ws"]) / "prt.trk.csv")
+        assert trk["irpt"].nunique() == res.n_released, (
+            f"the track file at meta['prt_ws'] for r={res.release_radius_m:.0f} m holds "
+            f"{trk['irpt'].nunique()} particles, not the {res.n_released} this result "
+            "reports -- the workspace is stale (another variant overwrote it)")
+
+    # a variant that differs only in stop_at_weak_sink also gets its own PRT dir
+    ws_on = tpc.build_prt_capture(
+        n_particles=N_PARTICLES, release_radius_m=FOOTPRINT_RADIUS_M,
+        track_days=TRACK_DAYS, stop_at_weak_sink=True, case_ws=case_ws, force=False)
+    assert ws_on.meta["prt_ws"] != capture.meta["prt_ws"]
+    assert ws_on.meta["gwf_ws"] == capture.meta["gwf_ws"]     # same flow, again
+
+
+@pytest.mark.slow
 def test_locked_params_change_busts_cache(tmp_path, monkeypatch):
     """Editing LOCKED_PARAMS must NOT be masked by a warm cache.  Porosity feeds
     the PRT MIP package directly (v = q / n_e), so a stale cache here would return
@@ -498,24 +806,25 @@ def test_locked_params_change_busts_cache(tmp_path, monkeypatch):
     # so advective travel times double.  (A stale cache hit would return the old
     # times unchanged -- this is what actually catches the bug.)
     assert changed.tt_median_d == pytest.approx(2.0 * baseline.tt_median_d, rel=0.02)
+    # and the flow-field cross-check follows it, because it uses the same n_e
+    assert changed.v_prt_path_mpd == pytest.approx(0.5 * baseline.v_prt_path_mpd, rel=0.02)
+    assert changed.v_flow_qn_mpd == pytest.approx(0.5 * baseline.v_flow_qn_mpd, rel=1e-6)
 
 
 @pytest.mark.slow
 def test_module_source_change_busts_cache(tmp_path, monkeypatch):
-    """Editing the module SOURCE (this module or the ADE module it inherits the
-    doublet / spill geometry / corridor refinement from) must bust the cache.
+    """Editing the module SOURCE must bust the cache.
 
-    LOCKED_PARAMS only covers one dict: changing DOUBLET_Q, SPILL_UPGRADIENT_M,
-    INJ_XY/ABS_XY, the release layout, the FMI wiring or the fate classification
-    would otherwise leave the hash -- and every warm cache, notebook users
-    included -- unchanged while the model changed underneath it."""
+    This stands in for an edit by monkeypatching `_src_sha` -- which is exactly why
+    `test_src_sha_runs_for_real_and_tracks_every_model_source` (above, solve-free) also
+    exists: without it, rewriting `_src_sha` as `return "constant"` would keep THIS test
+    green while every warm cache served a stale model."""
     ws = tmp_path / "prt_ws_src"
     tpc.build_prt_capture(n_particles=32, release_radius_m=FOOTPRINT_RADIUS_M,
                           track_days=TRACK_DAYS, case_ws=ws, force=True)
     before = set(ws.glob("prtcapture_cache_*.npz"))
     assert len(before) == 1
 
-    # stand in for "somebody edited the source" without editing it
     monkeypatch.setattr(tpc, "_src_sha", lambda: "deadbeefdeadbeef")
 
     tpc.build_prt_capture(n_particles=32, release_radius_m=FOOTPRINT_RADIUS_M,

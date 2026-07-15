@@ -238,6 +238,21 @@ def _default_case_ws() -> Path:
     return Path(get_default_data_folder()) / "transport_srcpulse_demo"
 
 
+def _src_sha() -> str:
+    """SHA of every module SOURCE this model is built from.
+
+    THIS module (the doublet, the spill rule, the SRC/MST wiring, the Courant sizing)
+    AND ``model_io_utils``, which BUILDS the refined grid (``mio.build_refined_gwf_model``).
+    An edit to grid generation changes this model just as surely as an edit here does,
+    and without it that edit would leave every warm cache valid while the grid moved
+    underneath it -- the exact bug class this repo has already shipped once.
+    """
+    h = hashlib.sha1()
+    for p in (Path(__file__), Path(mio.__file__)):
+        h.update(p.read_bytes())
+    return h.hexdigest()[:16]
+
+
 # ---------------------------------------------------------------------------
 # build + run
 # ---------------------------------------------------------------------------
@@ -360,14 +375,17 @@ def build_srcpulse_demo(
                   # keys too, so the hash is deterministic regardless of
                   # LOCKED_PARAMS's declaration order.
                   locked=dict(LOCKED_PARAMS),
-                  # Fold a fingerprint of THIS MODULE's own source into the cache
-                  # identity too.  LOCKED_PARAMS only covers edits to that one
-                  # dict -- editing DOUBLET_Q, SPILL_UPGRADIENT_M, INJ_XY/ABS_XY,
-                  # the Kd formula, the MST decay wiring, SRC cell placement,
+                  # Fold a fingerprint of the model SOURCE into the cache identity
+                  # too.  LOCKED_PARAMS only covers edits to that one dict --
+                  # editing DOUBLET_Q, SPILL_UPGRADIENT_M, INJ_XY/ABS_XY, the Kd
+                  # formula, the MST decay wiring, SRC cell placement,
                   # _courant_nstp, or _mass_balance would otherwise leave the
                   # hash (and every warm cache, notebook users included) unchanged
-                  # while the model itself changed underneath it.
-                  src_sha=hashlib.sha1(Path(__file__).read_bytes()).hexdigest()[:16])
+                  # while the model itself changed underneath it.  `model_io_utils`
+                  # is in the fingerprint because it BUILDS the refined grid
+                  # (mio.build_refined_gwf_model): an edit to grid generation
+                  # changes this model just as surely as an edit here does.
+                  src_sha=_src_sha())
     cache_hash = hashlib.sha1(
         json.dumps(params, sort_keys=True).encode("utf-8")).hexdigest()[:16]
     cache = case_ws / f"srcpulse_cache_{cache_hash}.npz"
