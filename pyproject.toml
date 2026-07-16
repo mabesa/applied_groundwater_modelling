@@ -65,6 +65,9 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+markers = [
+    "slow: marks tests that perform a real MF6 solve (deselect with '-m \"not slow\"')",
+]
 
 # This is not a distributable package - it's course materials
 # No build-system needed
