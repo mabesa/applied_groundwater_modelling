@@ -570,11 +570,15 @@ When transferring calibrated parameters from a heat transport model to a solute 
 # ── Transport Track — Notebook 8 (keystone doublet) checkpoints ──
 
 "task_t08_checkpoint_1": r"""
-## Checkpoint 1 — Predict the keystone outcome (before running the model)
+## Checkpoint 1 — Which lever can change the *compliance verdict*?
 
-A contaminant spill releases a known mass as a finite pulse (MODFLOW 6 **SRC**) about 90 m **upgradient** of the extraction well of a flow-only geothermal doublet. The extraction well is the **compliance / monitoring well**: no solute rides the doublet's own wells, but the extraction well still **pumps groundwater**, and whatever the ambient groundwater carries comes with it.
+04t already built and verified this model and read the compliance breakthrough: the conservative spill **reaches the extraction (compliance) well and exceeds** the 1.0 mg/L threshold (peak ≈ 4.95 mg/L at ~day 41). Taking that verdict as given, the applications below vary three levers:
 
-**Before running the model** — do you expect the plume to reach the compliance well **above** the stated threshold `THRESHOLD_MGL`, and roughly **when**?
+- **Rung A** — reactive transport: retardation (sorption) and first-order decay.
+- **Rung B** — a larger dispersivity (α_L, and α_T in lockstep with it).
+- **Rung D** — the doublet's capture-zone geometry, via MF6 **PRT** particle tracking.
+
+Some of these can change the **verdict itself** (exceed vs. not); others only change the **timing or shape** of the same exceedance. **Which statement sorts them correctly?**
 """,
 
 "task_t08_checkpoint_2": r"""
@@ -869,7 +873,7 @@ solutions_exact = {
     "task_t05_checkpoint_nonunique": "B) The tracer test constrains n_e independently",
     "task_t05_checkpoint_transfer": "C) Thermal retardation factor",
     # Transport Track — Notebook 8 (keystone doublet) checkpoints
-    "task_t08_checkpoint_1": "A) Yes, exceeds within ~1-2 months",
+    "task_t08_checkpoint_1": "A) Reactions (Rung A) can flip the verdict; dispersivity and geometry cannot",
     "task_t08_checkpoint_2": "A) Later and lower peak",
     "task_t08_checkpoint_3": "A) Earlier toe, broader front, lower peak",
     "task_t08_checkpoint_4": "A) Yes, fully captured — capture is not exceedance",
@@ -1231,14 +1235,14 @@ multiple_choice_options = {
     ],
     # Transport Track — Notebook 8 (keystone doublet) checkpoints
     "task_t08_checkpoint_1": [
-        ("A) Yes, exceeds within ~1-2 months",
-         "A) Yes — the spill is close (~90 m) and the doublet's extraction well actively pulls groundwater toward itself, so the plume arrives and clears the threshold within roughly a month or two"),
-        ("B) Yes, but not for ~a year",
-         "B) Yes, but only after nearly a year — at this scale dispersion should smear the arrival out that far"),
-        ("C) No, stays below threshold",
-         "C) No — dilution and dispersion keep the peak concentration below the threshold throughout the simulation"),
-        ("D) No, the well can't capture solute",
-         "D) No — the extraction well is flow-only (pumps groundwater, not solute), so it cannot draw the plume toward itself"),
+        ("A) Reactions (Rung A) can flip the verdict; dispersivity and geometry cannot",
+         "A) Reactions (Rung A) can change it — enough sorption or decay removes mass and can pull the peak below the threshold; dispersivity (Rung B) mainly reshapes the timing and spread of the same exceedance; capture geometry (Rung D) carries no concentration information, so it can never change an exceedance verdict"),
+        ("B) Capture geometry (Rung D) decides the compliance verdict",
+         "B) Capture geometry (Rung D) decides it — if PRT shows the spill footprint is captured by the well, the compliance well must then exceed the threshold, so particle tracking settles the verdict"),
+        ("C) Larger dispersivity (Rung B) always dilutes below the threshold",
+         "C) A larger dispersivity (Rung B) decides it — doubling α_L and α_T always spreads the finite pulse enough to dilute the peak below any threshold, so dispersion alone settles the verdict"),
+        ("D) No lever can change the verdict — only timing and shape",
+         "D) None of the levers can change it — once 04t shows an exceedance, sorption, decay, dispersion and capture geometry only move the timing or shape of the breakthrough, never whether the peak clears the threshold"),
     ],
     "task_t08_checkpoint_2": [
         ("A) Later and lower peak",
@@ -2482,17 +2486,16 @@ Dispersivity and porosity transfer directly because they describe the physical p
 # ── Transport Track — Notebook 8 (keystone doublet) solutions ──
 
 "task_t08_checkpoint_1": r"""
-## Solution — Predicted keystone outcome
+## Solution — Which lever can change the compliance verdict?
 
-**Correct answer: A) Yes, exceeds within ~1-2 months.**
+**Correct answer: A.** Reactions (Rung A) are the lever that can move the *verdict*; a larger dispersivity (Rung B) and the capture-zone geometry (Rung D) do not.
 
-Running the model: the breakthrough at the extraction well peaks at **≈4.95 mg/L around day 41** — comfortably inside "a month or two" from the spill. Against a stated threshold of `THRESHOLD_MGL = 1.0` mg/L that is a clear **EXCEEDANCE**, and it happens well before a year.
+- **Reactions remove mass.** Sorption (retardation R) and first-order decay (λ) both take mass out of the mobile aqueous phase — decay destroys it, sorption parks it on the solid. Strong enough reactions therefore lower the *peak concentration*, and enough attenuation crosses below the threshold and flips the verdict. (At the specific values Rung A explores — R = 2, a 30-day half-life — the peak only drops to ≈2.99 / ≈2.80 mg/L, so the exceedance survives; but the *type* of lever is the one that can eliminate it.)
+- **Dispersivity reshapes; it does not remove mass (B is C's overstatement).** Doubling α_L (and α_T with it) spreads the finite pulse in time and across the corridor — earlier toe, broader front, longer tail, and a lower peak by dilution — but mass is conserved, and here the peak only eases from 4.95 to ≈4.21 mg/L. It reshapes the breakthrough far more than it moves the verdict, so "always dilutes below any threshold" (option C) is an overstatement.
+- **Capture geometry carries no concentration information (this is why B is wrong).** PRT tracks *which advective particles are captured* — arrival and timing — not *how much mass at what concentration*. A fully captured footprint says the water gets to the well; it can never say the concentration exceeds a limit. So Rung D cannot set or change the compliance verdict.
+- **D is wrong** because reactions genuinely can flip the verdict (first bullet); the levers are not all timing/shape-only.
 
-- **B** is wrong: with the spill only ~90 m upgradient of a pumping well, dispersion at this scale does not push the arrival out to ~a year; the doublet's forced gradient pulls the plume in comparatively quickly.
-- **C** is wrong: the finite pulse mass (3×10⁵ g over a 30-day release) is large enough that the peak clears 1.0 mg/L by a wide margin — dilution alone does not save you here.
-- **D** is wrong: "flow-only" describes the *doublet* — no solute rides the injection/extraction wells themselves — but the extraction well still **pumps groundwater**, and whatever the ambient groundwater carries (including a plume from an unrelated upgradient spill) comes with it. Flow-only wells are not solute-proof.
-
-So before running anything you should expect a "yes, exceeds, and soon" answer — which the keystone below confirms.
+That is the whole point of the applications: keep straight which knob moves the *decision* and which only moves the *curve*.
 <br>
 """,
 
