@@ -394,20 +394,18 @@ Given:
 """,
 
 "task_t02_checkpoint_2": r"""
-## Checkpoint 2 — Sorption Retardation Factor (OPTIONAL — reactive solutes)
-This is an **optional** checkpoint on **reactive (sorbing) solutes**. The core path of the
-course is a conservative tracer ($R = 1$); this checkpoint applies only when a solute sorbs.
+## Checkpoint 2 — Sorption Retardation Factor
+Five of the nine case-study contaminants are reactive. A **sorbing** solute is retarded by the
+**retardation factor** (dimensionless). Given group 4's contaminant, **chromium** (the strong-sorption case):
 
 Given:
-- Dry bulk density $\rho_b = 1900$ kg/m³
-- Distribution coefficient $K_d = 5 \times 10^{-4}$ m³/kg
+- Dry bulk density $\rho_b = 1800$ kg/m³
+- Distribution coefficient $K_d = 2.0$ mL/g $= 2.0 \times 10^{-3}$ m³/kg
 - Effective porosity $n_e = 0.20$ (dimensionless)
 
-The (dimensionless) sorption retardation factor for a linearly-sorbing solute at equilibrium is:
+$$R = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
 
-$$R_s = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
-
-**Calculate $R_s$ (dimensionless).**
+**Calculate $R$ (dimensionless).**
 """,
 
 "task_t02_checkpoint_pe": r"""
@@ -460,15 +458,15 @@ In a MODFLOW 6 GWT (solute transport) model:
 "task_t04_checkpoint_1": r"""
 ## Checkpoint 1 — Grid Péclet Number (predict, then compute)
 
-The native grid carries the inherited ~50 m resolution into the source→receptor corridor. The **grid Péclet number** measures how well the grid resolves the dispersive spreading length $\alpha_L$:
+The **grid Péclet number** measures how well the grid resolves the dispersive spreading length $\alpha_L$:
 
 $$Pe_L = \frac{\Delta x}{\alpha_L}$$
 
-where $\Delta x$ is the local cell size (here the cell $\sqrt{\text{area}}$ at the doublet) and $\alpha_L = 10$ m.
+The inherited flow grid has ~50 m cells; we **refine the source→well corridor to ~10 m**. With $\alpha_L = 10$ m:
 
-**Step 1 — Predict (no calculation):** Before computing, decide — do you expect the native grid to be *above* or *below* the $Pe_L \le 2$ accuracy threshold? What would being *above* it mean for the simulated plume?
+**Step 1 — Predict (no calculation):** Before computing, decide — do you expect the *inherited ~50 m* grid to be *above* or *below* the $Pe_L \le 2$ accuracy threshold? What would being above it do to the simulated plume?
 
-**Step 2 — Compute:** Using the printed near-doublet cell size $\Delta x \approx 54$ m and $\alpha_L = 10$ m, calculate $Pe_L$.
+**Step 2 — Compute:** Calculate $Pe_L$ for the **refined corridor** ($\Delta x \approx 10$ m, $\alpha_L = 10$ m). Is it resolved?
 """,
 
 "task_t04_checkpoint_2": r"""
@@ -486,7 +484,15 @@ $$\Delta t_{max} = \frac{\Delta s}{v}$$
 "task_t04_checkpoint_3": r"""
 ## Checkpoint 3 — Which Threshold Claim is Defensible?
 
-You report the doublet results to a regulator. Even on the **refined** grid the transverse grid Péclet stays $Pe_T \approx 12 \gg 2$, so lateral spreading is never fully resolved. **Which one of the following claims can you defend?**
+You report the spill→capture result to a regulator. Even on the **refined** grid the transverse grid Péclet stays $Pe_T \approx 12 \gg 2$, so lateral spreading is never fully resolved. **Which one of the following claims can you defend?**
+""",
+
+"task_t04_checkpoint_predict": r"""
+## Checkpoint — Predict before you run
+
+You have now seen the whole model assembled on the Limmat valley aquifer: the flow-only geothermal **doublet**, the corridor-refined grid, and the finite-mass **SRC** spill placed ~90 m **upgradient** of the extraction / compliance well. The next cell actually solves it.
+
+**Predict first — do not run it yet.** A finite mass is released ~90 m upgradient, and the extraction well actively pumps groundwater (and whatever solute the ambient flow carries) toward itself. Do you expect the plume to reach the compliance well **above** the stated `THRESHOLD_mgL`, and roughly **when**?
 """,
 
 # ── Transport Track — Notebook 5 checkpoints ──
@@ -564,29 +570,39 @@ When transferring calibrated parameters from a heat transport model to a solute 
 # ── Transport Track — Notebook 8 (keystone doublet) checkpoints ──
 
 "task_t08_checkpoint_1": r"""
-## Checkpoint 1 — Predict the failure mode (before running the toy)
+## Checkpoint 1 — Which lever can change the *compliance verdict*?
 
-You are about to run the **provided 1D scheme-verification toy** and compare its breakthrough curve to the two-term first-type Ogata–Banks analytical solution, using a **front-sensitive** gate (≤5% rising-limb C/C₀ error **and** ≤5% t₅₀ error).
+04t already built and verified this model and read the compliance breakthrough: the conservative spill **reaches the extraction (compliance) well and exceeds** the 1.0 mg/L threshold (peak ≈ 4.95 mg/L at ~day 41). Taking that verdict as given, the applications below vary three levers:
 
-Suppose the numerical breakthrough **failed** that ±5% front gate — the simulated front came out too smeared and shifted. **What would be the most likely cause?**
+- **Rung A** — reactive transport: retardation (sorption) and first-order decay.
+- **Rung B** — a larger dispersivity (α_L, and α_T in lockstep with it).
+- **Rung D** — the doublet's capture-zone geometry, via MF6 **PRT** particle tracking.
 
-*(Recall from 02t/04t that $Pe = \Delta x / \alpha_L \le 2$ is an **accuracy** criterion — a coarse grid adds numerical dispersion; it does not make the implicit solver unstable.)*
+Some of these can change the **verdict itself** (exceed vs. not); others only change the **timing or shape** of the same exceedance. **Which statement sorts them correctly?**
 """,
 
 "task_t08_checkpoint_2": r"""
-## Checkpoint 2 — Predict the recirculation-fraction band (before reading the result)
+## Checkpoint 2 — Predict the effect of retardation (before the toggled rerun)
 
-The loaded geothermal doublet reinjects a conservative tracer (c_inj = 1) and pumps from an extraction well 200 m away, in the regional Limmat flow field. You will read the **steady-state plateau ratio C∞/c_inj** at the extraction well.
+The keystone run is **conservative** — no sorption, no decay. Rung A (optional, `RUN_REACTIVE`) reruns the same spill as **two separate variants**: (1) **retardation R = 2** (linear sorption, no decay), and (2), independently, **first-order decay** with a 30-day half-life (no sorption). This checkpoint is about variant (1) only — the **retardation (R = 2, sorption-only)** curve.
 
-**Before** looking — predict which band the recirculation fraction falls into:
+**Before running Rung A** — how do you expect the **R = 2, sorption-only** breakthrough curve to compare to the conservative one at the compliance well?
 """,
 
 "task_t08_checkpoint_3": r"""
-## Checkpoint 3 — Predict the effect of doubling α_L (before the toggled rerun)
+## Checkpoint 3 — Predict the effect of doubling α_L on the pulse (before the toggled rerun)
 
-You are about to (optionally) rerun the doublet with α_L doubled from 10 m to 20 m. The locked ratio keeps α_T = α_L/10, so **α_T doubles as well**.
+Rung B (optional, `RUN_ALPHA_L`) reruns the spill with the longitudinal dispersivity doubled, α_L = 20 m instead of the locked 10 m. The helper preserves the locked 10:1 anisotropy ratio, so the transverse dispersivity **α_T also doubles** (1 m → 2 m).
 
-**Which description best captures the expected change in the extraction-well breakthrough curve?**
+The keystone breakthrough is a finite **pulse** — it rises from zero, peaks, and falls away again — not a steady plateau. **Before running Rung B** — how do you expect doubling α_L to reshape that pulse at the compliance well?
+""",
+
+"task_t08_checkpoint_4": r"""
+## Checkpoint 4 — Predict the PRT capture-zone verdict (before running Rung D)
+
+Rung D (optional, `RUN_PRT`) runs MODFLOW 6 **PRT** particle tracking: a disc of particles is released across the spill's realistic ~10 m footprint, 90 m **upgradient** of the doublet's extraction (compliance) well, with the doublet pumping. Each particle either terminates in the extraction well's cell (captured) or escapes elsewhere.
+
+**Before running Rung D** — do you expect the spill footprint to be captured by the extraction well, and what would that capture verdict tell you (and *not* tell you) about the compliance question from the Keystone?
 """,
 
 "task_exercise_flow_net_1": r"""
@@ -730,7 +746,7 @@ solutions = {
     # Checkpoints 1, 3, 4, 5, 6, 8 are multiple choice - handled separately
     # Transport Track — Notebook 2 checkpoints
     "task_t02_checkpoint_1": (10.0, 12.5),  # Correct solution 11.2 m/d (864 * 0.0026 / 0.20)
-    "task_t02_checkpoint_2": (5.4, 6.1),    # Correct solution 5.75 (1 + 1900*5e-4/0.20)
+    "task_t02_checkpoint_2": (18.0, 20.0),  # Correct solution 19.0 (1 + 1800*2e-3/0.20)
     "task_t02_checkpoint_pe": (9.0, 11.0),  # Correct solution 10.0 (Δx/α_L = 100/10)
     # task_t02_checkpoint_3 is multiple choice - handled separately
     # Transport Track — Notebook 3 checkpoints
@@ -738,7 +754,7 @@ solutions = {
     # task_t03_checkpoint_1 is multiple choice - handled separately
     # task_t03_checkpoint_3 is multiple choice - handled separately
     # Transport Track — Notebook 4 checkpoints
-    "task_t04_checkpoint_1": (4.4, 6.4),    # Pe_L = dx/alpha_L = ~54/10 = 5.4 (b010191 native, > 2)
+    "task_t04_checkpoint_1": (0.5, 1.5),    # Pe_L = dx/alpha_L = ~10/10 = 1 (refined corridor, <= 2)
     "task_t04_checkpoint_2": (0.30, 0.50),  # dt_max = ds/v = 10.8/28.3 = 0.38 d (refined well-adj cell)
     # task_t04_checkpoint_3 is multiple choice - handled separately
     # Transport Track — Notebook 5 checkpoints
@@ -833,7 +849,7 @@ solutions_exact = {
     "task08_checkpoint_8": "A) The capture zone expands",
     # Transport Track — Notebook 2 checkpoints
     "task_t02_checkpoint_1": "11.2",
-    "task_t02_checkpoint_2": "5.75",
+    "task_t02_checkpoint_2": "19",
     "task_t02_checkpoint_pe": "10.0",
     "task_t02_checkpoint_3": "B) Concentrated in the city centre",
     # Transport Track — Notebook 3 checkpoints
@@ -841,9 +857,10 @@ solutions_exact = {
     "task_t03_checkpoint_2": "30",
     "task_t03_checkpoint_3": "A) MST",
     # Transport Track — Notebook 4 checkpoints
-    "task_t04_checkpoint_1": "≈ 5.4",
+    "task_t04_checkpoint_1": "≈ 1",
     "task_t04_checkpoint_2": "≈ 0.38",
-    "task_t04_checkpoint_3": "A) Recirculation reaches the abstraction well",
+    "task_t04_checkpoint_3": "A) The well breakthrough & threshold timing",
+    "task_t04_checkpoint_predict": "A) Yes, exceeds within ~1-2 months",
     # Transport Track — Notebook 5 checkpoints
     "task_t05_checkpoint_1": "A) Sparse plume data plus parameter trade-offs leave the inverse problem under-constrained",
     "task_t05_checkpoint_2": "See output",
@@ -856,9 +873,10 @@ solutions_exact = {
     "task_t05_checkpoint_nonunique": "B) The tracer test constrains n_e independently",
     "task_t05_checkpoint_transfer": "C) Thermal retardation factor",
     # Transport Track — Notebook 8 (keystone doublet) checkpoints
-    "task_t08_checkpoint_1": "A) Grid Péclet too high",
-    "task_t08_checkpoint_2": "B) 10–70%",
-    "task_t08_checkpoint_3": "A) Earlier toe, broader front, longer tail; plateau may drop",
+    "task_t08_checkpoint_1": "A) Reactions can flip it; geometry never can; dispersivity only reshapes",
+    "task_t08_checkpoint_2": "A) Later and lower peak",
+    "task_t08_checkpoint_3": "A) Earlier toe, broader front, lower peak",
+    "task_t08_checkpoint_4": "A) Yes, fully captured — capture is not exceedance",
     "task_exercise_flow_net_1": "21",
     "task_exercise_flow_net_2": "-2",
     "task_exercise_flow_net_3": "100",
@@ -955,6 +973,7 @@ solution_unit = {
     "task_t04_checkpoint_1": "",
     "task_t04_checkpoint_2": " d",
     "task_t04_checkpoint_3": "multiple choice",
+    "task_t04_checkpoint_predict": "multiple choice",
     # Transport Track — Notebook 5 checkpoints
     "task_t05_checkpoint_1": "multiple choice",
     "task_t05_checkpoint_2": "°C",
@@ -970,6 +989,7 @@ solution_unit = {
     "task_t08_checkpoint_1": "multiple choice",
     "task_t08_checkpoint_2": "multiple choice",
     "task_t08_checkpoint_3": "multiple choice",
+    "task_t08_checkpoint_4": "multiple choice",
     # Exercises implemented in notebooks from theory
     "task_exercise_flow_net_1": " m",
     "task_exercise_flow_net_2": " kPa/m",
@@ -1160,14 +1180,24 @@ multiple_choice_options = {
     ],
     # Transport Track — Notebook 4 checkpoints
     "task_t04_checkpoint_3": [
-        ("A) Recirculation reaches the abstraction well",
-         "A) \"A meaningful fraction (~0.30 of c_inj) of the injected solute recirculates to the abstraction well\" — a longitudinal/flux-integrated arrival quantity that CONVERGES under refinement (native ~0.18 → refined ~0.30): the coarse grid under-reads it, but refining recovers a trustworthy value, unlike the transverse width/contour claims."),
+        ("A) The well breakthrough & threshold timing",
+         "A) \"The plume reaches the monitoring well and exceeds the threshold at ~day D\" — a longitudinal receptor-breakthrough quantity resolved on the refined corridor (Pe_L <= 2): arrival time, peak and threshold-exceedance timing are defensible, unlike the transverse width/contour claims."),
         ("B) Contaminated zone is exactly 80 m wide",
          "B) \"The contaminated zone is exactly 80 m wide at the 10% contour\" — lateral width is governed by transverse dispersion (Pe_T ≈ 12 ≫ 2 even refined): a numerical-dispersion artefact."),
         ("C) The 0.1 contour passes through a specific parcel",
          "C) \"The 0.1 concentration contour passes through this exact parcel\" — the precise contour position shifts with resolution; same unresolved transverse dispersion."),
         ("D) Refining removed all numerical error",
          "D) \"Refining the grid removed all numerical error\" — refining recovered longitudinal/peak accuracy but transverse stays Pe_T ≫ 2."),
+    ],
+    "task_t04_checkpoint_predict": [
+        ("A) Yes, exceeds within ~1-2 months",
+         "A) Yes — the spill is close (~90 m) and the extraction well actively pulls groundwater toward itself, so the plume arrives and clears the threshold within roughly a month or two"),
+        ("B) Yes, but not for ~a year",
+         "B) Yes, but only after nearly a year — at this short distance dispersion would have to smear the arrival out that far"),
+        ("C) No, stays below threshold",
+         "C) No — dilution and dispersion keep the peak concentration below the threshold throughout the simulation"),
+        ("D) No, the well can't capture solute",
+         "D) No — the doublet's wells are flow-only (they pump water, carry no solute of their own), so the well cannot draw the plume toward itself"),
     ],
     # Transport Track — Notebook 5 checkpoints
     "task_t05_checkpoint_1": [
@@ -1205,34 +1235,44 @@ multiple_choice_options = {
     ],
     # Transport Track — Notebook 8 (keystone doublet) checkpoints
     "task_t08_checkpoint_1": [
-        ("A) Grid Péclet too high",
-         "A) The grid Péclet number Δx/α_L is too high — a coarse grid adds numerical dispersion that smears and shifts the front (tie to the Pe ≤ 2 accuracy criterion from 02t/04t)"),
-        ("B) Molecular diffusion too large",
-         "B) The molecular diffusion D_m* was set too large — it dominates the dispersion coefficient"),
-        ("C) Ogata–Banks is wrong",
-         "C) The Ogata–Banks analytical solution itself is incorrect for a continuous source"),
-        ("D) Courant number causes a crash",
-         "D) The Courant number Cr > 1 makes the implicit solver unstable and the run crashes"),
+        ("A) Reactions can flip it; geometry never can; dispersivity only reshapes",
+         "A) Reactions (Rung A) REMOVE mass — decay destroys it, sorption parks it on the solid — so strong enough attenuation pulls the peak below the threshold and flips the verdict. Capture geometry (Rung D) carries no concentration information at all, so it can NEVER move a concentration verdict. Dispersivity (Rung B) CONSERVES mass and mainly reshapes the breakthrough (lower, broader peak); at realistic values it eases the peak without clearing the threshold here"),
+        ("B) Capture geometry (Rung D) decides the compliance verdict",
+         "B) Capture geometry (Rung D) decides it — if PRT shows the spill footprint is captured by the well, the compliance well must then exceed the threshold, so particle tracking settles the verdict"),
+        ("C) Larger dispersivity (Rung B) always dilutes below the threshold",
+         "C) A larger dispersivity (Rung B) decides it — doubling α_L and α_T always spreads the finite pulse enough to dilute the peak below any threshold, so dispersion alone settles the verdict"),
+        ("D) No lever can change the verdict — only timing and shape",
+         "D) None of the levers can change it — once 04t shows an exceedance, sorption, decay, dispersion and capture geometry only move the timing or shape of the breakthrough, never whether the peak clears the threshold"),
     ],
     "task_t08_checkpoint_2": [
-        ("A) <10%",
-         "A) <10% — the doublet essentially does not short-circuit; nearly all reinjected tracer is swept downgradient"),
-        ("B) 10–70%",
-         "B) 10–70% — a substantial but partial fraction of the reinjected tracer returns to the extraction well"),
-        ("C) >90%",
-         "C) >90% — the doublet is almost fully closed; nearly all reinjected tracer recirculates"),
-        ("D) Cannot be bounded",
-         "D) The fraction cannot be bounded even roughly without first running a transient particle-tracking model"),
+        ("A) Later and lower peak",
+         "A) Later and lower — retardation (R=2) slows the plume's effective velocity by a factor of R, delaying arrival, and sorption also partitions mass onto the solid phase, removing it from the mobile aqueous phase, so the aqueous peak reaching the well is both later and lower"),
+        ("B) Earlier and lower peak",
+         "B) Earlier and lower — sorbed mass reduces the plume's effective bulk, so the thinner plume moves through the matrix faster even as its peak concentration drops"),
+        ("C) Later peak, same height",
+         "C) Later, but the peak height is unaffected — sorption only shifts timing, not mass delivered"),
+        ("D) No effect",
+         "D) No effect — R and lambda only matter for exact regulated contaminants, not for a generic spill demo"),
     ],
     "task_t08_checkpoint_3": [
-        ("A) Earlier toe, broader front, longer tail; plateau may drop",
-         "A) Earlier toe and a more gradual/broader front with a longer tail; and because α_T doubles too, transverse dilution may LOWER the plateau (which can never exceed c_inj)"),
-        ("B) Later toe, sharper front, plateau exceeds c_inj",
-         "B) A later toe and sharper front, with the plateau rising above c_inj"),
-        ("C) No change for a doublet",
-         "C) No change — α_L only affects 1D columns, not a doublet geometry"),
-        ("D) Plateau doubles",
-         "D) The plateau concentration doubles because the dispersion coefficient doubles"),
+        ("A) Earlier toe, broader front, lower peak",
+         "A) The toe arrives earlier, the front broadens (more gradual rise and fall, longer tail), and the peak is lower"),
+        ("B) Later toe, sharper peak, higher peak",
+         "B) The toe arrives later, the front is sharper, and the peak is higher"),
+        ("C) No change",
+         "C) No change — dispersivity only matters for steady-state recirculation problems, not a finite pulse"),
+        ("D) Same timing, peak doubles",
+         "D) Timing is unchanged, but the peak concentration doubles because the dispersion coefficient doubles"),
+    ],
+    "task_t08_checkpoint_4": [
+        ("A) Yes, fully captured — capture is not exceedance",
+         "A) Yes, fully captured — every particle in the footprint reaches the well; capture alone says the water arrives, not that concentration exceeds a threshold"),
+        ("B) No, the spill is outside the capture zone",
+         "B) No — at 90 m upgradient the spill sits outside the doublet's capture zone, so the footprint bypasses the well and drifts downgradient"),
+        ("C) Partially captured, roughly half",
+         "C) Partially captured — roughly half the footprint reaches the well and half escapes, because the spill straddles the edge of the capture zone"),
+        ("D) Yes, fully captured, which proves exceedance",
+         "D) Yes, fully captured — and since every particle reaches the well, the compliance well must also see the concentration exceed the threshold"),
     ],
 
     "K_increase_sandstone_1": [
@@ -2176,20 +2216,20 @@ Note: the specific discharge $q = Ki = 2.25$ m/d is the flux per unit area. Divi
 """,
 
 "task_t02_checkpoint_2": r"""
-## Solution — Sorption Retardation Factor (OPTIONAL)
+## Solution — Sorption Retardation Factor
 
 For a linearly-sorbing solute at equilibrium, the (dimensionless) retardation factor is:
 
-$$R_s = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
+$$R = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
 
-Substituting $\rho_b = 1900$ kg/m³, $K_d = 5 \times 10^{-4}$ m³/kg, and $n_e = 0.20$:
+For chromium (group 4), substituting $\rho_b = 1800$ kg/m³, $K_d = 2.0 \times 10^{-3}$ m³/kg, and $n_e = 0.20$:
 
-$$R_s = 1 + \frac{1900 \times 5 \times 10^{-4}}{0.20} = 1 + \frac{0.95}{0.20} = 1 + 4.75 = 5.75$$
+$$R = 1 + \frac{1800 \times 2.0 \times 10^{-3}}{0.20} = 1 + \frac{3.6}{0.20} = 1 + 18 = 19$$
 
-The units cancel ($\text{kg/m}^3 \times \text{m}^3/\text{kg}$ is dimensionless), so $R_s$ is dimensionless.
-A sorbing solute's front travels about **5.75× slower** than the conservative tracer (front velocity $v / R_s$).
+The units cancel ($\text{kg/m}^3 \times \text{m}^3/\text{kg}$ is dimensionless), so $R$ is dimensionless.
+Chromium's front travels about **19× slower** than a conservative tracer (front velocity $v / R$) — strong retardation.
 
-This is **optional** background: the core path of the course is a conservative tracer ($R = 1$). In MODFLOW 6 GWT, sorption is activated in the **MST** package (`sorption`, `bulk_density`, `distcoef`); we keep it **off** for the conservative core path.
+Reactive transport is **in scope**: 5 of the 9 case studies sorb or decay. In MODFLOW 6 GWT, sorption is activated in the **MST** package (`sorption`, `bulk_density`, `distcoef`) and first-order decay via `decay`; your group's parameters are pinned in `case_config_transport.yaml`.
 <br>
 """,
 
@@ -2219,7 +2259,7 @@ The map shows that GWHE (groundwater-heat-exchange) doublet concessions (WPG = h
 2. **Favourable aquifer conditions** — the Limmat Valley gravel aquifer is productive and accessible
 3. **Proximity to the Limmat** — river filtrate provides a large, renewable resource
 
-Each doublet withdraws water at one well and reinjects it at another, setting up exactly the injection→abstraction flow path along which a conservative tracer could recirculate.
+Each doublet withdraws water at one well and returns it at another, setting up a forced-gradient flow field with a capture zone around the extraction well — the field that decides whether an upgradient contaminant spill is drawn into the monitoring well or bypasses it.
 <br>
 """,
 
@@ -2268,11 +2308,11 @@ DSP handles dispersion ($\alpha_L$/`alh`, $\alpha_T$/`ath1`, $D_m^*$/`diffc`), A
 "task_t04_checkpoint_1": r"""
 ## Solution — Grid Péclet Number
 
-With the near-doublet cell size $\Delta x \approx 54$ m and $\alpha_L = 10$ m:
+For the **refined corridor** ($\Delta x \approx 10$ m, $\alpha_L = 10$ m):
 
-$$Pe_L = \frac{\Delta x}{\alpha_L} = \frac{54}{10} \approx 5.4$$
+$$Pe_L = \frac{\Delta x}{\alpha_L} = \frac{10}{10} = 1$$
 
-This is **above** the $Pe_L \le 2$ accuracy threshold. Crucially, **$Pe_L \le 2$ is an *accuracy* criterion, not a stability one** — the TVD scheme with implicit (IMS) advection stays stable far above $Pe = 2$; it does **not** blow up. Instead, a coarse grid adds *numerical dispersion* that artificially smears the plume — most damagingly **across** the flow direction — and dilutes the concentrations near the corridor centre-line. The consequence you predicted: the native grid will **under-predict the peak concentration** along the source→receptor corridor.
+This is **at/below** the $Pe_L \le 2$ accuracy threshold — the corridor is resolved. (The *inherited* ~50 m grid would give $Pe_L \approx 5$, well above 2 — which is exactly why we refine.) Crucially, **$Pe_L \le 2$ is an *accuracy* criterion, not a stability one** — the TVD scheme with implicit (IMS) advection stays stable far above $Pe = 2$; it does **not** blow up. Instead, a coarse grid adds *numerical dispersion* that artificially smears the plume — most damagingly **across** the flow direction — and dilutes the concentrations near the corridor centre-line. On a coarse (unrefined) grid the consequence is an **under-predicted peak concentration** along the source→well corridor — which is why the corridor is refined before we read the breakthrough.
 <br>
 """,
 
@@ -2288,17 +2328,31 @@ Like $Pe \le 2$, **$Cr \le 1$ is an accuracy criterion, not a stability one** �
 "task_t04_checkpoint_3": r"""
 ## Solution — Defensible Threshold Claims
 
-**Correct answer: A** — the recirculation of injected solute back to the abstraction well.
+**Correct answer: A** — the receptor breakthrough at the monitoring well (arrival, peak, threshold-exceedance timing).
 
 Quantities fall into two camps by how they respond to refinement:
 
 | Quantity | Grid behaviour | Defensible? |
 |---|---|---|
-| **Recirculation / arrival at the well** (A) | longitudinal/flux-integrated; under-read on coarse grids but **converges** on refinement (native ~0.18 → refined ~0.30) | **Yes** — refine, then quote the converged value |
-| **Peak concentration in the plume body** | grid-sensitive; under-predicted on coarse grids, recovers on refinement (0.84 → 0.98) | With caution — refine first |
-| **Lateral plume width / exact contour** (B, C) | set by transverse dispersion; $Pe_T \approx 11 \gg 2$ at any feasible grid | **No** — numerical artefact |
+| **Receptor breakthrough / threshold timing** (A) | longitudinal; resolved on the refined corridor ($Pe_L \le 2$) | **Yes** |
+| **Peak concentration at the well** | grid-sensitive; under-predicted on coarse grids, recovers once the corridor is refined | With caution — refine first |
+| **Lateral plume width / exact contour** (B, C) | numerical: the physical plume is **sub-cell** and the convergent flow is **oblique to the grid** (cross-wind dispersion); $Pe_T \gg 2$ | **No** — numerical artefact |
 
-The coarse grid under-reads *both* the recirculation and the peak (large cells dilute concentration), but refinement **recovers** the longitudinal/flux-integrated quantities — it **cannot** fix the transverse under-resolution (so D is wrong): $Pe_T$ stays far above 2. A claim about *whether and roughly how much* solute returns to the well is defensible once you have refined; a claim about the *exact width or contour* of the contaminated area is not — at any resolution you can afford. This is a **graded** judgment in your final report (Results & Interpretation — limitations; Conceptual Model — assumptions).
+A coarse grid dilutes concentration (large cells), so it under-reads the **peak at the well**; refining the source→well corridor **recovers the longitudinal breakthrough** — but it **cannot** fix the transverse under-resolution (so D is wrong): $Pe_T$ stays far above 2 at any affordable grid. So *whether and when* the plume reaches the well above the threshold is defensible once the corridor is refined; the *exact width or contour* of the contaminated area is not. For the genuine **lateral / wellfield-protection** question, use **particle tracking** (a capture zone) — advective and free of the numerical-dispersion artefact — not the smeared concentration field (Step 8). This "which claims does the grid support?" judgment is exactly what you carry into your project's interpretation and limitations.
+<br>
+""",
+
+"task_t04_checkpoint_predict": r"""
+## Solution — Predict before you run
+
+**Correct answer: A — yes, it exceeds the threshold within roughly one to two months.**
+
+Two features of the setup make this the physical expectation *before* any numbers appear:
+
+- **The source is close and upgradient.** The spill sits only ~90 m from the extraction well, directly up the local flow direction — so the ambient gradient alone carries it toward the well.
+- **The well pulls the flow toward itself.** The extraction well removes ~1370 m³/d; even though it carries no solute of its own (option D), it bends the flow field so that upgradient water — and the dissolved mass it carries — converges on the well. That is exactly why the extraction well is the *compliance / monitoring* well.
+
+With a seepage velocity of order a few metres per day over ~90 m, an arrival on the scale of **weeks-to-a-couple-of-months** is expected, and because a large finite mass is released the peak comfortably clears the stated threshold. When you run the next cell you should see a **peak of ≈ 4.95 mg/L at ~day 41** — an early, clear exceedance, matching prediction A. (Options B and C under-estimate how fast a forced-gradient doublet delivers a nearby upgradient spill.)
 <br>
 """,
 
@@ -2432,43 +2486,67 @@ Dispersivity and porosity transfer directly because they describe the physical p
 # ── Transport Track — Notebook 8 (keystone doublet) solutions ──
 
 "task_t08_checkpoint_1": r"""
-## Solution — Predicted failure mode
+## Solution — Which lever can change the compliance verdict?
 
-**Correct answer: A) Grid Péclet too high.**
+**Correct answer: A.** The three levers are not the same *kind* of knob. Reactions can move the *verdict* (they remove mass); capture geometry categorically cannot (it carries no concentration information); a larger dispersivity conserves mass and mainly reshapes the curve — at realistic values it eases the peak without clearing the threshold here.
 
-A front that comes out too smeared and shifted is the signature of **numerical dispersion**, which a coarse grid (high grid Péclet $Pe = \Delta x/\alpha_L > 2$) adds on top of the physical dispersion. This is exactly the **accuracy** criterion you met in 02t/04t — and it is what the toy is built to avoid (it uses $\Delta x/\alpha_L = 0.5$).
+- **Reactions remove mass.** Sorption (retardation R) and first-order decay (λ) both take mass out of the mobile aqueous phase — decay destroys it, sorption parks it on the solid. Strong enough reactions therefore lower the *peak concentration*, and enough attenuation crosses below the threshold and flips the verdict. (At the specific values Rung A explores — R = 2, a 30-day half-life — the peak only drops to ≈2.99 / ≈2.80 mg/L, so the exceedance survives; but the *type* of lever is the one that can eliminate it.)
+- **Dispersivity reshapes; it does not remove mass (B is C's overstatement).** Doubling α_L (and α_T with it) spreads the finite pulse in time and across the corridor — earlier toe, broader front, longer tail, and a lower peak by dilution — but mass is conserved, and here the peak only eases from 4.95 to ≈4.21 mg/L. It reshapes the breakthrough far more than it moves the verdict, so "always dilutes below any threshold" (option C) is an overstatement.
+- **Capture geometry carries no concentration information (this is why B is wrong).** PRT tracks *which advective particles are captured* — arrival and timing — not *how much mass at what concentration*. A fully captured footprint says the water gets to the well; it can never say the concentration exceeds a limit. So Rung D cannot set or change the compliance verdict.
+- **D is wrong** because reactions genuinely can flip the verdict (first bullet); the levers are not all timing/shape-only.
 
-- **B** is wrong: $D_m^*$ is fixed and tiny ($8.64\times10^{-5}$ m²/d); it is negligible next to $\alpha_L v$.
-- **C** is wrong: Ogata–Banks is the *reference* truth here; we verify the numerics against it, not the other way round.
-- **D** is wrong: $Cr \le 1$ (like $Pe \le 2$) is an **accuracy** criterion, not a stability one. MF6 solves advection implicitly, so $Cr > 1$ smears the curve in time but does **not** crash the run.
-
-So a failed front gate points you at the **grid**, not the solver or the analytical solution.
+That is the whole point of the applications: keep straight which knob moves the *decision* and which only moves the *curve*.
 <br>
 """,
 
 "task_t08_checkpoint_2": r"""
-## Solution — Recirculation-fraction band
+## Solution — Effect of retardation (R = 2, sorption-only)
 
-**Correct answer: B) 10–70%.**
+**Correct answer: A) Later and lower peak.**
 
-Reading the steady-state plateau at the extraction well gives $C_\infty/c_\text{inj} \approx 0.30$ — about **a third** of the reinjected tracer recirculates. This is the **partial-recirculation** regime: a finite-spacing doublet in regional flow neither fully captures its own reinjected water (which would push toward >90%) nor cleanly avoids it (which would give <10%). For a GWHE installation this is the operationally important middle ground.
+Retardation slows the *plume's* velocity to $v/R$ (R=2 halves it), so the arrival is delayed. Sorption (via R) removes mass from the mobile (aqueous) phase before it reaches the well, so the peak concentration also drops. Running Rung A confirms this:
 
-- **A (<10%)** would mean a well-separated doublet with negligible short-circuiting.
-- **C (>90%)** would mean an almost closed loop — not the case at this spacing and regional gradient.
-- **D** is wrong: the recirculation fraction is a robust, flux-integrated quantity read directly from the breakthrough plateau; no extra particle-tracking model is needed to bound it.
+- **R = 2, sorption-only**: peak ≈ **2.99 mg/L at ≈ day 61** (vs. the conservative 4.95 mg/L @ day 41) — later AND lower.
+
+Rung A also runs a **separate** decay-only variant ($\lambda = \ln 2/30$ d, R = 1, no sorption) — this checkpoint is not about that curve, but the contrast is the key teaching point: decay-only gives peak ≈ **2.80 mg/L**, at **essentially the same arrival time** as the conservative run. In other words, **retardation delays arrival** (it slows the plume itself), while **decay does not** (it only removes mass in transit, it does not slow anything) — both lower the peak, but only retardation shifts *when* the peak shows up.
+
+Neither variant drops the peak below `THRESHOLD_MGL = 1.0` mg/L, but they do not act the same way: **retardation delays AND damps** the exceedance (it slows the plume itself, and sorption removes mass), while **decay damps it WITHOUT materially delaying arrival** (it only removes mass in transit). Either way the exceedance is not eliminated.
+
+- **B** is wrong: sorption/retardation never *speeds up* transport — $R \ge 1$ always.
+- **C** is wrong: sorption also reduces the aqueous peak concentration (mass partitions onto the solid phase), it is not timing-only.
+- **D** is wrong: R is exactly the reactive-transport parameter this rung exists to demonstrate; it visibly reshapes the curve.
 <br>
 """,
 
 "task_t08_checkpoint_3": r"""
-## Solution — Effect of doubling α_L
+## Solution — Effect of doubling α_L on the pulse
 
-**Correct answer: A) Earlier toe, broader front, longer tail; plateau may drop.**
+**Correct answer: A) Earlier toe, broader front, lower peak.**
 
-More longitudinal dispersion spreads the front: the **toe arrives earlier** (faster leading edge), the rise is **more gradual/broader**, and the **tail is longer**. Because the locked ratio keeps $\alpha_T = \alpha_L/10$, doubling $\alpha_L$ **also doubles $\alpha_T$**, so *transverse* dilution increases — which can **lower** the steady-state plateau rather than raise it.
+More longitudinal dispersion spreads the finite pulse out **in time**: the **toe arrives earlier** (the leading edge of the plume outruns the mean advective front), the **rise and fall are more gradual**, and the pulse leaves a **longer tail** — and on its own, spreading the same released mass over more time already lowers the peak. Because the locked ratio keeps $\alpha_T = \alpha_L/10$, doubling $\alpha_L$ to 20 m also doubles $\alpha_T$ to 2 m, so **transverse dilution also contributes** to the lower peak (the same mass spread over a wider swath of the corridor). Both mechanisms act together here — and because this helper always moves $\alpha_L$ and $\alpha_T$ in lockstep (the locked 10:1 ratio), **this single run cannot apportion how much of the peak drop comes from longitudinal spreading vs. transverse dilution**; separating them would need a run that changes one dispersivity while holding the other fixed.
 
-- **B** is wrong: more dispersion brings the toe *earlier*, not later, and smears (not sharpens) the front.
-- **C** is wrong: dispersivity reshapes the breakthrough in any geometry, doublet included.
-- **D** is wrong: the plateau is a concentration *ratio* bounded by mixing — it **can never exceed $c_\text{inj}$**, let alone double.
+Running Rung B confirms it: peak ≈ **4.21 mg/L at ≈ day 38.8** (vs. the α_L=10 m keystone's 4.95 mg/L @ day 41) — earlier and lower, with both grid Péclet numbers (Pe_L and Pe_T) halved (a larger dispersivity is easier to resolve on the same grid).
+
+- **B** is wrong: more dispersion spreads (does not sharpen) the front, and brings the toe *earlier*, not later.
+- **C** is wrong: dispersivity reshapes any breakthrough curve, pulse or plateau, doublet or 1D column.
+- **D** is wrong: the pulse concentration is diluted (the same mass spread over a larger mixing volume), not doubled — mass is conserved, concentration is not.
+<br>
+""",
+
+"task_t08_checkpoint_4": r"""
+## Solution — Is the spill footprint captured?
+
+**Correct answer: A) Yes, fully captured — capture is not exceedance.**
+
+Running Rung D confirms it: every one of the 200 particles released across the realistic ~10 m spill footprint terminates in the extraction well's cell — capture fraction **1.000** (200/200) — with a median advective travel time of **25.8 d** (p10 22.7, p90 28.6). The spill sits entirely inside the doublet's capture zone.
+
+**What that verdict does — and does not — corroborate.** Full advective capture corroborates the Keystone's **arrival and timing**: the water carrying the spill really does reach *this* well, on an advective timescale of weeks. It says **nothing whatsoever about concentration**, so it cannot corroborate the **exceedance** verdict. That verdict (peak 4.95 mg/L at day 41) is, and remains, the ADE model's alone. It is tempting to argue that because the footprint stays inside the well's *advective* streamtube the lateral limitation cannot matter — but that argument is wrong: transverse dispersion is precisely what carries mass *across* an advective streamtube boundary, so full advective capture does **not** guarantee the peak concentration. PRT bounds advective connection; it does not measure concentration.
+
+**How PRT is verified here.** Not by arithmetic against the ADE's day-41 peak — an advective travel time and a dispersive concentration peak are different quantities, and no simple identity connects them in a converging 2-D flow field. PRT is checked against **the flow field it was handed**: integrating the seepage velocity v = q/n_e straight from the GWF budget (`DATA-SPDIS`, locked porosity 0.20) along the spill→well axis gives a path-averaged **3.21 m/d**, and PRT's particles report **3.24 m/d** — agreement to ~1%, from two independent computations, nothing tuned. (Note that PRT and the ADE share the same flow field, grid and porosity, so this verifies the *particle tracker*, not the flow solution; the track's end-to-end transport verification is 04t §5's analytical benchmark.)
+
+- **B** is wrong: the spill sits directly on the spill→well axis, and the capture zone's **bisected half-width at the spill transect is ≈ 79 m** — the 10 m footprint is nowhere near escaping it.
+- **C** is wrong twice over. (i) The footprint does not straddle anything: a 10 m disc centred on the axis sits ~79 m inside the boundary, so *nothing* in it escapes. (ii) And do not carry away "the probe shows roughly half" either — the wider 120 m probe returns a fraction of **0.719**, not ~0.5, and that number is not a physical split at all: it is a property of **that probe disc** ("the fraction of a 120 m disc that happens to lie inside the capture zone"), a disc that even reaches ~30 m *downgradient* of the well, where capture is impossible. The scalar is an artefact of where we chose to release; the captured/escaped **scatter** and the bisected half-width are the real results.
+- **D** is wrong: full capture never by itself proves an exceedance — PRT carries no concentration information at all. Only the ADE model, run separately, answers the threshold question.
 <br>
 """,
 
