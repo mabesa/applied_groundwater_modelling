@@ -487,6 +487,14 @@ $$\Delta t_{max} = \frac{\Delta s}{v}$$
 You report the spill→capture result to a regulator. Even on the **refined** grid the transverse grid Péclet stays $Pe_T \approx 12 \gg 2$, so lateral spreading is never fully resolved. **Which one of the following claims can you defend?**
 """,
 
+"task_t04_checkpoint_predict": r"""
+## Checkpoint — Predict before you run
+
+You have now seen the whole model assembled on the Limmat valley aquifer: the flow-only geothermal **doublet**, the corridor-refined grid, and the finite-mass **SRC** spill placed ~90 m **upgradient** of the extraction / compliance well. The next cell actually solves it.
+
+**Predict first — do not run it yet.** A finite mass is released ~90 m upgradient, and the extraction well actively pumps groundwater (and whatever solute the ambient flow carries) toward itself. Do you expect the plume to reach the compliance well **above** the stated `THRESHOLD_mgL`, and roughly **when**?
+""",
+
 # ── Transport Track — Notebook 5 checkpoints ──
 
 "task_t05_checkpoint_1": r"""
@@ -848,6 +856,7 @@ solutions_exact = {
     "task_t04_checkpoint_1": "≈ 1",
     "task_t04_checkpoint_2": "≈ 0.38",
     "task_t04_checkpoint_3": "A) The well breakthrough & threshold timing",
+    "task_t04_checkpoint_predict": "A) Yes, exceeds within ~1-2 months",
     # Transport Track — Notebook 5 checkpoints
     "task_t05_checkpoint_1": "A) Sparse plume data plus parameter trade-offs leave the inverse problem under-constrained",
     "task_t05_checkpoint_2": "See output",
@@ -960,6 +969,7 @@ solution_unit = {
     "task_t04_checkpoint_1": "",
     "task_t04_checkpoint_2": " d",
     "task_t04_checkpoint_3": "multiple choice",
+    "task_t04_checkpoint_predict": "multiple choice",
     # Transport Track — Notebook 5 checkpoints
     "task_t05_checkpoint_1": "multiple choice",
     "task_t05_checkpoint_2": "°C",
@@ -1174,6 +1184,16 @@ multiple_choice_options = {
          "C) \"The 0.1 concentration contour passes through this exact parcel\" — the precise contour position shifts with resolution; same unresolved transverse dispersion."),
         ("D) Refining removed all numerical error",
          "D) \"Refining the grid removed all numerical error\" — refining recovered longitudinal/peak accuracy but transverse stays Pe_T ≫ 2."),
+    ],
+    "task_t04_checkpoint_predict": [
+        ("A) Yes, exceeds within ~1-2 months",
+         "A) Yes — the spill is close (~90 m) and the extraction well actively pulls groundwater toward itself, so the plume arrives and clears the threshold within roughly a month or two"),
+        ("B) Yes, but not for ~a year",
+         "B) Yes, but only after nearly a year — at this short distance dispersion would have to smear the arrival out that far"),
+        ("C) No, stays below threshold",
+         "C) No — dilution and dispersion keep the peak concentration below the threshold throughout the simulation"),
+        ("D) No, the well can't capture solute",
+         "D) No — the doublet's wells are flow-only (they pump water, carry no solute of their own), so the well cannot draw the plume toward itself"),
     ],
     # Transport Track — Notebook 5 checkpoints
     "task_t05_checkpoint_1": [
@@ -2315,6 +2335,20 @@ Quantities fall into two camps by how they respond to refinement:
 | **Lateral plume width / exact contour** (B, C) | numerical: the physical plume is **sub-cell** and the convergent flow is **oblique to the grid** (cross-wind dispersion); $Pe_T \gg 2$ | **No** — numerical artefact |
 
 A coarse grid dilutes concentration (large cells), so it under-reads the **peak at the well**; refining the source→well corridor **recovers the longitudinal breakthrough** — but it **cannot** fix the transverse under-resolution (so D is wrong): $Pe_T$ stays far above 2 at any affordable grid. So *whether and when* the plume reaches the well above the threshold is defensible once the corridor is refined; the *exact width or contour* of the contaminated area is not. For the genuine **lateral / wellfield-protection** question, use **particle tracking** (a capture zone) — advective and free of the numerical-dispersion artefact — not the smeared concentration field (Step 8). This "which claims does the grid support?" judgment is exactly what you carry into your project's interpretation and limitations.
+<br>
+""",
+
+"task_t04_checkpoint_predict": r"""
+## Solution — Predict before you run
+
+**Correct answer: A — yes, it exceeds the threshold within roughly one to two months.**
+
+Two features of the setup make this the physical expectation *before* any numbers appear:
+
+- **The source is close and upgradient.** The spill sits only ~90 m from the extraction well, directly up the local flow direction — so the ambient gradient alone carries it toward the well.
+- **The well pulls the flow toward itself.** The extraction well removes ~1370 m³/d; even though it carries no solute of its own (option D), it bends the flow field so that upgradient water — and the dissolved mass it carries — converges on the well. That is exactly why the extraction well is the *compliance / monitoring* well.
+
+With a seepage velocity of order a few metres per day over ~90 m, an arrival on the scale of **weeks-to-a-couple-of-months** is expected, and because a large finite mass is released the peak comfortably clears the stated threshold. When you run the next cell you should see a **peak of ≈ 4.95 mg/L at ~day 41** — an early, clear exceedance, matching prediction A. (Options B and C under-estimate how fast a forced-gradient doublet delivers a nearby upgradient spill.)
 <br>
 """,
 
