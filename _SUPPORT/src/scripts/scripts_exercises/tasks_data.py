@@ -873,7 +873,7 @@ solutions_exact = {
     "task_t05_checkpoint_nonunique": "B) The tracer test constrains n_e independently",
     "task_t05_checkpoint_transfer": "C) Thermal retardation factor",
     # Transport Track — Notebook 8 (keystone doublet) checkpoints
-    "task_t08_checkpoint_1": "A) Reactions (Rung A) can flip the verdict; dispersivity and geometry cannot",
+    "task_t08_checkpoint_1": "A) Reactions can flip it; geometry never can; dispersivity only reshapes",
     "task_t08_checkpoint_2": "A) Later and lower peak",
     "task_t08_checkpoint_3": "A) Earlier toe, broader front, lower peak",
     "task_t08_checkpoint_4": "A) Yes, fully captured — capture is not exceedance",
@@ -1235,8 +1235,8 @@ multiple_choice_options = {
     ],
     # Transport Track — Notebook 8 (keystone doublet) checkpoints
     "task_t08_checkpoint_1": [
-        ("A) Reactions (Rung A) can flip the verdict; dispersivity and geometry cannot",
-         "A) Reactions (Rung A) can change it — enough sorption or decay removes mass and can pull the peak below the threshold; dispersivity (Rung B) mainly reshapes the timing and spread of the same exceedance; capture geometry (Rung D) carries no concentration information, so it can never change an exceedance verdict"),
+        ("A) Reactions can flip it; geometry never can; dispersivity only reshapes",
+         "A) Reactions (Rung A) REMOVE mass — decay destroys it, sorption parks it on the solid — so strong enough attenuation pulls the peak below the threshold and flips the verdict. Capture geometry (Rung D) carries no concentration information at all, so it can NEVER move a concentration verdict. Dispersivity (Rung B) CONSERVES mass and mainly reshapes the breakthrough (lower, broader peak); at realistic values it eases the peak without clearing the threshold here"),
         ("B) Capture geometry (Rung D) decides the compliance verdict",
          "B) Capture geometry (Rung D) decides it — if PRT shows the spill footprint is captured by the well, the compliance well must then exceed the threshold, so particle tracking settles the verdict"),
         ("C) Larger dispersivity (Rung B) always dilutes below the threshold",
@@ -2488,7 +2488,7 @@ Dispersivity and porosity transfer directly because they describe the physical p
 "task_t08_checkpoint_1": r"""
 ## Solution — Which lever can change the compliance verdict?
 
-**Correct answer: A.** Reactions (Rung A) are the lever that can move the *verdict*; a larger dispersivity (Rung B) and the capture-zone geometry (Rung D) do not.
+**Correct answer: A.** The three levers are not the same *kind* of knob. Reactions can move the *verdict* (they remove mass); capture geometry categorically cannot (it carries no concentration information); a larger dispersivity conserves mass and mainly reshapes the curve — at realistic values it eases the peak without clearing the threshold here.
 
 - **Reactions remove mass.** Sorption (retardation R) and first-order decay (λ) both take mass out of the mobile aqueous phase — decay destroys it, sorption parks it on the solid. Strong enough reactions therefore lower the *peak concentration*, and enough attenuation crosses below the threshold and flips the verdict. (At the specific values Rung A explores — R = 2, a 30-day half-life — the peak only drops to ≈2.99 / ≈2.80 mg/L, so the exceedance survives; but the *type* of lever is the one that can eliminate it.)
 - **Dispersivity reshapes; it does not remove mass (B is C's overstatement).** Doubling α_L (and α_T with it) spreads the finite pulse in time and across the corridor — earlier toe, broader front, longer tail, and a lower peak by dilution — but mass is conserved, and here the peak only eases from 4.95 to ≈4.21 mg/L. It reshapes the breakthrough far more than it moves the verdict, so "always dilutes below any threshold" (option C) is an overstatement.
