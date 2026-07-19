@@ -393,15 +393,17 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
         tr_opt = tr_opts[group]
 
         # --- sanity-check the pre-swap flow concession matches doublet order.
-        #     Group 4 is the ONE deliberate exception: the flow config still
-        #     carries the pre-swap b010190, which we assert exactly (so the swap
-        #     is verified, not merely tolerated). ---
+        #     Group 4 is the ONE swap point: the flow config carries EITHER the
+        #     pre-swap b010190 (before M1.3a reconciles the configs) OR the
+        #     canonical b010120 (after M1.3a). Both are legitimate swap
+        #     endpoints; any OTHER value is a wrong G4. After reconcile there is
+        #     zero G4-exception mismatch (flow[4] == canonical). ---
         flow_concession_preswap = _flow_concession_str(flow_opt["concession"])
         if group == 4:
-            if flow_concession_preswap != "b010190":
+            if flow_concession_preswap not in ("b010190", "b010120"):
                 raise ValueError(
-                    f"group 4: flow-config pre-swap concession is {flow_concession_preswap!r}, "
-                    "expected 'b010190' (the concession the b010120 swap replaced).")
+                    f"group 4: flow-config concession is {flow_concession_preswap!r}, expected "
+                    "'b010190' (pre-swap) or 'b010120' (post-M1.3a reconcile).")
         elif flow_concession_preswap != concession:
             raise ValueError(
                 f"group {group}: flow-config concession {flow_concession_preswap} "
@@ -541,6 +543,21 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
     ledger = pd.DataFrame(ledger_rows, columns=ledger_columns)
     sanity = pd.DataFrame(sanity_rows, columns=sanity_columns)
 
+    # STATE-AWARE reconcile check (not broadly permissive): the config pair is
+    # valid in exactly TWO states, and the flow-G4 concession must AGREE with
+    # the re-homing ledger. Any third/mixed state fails.
+    #   * PRE-reconcile : flow[4] == b010190 AND every group changed (re-homed).
+    #   * POST-reconcile: flow[4] == b010120 AND no group changed (already canonical).
+    g4_flow = _flow_concession_str(flow_opts[4]["concession"])
+    n_changed = int(ledger["changed"].sum())
+    pre = (g4_flow == "b010190" and n_changed == N_GROUPS)
+    post = (g4_flow == "b010120" and n_changed == 0)
+    if not (pre or post):
+        raise ValueError(
+            f"config pair is in an unexpected reconcile state: flow[4]={g4_flow!r}, "
+            f"changed={n_changed}/{N_GROUPS}. Expected either PRE-reconcile "
+            "(flow[4]=b010190, all 9 changed) or POST-reconcile (flow[4]=b010120, 0 changed).")
+
     _assert_acceptance(mapping, ledger, sanity, doublet_set)
 
     if write:
@@ -595,9 +612,11 @@ def _assert_acceptance(mapping: pd.DataFrame, ledger: pd.DataFrame,
         assert actual == expected, (
             f"group {g}: golden content mismatch -- got {actual}, expected {expected}")
 
-    # ledger: 9 rows, all changed True (every contaminant moves doublets),
-    # b010223/group-5 flagged
-    assert bool(ledger["changed"].all()), "expected every group's contaminant to move doublets"
+    # ledger: 9 rows; `changed` == (original != canonical) row-wise (the
+    # pre/post reconcile STATE is enforced upstream in build_canonical_mapping).
+    # Group-5's b010223 overlap is flagged regardless of state.
+    exp_changed = ledger["original_transport_concession"] != ledger["canonical_flow_concession"]
+    assert (ledger["changed"] == exp_changed).all(), "`changed` not consistent with orig vs canonical"
     g5 = ledger.loc[ledger["group"] == 5].iloc[0]
     assert g5["canonical_flow_concession"] == "b010223", "group 5 canonical concession != b010223"
     assert "b010223" in g5["note"], "group 5 ledger note must flag the b010223 overlap"

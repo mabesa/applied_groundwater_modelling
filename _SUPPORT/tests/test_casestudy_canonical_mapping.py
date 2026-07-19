@@ -218,19 +218,41 @@ def test_provenance_hashes_match_actual_files(mapping):
 
 # ---------------------------------------------------------------------------
 # repairing_ledger
+#
+# The repairing_ledger records the ONE-TIME pre->post re-homing. The COMMITTED
+# repairing_ledger.csv is the frozen record built pre-reconcile (all
+# changed=True, originals = the old transport concessions). The in-memory
+# `ledger` fixture, by contrast, tracks the LIVE config state: once M1.3a has
+# rewritten the transport concessions to canonical, its `original` == canonical
+# and `changed` == False. So the re-homing facts are asserted against the
+# committed frozen CSV; state-independent facts use the live fixture.
 # ---------------------------------------------------------------------------
-def test_ledger_nine_rows_all_changed(ledger):
-    assert len(ledger) == N
-    assert bool(ledger["changed"].all()), "every contaminant moves doublets -> changed=True"
+def _committed_repairing_ledger() -> pd.DataFrame:
+    p = ccm.DEFAULT_OUT_CSV.with_name("repairing_ledger.csv")
+    return pd.read_csv(p)
 
 
-def test_ledger_original_transport_concessions(ledger):
+def test_committed_ledger_nine_rows_all_changed():
+    led = _committed_repairing_ledger()
+    assert len(led) == N
+    assert bool(led["changed"].all()), "the frozen pre-reconcile ledger records every re-homing"
+
+
+def test_committed_ledger_original_transport_concessions():
+    led = _committed_repairing_ledger()
     expected = {
         0: "b010205", 1: "b010196", 2: "b010185", 3: "b010211", 4: "b010223",
         5: "b010200", 6: "b010224", 7: "b010230", 8: "b010199",
     }
     for g, orig in expected.items():
-        assert ledger.loc[ledger["group"] == g, "original_transport_concession"].iloc[0] == orig
+        assert led.loc[led["group"] == g, "original_transport_concession"].iloc[0] == orig
+
+
+def test_ledger_changed_consistent_with_orig_vs_canonical(ledger):
+    """State-independent: `changed` must equal (original != canonical) row-wise,
+    whether the live config is pre- or post-reconcile."""
+    exp = ledger["original_transport_concession"] != ledger["canonical_flow_concession"]
+    assert (ledger["changed"] == exp).all()
 
 
 def test_ledger_group5_b010223_overlap_flagged(ledger):
@@ -437,6 +459,49 @@ def test_g4_flow_preswap_must_be_190(monkeypatch):
 
     monkeypatch.setattr(ccm, "_load_yaml", _corrupt)
     with pytest.raises(ValueError, match="expected 'b010190'"):
+        ccm.build_canonical_mapping(write=False)
+
+
+# ===========================================================================
+# STATE-AWARE reconcile acceptance (pre/post reconcile; fail any third state)
+# ===========================================================================
+_TEMPLATE = ccm.DEFAULT_OUT_CSV.parent
+_BAK_FLOW = _TEMPLATE / "case_config.yaml.bak"
+_BAK_TR = _TEMPLATE / "case_config_transport.yaml.bak"
+
+
+def test_live_config_is_post_reconcile_state(mapping, ledger):
+    """The committed (live) config is POST-reconcile: build succeeds AND every
+    group's ledger `changed` is False (transport concession == canonical)."""
+    assert bool((~ledger["changed"]).all()), "live config should be fully reconciled (0 changed)"
+
+
+@pytest.mark.skipif(not (_BAK_FLOW.exists() and _BAK_TR.exists()),
+                    reason="pre-image .bak backups not present")
+def test_pre_reconcile_state_accepted_from_bak():
+    """Building against the pre-image (.bak) originals is the PRE-reconcile
+    state: flow[4]=b010190, all 9 changed -- must be accepted, and yield the
+    same canonical CONTENT."""
+    res = ccm.build_canonical_mapping(flow_config=_BAK_FLOW, transport_config=_BAK_TR, write=False)
+    assert bool(res.ledger["changed"].all()), "pre-reconcile: every group re-homed"
+    assert list(res.mapping["concession"]) == EXPECTED_CONCESSIONS  # content identical
+
+
+def test_mixed_state_rejected(monkeypatch):
+    """A THIRD/mixed state must FAIL: flow[4]=b010120 (post) but a transport
+    concession still non-canonical (so changed != 0)."""
+    orig_load = ccm._load_yaml
+
+    def _corrupt(path):
+        cfg = orig_load(path)
+        if Path(path).name == "case_config_transport.yaml":
+            for opt in cfg["transport_scenarios"]["options"]:
+                if opt["id"] == 0:
+                    opt["concession"] = "b010999"  # non-canonical -> changed=True for g0
+        return cfg
+
+    monkeypatch.setattr(ccm, "_load_yaml", _corrupt)
+    with pytest.raises(ValueError, match="unexpected reconcile state"):
         ccm.build_canonical_mapping(write=False)
 
 

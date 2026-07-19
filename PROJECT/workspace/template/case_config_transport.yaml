@@ -12,24 +12,28 @@
 #     - "First Last"
 #     - "Second Last"                      
 
-# Fixed assignments by group number (each group gets ONE validated REAL
+# Fixed assignments by group number (each group gets ONE canonical REAL
 # geothermal-doublet concession; injection + extraction wells both active,
 # extraction well = compliance/monitoring "Well"):
-# Recirc fractions below are the CALIBRATED values (05f-calibrated K field).
-# Group 0: concession b010205 - TCE       - Industrial spill (demo)   - Q=1370 m3/d, recirc 0.221
-# Group 1: concession b010196 - Nitrate    - Sports field fertilizer  - Q=1370 m3/d, recirc 0.272
-# Group 2: concession b010185 - Benzene    - Gas station leak (decay) - Q=1370 m3/d, recirc 0.384
-# Group 3: concession b010211 - Chloride   - Legacy landfill          - Q=1370 m3/d, recirc 0.213
-# Group 4: concession b010223 - Chromium   - Metal plating (R~19)     - Q=1370 m3/d, recirc 0.376
-# Group 5: concession b010200 - PFOA       - Industrial point source  - Q=1370 m3/d, recirc 0.142
-# Group 6: concession b010224 - PCE        - Dry cleaning (sorption)  - Q=5760 m3/d, recirc 0.596
-# Group 7: concession b010230 - Ammonium   - Leaking sewer (decay)    - Q=1370 m3/d, recirc 0.093
-# Group 8: concession b010199 - Atrazine   - Garden allotment         - Q=5760 m3/d, recirc 0.460
+# CANONICAL assignment (M1.3a): concession + doublet coords come from the
+# M1.1 doublet_table; the contaminant is unchanged from the original
+# scenario; Q = licensed max (4320 m3/d) for ALL groups.
+# Group 0: concession b010210 - TCE       - Industrial spill (demo) - Q=4320 m3/d
+# Group 1: concession b010219 - Nitrate    - Sports field fertilizer - Q=4320 m3/d
+# Group 2: concession b010201 - Benzene    - Gas station leak (decay) - Q=4320 m3/d
+# Group 3: concession b010236 - Chloride   - Legacy landfill - Q=4320 m3/d
+# Group 4: concession b010120 - Chromium   - Metal plating (R~19) - Q=4320 m3/d
+# Group 5: concession b010223 - PFOA       - Industrial point source - Q=4320 m3/d
+# Group 6: concession b010227 - PCE        - Dry cleaning (sorption) - Q=4320 m3/d
+# Group 7: concession b010213 - Ammonium   - Leaking sewer (decay) - Q=4320 m3/d
+# Group 8: concession b010207 - Atrazine   - Garden allotment - Q=4320 m3/d
 #
-# Doublet locations are REAL, validated AWEL concessions. Groups 6 & 8 use the
-# higher-rate (>3000 L/min) class (Q=5760 m3/d); all others Q=1370 m3/d.
-# NOTE: the two SIGILL-failing concessions are intentionally NOT assigned here.
-# NOTE: final coordinates STILL NEED JupyterHub-Linux re-validation before students use them.
+# recirculation_fraction values below are STALE (validated for the OLD
+# doublet); they are linted-only (no physics consumer) and pending removal
+# / re-derivation in M3b -- see coherence_ledger.csv (recirc_stale=True).
+# Doublet coords + capture/upgradient/threshold outcomes are NOT yet
+# re-validated for the swapped doublets -- pending M4
+# (coherence_ledger.csv: upgradient_unverified=True).
 
 title: "Contaminant transport with well field interactions"  # TODO: Tailor with your contaminant
 
@@ -73,7 +77,7 @@ transport_scenarios:
     # ========== GROUP 0: TCE - Industrial Spill (Demo) ==========
     - id: 0
       title: "Industrial solvent spill (TCE)"
-      concession: "b010205"
+      concession: "b010210"
       contaminant: "Trichloroethylene (TCE)"
       description: >
         A 1-day TCE spill from an industrial facility. Assess plume migration
@@ -105,23 +109,23 @@ transport_scenarios:
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
-        concession_id: "b010205"
-        injection_easting: 2681745.9      # m (LV95)
-        injection_northing: 1248144.8     # m (LV95)
-        extraction_easting: 2681799.9     # m (LV95) - compliance/monitoring Well
-        extraction_northing: 1248143.8    # m (LV95)
-        pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
+        concession_id: "b010210"
+        injection_easting: 2681704.9      # m (LV95)
+        injection_northing: 1247555.9     # m (LV95)
+        extraction_easting: 2681885.9     # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1247397.9    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
         recirculation_fraction: 0.221     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
         location:
-          # VALIDATED spill placement (scenario testing), as an easting/northing OFFSET
-          # relative to the extraction well. ~92 m upgradient, lateral 77 m vs capture
-          # y_max=Q/(2Ti)~99 m (Q=1370 m3/d, T~3000 m2/d, i~0.0023) -> just inside capture.
-          # Tested outcome: REACHES the well but stays BELOW threshold (dilution).
-          easting: 51.0              # m, +E offset from extraction well (upgradient)
-          northing: -77.0            # m, -N offset from extraction well (upgradient)
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well (unchanged by the M1.3a doublet swap). After the
+          # swap the capture / upgradient / threshold outcome is NOT yet
+          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          easting: 51.0              # m, +E offset from extraction well
+          northing: -77.0            # m, -N offset from extraction well
           layer: 1
         start_time_days: 0
         # TODO: Adjust duration of source activation based on model runs to 
@@ -152,14 +156,11 @@ transport_scenarios:
 
     # ========== GROUP 1: Nitrate - Sports Field Fertilizer ==========
     - id: 1
-      concession: "b010196"
+      concession: "b010219"
       title: "Sports field fertilizer contamination"
       contaminant: "Nitrate (NO3-)"
       description: >
-        The tank holding the nitrate fertilizer for a large sports field has 
-        leaked, unloading nitrate into the groundwater over a 1-day period. 
-        Determine if the nitrate plume reaches the downgradient monitoring well 
-        or the pumping well.
+        The tank holding the nitrate fertilizer for a large sports field has  leaked, unloading nitrate into the groundwater over a 1-day period.  Determine if the nitrate plume reaches the downgradient monitoring well  or the pumping well.
 
       properties:
         cas_number: "14797-55-8"
@@ -183,23 +184,23 @@ transport_scenarios:
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
-        concession_id: "b010196"
-        injection_easting: 2681366.9      # m (LV95)
-        injection_northing: 1248328.8     # m (LV95)
-        extraction_easting: 2681365.9     # m (LV95) - compliance/monitoring Well
-        extraction_northing: 1248266.8    # m (LV95)
-        pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
+        concession_id: "b010219"
+        injection_easting: 2679765.3      # m (LV95)
+        injection_northing: 1249207.9     # m (LV95)
+        extraction_easting: 2679684.5     # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1249120.4    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
         recirculation_fraction: 0.272     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
         location:
-          # VALIDATED spill placement (scenario testing), as an easting/northing OFFSET
-          # relative to the extraction well. ~179 m upgradient, lateral 169 m vs capture
-          # y_max=Q/(2Ti)~99 m (Q=1370 m3/d, T~3000 m2/d, i~0.0023) -> well outside capture.
-          # Tested outcome: does NOT reach the well (lateral bypass).
-          easting: -60.0             # m, -E offset from extraction well (upgradient)
-          northing: -169.0           # m, -N offset from extraction well (upgradient)
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well (unchanged by the M1.3a doublet swap). After the
+          # swap the capture / upgradient / threshold outcome is NOT yet
+          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          easting: -60.0             # m, -E offset from extraction well
+          northing: -169.0           # m, -N offset from extraction well
           layer: 1
         start_time_days: 0
         # TODO: Adjust duration of source activation based on model runs to 
@@ -230,7 +231,7 @@ transport_scenarios:
 
     # ========== GROUP 2: Benzene - Gas Station Leak ==========
     - id: 2
-      concession: "b010185"
+      concession: "b010201"
       title: "Gasoline station leak (BTEX)"
       contaminant: "Benzene"
       description: >
@@ -259,23 +260,23 @@ transport_scenarios:
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
-        concession_id: "b010185"
-        injection_easting: 2681487.9      # m (LV95)
-        injection_northing: 1249310.9     # m (LV95)
-        extraction_easting: 2681515.9     # m (LV95) - compliance/monitoring Well
-        extraction_northing: 1249254.9    # m (LV95)
-        pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
+        concession_id: "b010201"
+        injection_easting: 2679926.5      # m (LV95)
+        injection_northing: 1248996.9     # m (LV95)
+        extraction_easting: 2680130.5     # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1248879.9    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
         recirculation_fraction: 0.384     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
         location:
-          # VALIDATED spill placement (scenario testing), as an easting/northing OFFSET
-          # relative to the extraction well. ~114 m upgradient, lateral 102 m vs capture
-          # y_max=Q/(2Ti)~99 m (Q=1370 m3/d, T~3000 m2/d, i~0.0023) -> at capture edge.
-          # Tested outcome: REACHES the well, ABOVE threshold.
-          easting: 50.0              # m, +E offset from extraction well (upgradient)
-          northing: -102.0           # m, -N offset from extraction well (upgradient)
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well (unchanged by the M1.3a doublet swap). After the
+          # swap the capture / upgradient / threshold outcome is NOT yet
+          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          easting: 50.0              # m, +E offset from extraction well
+          northing: -102.0           # m, -N offset from extraction well
           layer: 1
         start_time_days: 0
         # TODO: Adjust duration of source activation based on model runs to 
@@ -304,7 +305,7 @@ transport_scenarios:
 
     # ========== GROUP 3: Chloride - Legacy Landfill ==========
     - id: 3
-      concession: "b010211"
+      concession: "b010236"
       title: "Legacy landfill plume"
       contaminant: "Chloride (conservative tracer)"
       description: >
@@ -333,23 +334,23 @@ transport_scenarios:
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
-        concession_id: "b010211"
-        injection_easting: 2682350.9      # m (LV95)
-        injection_northing: 1248309.8     # m (LV95)
-        extraction_easting: 2682394.3     # m (LV95) - compliance/monitoring Well
-        extraction_northing: 1248252.2    # m (LV95)
-        pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
+        concession_id: "b010236"
+        injection_easting: 2680756.0      # m (LV95)
+        injection_northing: 1249057.0     # m (LV95)
+        extraction_easting: 2680862.0     # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1249015.0    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
         recirculation_fraction: 0.213     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "area"
         release_type: "continuous"
         location:
-          # VALIDATED spill placement (scenario testing), as an easting/northing OFFSET
-          # relative to the extraction well. ~130 m upgradient, lateral 83 m vs capture
-          # y_max=Q/(2Ti)~99 m (Q=1370 m3/d, T~3000 m2/d, i~0.0023) -> near capture edge.
-          # Tested outcome: MARGINAL (borderline reaches the well).
-          easting: 100.0             # m, +E offset from extraction well (upgradient)
-          northing: -83.0            # m, -N offset from extraction well (upgradient)
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well (unchanged by the M1.3a doublet swap). After the
+          # swap the capture / upgradient / threshold outcome is NOT yet
+          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          easting: 100.0             # m, +E offset from extraction well
+          northing: -83.0            # m, -N offset from extraction well
           layer: 1
         start_time_days: 0
         duration_days: 3650             # Started 10 years ago, ongoing
@@ -378,7 +379,7 @@ transport_scenarios:
 
     # ========== GROUP 4: Chromium - Metal Plating Facility ==========
     - id: 4
-      concession: "b010223"
+      concession: "b010120"
       title: "Metal plating facility chromium leak"
       contaminant: "Chromium (Cr-VI)"
       description: >
@@ -407,25 +408,23 @@ transport_scenarios:
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
-        concession_id: "b010223"
-        injection_easting: 2681890.0      # m (LV95)
-        injection_northing: 1248203.9     # m (LV95)
-        extraction_easting: 2681894.0     # m (LV95) - compliance/monitoring Well
-        extraction_northing: 1248169.9    # m (LV95)
-        pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
+        concession_id: "b010120"
+        injection_easting: 2682590.0      # m (LV95)
+        injection_northing: 1248496.9     # m (LV95)
+        extraction_easting: 2682706.0     # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1248549.9    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
         recirculation_fraction: 0.376     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
         location:
-          # VALIDATED spill placement (scenario testing), as an easting/northing OFFSET
-          # relative to the extraction well. ~93 m upgradient, lateral 76 m vs capture
-          # y_max=Q/(2Ti)~99 m (Q=1370 m3/d, T~3000 m2/d, i~0.0023) -> inside capture geometry,
-          # but Cr-VI is strongly retarded (R~19): the retarded front cannot cover the
-          # distance over a short time budget. The exercise window is extended so
-          # students can interpret the delayed, retarded breakthrough.
-          easting: 53.0              # m, +E offset from extraction well (upgradient)
-          northing: -76.0            # m, -N offset from extraction well (upgradient)
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well (unchanged by the M1.3a doublet swap). After the
+          # swap the capture / upgradient / threshold outcome is NOT yet
+          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          easting: 53.0              # m, +E offset from extraction well
+          northing: -76.0            # m, -N offset from extraction well
           layer: 1
         start_time_days: 0
         # TODO: Adjust duration of source activation based on model runs to
@@ -463,7 +462,7 @@ transport_scenarios:
 
     # ========== GROUP 5: PFOA - Industrial Point Source ==========
     - id: 5
-      concession: "b010200"
+      concession: "b010223"
       title: "PFAS contamination"
       contaminant: "PFOA (perfluorooctanoic acid)"
       description: >
@@ -492,23 +491,23 @@ transport_scenarios:
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
-        concession_id: "b010200"
-        injection_easting: 2681455.9      # m (LV95)
-        injection_northing: 1249228.9     # m (LV95)
-        extraction_easting: 2681519.9     # m (LV95) - compliance/monitoring Well
-        extraction_northing: 1249158.9    # m (LV95)
-        pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
+        concession_id: "b010223"
+        injection_easting: 2681890.0      # m (LV95)
+        injection_northing: 1248203.9     # m (LV95)
+        extraction_easting: 2681894.0     # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1248169.9    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
         recirculation_fraction: 0.142     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
         location:
-          # VALIDATED spill placement (scenario testing), as an easting/northing OFFSET
-          # relative to the extraction well. ~73 m upgradient, lateral 66 m vs capture
-          # y_max=Q/(2Ti)~99 m (Q=1370 m3/d, T~3000 m2/d, i~0.0023) -> inside capture.
-          # Tested outcome: REACHES the well, ABOVE threshold (mobile, persistent).
-          easting: 32.0              # m, +E offset from extraction well (upgradient)
-          northing: -66.0            # m, -N offset from extraction well (upgradient)
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well (unchanged by the M1.3a doublet swap). After the
+          # swap the capture / upgradient / threshold outcome is NOT yet
+          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          easting: 32.0              # m, +E offset from extraction well
+          northing: -66.0            # m, -N offset from extraction well
           layer: 1
         start_time_days: 0
         # TODO: Adjust duration of source activation based on model runs to
@@ -540,7 +539,7 @@ transport_scenarios:
 
     # ========== GROUP 6: PCE - Dry Cleaning Facility Leak ==========
     - id: 6
-      concession: "b010224"
+      concession: "b010227"
       title: "Dry cleaning facility solvent leak"
       contaminant: "Perchloroethylene (PCE)"
       description: >
@@ -569,24 +568,23 @@ transport_scenarios:
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
-        concession_id: "b010224"
-        injection_easting: 2682617.0      # m (LV95)
-        injection_northing: 1248326.3     # m (LV95)
-        extraction_easting: 2682709.4     # m (LV95) - compliance/monitoring Well
-        extraction_northing: 1248294.2    # m (LV95)
-        pumping_rate_m3_d: 5760           # per-concession Q [m3/d]; both wells run at |Q|
+        concession_id: "b010227"
+        injection_easting: 2681757.0      # m (LV95)
+        injection_northing: 1247774.0     # m (LV95)
+        extraction_easting: 2681881.0     # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1247765.0    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
         recirculation_fraction: 0.596     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
         location:
-          # VALIDATED spill placement (scenario testing), as an easting/northing OFFSET
-          # relative to the extraction well. ~250 m upgradient, lateral 244 m vs the LARGE
-          # capture y_max=Q/(2Ti)~417 m (Q=5760 m3/d, T~3000 m2/d, i~0.0023) -> inside capture.
-          # Q=5760 m3/d (the >3000 L/min class): wide capture zone draws the plume in.
-          # Tested outcome: REACHES the well, ABOVE threshold.
-          easting: 56.0              # m, +E offset from extraction well (upgradient)
-          northing: -244.0           # m, -N offset from extraction well (upgradient)
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well (unchanged by the M1.3a doublet swap). After the
+          # swap the capture / upgradient / threshold outcome is NOT yet
+          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          easting: 56.0              # m, +E offset from extraction well
+          northing: -244.0           # m, -N offset from extraction well
           layer: 1
         start_time_days: 0
         duration_days: 90               # 3-month leak
@@ -617,7 +615,7 @@ transport_scenarios:
 
     # ========== GROUP 7: Ammonium - Leaking Sewer Line ==========
     - id: 7
-      concession: "b010230"
+      concession: "b010213"
       title: "Leaking sewer line contamination"
       contaminant: "Ammonium (NH4+)"
       description: >
@@ -646,24 +644,23 @@ transport_scenarios:
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
-        concession_id: "b010230"
-        injection_easting: 2682381.0      # m (LV95)
-        injection_northing: 1248447.0     # m (LV95)
-        extraction_easting: 2682480.0     # m (LV95) - compliance/monitoring Well
-        extraction_northing: 1248406.0    # m (LV95)
-        pumping_rate_m3_d: 1370           # per-concession Q [m3/d]; both wells run at |Q|
+        concession_id: "b010213"
+        injection_easting: 2682090.0      # m (LV95)
+        injection_northing: 1248102.9     # m (LV95)
+        extraction_easting: 2682138.0     # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1248114.9    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
         recirculation_fraction: 0.093     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "line"                    # Line source (sewer)
         release_type: "continuous"
         location:
-          # VALIDATED spill placement (scenario testing), as an easting/northing OFFSET
-          # relative to the extraction well. ~136 m upgradient, lateral 114 m vs capture
-          # y_max=Q/(2Ti)~99 m (Q=1370 m3/d, T~3000 m2/d, i~0.0023) -> just past nominal edge,
-          # but the continuous line source still feeds the capture zone.
-          # Tested outcome: REACHES the well, ABOVE threshold (despite nitrification decay).
-          easting: 75.0              # m, +E offset from extraction well (upgradient)
-          northing: -114.0           # m, -N offset from extraction well (upgradient)
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well (unchanged by the M1.3a doublet swap). After the
+          # swap the capture / upgradient / threshold outcome is NOT yet
+          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          easting: 75.0              # m, +E offset from extraction well
+          northing: -114.0           # m, -N offset from extraction well
           layer: 1
         start_time_days: 0
         duration_days: 3650             # Ongoing leak
@@ -692,7 +689,7 @@ transport_scenarios:
 
     # ========== GROUP 8: Atrazine - Garden Allotment Pesticide ==========
     - id: 8
-      concession: "b010199"
+      concession: "b010207"
       title: "Garden allotment pesticide contamination"
       contaminant: "Atrazine"
       description: >
@@ -720,34 +717,23 @@ transport_scenarios:
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
-        concession_id: "b010199"
-        injection_easting: 2680796.9      # m (LV95)
-        injection_northing: 1248534.9     # m (LV95)
-        extraction_easting: 2681005.5     # m (LV95) - compliance/monitoring Well
-        extraction_northing: 1248318.8    # m (LV95)
-        pumping_rate_m3_d: 5760           # per-concession Q [m3/d]; both wells run at |Q|
+        concession_id: "b010207"
+        injection_easting: 2682181.4      # m (LV95)
+        injection_northing: 1247730.9     # m (LV95)
+        extraction_easting: 2682105.4     # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1247611.4    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
         recirculation_fraction: 0.460     # validated injection->extraction recirc fraction (05f-calibrated field)
       source:
         type: "point"
         release_type: "pulse"
         location:
-          # VALIDATED spill placement (scenario testing), as an easting/northing OFFSET
-          # relative to the extraction well. Scenario-realism retune: place the allotment
-          # about 100 m from the well so the single pulse can arrive within the fixed 60 d
-          # window while preserving the same Q, reactions, and grid settings.
-          # Previous validated offset was ~278 m upgradient, lateral 233 m within the LARGE
-          # capture y_max=Q/(2Ti)~417 m (Q=5760 m3/d, T~3000 m2/d, i~0.0023), but atrazine is
-          # sorbing (Kd~0.3) and the source is a single 1-day pulse.
-          # An intermediate ~150 m offset was also tested and rejected: it produced a peak
-          # of ~4e-4 mg/L at the well, numerically indistinguishable from zero and
-          # uninterpretable as a teaching case. The ~98 m placement (offset easting -53,
-          # northing -82) yields a resolvable, sub-threshold breakthrough that clearly
-          # demonstrates sorption-retarded transport. This is a deliberate scenario-realism
-          # trade: a garden allotment ~98 m from the extraction well is physically credible
-          # (the site also sits ~60 m from other, non-modelled Bullingerstrasse abstraction
-          # wells) and produces a pedagogically clear result.
-          easting: -53.0             # m, -E offset from extraction well (upgradient)
-          northing: -82.0            # m, -N offset from extraction well (upgradient)
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well (unchanged by the M1.3a doublet swap). After the
+          # swap the capture / upgradient / threshold outcome is NOT yet
+          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          easting: -53.0             # m, -E offset from extraction well
+          northing: -82.0            # m, -N offset from extraction well
           layer: 1
         start_time_days: 0
         # TODO: Adjust duration of source activation based on model runs to

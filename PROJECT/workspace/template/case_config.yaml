@@ -16,7 +16,7 @@ group:
 # Group 1: concession 219, scenario SC1
 # Group 2: concession 201, scenario SC2  
 # Group 3: concession 236, scenario SC3
-# Group 4: concession 190, scenario SC4
+# Group 4: concession 120, scenario SC4
 # Group 5: concession 223, scenario SC5
 # Group 6: concession 227, scenario SC6
 # Group 7: concession 213, scenario SC7
@@ -35,7 +35,7 @@ model:
   data_name: baseline_model   # keep fixed
   # Baseline (do NOT modify baseline input files in place).
   workspace: "~/applied_groundwater_modelling_data/limmat/baseline_model"
-  namefile: "limmat_valley_model_nwt.nam"      
+  namefile: "limmat_valley_model_nwt.nam"
   baseline_model_name: "limmat_valley_model_nwt"
 
 output:
@@ -77,7 +77,7 @@ scenarios:
       type: recharge_scale
       recharge_factor: 1.2
     - id: 4
-      concession: 190
+      concession: 120
       label: Persistent dry periods and increased temperatures decrease recharge -20%
       type: recharge_scale
       recharge_factor: 0.8
@@ -100,7 +100,7 @@ scenarios:
       concession: 213
       label: New exploration data shows that aquifer transmissivity is 20% higher than previously thought
       type: aquifer_transmissivity
-      transmissivity_factor: 1.2  
+      transmissivity_factor: 1.2
     - id: 8
       concession: 207
       label: New exploration data shows that aquifer transmissivity is 20% lower than previously thought
