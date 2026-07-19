@@ -34,16 +34,43 @@ Rule (fully pinned, see DESIGN_DOCS/student_casestudy_M1_steps.md, M1.1)
    bad spot. If only one real well exists for that role (n=1), there is
    nothing to fall back to: the point is kept, but the violation is flagged
    verbatim for human review.
-4. **Operating Q = licensed max.** Parsed from the free-text
-   ``BESCHREIBUNG`` field's ``Ertrag`` clause (e.g. ``"Ertrag 300 - 3000
-   l/min"`` -> take 3000; ``"Ertrag > 3000 l/min"`` -> take 3000 but flag it
-   as a lower-bound-only estimate). Parsing is case-insensitive, tolerant of
-   whitespace in ``l/min`` and of Swiss thousands separators
+4. **Q = licensed max (`Q_basis = "licensed_max"`).** Parsed from the
+   free-text ``BESCHREIBUNG`` field's ``Ertrag`` clause (e.g. ``"Ertrag 300 -
+   3000 l/min"`` -> take 3000; ``"Ertrag > 3000 l/min"`` -> take 3000 but flag
+   it as a lower-bound-only estimate). Parsing is case-insensitive, tolerant
+   of whitespace in ``l/min`` and of Swiss thousands separators
    (``3'000`` / ``3’000`` -> 3000). If a concession's rows carry DISAGREEING
    Ertrag clauses, the largest is picked deterministically AND a flag records
    the disagreement. Converted l/min -> m3/d via x1.44. A concession with no
    parseable ``Ertrag`` anywhere gets ``Q_m3d = None`` and a flag for manual
-   assignment.
+   assignment. **``Q_m3d`` is the TOTAL doublet extraction rate at the LICENSED
+   MAXIMUM -- NOT a measured/operating rate.** The doublet is flow-only; the
+   injection rate is the negative of extraction (mass-balanced, -Q at the
+   injection well). Do not read ``Q_m3d`` as an observed pumping value.
+
+Coordinate handoff (authoritative)
+----------------------------------
+The AUTHORITATIVE handoff to downstream model builds is the ``(E, N)`` LV95
+coordinate pair (representative centroid ``ext_E/ext_N`` + ``inj_E/inj_N``, and
+the per-well ``ext_wells`` / ``inj_wells`` lists) -- NOT a cell index. The
+in-domain / active-cell / river check here runs against the COARSE 05f grid,
+but the actual transport builds refine a local corridor to a finer grid whose
+cells differ from the coarse ones. A coarse-05f cellid/row/col would therefore
+MISLEAD the builder, so this table deliberately emits none: builders snap the
+``(E, N)`` coordinates onto their own refined grid. ``modelgrid_sha`` /
+``idomain_sha`` fingerprint the exact coarse grid + active mask the validity
+check used, so the check is auditable/reproducible.
+
+CRS + schema verification
+-------------------------
+The registry / boundary / river layers are asserted to be EPSG:2056 (LV95) and
+reprojected (with a recorded note) if not; an UNDEFINED CRS raises. The
+registry ``E``/``N`` columns are cross-checked against each row's own geometry
+(<= 1 m) -- a stamped-but-wrong CRS or garbled coordinates raise. The registry
+layer + expected columns (``E N GWR_ID FASSART NUTZART BESCHREIBUNG``) are
+schema-validated. Every concession is asserted to be a geothermal use
+(``NUTZART`` contains ``"WPG"``) so a silent registry change that drops wells
+or flips a concession to a non-GWHE use is caught.
 
 Acceptance / strict mode
 ------------------------
@@ -53,9 +80,10 @@ provenance-stamped "acceptance-valid" table if either (a) the active-cell
 check did not actually run (05f load degraded/skipped -> validity is
 unknown), or (b) any row still has an unresolved bad-validity after the
 fallback rule (a gate-tripped point that remains in-river / inactive /
-out-of-domain, including an n=1 kept-bad point). The degraded / None-validity
-path is available ONLY via ``strict=False``, which is explicitly a
-non-acceptance build for inspection/debugging.
+out-of-domain, including an n=1 kept-bad point), or (c) any concession is not
+a geothermal (``WPG``) use. The degraded / None-validity path is available
+ONLY via ``strict=False``, which is explicitly a non-acceptance build for
+inspection/debugging.
 
 Known outcome (grounded against the live registry, 2026-07 snapshot)
 ----------------------------------------------------------------------
@@ -112,6 +140,18 @@ RIVER_BUFFER_M = 20.0     # distance to a river polygon counted as "in river"
 LMIN_TO_M3D = 1.44        # l/min -> m3/d
 WELLS_LAYER = "GS_GRUNDWASSERFASSUNGEN_OGD_P"
 CRS = "EPSG:2056"
+CRS_EPSG = 2056           # the LV95 EPSG code every layer is asserted / reprojected to
+
+# Source-schema contract: the registry layer MUST expose these columns.
+EXPECTED_WELLS_COLUMNS = ("E", "N", "GWR_ID", "FASSART", "NUTZART", "BESCHREIBUNG")
+# Max allowed disagreement between the registry E/N columns and the row's own
+# geometry coordinates (both in LV95 metres). Rounding of E/N to 0.1 m accounts
+# for ~0.1 m; a CRS mismatch would blow this out by kilometres.
+EN_GEOM_TOL_M = 1.0
+# Every case-study concession is a geothermal (Wärmepumpe / GWHE) use -- its
+# NUTZART carries this token. A registry change that flips a concession to a
+# non-GWHE use (or drops its wells) is caught by asserting this.
+GEOTHERMAL_NUTZART = "WPG"
 
 # repo_root/_SUPPORT/src/casestudy_doublet_roster.py -> repo_root
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -152,6 +192,22 @@ def _sha256_file(path: Path) -> str:
     with open(path, "rb") as fh:
         for chunk in iter(lambda: fh.read(_CHUNK_SIZE), b""):
             h.update(chunk)
+    return h.hexdigest()
+
+
+def _sha256_array(arr: Any) -> str:
+    """Deterministic sha256 hex digest of a numpy array's shape + dtype + bytes.
+
+    Used to fingerprint the 05f modelgrid vertices and the idomain array the
+    active-cell check ran against, so the check is auditable / reproducible.
+    """
+    import numpy as np
+
+    a = np.ascontiguousarray(arr)
+    h = hashlib.sha256()
+    h.update(str(a.shape).encode("ascii"))
+    h.update(str(a.dtype).encode("ascii"))
+    h.update(a.tobytes())
     return h.hexdigest()
 
 
@@ -259,6 +315,8 @@ class _CellValidityContext:
     idomain: Any = None
     boundary_file: Optional[str] = None
     boundary_sha256: Optional[str] = None
+    modelgrid_sha: Optional[str] = None
+    idomain_sha: Optional[str] = None
     notes: List[str] = field(default_factory=list)
 
     def check(self, x: float, y: float) -> Dict[str, Optional[bool]]:
@@ -318,19 +376,33 @@ def _build_cell_validity_context(check_active_cell: bool = True) -> _CellValidit
         import transport_srcpulse_demo as tsd
         from data_utils import download_named_file
 
+        import numpy as np
+
         cgwf, boundary_gdf, rivers_gdf, _exe = tsd.load_limmat_flow()
         boundary_path = Path(download_named_file(name="model_boundary", data_type="gis"))
         idomain = cgwf.dis.idomain.array[0]
         modelgrid = cgwf.modelgrid
+
+        notes: List[str] = []
+        boundary_gdf = _reproject_to_lv95(boundary_gdf, "boundary", notes)
+        rivers_gdf = _reproject_to_lv95(rivers_gdf, "rivers", notes)
+
         try:
             boundary_poly = boundary_gdf.union_all()
         except AttributeError:  # older geopandas/shapely
             boundary_poly = boundary_gdf.unary_union
+
+        # Provenance fingerprints of the exact validity grid used: the modelgrid
+        # vertices (structure) and the idomain array (active mask).
+        modelgrid_sha = _sha256_array(np.asarray(modelgrid.verts))
+        idomain_sha = _sha256_array(np.asarray(idomain))
+
         return _CellValidityContext(
             domain_checked=True, river_checked=True, active_cell_checked=True,
             boundary_poly=boundary_poly, rivers_gdf=rivers_gdf,
             modelgrid=modelgrid, idomain=idomain,
             boundary_file=str(boundary_path), boundary_sha256=_sha256_file(boundary_path),
+            modelgrid_sha=modelgrid_sha, idomain_sha=idomain_sha, notes=notes,
         )
     except Exception as e_flow:
         # Degrade to boundary+river only (does not need the flow model / mf6 exe).
@@ -372,12 +444,78 @@ def _build_cell_validity_context(check_active_cell: bool = True) -> _CellValidit
 # ---------------------------------------------------------------------------
 # registry load
 # ---------------------------------------------------------------------------
-def _load_registry() -> Tuple[gpd.GeoDataFrame, Path]:
+def _reproject_to_lv95(gdf: gpd.GeoDataFrame, label: str, notes: List[str]) -> gpd.GeoDataFrame:
+    """Verify *gdf* is EPSG:2056; reproject if not (recording the original CRS
+    in *notes*); raise if the CRS is entirely undefined (can't safely trust or
+    reproject an unknown projection)."""
+    crs = gdf.crs
+    if crs is None:
+        raise ValueError(
+            f"{label}: CRS is undefined -- cannot verify it is LV95/EPSG:{CRS_EPSG}. "
+            "Refusing to silently trust coordinates of unknown projection."
+        )
+    try:
+        epsg = crs.to_epsg()
+    except Exception:
+        epsg = None
+    if epsg != CRS_EPSG:
+        notes.append(
+            f"{label}: source CRS was {crs.to_string() if hasattr(crs, 'to_string') else crs!r} "
+            f"(EPSG:{epsg}), reprojected to EPSG:{CRS_EPSG}."
+        )
+        gdf = gdf.to_crs(epsg=CRS_EPSG)
+    return gdf
+
+
+def _validate_wells_schema(path: Path) -> None:
+    """Raise if the expected registry layer or any expected column is missing."""
+    import fiona
+
+    layers = fiona.listlayers(path)
+    if WELLS_LAYER not in layers:
+        raise ValueError(
+            f"registry {path}: expected layer {WELLS_LAYER!r} not found; "
+            f"available layers: {layers}"
+        )
+
+
+def _load_registry() -> Tuple[gpd.GeoDataFrame, Path, List[str]]:
+    """Load + validate the well registry.
+
+    Returns ``(gdf, path, notes)`` where *notes* records any CRS reprojection
+    (empty when everything was already EPSG:2056). Raises on a missing
+    layer/column, an undefined CRS, or an E/N-vs-geometry disagreement.
+    """
+    import numpy as np
     from data_utils import download_named_file
 
     path = Path(download_named_file(name="wells", data_type="gis"))
+    _validate_wells_schema(path)
     gdf = gpd.read_file(path, layer=WELLS_LAYER)
-    return gdf, path
+
+    missing = [c for c in EXPECTED_WELLS_COLUMNS if c not in gdf.columns]
+    if missing:
+        raise ValueError(
+            f"registry {path} layer {WELLS_LAYER!r}: missing expected column(s) {missing}; "
+            f"present columns: {list(gdf.columns)}"
+        )
+
+    notes: List[str] = []
+    gdf = _reproject_to_lv95(gdf, "registry", notes)
+
+    # Verify the E/N columns actually agree with the (possibly reprojected)
+    # geometry -- catches a stamped-but-wrong CRS or swapped/garbled E/N.
+    geom = gdf.geometry
+    de = np.abs(gdf["E"].to_numpy(dtype=float) - geom.x.to_numpy(dtype=float))
+    dn = np.abs(gdf["N"].to_numpy(dtype=float) - geom.y.to_numpy(dtype=float))
+    max_de, max_dn = float(np.nanmax(de)), float(np.nanmax(dn))
+    if max_de > EN_GEOM_TOL_M or max_dn > EN_GEOM_TOL_M:
+        raise ValueError(
+            f"registry {path}: E/N columns disagree with geometry by "
+            f"(dE={max_de:.3f}, dN={max_dn:.3f}) m > tol {EN_GEOM_TOL_M} m -- "
+            "coordinates cannot be trusted (possible CRS/column mismatch)."
+        )
+    return gdf, path, notes
 
 
 # ---------------------------------------------------------------------------
@@ -506,7 +644,7 @@ def build_doublet_table(check_active_cell: bool = True,
         row is unresolved-bad after fallback (message lists the offending
         rows/reasons).
     """
-    gdf, source_path = _load_registry()
+    gdf, source_path, source_notes = _load_registry()
     source_sha256 = _sha256_file(source_path)
 
     gdf = gdf.copy()
@@ -532,11 +670,27 @@ def build_doublet_table(check_active_cell: bool = True,
         if not inj_wells:
             raise ValueError(f"{concession}: no Rückgabe (injection) wells found in registry")
 
+        # Per-concession role / exclusion accounting (provenance + acceptance).
+        n_rows_total = int(len(sub))
+        # excluded = Sickergalerie / Anreicherung / other non-doublet rows
+        # (role is None) -- ambiguous rows are counted separately below.
+        n_excluded = int((sub["role"].isna()).sum())
+        n_ambiguous = int((sub["role"] == "ambiguous").sum())
+
         # Both-role guard: a FASSART string that contains BOTH "Entnahme" and
         # "Rückgabe" is ambiguous and was excluded from both role sets above --
         # flag it (a latent trap for a future roster swap; not in the current
         # registry).
         ambiguous = sub[sub["role"] == "ambiguous"]["GWR_ID"].tolist()
+
+        # Geothermal-use guard: every case-study concession must be a WPG
+        # (Wärmepumpe / GWHE) use. A registry change that flips it to a
+        # non-GWHE use (or drops the WPG wells) is caught here.
+        pair_rows = sub[sub["role"].isin(["ext", "inj"])]
+        nutzart_vals = sorted({str(v) for v in pair_rows["NUTZART"].dropna().unique()})
+        nutzart_str = " | ".join(nutzart_vals)
+        all_wpg = bool(len(pair_rows)) and pair_rows["NUTZART"].fillna("").str.contains(
+            GEOTHERMAL_NUTZART).all()
 
         ext = _centroid_or_fallback(ext_wells, "ext", ctx)
         inj = _centroid_or_fallback(inj_wells, "inj", ctx)
@@ -550,6 +704,15 @@ def build_doublet_table(check_active_cell: bool = True,
                 f"well(s) {'|'.join(ambiguous)} -- ambiguous role, excluded from the "
                 "doublet pair, flagged for human review."
             )
+
+        if not all_wpg:
+            msg = (
+                f"nutzart: NOT all doublet wells are geothermal ('{GEOTHERMAL_NUTZART}') -- "
+                f"NUTZART seen: '{nutzart_str}'. A concession must be a GWHE use; "
+                "flagged for human review."
+            )
+            flags.append(msg)
+            _acceptance_violations.append(f"{concession} (nutzart): {msg}")
 
         if ertrag["q_lmin"] is None:
             q_m3d: Optional[float] = None
@@ -572,6 +735,16 @@ def build_doublet_table(check_active_cell: bool = True,
 
         for note in ctx.notes:
             flags.append(f"cell-validity: {note}")
+        for note in source_notes:
+            flags.append(f"source: {note}")
+
+        # Per-well constituent coordinates, deterministic (sorted by GWR_ID),
+        # so downstream can distribute pumping/injection across the REAL wells
+        # rather than only the representative centroid.
+        ext_wells_str = "|".join(
+            f"{w['GWR_ID']}:{_round1(w['E'])}:{_round1(w['N'])}" for w in ext_wells)
+        inj_wells_str = "|".join(
+            f"{w['GWR_ID']}:{_round1(w['E'])}:{_round1(w['N'])}" for w in inj_wells)
 
         def _combine_domain(a, b):
             if a is None or b is None:
@@ -600,14 +773,23 @@ def build_doublet_table(check_active_cell: bool = True,
             inj_E=inj["E"], inj_N=inj["N"],
             ext_E=ext["E"], ext_N=ext["N"],
             Q_m3d=q_m3d,
+            Q_basis="licensed_max",
             source_file=str(source_path),
             source_sha256=source_sha256,
             boundary_file=ctx.boundary_file,
             boundary_sha256=ctx.boundary_sha256,
+            modelgrid_sha=ctx.modelgrid_sha,
+            idomain_sha=ctx.idomain_sha,
             gwr_ids_ext="|".join(ext["gwr_ids"]),
             gwr_ids_inj="|".join(inj["gwr_ids"]),
+            ext_wells=ext_wells_str,
+            inj_wells=inj_wells_str,
             n_ext=ext["n"],
             n_inj=inj["n"],
+            n_excluded=n_excluded,
+            n_ambiguous=n_ambiguous,
+            n_rows_total=n_rows_total,
+            nutzart=nutzart_str,
             ext_method=ext["method"],
             inj_method=inj["method"],
             ertrag_raw=ertrag["raw"],
@@ -636,9 +818,12 @@ def build_doublet_table(check_active_cell: bool = True,
                 )
 
     columns = [
-        "group", "concession", "inj_E", "inj_N", "ext_E", "ext_N", "Q_m3d",
+        "group", "concession", "inj_E", "inj_N", "ext_E", "ext_N", "Q_m3d", "Q_basis",
         "source_file", "source_sha256", "boundary_file", "boundary_sha256",
-        "gwr_ids_ext", "gwr_ids_inj", "n_ext", "n_inj", "ext_method", "inj_method",
+        "modelgrid_sha", "idomain_sha",
+        "gwr_ids_ext", "gwr_ids_inj", "ext_wells", "inj_wells",
+        "n_ext", "n_inj", "n_excluded", "n_ambiguous", "n_rows_total", "nutzart",
+        "ext_method", "inj_method",
         "ertrag_raw", "ertrag_max_lmin", "crs", "spread_ext_m", "spread_inj_m",
         "in_domain", "in_active_cell", "in_river",
         "in_domain_ext", "in_domain_inj", "in_active_cell_ext", "in_active_cell_inj",

@@ -20,6 +20,7 @@ import os
 import sys
 from pathlib import Path
 
+import geopandas as gpd
 import pandas as pd
 import pytest
 
@@ -84,9 +85,12 @@ def test_no_duplicate_groups(table):
 # provenance columns present + populated
 # ---------------------------------------------------------------------------
 REQUIRED_COLUMNS = [
-    "group", "concession", "inj_E", "inj_N", "ext_E", "ext_N", "Q_m3d",
+    "group", "concession", "inj_E", "inj_N", "ext_E", "ext_N", "Q_m3d", "Q_basis",
     "source_file", "source_sha256", "boundary_file", "boundary_sha256",
-    "gwr_ids_ext", "gwr_ids_inj", "n_ext", "n_inj", "ext_method", "inj_method",
+    "modelgrid_sha", "idomain_sha",
+    "gwr_ids_ext", "gwr_ids_inj", "ext_wells", "inj_wells",
+    "n_ext", "n_inj", "n_excluded", "n_ambiguous", "n_rows_total", "nutzart",
+    "ext_method", "inj_method",
     "ertrag_raw", "ertrag_max_lmin", "crs", "spread_ext_m", "spread_inj_m",
     "in_domain", "in_active_cell", "in_river",
     "in_domain_ext", "in_domain_inj", "in_active_cell_ext", "in_active_cell_inj",
@@ -538,7 +542,7 @@ def test_both_role_fassart_is_flagged_in_build(monkeypatch):
     orig_load = cdr._load_registry
 
     def _patched_load():
-        gdf, path = orig_load()
+        gdf, path, notes = orig_load()
         gdf = gdf.copy()
         # Rewrite ONE extra synthetic well into the target concession with an
         # ambiguous FASSART, so the guard has something to catch. We append a
@@ -548,7 +552,7 @@ def test_both_role_fassart_is_flagged_in_build(monkeypatch):
         seed["GWR_ID"] = target_conc + "_99"
         seed["FASSART"] = "Vertikalbrunnen: Entnahme und Rückgabe"
         gdf = pd.concat([gdf, pd.DataFrame([seed])], ignore_index=True)
-        return gdf, path
+        return gdf, path, notes
 
     monkeypatch.setattr(cdr, "_load_registry", _patched_load)
     monkeypatch.setattr(cdr, "_role_from_fassart", real_role)  # unchanged, explicit
@@ -556,3 +560,197 @@ def test_both_role_fassart_is_flagged_in_build(monkeypatch):
     row = df.loc[df["concession"] == target_conc].iloc[0]
     assert "ambiguous" in row["flags"].lower()
     assert target_conc + "_99" in row["flags"]
+    assert int(row["n_ambiguous"]) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Fix 1: CRS verification (assert/reproject) + E/N-vs-geometry agreement
+# ---------------------------------------------------------------------------
+def test_reproject_helper_passes_lv95_through_untouched():
+    from shapely.geometry import Point
+
+    gdf = gpd.GeoDataFrame({"x": [1]}, geometry=[Point(2681000, 1248000)], crs="EPSG:2056")
+    notes = []
+    out = cdr._reproject_to_lv95(gdf, "test", notes)
+    assert out.crs.to_epsg() == 2056
+    assert notes == []  # no reprojection note when already LV95
+
+
+def test_reproject_helper_reprojects_and_notes_wrong_crs():
+    from shapely.geometry import Point
+
+    # A WGS84 point over Zurich; reprojection to LV95 should land near the valley.
+    gdf = gpd.GeoDataFrame({"x": [1]}, geometry=[Point(8.54, 47.37)], crs="EPSG:4326")
+    notes = []
+    out = cdr._reproject_to_lv95(gdf, "registry", notes)
+    assert out.crs.to_epsg() == 2056
+    assert len(notes) == 1 and "reprojected" in notes[0]
+    # Roughly in the LV95 numeric range (E ~2.68e6, N ~1.25e6).
+    assert 2_600_000 < out.geometry.iloc[0].x < 2_720_000
+    assert 1_200_000 < out.geometry.iloc[0].y < 1_300_000
+
+
+def test_reproject_helper_raises_on_undefined_crs():
+    from shapely.geometry import Point
+
+    gdf = gpd.GeoDataFrame({"x": [1]}, geometry=[Point(2681000, 1248000)], crs=None)
+    with pytest.raises(ValueError, match="CRS is undefined"):
+        cdr._reproject_to_lv95(gdf, "registry", [])
+
+
+def test_registry_en_agrees_with_geometry(table):
+    """The real registry passed the E/N-vs-geometry check during the build (it
+    would have raised otherwise); re-verify the invariant directly here."""
+    gdf, path, notes = cdr._load_registry()
+    # For the 9 roster concessions, E/N must equal the geometry within tol.
+    gdf = gdf.copy()
+    gdf["conc"] = gdf["GWR_ID"].str.split("_").str[0]
+    sub = gdf[gdf["conc"].isin(EXPECTED_CONCESSIONS)]
+    de = (sub["E"] - sub.geometry.x).abs().max()
+    dn = (sub["N"] - sub.geometry.y).abs().max()
+    assert de <= cdr.EN_GEOM_TOL_M
+    assert dn <= cdr.EN_GEOM_TOL_M
+
+
+def test_en_geometry_disagreement_raises(monkeypatch):
+    """If E/N diverge from geometry (e.g. a garbled column), the load must
+    raise rather than emit untrustworthy coordinates."""
+    orig_read = cdr.gpd.read_file
+
+    def _corrupt_read(path, *a, **kw):
+        gdf = orig_read(path, *a, **kw)
+        if "layer" in kw and kw["layer"] == cdr.WELLS_LAYER:
+            gdf = gdf.copy()
+            gdf["E"] = gdf["E"] + 500.0  # shove E 500 m off its geometry
+        return gdf
+
+    monkeypatch.setattr(cdr.gpd, "read_file", _corrupt_read)
+    with pytest.raises(ValueError, match="disagree with geometry"):
+        cdr._load_registry()
+
+
+# ---------------------------------------------------------------------------
+# Fix 2: grid/idomain provenance hashes present + stable + handoff is (E,N)
+# ---------------------------------------------------------------------------
+def test_grid_idomain_provenance_present_and_hex(table):
+    for _, row in table.iterrows():
+        assert isinstance(row["modelgrid_sha"], str) and len(row["modelgrid_sha"]) == 64
+        assert isinstance(row["idomain_sha"], str) and len(row["idomain_sha"]) == 64
+
+
+def test_grid_idomain_provenance_stable_across_builds():
+    df1 = cdr.build_doublet_table(write=False)
+    df2 = cdr.build_doublet_table(write=False)
+    assert (df1["modelgrid_sha"] == df2["modelgrid_sha"]).all()
+    assert (df1["idomain_sha"] == df2["idomain_sha"]).all()
+    # single grid used for all rows -> one distinct hash each
+    assert df1["modelgrid_sha"].nunique() == 1
+    assert df1["idomain_sha"].nunique() == 1
+
+
+def test_no_coarse_cellid_column(table):
+    """The handoff is (E, N), NOT a coarse-05f cell index -- assert no
+    misleading cellid/row/col column leaked into the table."""
+    for banned in ("cellid", "cell_id", "node", "row", "col", "icpl", "ncpl"):
+        assert banned not in table.columns
+
+
+# ---------------------------------------------------------------------------
+# Fix 3: per-well coordinate columns
+# ---------------------------------------------------------------------------
+def test_per_well_columns_present_parseable_deterministic(table):
+    for _, row in table.iterrows():
+        for col in ("ext_wells", "inj_wells"):
+            entries = row[col].split("|")
+            assert entries and all(entries)
+            gwr_ids = []
+            for e in entries:
+                parts = e.split(":")
+                assert len(parts) == 3, f"{col} entry not GWR_ID:E:N -> {e!r}"
+                gid, e_str, n_str = parts
+                float(e_str); float(n_str)  # parseable coords
+                assert gid.startswith(row["concession"])
+                gwr_ids.append(gid)
+            # deterministic: entries sorted by GWR_ID
+            assert gwr_ids == sorted(gwr_ids)
+        # count consistency with n_ext / n_inj
+        assert len(row["ext_wells"].split("|")) == row["n_ext"]
+        assert len(row["inj_wells"].split("|")) == row["n_inj"]
+
+
+def test_per_well_coords_reconstruct_centroid(table):
+    """The representative ext/inj centroid must equal the geometric mean of the
+    per-well coords (for centroid-method rows)."""
+    for _, row in table.iterrows():
+        if row["ext_method"] == "centroid":
+            xs = [float(e.split(":")[1]) for e in row["ext_wells"].split("|")]
+            ys = [float(e.split(":")[2]) for e in row["ext_wells"].split("|")]
+            assert round(sum(xs) / len(xs), 1) == row["ext_E"]
+            assert round(sum(ys) / len(ys), 1) == row["ext_N"]
+
+
+# ---------------------------------------------------------------------------
+# Fix 4: Q_basis annotation
+# ---------------------------------------------------------------------------
+def test_q_basis_is_licensed_max(table):
+    assert (table["Q_basis"] == "licensed_max").all()
+
+
+# ---------------------------------------------------------------------------
+# Fix 5: schema validation + role/exclusion counts + WPG geothermal check
+# ---------------------------------------------------------------------------
+def test_schema_validation_raises_on_missing_column(monkeypatch):
+    orig_read = cdr.gpd.read_file
+
+    def _drop_col_read(path, *a, **kw):
+        gdf = orig_read(path, *a, **kw)
+        if "layer" in kw and kw["layer"] == cdr.WELLS_LAYER:
+            gdf = gdf.drop(columns=["NUTZART"])
+        return gdf
+
+    monkeypatch.setattr(cdr.gpd, "read_file", _drop_col_read)
+    with pytest.raises(ValueError, match="missing expected column"):
+        cdr._load_registry()
+
+
+def test_role_and_exclusion_counts_non_degenerate(table):
+    for _, row in table.iterrows():
+        assert row["n_ext"] >= 1, f"{row['concession']}: no Entnahme"
+        assert row["n_inj"] >= 1, f"{row['concession']}: no Rückgabe"
+        assert row["n_excluded"] >= 0
+        assert row["n_ambiguous"] == 0  # clean roster
+        # total accounts for at least the used wells
+        assert row["n_rows_total"] >= row["n_ext"] + row["n_inj"]
+
+
+def test_all_concessions_are_geothermal_wpg(table):
+    for _, row in table.iterrows():
+        assert cdr.GEOTHERMAL_NUTZART in row["nutzart"], (
+            f"{row['concession']}: NUTZART {row['nutzart']!r} not geothermal"
+        )
+    # and no WPG flag should have fired
+    assert not table["flags"].str.contains("nutzart", case=False, na=False).any()
+
+
+def test_non_wpg_concession_flags_and_strict_raises(monkeypatch):
+    """A registry change flipping a concession off WPG must flag (strict=False)
+    and raise (strict=True)."""
+    orig_read = cdr.gpd.read_file
+    target = "b010210"
+
+    def _flip_nutzart(path, *a, **kw):
+        gdf = orig_read(path, *a, **kw)
+        if "layer" in kw and kw["layer"] == cdr.WELLS_LAYER:
+            gdf = gdf.copy()
+            mask = gdf["GWR_ID"].str.startswith(target + "_")
+            gdf.loc[mask, "NUTZART"] = "TWG"  # drinking water, not geothermal
+        return gdf
+
+    monkeypatch.setattr(cdr.gpd, "read_file", _flip_nutzart)
+    df = cdr.build_doublet_table(write=False, strict=False)
+    row = df.loc[df["concession"] == target].iloc[0]
+    assert "nutzart" in row["flags"].lower()
+
+    monkeypatch.setattr(cdr.gpd, "read_file", _flip_nutzart)
+    with pytest.raises(RuntimeError, match="nutzart"):
+        cdr.build_doublet_table(write=False, strict=True)
