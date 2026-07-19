@@ -147,7 +147,7 @@ transport_scenarios:
         cell_size_m: 2
 
       monitoring:
-        threshold_mg_L: 5.0
+        threshold_mg_L: 0.005    # corrected 2026-07-19: was 5.0 (~1000x too high; TCE drinking-water standard ≈ 0.005 mg/L = 5 µg/L)
         compliance_location: "Well"
 
     # ========== GROUP 1: Nitrate - Sports Field Fertilizer ==========

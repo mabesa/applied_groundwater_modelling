@@ -1,0 +1,10 @@
+group,contaminant,cas_number,threshold_mg_L,ref_lo_mg_L,ref_hi_mg_L,basis,flagged,note
+0,Trichloroethylene (TCE),79-01-6,0.005,0.001,0.02,drinking_water_MCL,False,"within reference band [0.001, 0.02] mg/L (drinking_water_MCL)."
+1,Nitrate (NO3-),14797-55-8,25,1,11.3,drinking_water_as_N,True,"threshold 25.0 mg/L is OUTSIDE reference band [1.0, 11.3] mg/L (drinking_water_as_N). Nitrate reference is as-N (US EPA MCL 10 mg/L-N ~= 44 mg/L as NO3-). 25 mg/L is plausible as NO3- (~5.6 mg/L-N) -- confirm the as-N vs NO3- basis."
+2,Benzene,71-43-2,0.005,0.001,0.01,drinking_water_MCL,False,"within reference band [0.001, 0.01] mg/L (drinking_water_MCL)."
+3,Chloride (conservative tracer),16887-00-6,100,200,400,aesthetic_indicator,True,"threshold 100.0 mg/L is OUTSIDE reference band [200.0, 400.0] mg/L (aesthetic_indicator). Chloride is an aesthetic/taste indicator (~250 mg/L WHO/EU/CH). A 100 mg/L compliance threshold is stricter than typical -- confirm intended basis."
+4,Chromium (Cr-VI),18540-29-9,0.1,0.01,0.1,drinking_water_standard,False,"within reference band [0.01, 0.1] mg/L (drinking_water_standard)."
+5,PFOA (perfluorooctanoic acid),335-67-1,0.0002,1e-05,0.001,drinking_water_advisory,False,"within reference band [1e-05, 0.001] mg/L (drinking_water_advisory)."
+6,Perchloroethylene (PCE),127-18-4,0.04,0.001,0.05,drinking_water_MCL,False,"within reference band [0.001, 0.05] mg/L (drinking_water_MCL)."
+7,Ammonium (NH4+),14798-03-9,0.5,0.1,1.5,drinking_water_guideline,False,"within reference band [0.1, 1.5] mg/L (drinking_water_guideline)."
+8,Atrazine,1912-24-9,0.1,0.0001,0.003,drinking_water_standard_EU,True,"threshold 0.1 mg/L is OUTSIDE reference band [0.0001, 0.003] mg/L (drinking_water_standard_EU). Atrazine EU single-pesticide limit 0.1 ug/L = 0.0001 mg/L. 0.1 mg/L is ~1000x above -- likely too high."
