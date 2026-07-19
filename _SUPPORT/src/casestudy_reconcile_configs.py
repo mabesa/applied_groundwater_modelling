@@ -514,16 +514,175 @@ def reconcile_configs(flow_config: Optional[Path] = None,
         wrote=wrote, dry_run=dry_run, backups=backups)
 
 
+# ===========================================================================
+# M1.3b: switch the FLOW config model: block from legacy MODFLOW-NWT -> MF6 05f
+# ===========================================================================
+# Shared model fields the flow block must mirror from the transport MF6 block.
+_MF6_SHARED_FIELDS = ("workspace", "sim_namefile", "sim_name", "baseline_model_name")
+
+# The flow `model:` block = the `model:` line + all following indented lines
+# (keys + indented comments), up to the first non-indented line (blank / next
+# top-level key). A single string-block replacement keeps every OTHER byte of
+# the file identical (no whole-file ruamel round-trip -> no reflow/WS churn).
+_FLOW_MODEL_BLOCK_RE = _re.compile(r"(?m)^model:\n(?:[ \t].*\n)*")
+
+
+@dataclass
+class ModelSwitchResult:
+    flow_diff: str
+    flow_new_text: str
+    transport_model: Dict[str, Any]
+    wrote: bool
+    dry_run: bool
+    backup: Optional[str] = None
+
+
+def _compose_flow_model_block(tmodel: Dict[str, Any]) -> str:
+    """Compose the new flow `model:` block from the transport config's PARSED
+    MF6 model block (values sourced from transport, not hardcoded), with fresh
+    comments that no longer contradict the MF6 reference."""
+    data_name = tmodel["data_name"]
+    workspace = tmodel["workspace"]
+    sim_namefile = tmodel["sim_namefile"]
+    sim_name = tmodel["sim_name"]
+    baseline = tmodel["baseline_model_name"]
+    lines = [
+        "model:",
+        "  # Calibrated MF6 05f flow model -- the SAME simulation the transport",
+        "  # config (case_config_transport.yaml) references; bootstrapped via",
+        "  # model_io_utils.ensure_flow_model(). Switched to MF6 05f from the",
+        "  # legacy structured-grid flow model in M1.3b (config-only). The MF6",
+        "  # flow builder that consumes this block is built in M2a; sim_name IS",
+        "  # the GWF model name inside the simulation (no separate name field).",
+        f"  data_name: {data_name}               # Calibrated MF6 GWF model (05f)",
+        f'  workspace: "{workspace}"  # 05f-calibrated model',
+        f'  sim_namefile: "{sim_namefile}"               # MF6 simulation name file',
+        f'  sim_name: "{sim_name}"               # MF6 GWF model name inside the simulation',
+        f'  baseline_model_name: "{baseline}"',
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def switch_flow_model_to_mf6(flow_config: Optional[Path] = None,
+                             transport_config: Optional[Path] = None,
+                             dry_run: bool = False,
+                             backup: bool = True,
+                             backup_suffix: str = ".m13b.bak",
+                             verbose: bool = False) -> ModelSwitchResult:
+    """M1.3b: rewrite the flow config's ``model:`` block to reference the same
+    calibrated MF6 05f model as the transport config.
+
+    Config-only, no model run. Uses the transport config's PARSED ``model:``
+    block as the target (not hardcoded strings). Drops the NWT-only
+    ``namefile`` key + the ``limmat_valley_model_nwt`` values + the
+    ``baseline_model`` workspace, and refreshes the block's comments so nothing
+    contradicts the MF6 reference. Only the ``model:`` block changes; every
+    other byte of the flow config is preserved. The transport config is NOT
+    touched.
+
+    Backup suffix defaults to ``.m13b.bak`` (a step-distinct pre-image) so it
+    does NOT clobber M1.3a's ``.bak``.
+
+    Parameters mirror ``reconcile_configs`` (dry_run / backup / verbose).
+    """
+    flow_path = Path(flow_config or DEFAULT_FLOW_CONFIG)
+    tr_path = Path(transport_config or DEFAULT_TRANSPORT_CONFIG)
+
+    import yaml as _pyyaml
+
+    flow_old_text = flow_path.read_text()
+    tmodel = (_pyyaml.safe_load(tr_path.read_text()) or {}).get("model", {})
+    missing = [k for k in ("data_name",) + _MF6_SHARED_FIELDS if k not in tmodel]
+    if missing:
+        raise ValueError(f"transport config model: block missing MF6 field(s) {missing}.")
+
+    new_block = _compose_flow_model_block(tmodel)
+    m = _FLOW_MODEL_BLOCK_RE.search(flow_old_text)
+    if m is None:
+        raise ValueError(f"flow config {flow_path}: no top-level 'model:' block found.")
+    flow_new_text = flow_old_text[:m.start()] + new_block + flow_old_text[m.end():]
+
+    # --- validate the emitted flow config (parses, MF6-only, no mixed schema) ---
+    _assert_flow_model_is_mf6(flow_new_text, tmodel)
+
+    flow_diff = _unified_diff(flow_old_text, flow_new_text, flow_path)
+    if verbose or dry_run:
+        print(f"# ---- DRY-RUN diff: {flow_path} ----" if dry_run else f"# diff: {flow_path}")
+        print(flow_diff or "(no change)")
+
+    backup_path: Optional[str] = None
+    wrote = False
+    if not dry_run:
+        if backup:
+            bak = flow_path.with_name(flow_path.name + backup_suffix)
+            shutil.copy2(flow_path, bak)  # pre-M1.3b image
+            backup_path = str(bak)
+        flow_path.write_text(flow_new_text)
+        wrote = True
+
+    return ModelSwitchResult(
+        flow_diff=flow_diff, flow_new_text=flow_new_text, transport_model=dict(tmodel),
+        wrote=wrote, dry_run=dry_run, backup=backup_path)
+
+
+def _assert_flow_model_is_mf6(flow_text: str, tmodel: Dict[str, Any]) -> None:
+    """Acceptance: the flow model: block references ONLY MF6 05f, matches the
+    transport MF6 block (parsed), and the whole file is NWT-clean."""
+    import yaml as _pyyaml
+
+    doc = _pyyaml.safe_load(flow_text)
+    model = (doc or {}).get("model", {})
+
+    # MF6 keys present; no mixed schema (namefile absent).
+    if "namefile" in model:
+        raise ValueError("flow model: still has the legacy 'namefile' key (mixed schema).")
+    if "sim_namefile" not in model:
+        raise ValueError("flow model: missing 'sim_namefile' (MF6).")
+    if model.get("data_name") != "flow_model_mf6":
+        raise ValueError(f"flow model.data_name is {model.get('data_name')!r}, expected 'flow_model_mf6'.")
+
+    # PARSED comparison vs the transport MF6 block (shared fields).
+    for k in _MF6_SHARED_FIELDS:
+        if model.get(k) != tmodel.get(k):
+            raise ValueError(
+                f"flow model.{k}={model.get(k)!r} != transport model.{k}={tmodel.get(k)!r}.")
+
+    # workspace is the 05f calibration path, not the old baseline_model path.
+    if "/limmat/baseline_model" in str(model.get("workspace", "")):
+        raise ValueError("flow model.workspace still points at the old '/limmat/baseline_model'.")
+
+    # Whole-file NWT gate (case-insensitive). `.nam` alone is fine (mfsim.nam);
+    # gate the LEGACY namefile + nwt tokens + the old workspace PATH fragment
+    # (NOT the surviving 'baseline_model_name' KEY).
+    low = flow_text.lower()
+    for token in ("nwt", "modflow-nwt", "limmat_valley_model_nwt", "limmat_valley_model_nwt.nam"):
+        if token in low:
+            raise ValueError(f"flow config still contains stale NWT token {token!r}.")
+    if "/limmat/baseline_model" in flow_text:
+        raise ValueError("flow config still contains the old '/limmat/baseline_model' workspace path.")
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def _main(argv: Optional[List[str]] = None) -> None:
-    ap = argparse.ArgumentParser(description="M1.3a: reconcile the two config YAMLs to the canonical mapping.")
+    ap = argparse.ArgumentParser(
+        description="Config-mutation steps for the student case study (M1.3a/M1.3b).")
     ap.add_argument("--dry-run", action="store_true",
-                    help="print the unified diffs and write nothing (review gate).")
+                    help="print the unified diff(s) and write nothing (review gate).")
     ap.add_argument("--no-backup", action="store_true",
                     help="do not write a pre-image .bak backup (NOT recommended).")
+    ap.add_argument("--switch-model", action="store_true",
+                    help="M1.3b: switch the flow config model: block to the MF6 05f model "
+                         "(instead of the default M1.3a concession/doublet reconcile).")
     args = ap.parse_args(argv)
+
+    if args.switch_model:
+        res = switch_flow_model_to_mf6(dry_run=args.dry_run, backup=not args.no_backup, verbose=True)
+        if not args.dry_run:
+            print(f"\nwrote flow model: block (MF6 05f); backup: {res.backup}")
+        return
+
     result = reconcile_configs(dry_run=args.dry_run, backup=not args.no_backup, verbose=True)
     if not args.dry_run:
         print("\n# ---- coherence_ledger (per-group deltas) ----")

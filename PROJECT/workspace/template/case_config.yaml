@@ -32,11 +32,17 @@ description: >
   50% pumping variant, then evaluate changes in heads, gradients, and river leakage.
 
 model:
-  data_name: baseline_model   # keep fixed
-  # Baseline (do NOT modify baseline input files in place).
-  workspace: "~/applied_groundwater_modelling_data/limmat/baseline_model"
-  namefile: "limmat_valley_model_nwt.nam"
-  baseline_model_name: "limmat_valley_model_nwt"
+  # Calibrated MF6 05f flow model -- the SAME simulation the transport
+  # config (case_config_transport.yaml) references; bootstrapped via
+  # model_io_utils.ensure_flow_model(). Switched to MF6 05f from the
+  # legacy structured-grid flow model in M1.3b (config-only). The MF6
+  # flow builder that consumes this block is built in M2a; sim_name IS
+  # the GWF model name inside the simulation (no separate name field).
+  data_name: flow_model_mf6               # Calibrated MF6 GWF model (05f)
+  workspace: "~/applied_groundwater_modelling_data/limmat/calibration"  # 05f-calibrated model
+  sim_namefile: "mfsim.nam"               # MF6 simulation name file
+  sim_name: "limmat_valley"               # MF6 GWF model name inside the simulation
+  baseline_model_name: "limmat_valley"
 
 output:
   # All group results should go into a dedicated folder using the group number.
