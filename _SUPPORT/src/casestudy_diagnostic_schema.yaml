@@ -1,0 +1,325 @@
+# casestudy_diagnostic_schema.yaml -- M1.4 machine/enforcement contract.
+#
+# The MACHINE contract for the per-run MODEL diagnostics (distinct from
+# diagnostics.py, which holds ENVIRONMENT/import/smoke checks). One entry per
+# diagnostic in the M1.4 catalog. M2a/M3a/M3b EMIT these into a per-run
+# `diagnostics.json`; M3c/M4/M5/M8 READ that file to gate; M6 surfaces it to
+# students. The human catalog is casestudy_diagnostic_spec.md; the loader +
+# linter + evaluator is casestudy_diagnostics.py.
+#
+# Entry shape (all fields required; a schema-lint enforces this):
+#   id (str, unique) · metric (str, formula/definition)
+#   input_artifact: {file, field, shape, unit}
+#   aggregation (enum: max|p95|cumulative|per_step|scalar)
+#   comparator  (enum: le|ge|eq|in|finite)
+#   warn_threshold (num|null) · raise_threshold (num|null)   # the pass/warn/raise bands
+#   numeric_tol (num) · abs_tol (num|null)                   # abs_tol = near-zero floor
+#   severity (enum: raise|warn)   # the MAX configured band (runtime triggered_severity is per-run)
+#   owner (enum: M2a|M3a|M3b) · enforced (enum: now|M3c|M4|M5|M8)
+#   output: {path, json_key, type(bool|int|float), nullable(bool)}
+#   justification (str)           # one line: why this severity (raise=correctness / warn=quality)
+#
+# Band convention:
+#   le  (lower is better): pass<=warn ; warn<value<=raise ; raise if >raise
+#   ge  (higher is better): pass>=warn ; raise<=value<warn ; raise if <raise
+#   eq  : pass if |value - raise_threshold| <= (abs_tol or numeric_tol) else severity
+#   finite : pass if value is finite (thresholds null)
+#   in  : pass if 0 <= value <= 1 (probability range; thresholds null, numeric_tol = slack)
+#   Multi-band (warn AND raise both set) is only for le/ge severity=raise checks.
+#   raise_threshold_relative: true  -> raise band is a FRACTION of a run-time reference
+#                                      (e.g. peak concentration); evaluate() scales it.
+
+schema_version: "1.0"
+reporting_surface: "diagnostics.json"   # per-run model-diagnostics file (case workspace)
+
+diagnostics:
+
+  # ======================= FLOW (owner M2a) =======================
+  - id: flow_convergence
+    metric: "GWF solver reported normal termination (all outer iterations met dvclose/hclose)."
+    input_artifact: {file: "mfsim.lst / gwf.lst", field: "normal termination / success flag", shape: "scalar", unit: "bool"}
+    aggregation: scalar
+    comparator: eq
+    warn_threshold: null
+    raise_threshold: 1
+    numeric_tol: 0
+    abs_tol: null
+    severity: raise
+    owner: M2a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "flow_convergence", type: bool, nullable: false}
+    justification: "correctness -- an unconverged flow solution invalidates every downstream number."
+
+  - id: flow_mass_balance
+    metric: "|percent discrepancy| of the GWF budget (cumulative); denominator = total flux through the model; use abs_tol when total flux ~= 0."
+    input_artifact: {file: "gwf.lst", field: "PERCENT_DISCREPANCY (budget IN/OUT)", shape: "scalar", unit: "percent"}
+    aggregation: cumulative
+    comparator: le
+    warn_threshold: null
+    raise_threshold: 1.0
+    numeric_tol: 0
+    abs_tol: 1.0e-6
+    severity: raise
+    owner: M2a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "flow_mass_balance", type: float, nullable: false}
+    justification: "correctness -- a >1% budget discrepancy means the flow solution is not mass-conservative."
+
+  - id: finite_heads
+    metric: "no NaN/Inf anywhere in the head array."
+    input_artifact: {file: "<sim>.hds", field: "head", shape: "(nlay, ncpl)", unit: "m"}
+    aggregation: scalar
+    comparator: finite
+    warn_threshold: null
+    raise_threshold: null
+    numeric_tol: 0
+    abs_tol: null
+    severity: raise
+    owner: M2a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "finite_heads", type: bool, nullable: false}
+    justification: "correctness -- a non-finite head is a broken solve; nothing downstream is usable."
+
+  - id: flow_no_dry_cells
+    metric: "count of DRY active cells (head <= cell bottom / HDRY where idomain > 0)."
+    input_artifact: {file: "<sim>.hds + dis.idomain", field: "head + idomain", shape: "(nlay, ncpl)", unit: "count"}
+    aggregation: scalar
+    comparator: le
+    warn_threshold: null
+    raise_threshold: 0
+    numeric_tol: 0
+    abs_tol: null
+    severity: raise
+    owner: M2a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "flow_no_dry_cells", type: int, nullable: false}
+    justification: "correctness -- a dry active cell is a locally invalid flow field for a saturated aquifer model."
+
+  - id: flow_head_delta
+    metric: "max active-cell |head - baseline_head| vs the 05f baseline field."
+    input_artifact: {file: "<sim>.hds + baseline <sim>.hds", field: "head + baseline head", shape: "(nlay, ncpl)", unit: "m"}
+    aggregation: max
+    comparator: le
+    warn_threshold: 5.0
+    raise_threshold: null
+    numeric_tol: 0
+    abs_tol: null
+    severity: warn
+    owner: M2a
+    enforced: M4
+    output: {path: "diagnostics.json", json_key: "flow_head_delta", type: float, nullable: true}
+    justification: "quality -- coarse physical-plausibility band for these local scenarios; large local deltas warrant review, not an auto-fail (tunable)."
+
+  # ===================== TRANSPORT (owner M3a) =====================
+  - id: transport_convergence
+    metric: "GWT solver reported normal termination (met dvclose)."
+    input_artifact: {file: "mfsim.lst / gwt.lst", field: "normal termination / success flag", shape: "scalar", unit: "bool"}
+    aggregation: scalar
+    comparator: eq
+    warn_threshold: null
+    raise_threshold: 1
+    numeric_tol: 0
+    abs_tol: null
+    severity: raise
+    owner: M3a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "transport_convergence", type: bool, nullable: false}
+    justification: "correctness -- an unconverged transport solve invalidates the plume/breakthrough."
+
+  - id: transport_mass_balance
+    metric: "|percent discrepancy| of the GWT mass budget (cumulative): SRC in vs well/boundary out vs storage/decay; denominator = released mass; abs_tol near-zero."
+    input_artifact: {file: "gwt.lst", field: "PERCENT_DISCREPANCY (mass budget); src_in_g/well_out_g/boundary_out_g/storage_g", shape: "scalar", unit: "percent"}
+    aggregation: cumulative
+    comparator: le
+    warn_threshold: null
+    raise_threshold: 1.0
+    numeric_tol: 0
+    abs_tol: 1.0e-6
+    severity: raise
+    owner: M3a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "transport_mass_balance", type: float, nullable: false}
+    justification: "correctness -- a >1% mass discrepancy means solute mass is created/lost; breakthrough is untrustworthy."
+
+  - id: finite_conc
+    metric: "no NaN/Inf in the concentration, velocity (SPDIS), or mass-budget arrays."
+    input_artifact: {file: "<sim>.ucn + budget", field: "concentration / qx,qy / budget terms", shape: "(ntimes, ncpl) / (ncpl,)", unit: "mg/L, m/d, g"}
+    aggregation: scalar
+    comparator: finite
+    warn_threshold: null
+    raise_threshold: null
+    numeric_tol: 0
+    abs_tol: null
+    severity: raise
+    owner: M3a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "finite_conc", type: bool, nullable: false}
+    justification: "correctness -- a non-finite concentration/velocity is a broken transport solve."
+
+  - id: concentration_nonnegative
+    metric: "min concentration over the run. PASS if min >= -1e-6 mg/L (solver noise); WARN if -1e-6 > min >= -1% of peak; RAISE if min < -1% of peak."
+    input_artifact: {file: "<sim>.ucn", field: "concentration min; peak concentration", shape: "(ntimes, ncpl)", unit: "mg/L"}
+    aggregation: scalar
+    comparator: ge
+    warn_threshold: -1.0e-6
+    raise_threshold: -0.01
+    raise_threshold_relative: true
+    numeric_tol: 0
+    abs_tol: 1.0e-6
+    severity: raise
+    owner: M3a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "concentration_nonnegative", type: float, nullable: false}
+    justification: "correctness at the raise band -- a large negative concentration is an oscillation/mass error; small negatives are tolerated solver noise (warn)."
+
+  - id: src_units
+    metric: "relative error of |smassrate - mass_g/(n_src*pulse_days)| / smassrate (mg/L = g/m^3 => SRC loading in g/d)."
+    input_artifact: {file: "SRC stress-period data + released mass", field: "smassrate_gpd; mass_g; n_src; pulse_days", shape: "scalar", unit: "dimensionless (relative)"}
+    aggregation: scalar
+    comparator: eq
+    warn_threshold: null
+    raise_threshold: 0
+    numeric_tol: 1.0e-6
+    abs_tol: 1.0e-9
+    severity: raise
+    owner: M3a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "src_units", type: float, nullable: false}
+    justification: "correctness -- a g/d vs mg/L unit error is a ~1000x mass error; must match the SRC formula exactly."
+
+  - id: source_in_domain
+    metric: "all SRC cells are active + inside the transport domain, set in the correct stress period, with the expected cell count (single all-true flag)."
+    input_artifact: {file: "SRC cellids + idomain + stress-period data", field: "src_cells; idomain; spd period", shape: "(n_src,)", unit: "bool"}
+    aggregation: scalar
+    comparator: eq
+    warn_threshold: null
+    raise_threshold: 1
+    numeric_tol: 0
+    abs_tol: null
+    severity: raise
+    owner: M3a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "source_in_domain", type: bool, nullable: false}
+    justification: "correctness -- a source in an inactive cell or wrong period injects no/incorrect mass."
+
+  - id: grid_peclet
+    metric: "Pe_L = ds / alpha_L over the corridor cells (dimensionless); reported as p95 (and max)."
+    input_artifact: {file: "refined DISV grid + LOCKED_PARAMS", field: "cell size ds; alh (alpha_L)", shape: "(n_corridor_cells,)", unit: "dimensionless"}
+    aggregation: p95
+    comparator: le
+    warn_threshold: 2.0
+    raise_threshold: null
+    numeric_tol: 0
+    abs_tol: null
+    severity: warn
+    owner: M3a
+    enforced: M3c
+    output: {path: "diagnostics.json", json_key: "grid_peclet", type: float, nullable: false}
+    justification: "quality -- MF6 GWT TVD advection tolerates Pe_L > 2 with added numerical dispersion; an accuracy flag, not a correctness gate. Emitter: PeL_min/PeL_max."
+
+  - id: courant
+    metric: "Cr = v * dt / ds over the corridor cells; reported as p95 (and max)."
+    input_artifact: {file: "SPDIS velocity + TDIS dt + cell size", field: "v; dt; ds", shape: "(n_corridor_cells,)", unit: "dimensionless"}
+    aggregation: p95
+    comparator: le
+    warn_threshold: 1.0
+    raise_threshold: null
+    numeric_tol: 0
+    abs_tol: null
+    severity: warn
+    owner: M3a
+    enforced: M3c
+    output: {path: "diagnostics.json", json_key: "courant", type: float, nullable: false}
+    justification: "quality -- MF6 GWT is an IMPLICIT solver, so Cr > 1 is not stability-fatal; an accuracy flag. Emitter: _courant_nstp."
+
+  - id: capture_stability
+    metric: "|delta capture_fraction| under a probe-radius perturbation of +/- one refined-cell step (NOT an arbitrary 40 m). Diagnostic-stability, distinct from whether the capture RESULT is good."
+    input_artifact: {file: "PRT capture result", field: "capture_fraction at +/- one refined_cell_size probe-radius step", shape: "scalar", unit: "fraction"}
+    aggregation: scalar
+    comparator: le
+    warn_threshold: 0.05
+    raise_threshold: null
+    numeric_tol: 0
+    abs_tol: null
+    severity: warn
+    owner: M3a
+    enforced: M3c
+    output: {path: "diagnostics.json", json_key: "capture_stability", type: float, nullable: true}
+    justification: "quality -- flags whether the capture MEASUREMENT is stable under its probe (tied to refined_cell_size); the M1.5 artifact-stability structural gate. Emitter: capture_fraction/max_captured_offset_m."
+
+  - id: capture_fraction_bounds
+    metric: "emitted capture_fraction is a valid fraction in [0, 1]."
+    input_artifact: {file: "PRT capture result", field: "capture_fraction", shape: "scalar", unit: "fraction"}
+    aggregation: scalar
+    comparator: in
+    warn_threshold: null
+    raise_threshold: null
+    numeric_tol: 1.0e-9
+    abs_tol: null
+    severity: raise
+    owner: M3a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "capture_fraction_bounds", type: float, nullable: true}
+    justification: "correctness -- a capture_fraction outside [0,1] is a computation bug (n_captured/n_released)."
+
+  # ===================== COUPLING (owner M3b) =====================
+  - id: coupled_or_fallback_label
+    metric: "the run records a coupling label in {coupled-student-flow, known-good-wells-only}, set to the flow field actually consumed (single valid-and-present flag)."
+    input_artifact: {file: "run metadata / diagnostics.json", field: "coupling_label", shape: "scalar", unit: "enum{coupled-student-flow,known-good-wells-only}"}
+    aggregation: scalar
+    comparator: eq
+    warn_threshold: null
+    raise_threshold: 1
+    numeric_tol: 0
+    abs_tol: null
+    severity: raise
+    owner: M3b
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "coupled_or_fallback_label", type: bool, nullable: false}
+    justification: "correctness -- a silent fallback to canned wells-only flow would mislead; the field used MUST be labeled."
+
+  - id: coupling_artifact_identity
+    metric: "the run records the exact flow-artifact hash / run-id it consumed (non-null), not just the label."
+    input_artifact: {file: "flow-field provenance / run metadata", field: "flow_artifact_sha / run_id", shape: "scalar", unit: "hash"}
+    aggregation: scalar
+    comparator: eq
+    warn_threshold: null
+    raise_threshold: 1
+    numeric_tol: 0
+    abs_tol: null
+    severity: raise
+    owner: M3b
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "coupling_artifact_identity", type: bool, nullable: false}
+    justification: "correctness -- provenance must pin the exact flow field consumed; an absent hash makes the run unauditable."
+
+  - id: well_sink_mapping
+    metric: "the extraction/PRT wells the transport/PRT run uses MATCH the flow wells by id/location/layer/rate/stress-period (exact, single all-match flag)."
+    input_artifact: {file: "flow wells vs transport/PRT wells", field: "well id/location/layer/rate/period", shape: "(n_wells,)", unit: "bool"}
+    aggregation: scalar
+    comparator: eq
+    warn_threshold: null
+    raise_threshold: 1
+    numeric_tol: 0
+    abs_tol: null
+    severity: raise
+    owner: M3b
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "well_sink_mapping", type: bool, nullable: false}
+    justification: "correctness -- if transport pumps different wells than flow, the capture field is inconsistent with the flow field."
+
+  # ===================== CROSS-CUTTING =====================
+  - id: time_unit_consistency
+    metric: "flow, transport, source pulse, velocities, and budgets all use consistent time/mass/length units (days / g / m) (single all-consistent flag)."
+    input_artifact: {file: "flow + transport + source + budget metadata", field: "time_units; mass units; length units", shape: "scalar", unit: "bool"}
+    aggregation: scalar
+    comparator: eq
+    warn_threshold: null
+    raise_threshold: 1
+    numeric_tol: 0
+    abs_tol: null
+    severity: raise
+    owner: M3a
+    enforced: now
+    output: {path: "diagnostics.json", json_key: "time_unit_consistency", type: bool, nullable: false}
+    justification: "correctness (cross-cutting) -- a units mismatch across flow/transport/source silently corrupts every rate, velocity, and mass number."
