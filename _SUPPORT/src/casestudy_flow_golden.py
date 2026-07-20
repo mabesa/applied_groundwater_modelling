@@ -11,14 +11,18 @@ layer) around group 0's geothermal doublet location, with NO doublet wells
 but WITH the 238 calibrated background abstraction wells re-mapped onto the
 refined grid.
 
-This module is standalone and DOES NOT import (or share assembly logic
-with) the M2a.1 baseline builder, ``casestudy_flow_builder`` -- that module
-does not exist yet, and this generator must remain independent of it so it
-can serve as a builder-independent regression oracle. It COMPOSES:
+This module is standalone and DOES NOT import (or share module code with)
+the M2a.1 baseline builder, ``casestudy_flow_builder`` -- the generator must
+remain independent of the builder so it can serve as builder-independent
+provenance tooling; the COMMITTED golden files are the regression oracle the
+builder is pinned to. Both build the SAME baseline via the shared
+``casestudy_flow_common`` primitives. It COMPOSES:
 
   * ``model_io_utils.ensure_flow_model`` / ``generate_refined_grid`` /
-    ``assemble_gwf_from_spec`` / ``freeze_flow_spec`` / ``load_flow_spec``
-    (shipped, unmodified);
+    ``freeze_flow_spec`` / ``load_flow_spec`` (shipped, unmodified) +
+    ``casestudy_flow_common.assemble_flow_state`` (the single case-study
+    flow-package factory; M2a.1 migrated the generator off
+    ``model_io_utils.assemble_gwf_from_spec``);
   * ``scripts.jupyterhub_refine_reliability_gen`` primitives:
     ``group_refine_points`` (per-group doublet-anchored refine points),
     ``run_group_determinism_check`` (pure rerun-agreement gate),
@@ -104,7 +108,18 @@ for _p in (_SRC_DIR, _SCRIPTS_DIR):
 
 import model_io_utils as mio  # noqa: E402
 import jupyterhub_refine_reliability_gen as rg  # noqa: E402
-import casestudy_refine_riv as crr  # noqa: E402
+import casestudy_flow_common as cfc  # noqa: E402
+
+# Shared baseline-build primitives now live in casestudy_flow_common (M2a.1
+# refactor). Re-exported here under the SAME names the generator + its tests
+# already use, so the golden's behaviour and public surface are unchanged.
+from casestudy_flow_common import (  # noqa: E402
+    baseline_well_data,
+    canonicalize_wel_entries,
+    apply_faithful_riv,
+    load_coarse_model as _load_coarse_model,
+    load_gis as _load_gis,
+)
 
 Group = Any
 # (spec_dict, radius_used, retried_bool) -- same shape rg.Runner expects.
@@ -221,102 +236,9 @@ def _assert_json_finite(obj: Any, _path: str = "") -> None:
 
 
 # =============================================================================
-# NEW: baseline well extraction + deterministic WEL canonicalization.
+# Baseline well extraction + WEL canonicalization now live in
+# casestudy_flow_common (re-exported at the top of this module).
 # =============================================================================
-def baseline_well_data(cgwf) -> List[Tuple[float, float, float]]:
-    """Extract the coarse (05f-calibrated) model's WEL package as
-    ``(centroid_x, centroid_y, rate)`` coordinate tuples, sign preserved.
-
-    This is the "no doublet, background wells only" well_data the M2a.0
-    golden baseline passes to ``generate_refined_grid`` -- WITHOUT this,
-    ``well_data=None`` would silently drop the 238 calibrated background
-    abstraction wells (``generate_refined_grid`` only ever builds WEL from
-    its ``well_data`` argument; the coarse WEL package itself is never
-    carried over).
-
-    Parameters
-    ----------
-    cgwf : flopy.mf6.ModflowGwf
-        The coarse (05f-calibrated) GWF model -- must have a WEL package.
-
-    Returns
-    -------
-    list of (x, y, rate) float tuples
-        One per coarse WEL stress-period-data record, in file order.
-
-    Raises
-    ------
-    ValueError
-        If *cgwf* has no WEL package, or the WEL package has no
-        stress_period_data for period 0.
-    """
-    wel = cgwf.get_package("WEL")
-    if wel is None:
-        raise ValueError(
-            "coarse (05f-calibrated) model has no WEL package -- cannot "
-            "build baseline_well_data for the no-doublet golden baseline"
-        )
-    spd = wel.stress_period_data.get_data(0)
-    if spd is None or len(spd) == 0:
-        raise ValueError(
-            "coarse WEL package has no stress_period_data for period 0"
-        )
-
-    modelgrid = cgwf.modelgrid
-    xc = modelgrid.xcellcenters
-    yc = modelgrid.ycellcenters
-
-    wells: List[Tuple[float, float, float]] = []
-    for rec in spd:
-        flat = mio._cellid_to_flat(rec["cellid"])
-        wells.append((float(xc[flat]), float(yc[flat]), float(rec["q"])))
-    return wells
-
-
-def canonicalize_wel_entries(
-    wel_cellid: List[Tuple[int, int]], wel_rate: List[float]
-) -> Tuple[List[Tuple[int, int]], List[float]]:
-    """Deterministically canonicalize a refined-grid WEL spec's
-    ``(cellid, rate)`` entries.
-
-    ``generate_refined_grid`` maps every ``well_data`` entry to its nearest
-    refined ACTIVE cell independently -- two background wells whose nearest
-    refined cell coincides produce two ``wel_cellid`` rows for the SAME
-    cellid. MF6 sums multiple stress-period entries at the same cell within
-    a period (this is standard MF6 list-package behaviour), so the physical
-    model already treats duplicates as additive; this function makes that
-    explicit and DETERMINISTIC ahead of time (aggregate by summing, then
-    sort by cellid) so:
-
-      (a) the canonical/frozen WEL representation is SEMANTICALLY IDENTICAL
-          to what MF6 actually solves -- the model is assembled/solved from
-          this canonicalized spec, never from the raw pre-aggregation one;
-      (b) the hash of the frozen artifact is stable/order-independent
-          across reruns (no risk of `generate_refined_grid`'s nearest-cell
-          argmin ties or Python iteration order producing a different
-          on-disk representation of the SAME physical WEL for two runs that
-          the determinism check would otherwise fail).
-
-    Parameters
-    ----------
-    wel_cellid : list of (layer, icell) tuples
-    wel_rate : list of float
-        Parallel to *wel_cellid* (one rate per raw entry, pre-aggregation).
-
-    Returns
-    -------
-    (cellid, rate) : (list of (int, int), list of float)
-        Cellids sorted ascending (layer, then icell); rates summed for any
-        cellid that appeared more than once. ``len(result) <= len(wel_cellid)``.
-    """
-    totals: Dict[Tuple[int, int], float] = {}
-    for cid, rate in zip(wel_cellid, wel_rate):
-        key = (int(cid[0]), int(cid[1]))
-        totals[key] = totals.get(key, 0.0) + float(rate)
-    ordered = sorted(totals)
-    return ordered, [totals[k] for k in ordered]
-
-
 def assert_wel_rate_conserved(
     coarse_well_data: List[Tuple[float, float, float]],
     wel_rate: List[float],
@@ -691,76 +613,9 @@ def check_riv_present(riv_cellid, riv_cond) -> None:
 
 
 # =============================================================================
-# Faithful RIV re-transfer (case-study addendum) -- REPLACE generate_refined_grid's
-# defective centroid-in-polygon RIV with the shared, conservation-exact
-# `casestudy_refine_riv.faithful_riv_from_coarse`, applied to the refined
-# spec BEFORE the solve so the golden encodes the faithful river.
+# apply_faithful_riv now lives in casestudy_flow_common (re-exported at the top
+# of this module); the generator calls it after its determinism gate.
 # =============================================================================
-def apply_faithful_riv(
-    spec: Dict[str, Any], cgwf, river_gdf,
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Return ``(new_spec, info)`` where *new_spec* is a copy of *spec* with
-    its RIV package replaced by the faithful (area-weighted, per-reach,
-    conductance-conserving) transfer from the coarse calibrated RIV.
-
-    The refined ``botm`` is passed to the transfer so its OVERBANK FILTER is
-    active: each coarse reach's conductance is split only among overlapping
-    refined cells that can host the river bed (``botm <= rbot``), so MF6
-    never sees ``rbot < cell botm`` and NO cell botm is invented/lowered
-    (the earlier blunt botm-floor -- which itself caused ~8 m local head
-    outliers at 4-5 cells -- is thereby avoided entirely). ``botm`` is left
-    unchanged.
-    """
-    coarse_reaches = crr.build_coarse_riv_reaches(cgwf)
-    coarse_cond = float(sum(r.cond for r in coarse_reaches))
-    records, stats = crr.faithful_riv_from_coarse(
-        spec["gridprops"], spec["idomain"], coarse_reaches, river_gdf,
-        crs=spec.get("crs"), refined_botm=spec["botm"], return_stats=True,
-    )
-
-    # COVERAGE INVARIANT (Finding 3): every coarse RIV reach must be
-    # represented in the faithful output. faithful_riv_from_coarse fail-fasts
-    # if a reach cannot be placed, so this asserts the surfaced count rather
-    # than assuming it -- a conserved-but-truncated RIV can never slip through.
-    if not (stats["n_reaches_placed"] == stats["n_source_reaches"] == len(coarse_reaches)):
-        raise ValueError(
-            f"faithful RIV coverage: {stats['n_reaches_placed']} placed vs "
-            f"{stats['n_source_reaches']} source vs {len(coarse_reaches)} "
-            "coarse reaches -- not every coarse RIV reach was represented"
-        )
-
-    new = dict(spec)
-    new["riv_cellid"] = [r[0] for r in records]
-    new["riv_stage"] = [float(r[1]) for r in records]
-    new["riv_cond"] = [float(r[2]) for r in records]
-    new["riv_rbot"] = [float(r[3]) for r in records]
-    new["botm"] = np.array(spec["botm"], dtype=float)  # unchanged (no floor)
-
-    # sanity: every emitted record must satisfy rbot >= refined cell botm
-    # (the overbank filter guarantees this; assert to fail loud on regression).
-    botm = new["botm"]
-    n_bad = sum(1 for (_l, j), _s, _c, rbot in records if rbot < botm[int(j)])
-    if n_bad:
-        raise ValueError(
-            f"faithful RIV: {n_bad} record(s) have rbot < refined cell botm "
-            "despite the overbank filter (internal invariant violated)"
-        )
-
-    info = {
-        "primitive": stats["primitive"],
-        "records": records,
-        "hash": crr.riv_records_hash(records),
-        "coarse_cond": coarse_cond,
-        "refined_cond": crr.total_conductance(records),
-        "n_records": len(records),
-        "n_cells": len({int(c[1]) for c, _, _, _ in records}),
-        # coverage + overbank-concentration diagnostics (Findings 3 & 4)
-        "coverage_reaches_placed": stats["n_reaches_placed"],
-        "coverage_source_reaches": stats["n_source_reaches"],
-        "min_retained_weight_ratio": stats["min_retained_weight_ratio"],
-        "reaches_below_warn_ratio": stats["reaches_below_warn_ratio"],
-    }
-    return new, info
 
 
 def validate_riv_conductance_conserved(
@@ -873,38 +728,17 @@ def check_chd_near_boundary(
 
 
 # =============================================================================
-# Coarse-model / GIS loading -- mirrors
-# jupyterhub_refine_reliability_gen._real_refine_group's loading pattern
-# (untouched; that function is left exactly as-is -- see the module
-# docstring / M2a.0 "raised follow-up").
+# Coarse-model / GIS loaders (`_load_coarse_model`/`_load_gis`) now live in
+# casestudy_flow_common (re-exported at the top of this module).
 # =============================================================================
-def _load_coarse_model(mother_model: Path):
-    import flopy
-
-    sim = flopy.mf6.MFSimulation.load(sim_ws=str(mother_model), verbosity_level=0)
-    gwf = sim.get_model("limmat_valley")
-    return sim, gwf
-
-
-def _load_gis(mother_model: Path):
-    import geopandas as gpd
-
-    gis_dir = Path(mother_model).parent / "gis"
-    boundary_gdf = gpd.read_file(gis_dir / "limmat_model_boundary.gpkg")
-    river_all = gpd.read_file(gis_dir / "AV_Gewasser_-OGD.gpkg")
-    river_gdf = river_all[
-        river_all["GEWAESSERNAME"].isin(["Limmat", "Sihl"])
-        & river_all.intersects(boundary_gdf.geometry.iloc[0])
-    ]
-    return boundary_gdf, river_gdf
 
 
 # =============================================================================
 # NEW no-doublet baseline refine function (mirrors
 # jupyterhub_refine_reliability_gen._real_refine_group's structure, but
-# passes `baseline_well_data(gwf)` instead of the group's doublet, and
-# canonicalizes the resulting WEL entries deterministically BEFORE the
-# model is assembled/solved).
+# builds the background-well baseline spec via the shared
+# `casestudy_flow_common.refine_baseline_grid` -- generate_refined_grid +
+# canonicalize WEL -- inside the SIGILL radius walk).
 # =============================================================================
 def _real_refine_baseline_group(
     group: Group, *, mother_model: Path, work_dir: Path,
@@ -928,17 +762,11 @@ def _real_refine_baseline_group(
     last_exc: Any = None
     for k, radius in enumerate(rg.RETRY_RADII):
         try:
-            spec = mio.generate_refined_grid(
-                gwf, boundary_gdf=boundary_gdf, river_gdf=river_gdf,
-                refine_points=refine_points, head_array=heads, refine_radius=radius,
-                well_data=wells,
+            spec = cfc.refine_baseline_grid(
+                gwf, boundary_gdf, river_gdf, refine_points, heads,
+                refine_radius=radius, wells=wells,
             )
-            cellids, rates = canonicalize_wel_entries(spec["wel_cellid"], spec["wel_rate"])
-            spec["wel_cellid"] = cellids
-            spec["wel_rate"] = rates
-            spec["well_cells"] = sorted({int(c[1]) for c in cellids})
-
-            mio.assemble_gwf_from_spec(
+            cfc.assemble_flow_state(
                 spec, workspace=work_dir / f"rg{k}", sim_name=f"golden_g{group}",
             )
             return spec, float(radius), (k > 0)
@@ -1158,7 +986,7 @@ def generate_group0_golden(
     if assemble_ws.exists():
         shutil.rmtree(assemble_ws)
     assemble_ws.mkdir(parents=True)
-    built = mio.assemble_gwf_from_spec(
+    built = cfc.assemble_flow_state(
         spec, workspace=assemble_ws, sim_name=f"group{group}_golden",
     )
     gwf = built["gwf"]
