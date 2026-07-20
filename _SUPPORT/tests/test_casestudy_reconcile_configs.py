@@ -257,11 +257,12 @@ def test_recirc_has_no_physics_consumer():
     """Grep gate: recirculation_fraction is linted-only -- no physics consumer
     in _SUPPORT/src reads it (only case_utils validates it)."""
     src = Path(__file__).resolve().parents[1] / "src"
-    # Allowed to mention recirc: case_utils (the linter that validates it) and
-    # casestudy_reconcile_configs (reads the OLD value only to record staleness
-    # in the coherence ledger -- NOT physics). Any OTHER module that references
-    # it would be a physics consumer and must fail this gate.
-    allowed = {"case_utils.py", "casestudy_reconcile_configs.py"}
+    # Allowed to mention recirc (all NON-physics): case_utils (the linter that
+    # validates it), casestudy_reconcile_configs (reads the OLD value only for
+    # the coherence ledger), and casestudy_m1_specs (the M1.5 config-schema /
+    # case_utils key mirror + the structural-gate pattern). Any OTHER module
+    # that references it would be a physics consumer and must fail this gate.
+    allowed = {"case_utils.py", "casestudy_reconcile_configs.py", "casestudy_m1_specs.py"}
     offenders = []
     for p in src.glob("*.py"):
         if p.name in allowed:
