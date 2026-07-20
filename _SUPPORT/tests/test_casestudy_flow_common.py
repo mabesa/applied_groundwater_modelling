@@ -235,6 +235,124 @@ class TestAssembleFlowStateNeutralFactory:
 
 
 # =============================================================================
+# M2a.2 — well-placement + WEL-budget primitives (synthetic grids, no mf6).
+# =============================================================================
+def _quad_spec(nx, ny, dx=10.0, x0=0.0, y0=0.0, idomain=None, chd=None, riv=None):
+    """A regular nx*ny grid of dx-square cells as a minimal flow spec + a fake
+    modelgrid (xcellcenters/ycellcenters). Cell index = j*nx + i."""
+    vid, vertices, k = {}, [], 0
+    for j in range(ny + 1):
+        for i in range(nx + 1):
+            vid[(i, j)] = k
+            vertices.append([k, x0 + i * dx, y0 + j * dx])
+            k += 1
+    cell2d, xc, yc = [], [], []
+    ic = 0
+    for j in range(ny):
+        for i in range(nx):
+            bl, br, tr, tl = vid[(i, j)], vid[(i + 1, j)], vid[(i + 1, j + 1)], vid[(i, j + 1)]
+            cx, cy = x0 + (i + 0.5) * dx, y0 + (j + 0.5) * dx
+            cell2d.append([ic, cx, cy, 4, bl, br, tr, tl])
+            xc.append(cx); yc.append(cy); ic += 1
+    ncpl = nx * ny
+    spec = {
+        "gridprops": {"nvert": len(vertices), "vertices": vertices, "cell2d": cell2d, "ncpl": ncpl},
+        "ncpl": ncpl,
+        "idomain": np.ones(ncpl, dtype=int) if idomain is None else np.asarray(idomain),
+        "chd_cellid": chd or [], "riv_cellid": riv or [],
+    }
+    mg = SimpleNamespace(xcellcenters=np.array(xc), ycellcenters=np.array(yc))
+    return spec, mg
+
+
+class TestResolveWellCell:
+    def test_nearest_cell(self):
+        spec, mg = _quad_spec(3, 1, dx=10.0)  # centroids x=5,15,25
+        assert cfc.resolve_well_cell(16.0, 5.0, mg, spec["idomain"]) == 1
+        assert cfc.resolve_well_cell(4.0, 5.0, mg, spec["idomain"]) == 0
+
+    def test_requires_all_active_idomain(self):
+        # Finding 2: the mapper equals generate_refined_grid's UNMASKED
+        # nearest-centroid ONLY on an all-active grid -> require it (a checked
+        # precondition, not a happens-to-hold claim).
+        spec, mg = _quad_spec(3, 1, dx=10.0, idomain=[1, 0, 1])
+        with pytest.raises(ValueError, match="(?i)all-active|inactive"):
+            cfc.resolve_well_cell(15.0, 5.0, mg, spec["idomain"])
+
+
+class TestResolveDoubletCells:
+    def _points(self, spec, mg, a, b):
+        return [(mg.xcellcenters[a], mg.ycellcenters[a]), (mg.xcellcenters[b], mg.ycellcenters[b])]
+
+    def test_happy_path_fine_corridor(self):
+        spec, mg = _quad_spec(4, 4, dx=10.0)  # cellsize 10 < 30 (fine)
+        pts = self._points(spec, mg, 5, 10)
+        out = cfc.resolve_doublet_cells(spec, mg, pts)
+        assert out["injection"]["cell"] == 5
+        assert out["extraction"]["cell"] == 10
+        assert out["injection"]["cellsize_m"] == pytest.approx(10.0)
+
+    def test_rejects_non_all_active_idomain(self):
+        # Finding 2: any inactive cell in the refined grid breaks the "same
+        # mapper as background wells" precondition -> reject up front.
+        spec, mg = _quad_spec(4, 4, dx=10.0, idomain=None)
+        spec["idomain"][7] = 0
+        pts = self._points(spec, mg, 5, 10)
+        with pytest.raises(ValueError, match="(?i)all-active|inactive"):
+            cfc.resolve_doublet_cells(spec, mg, pts)
+
+    def test_rejects_on_edge_ambiguous_containing(self):
+        # Finding 1: a point exactly on a shared cell edge is COVERED by two
+        # cells (containing has 2) -> a placement ambiguity that must FAIL, not
+        # silently resolve to one side.
+        spec, mg = _quad_spec(3, 1, dx=10.0)  # cells 0:[0,10], 1:[10,20], 2:[20,30]
+        # (10, 5) sits on the vertical edge shared by cell 0 and cell 1
+        pts = [(10.0, 5.0), (mg.xcellcenters[2], mg.ycellcenters[2])]
+        with pytest.raises(ValueError, match="(?i)ambigu|containing"):
+            cfc.resolve_doublet_cells(spec, mg, pts)
+
+    def test_rejects_chd_cell(self):
+        spec, mg = _quad_spec(4, 4, dx=10.0, chd=[(0, 5)])
+        pts = self._points(spec, mg, 5, 10)
+        with pytest.raises(ValueError, match="(?i)CHD"):
+            cfc.resolve_doublet_cells(spec, mg, pts)
+
+    def test_rejects_riv_cell(self):
+        spec, mg = _quad_spec(4, 4, dx=10.0, riv=[(0, 10)])
+        pts = self._points(spec, mg, 5, 10)
+        with pytest.raises(ValueError, match="(?i)RIV"):
+            cfc.resolve_doublet_cells(spec, mg, pts)
+
+    def test_rejects_coarse_cell_not_in_fine_corridor(self):
+        spec, mg = _quad_spec(4, 4, dx=50.0)  # cellsize 50 >= 30
+        pts = self._points(spec, mg, 5, 10)
+        with pytest.raises(ValueError, match="(?i)corridor|fine"):
+            cfc.resolve_doublet_cells(spec, mg, pts)
+
+    def test_rejects_placement_ambiguity_point_outside_grid(self):
+        spec, mg = _quad_spec(4, 4, dx=10.0)
+        # a point far outside the grid: nearest-active exists but no cell CONTAINS it
+        pts = [(1000.0, 1000.0), (mg.xcellcenters[10], mg.ycellcenters[10])]
+        with pytest.raises(ValueError, match="(?i)ambigu|contain"):
+            cfc.resolve_doublet_cells(spec, mg, pts)
+
+
+class TestWelFluxByCell:
+    def test_sums_q_per_cell_from_1based_node(self):
+        rec = np.array([(1, 1, 10.0), (11, 2, -540.0), (11, 3, 5.0)],
+                       dtype=[("node", int), ("node2", int), ("q", float)])
+
+        class _Bud:
+            def get_times(self): return [1.0]
+            def get_data(self, text, totim): return [rec]
+
+        gwf = SimpleNamespace(output=SimpleNamespace(budget=lambda: _Bud()))
+        flux = cfc.wel_flux_by_cell(gwf)
+        assert flux[0] == pytest.approx(10.0)   # node 1 -> icell 0
+        assert flux[10] == pytest.approx(-535.0)  # node 11 -> icell 10, summed
+
+
+# =============================================================================
 # Finding 1: the case-study path uses ONE assembler (assemble_flow_state);
 # the generator no longer calls model_io_utils.assemble_gwf_from_spec.
 # =============================================================================

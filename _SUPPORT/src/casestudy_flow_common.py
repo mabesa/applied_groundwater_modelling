@@ -65,6 +65,23 @@ Group = Any
 # radius 70; the builder uses the same so its spec is byte-identical.
 BASELINE_REFINE_RADIUS = 70.0
 
+# Corridor refine-radius walk (mirrors model_io_utils.refine_with_retry /
+# jupyterhub_refine_reliability_gen.RETRY_RADII) -- the builder walks these to
+# dodge a Triangle abort (a PYTHON exception; a fatal SIGILL still needs
+# subprocess isolation by the caller). Group 0 succeeds at the first radius.
+REFINE_RADII = (70.0, 62.0, 78.0, 56.0, 84.0)
+
+# The geothermal doublet magnitude PER WELL (m3/d): 3000 l/min x 1.44 =
+# licensed-max extraction, balanced reinjection (net-zero doublet). MF6 sign
+# convention: injection +Q, extraction -Q; the 50% sensitivity uses 0.5*Q.
+DOUBLET_Q_M3D = 4320.0
+
+# Fine-corridor cell-size threshold (m): the doublet must sit in the
+# well-resolved (~10 m) corridor the grid was refined for, NOT the ~50 m base
+# region. Mirrors casestudy_flow_golden.UNREFINED_CELLSIZE_THRESHOLD_M (kept
+# here so the builder need not import the golden generator -- independence).
+CORRIDOR_CELLSIZE_THRESHOLD_M = 30.0
+
 # mf6 executable resolution (PATH, else the flopy-managed bin location) --
 # mirrors transport_srcpulse_demo's pattern so a real solve works whether or
 # not mf6 is on PATH.
@@ -275,6 +292,146 @@ def build_baseline_spec(
     )
     spec, riv_info = apply_faithful_riv(spec, cgwf, river_gdf)
     return spec, riv_info
+
+
+# =============================================================================
+# Well placement + WEL budget (state (ii) doublet, M2a.2).
+# =============================================================================
+def refined_cell_sizes(spec: Dict[str, Any]) -> np.ndarray:
+    """Per-cell 'linear size' proxy (sqrt(polygon area)) for the refined DISV
+    grid -- corridor (~10 m) vs base (~50 m) region discriminator."""
+    polys = crr.refined_cell_polygons(spec["gridprops"])
+    return np.sqrt(np.array([p.area for p in polys], dtype=float))
+
+
+def resolve_well_cell(E: float, N: float, modelgrid, idomain) -> int:
+    """Map coordinate ``(E, N)`` to the flat icell of the NEAREST ACTIVE
+    refined cell.
+
+    PRECONDITION (asserted): *idomain* is ALL-ACTIVE. ``generate_refined_grid``
+    places the background wells by the nearest UNMASKED cell centroid
+    (``np.argmin`` over every cell, no active filter -- model_io_utils.py) and
+    emits an all-ones idomain. Requiring all-active here makes
+    nearest-active == nearest-unmasked, so the doublet is placed by the SAME
+    mapping as the background wells -- a checked precondition, not a claim that
+    happens to hold. (A future partially-masked refined grid must revisit this,
+    because then the two mappings would genuinely differ.)
+    """
+    xc = np.asarray(modelgrid.xcellcenters).reshape(-1)
+    yc = np.asarray(modelgrid.ycellcenters).reshape(-1)
+    idom = np.asarray(idomain).reshape(-1)
+    if not np.all(idom != 0):
+        raise ValueError(
+            "resolve_well_cell requires an ALL-ACTIVE idomain (so nearest-active "
+            "== nearest-unmasked == generate_refined_grid's background-well "
+            f"mapping); {int(np.count_nonzero(idom == 0))} inactive cell(s) found"
+        )
+    d2 = (xc - E) ** 2 + (yc - N) ** 2
+    return int(np.argmin(d2))
+
+
+def _containing_cells(E: float, N: float, polys) -> List[int]:
+    """Flat indices of every refined cell polygon that COVERS ``(E, N)``
+    (contains it, boundary included). One cell for a strictly-interior point;
+    2+ only if the point sits exactly on a shared edge."""
+    from shapely.geometry import Point as _Point
+
+    pt = _Point(E, N)
+    return [i for i, p in enumerate(polys) if p.covers(pt)]
+
+
+def resolve_doublet_cells(
+    spec: Dict[str, Any], modelgrid, refine_points,
+    *, corridor_threshold: float = CORRIDOR_CELLSIZE_THRESHOLD_M,
+) -> Dict[str, Dict[str, Any]]:
+    """Resolve + VALIDATE the group's doublet (injection, extraction) cells
+    against the ACTUAL built grid (single canonical mapper, cross-checked
+    against the containing cell). *refine_points* is ``[(inj_E, inj_N),
+    (ext_E, ext_N)]`` (from ``group_refine_points``).
+
+    For each role:
+      * resolve via ``resolve_well_cell`` (nearest ACTIVE) AND independently
+        via containing-cell (shapely covers over ``refined_cell_polygons``);
+        require **UNIQUE** agreement -- ``len(containing) == 1`` AND that one
+        cell == the nearest cell. An ambiguous containment (a point exactly on
+        a shared edge/vertex -> ``containing`` has 2+) OR a disagreement is a
+        real placement ambiguity (the doublet could land on the wrong side of
+        the edge) and FAILS, naming role/cell/coords -- never silently resolved;
+      * validate: cell ACTIVE, NOT a CHD/RIV cell of THIS model, and in the
+        FINE corridor (``cellsize < corridor_threshold``).
+
+    Returns ``{"injection": {...}, "extraction": {...}}`` with ``cell``,
+    ``E``, ``N``, ``cellsize_m`` per role. Raises ``ValueError`` on any
+    placement/validation failure. Requires an all-active idomain (see
+    ``resolve_well_cell``).
+    """
+    idomain = np.asarray(spec["idomain"]).reshape(-1)
+    if not np.all(idomain != 0):
+        raise ValueError(
+            "resolve_doublet_cells requires an ALL-ACTIVE idomain (so the "
+            "doublet uses the SAME mapping as the background wells); "
+            f"{int(np.count_nonzero(idomain == 0))} inactive cell(s) found"
+        )
+    polys = crr.refined_cell_polygons(spec["gridprops"])
+    cellsize = refined_cell_sizes(spec)
+    chd = {int(c[1]) for c in spec["chd_cellid"]}
+    rivc = {int(c[1]) for c in spec["riv_cellid"]}
+
+    if len(refine_points) != 2:
+        raise ValueError(f"resolve_doublet_cells expects 2 refine points, got {len(refine_points)}")
+
+    out: Dict[str, Dict[str, Any]] = {}
+    for role, (E, N) in zip(("injection", "extraction"), refine_points):
+        nn = resolve_well_cell(E, N, modelgrid, idomain)
+        containing = _containing_cells(E, N, polys)
+        # UNIQUE agreement: exactly one containing cell, and it is the nearest.
+        if len(containing) != 1 or containing[0] != nn:
+            raise ValueError(
+                f"doublet placement ambiguity ({role}) at ({E:.2f}, {N:.2f}): "
+                f"nearest cell {nn}, containing cells {containing}. Require a "
+                "UNIQUE containing cell equal to the nearest cell; an on-edge / "
+                "on-vertex or disagreeing placement is refused (the doublet "
+                "could land on the wrong side of the edge)."
+            )
+        if idomain[nn] == 0:
+            raise ValueError(f"doublet {role} cell {nn} is INACTIVE (idomain=0) at ({E:.2f},{N:.2f})")
+        if nn in chd:
+            raise ValueError(f"doublet {role} cell {nn} is a CHD cell of this model -- cannot place a well there")
+        if nn in rivc:
+            raise ValueError(f"doublet {role} cell {nn} is a RIV cell of this model -- cannot place a well there")
+        if cellsize[nn] >= corridor_threshold:
+            raise ValueError(
+                f"doublet {role} cell {nn} cellsize {cellsize[nn]:.1f} m is not "
+                f"in the FINE corridor (< {corridor_threshold} m) -- the doublet "
+                "must sit in the well-resolved refined zone"
+            )
+        out[role] = {"cell": int(nn), "E": float(E), "N": float(N), "cellsize_m": float(cellsize[nn])}
+    return out
+
+
+def wel_flux_by_cell(gwf) -> Dict[int, float]:
+    """Sum the solved WEL package flux (m3/d) per flat icell from a solved
+    GWF model's budget. DISV WEL budget records carry a 1-based ``node``
+    (or a ``cellid``); this returns ``{icell: total_q}``.
+    """
+    from collections import defaultdict
+
+    bud = gwf.output.budget()
+    recs = bud.get_data(text="WEL", totim=bud.get_times()[-1])
+    out: Dict[int, float] = defaultdict(float)
+    if recs:
+        rec = recs[0]
+        names = rec.dtype.names
+        for r in rec:
+            if "node" in names:
+                icell = int(r["node"]) - 1
+            elif "cellid" in names:
+                cid = r["cellid"]
+                icell = int(cid[-1]) if hasattr(cid, "__len__") else int(cid)
+            else:
+                raise ValueError(f"WEL budget record has no node/cellid field: {names}")
+            out[icell] += float(r["q"])
+    return dict(out)
 
 
 # =============================================================================
