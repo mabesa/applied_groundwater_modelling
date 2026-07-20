@@ -1,0 +1,138 @@
+# casestudy_equalization_dimensions.yaml -- M1.5 equalization-dimension list.
+#
+# The numeric + qualitative dimensions M3c/M4/M5 use to compare and equalize
+# per-group difficulty. Each dimension resolves to EXACTLY ONE producer:
+#   * M1.4:<id>            -- already emitted by an M1.4 diagnostic (validated
+#                            by that diagnostic; NO threshold restated here).
+#   * emit-obligation:M2a  -- a NEW value M2a must emit (flow side).
+#   * emit-obligation:M3a  -- a NEW value M3a must emit (transport/PRT side).
+#   * emit-obligation:M2a+M3a -- each side emits its own; combined downstream.
+#   * reviewer:M5          -- a human defensibility judgment.
+# Emit-obligations are enumerated by casestudy_m1_specs.emit_obligations() so
+# M2a/M3a know exactly what they still owe. Bands here are the M3c equalization
+# targets (or "frozen:M3c" where M3c fixes them); they are NOT M1.4 physics
+# thresholds.
+#
+# Entry shape (a lint enforces it):
+#   id · kind (numeric|qualitative) · producer (one allowed form above)
+#   source (file/key OR "reviewer") · unit · aggregation
+#   baseline_convention (str, or "not_applicable") · m3c_band (str) · notes
+
+schema_version: "1.0"
+
+dimensions:
+
+  - id: breakthrough_timing
+    kind: numeric
+    producer: "emit-obligation:M3a"
+    source: "transport breakthrough curve (BTC) at the compliance/extraction well"
+    unit: day
+    aggregation: peak_day
+    baseline_convention: not_applicable
+    m3c_band: "M3c-set (response-difficulty target)"
+    notes: >
+      ADE peak-concentration DAY at the compliance well. Peak-extraction rule:
+      the day of the GLOBAL max of the (optionally lightly-smoothed) BTC; if
+      multiple peaks within tol, take the EARLIEST; if the plume never reaches
+      the well, emit a censored/null flag (no breakthrough). USE:
+      transport-RESPONSE difficulty. Kept DISTINCT from advective_travel_time
+      (the 08t lesson) -- not double-counted.
+
+  - id: advective_travel_time
+    kind: numeric
+    producer: "emit-obligation:M3a"
+    source: "PRT particle travel times, source -> extraction well"
+    unit: day
+    aggregation: median
+    baseline_convention: not_applicable
+    m3c_band: "M3c-set (flow/capture-comparability target)"
+    notes: >
+      PRT MEDIAN advective travel time. M1.4 has NO advective-travel-time
+      diagnostic (its capture diagnostics are capture_fraction_bounds /
+      capture_stability), so this is a NEW M3a emit-obligation. USE:
+      flow/capture comparability -- kept DISTINCT from breakthrough_timing
+      (response vs comparability), so the two are not double-counted.
+
+  - id: capture_prob
+    kind: numeric
+    producer: "M1.4:capture_fraction_bounds"
+    source: "PRT capture_fraction (validated in [0,1] by M1.4:capture_fraction_bounds)"
+    unit: "-"
+    aggregation: scalar
+    baseline_convention: not_applicable
+    m3c_band: "0.3-0.9"
+    notes: >
+      The emitted capture_fraction value; validity ([0,1]) is M1.4's
+      capture_fraction_bounds. No threshold restated -- band here is the M3c
+      equalization target, not the M1.4 validity gate.
+
+  - id: exceedance_margin
+    kind: numeric
+    producer: "emit-obligation:M3a"
+    source: "(peak_concentration - threshold_mg_L) / threshold_mg_L"
+    unit: "-"
+    aggregation: scalar
+    baseline_convention: not_applicable
+    m3c_band: ">=0.20"
+    notes: >
+      Relative margin of the peak concentration over the regulatory threshold.
+      threshold_mg_L is the regulatory value (NOT a difficulty lever -- see the
+      retuning hierarchy). New M3a emit-obligation.
+
+  - id: drawdown
+    kind: numeric
+    producer: "M1.4:flow_head_delta"
+    source: "M1.4:flow_head_delta at the doublet"
+    unit: m
+    aggregation: max
+    baseline_convention: "baseline (wells-only) vs wells-plus-scenario"
+    m3c_band: "frozen:M3c"
+    notes: >
+      Max head change at the doublet -- reuses M1.4's flow_head_delta value (no
+      new emit-obligation). Band frozen at M3c; no M1.4 threshold restated.
+
+  - id: river_leakage_change
+    kind: numeric
+    producer: "emit-obligation:M2a"
+    source: "GWF budget river (RIV) flux term, scenario minus baseline"
+    unit: "m3/d or %"
+    aggregation: scalar
+    baseline_convention: "wells-only vs wells-plus-scenario"
+    m3c_band: "M3c-set"
+    notes: >
+      Change in river leakage between the baseline and the wells+scenario run.
+      New M2a emit-obligation (GWF budget).
+
+  - id: gradient_change
+    kind: numeric
+    producer: "emit-obligation:M2a"
+    source: "hydraulic-gradient change toward the receptor (GWF heads)"
+    unit: "- or %"
+    aggregation: scalar
+    baseline_convention: "wells-only vs wells-plus-scenario"
+    m3c_band: "M3c-set"
+    notes: "Gradient change toward the receptor. New M2a emit-obligation (GWF heads)."
+
+  - id: runtime
+    kind: numeric
+    producer: "emit-obligation:M2a+M3a"
+    source: "per-run wall-clock (flow run + transport run)"
+    unit: s
+    aggregation: scalar
+    baseline_convention: not_applicable
+    m3c_band: "M3c runtime budget"
+    notes: >
+      Per-run wall-clock; M2a and M3a each emit their own, summed for the full
+      group run. New emit-obligation on both sides.
+
+  - id: interpretive_complexity
+    kind: qualitative
+    producer: "reviewer:M5"
+    source: reviewer
+    unit: "-"
+    aggregation: none
+    baseline_convention: not_applicable
+    m3c_band: "no numeric band"
+    notes: >
+      A human M5 judgment: does the scenario require >=1 real defensibility
+      decision (not trivial, not overwhelming)? Qualitative -- no numeric band.

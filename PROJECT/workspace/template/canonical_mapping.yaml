@@ -1,0 +1,524 @@
+canonical_mapping:
+- group: 0
+  concession: b010210
+  flow_scenario_id: 0
+  contaminant_id: 0
+  flow_scenario_type: chd_head_change
+  flow_scenario_params:
+    chd_head_change_m: -1
+  contaminant: Trichloroethylene (TCE)
+  cas_number: 79-01-6
+  threshold_mg_L: 0.005
+  threshold_basis: drinking_water_MCL
+  conservative: true
+  sorption: false
+  distribution_coefficient_mL_g: 0.0
+  bulk_density_kg_m3: 1800.0
+  decay: false
+  first_order_decay_constant_1_per_day: 0.0
+  half_life_days: null
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 1.0e-09
+  solubility_mg_L: 1100
+  source_type: point
+  source_release_type: pulse
+  source_easting_offset_m: 51.0
+  source_northing_offset_m: -77.0
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 1
+  source_value: 100.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: 4b60a2918789182474033f4a60c5fa643d9f9228a2642168e93b32080c32680d
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: 99ff5d0169c0a182f33674708b2ad5ee3e4d6ddfa20552417fa58bfaf29fc253
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/doublet_table.csv
+  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+- group: 1
+  concession: b010219
+  flow_scenario_id: 1
+  contaminant_id: 1
+  flow_scenario_type: river_conductance
+  flow_scenario_params:
+    conductance_factor: 1.2
+    target: Limmat & Sihl
+  contaminant: Nitrate (NO3-)
+  cas_number: 14797-55-8
+  threshold_mg_L: 25.0
+  threshold_basis: drinking_water_as_N
+  conservative: true
+  sorption: false
+  distribution_coefficient_mL_g: 0.0
+  bulk_density_kg_m3: 1800.0
+  decay: false
+  first_order_decay_constant_1_per_day: 0.0
+  half_life_days: null
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 1.9e-09
+  solubility_mg_L: 850000
+  source_type: point
+  source_release_type: pulse
+  source_easting_offset_m: -60.0
+  source_northing_offset_m: -169.0
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 1
+  source_value: 50.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: 4b60a2918789182474033f4a60c5fa643d9f9228a2642168e93b32080c32680d
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: 99ff5d0169c0a182f33674708b2ad5ee3e4d6ddfa20552417fa58bfaf29fc253
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/doublet_table.csv
+  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+- group: 2
+  concession: b010201
+  flow_scenario_id: 2
+  contaminant_id: 2
+  flow_scenario_type: river_conductance
+  flow_scenario_params:
+    conductance_factor: 0.8
+    target: Limmat & Sihl
+  contaminant: Benzene
+  cas_number: 71-43-2
+  threshold_mg_L: 0.005
+  threshold_basis: drinking_water_MCL
+  conservative: false
+  sorption: false
+  distribution_coefficient_mL_g: 0.0
+  bulk_density_kg_m3: 1800.0
+  decay: true
+  first_order_decay_constant_1_per_day: 0.005
+  half_life_days: 138.6
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 1.0e-09
+  solubility_mg_L: 1780
+  source_type: point
+  source_release_type: pulse
+  source_easting_offset_m: 50.0
+  source_northing_offset_m: -102.0
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 10
+  source_value: 10.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: 4b60a2918789182474033f4a60c5fa643d9f9228a2642168e93b32080c32680d
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: 99ff5d0169c0a182f33674708b2ad5ee3e4d6ddfa20552417fa58bfaf29fc253
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/doublet_table.csv
+  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+- group: 3
+  concession: b010236
+  flow_scenario_id: 3
+  contaminant_id: 3
+  flow_scenario_type: recharge_scale
+  flow_scenario_params:
+    recharge_factor: 1.2
+  contaminant: Chloride (conservative tracer)
+  cas_number: 16887-00-6
+  threshold_mg_L: 100.0
+  threshold_basis: aesthetic_indicator
+  conservative: true
+  sorption: false
+  distribution_coefficient_mL_g: 0.0
+  bulk_density_kg_m3: 1800.0
+  decay: false
+  first_order_decay_constant_1_per_day: 0.0
+  half_life_days: null
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 2.0e-09
+  solubility_mg_L: 350000
+  source_type: area
+  source_release_type: continuous
+  source_easting_offset_m: 100.0
+  source_northing_offset_m: -83.0
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 3650
+  source_value: 200.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: 4b60a2918789182474033f4a60c5fa643d9f9228a2642168e93b32080c32680d
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: 99ff5d0169c0a182f33674708b2ad5ee3e4d6ddfa20552417fa58bfaf29fc253
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/doublet_table.csv
+  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+- group: 4
+  concession: b010120
+  flow_scenario_id: 4
+  contaminant_id: 4
+  flow_scenario_type: recharge_scale
+  flow_scenario_params:
+    recharge_factor: 0.8
+  contaminant: Chromium (Cr-VI)
+  cas_number: 18540-29-9
+  threshold_mg_L: 0.1
+  threshold_basis: drinking_water_standard
+  conservative: false
+  sorption: true
+  distribution_coefficient_mL_g: 2.0
+  bulk_density_kg_m3: 1800.0
+  decay: false
+  first_order_decay_constant_1_per_day: 0.0
+  half_life_days: null
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 1.1e-09
+  solubility_mg_L: 10000
+  source_type: point
+  source_release_type: pulse
+  source_easting_offset_m: 53.0
+  source_northing_offset_m: -76.0
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 1
+  source_value: 13.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: 4b60a2918789182474033f4a60c5fa643d9f9228a2642168e93b32080c32680d
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: 99ff5d0169c0a182f33674708b2ad5ee3e4d6ddfa20552417fa58bfaf29fc253
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/doublet_table.csv
+  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+- group: 5
+  concession: b010223
+  flow_scenario_id: 5
+  contaminant_id: 5
+  flow_scenario_type: river_stage
+  flow_scenario_params:
+    stage_change_m: 1.5
+    stage_zone: 1
+    target: Limmat & Sihl
+  contaminant: PFOA (perfluorooctanoic acid)
+  cas_number: 335-67-1
+  threshold_mg_L: 0.0002
+  threshold_basis: drinking_water_advisory
+  conservative: true
+  sorption: false
+  distribution_coefficient_mL_g: 0.0
+  bulk_density_kg_m3: 1800.0
+  decay: false
+  first_order_decay_constant_1_per_day: 0.0
+  half_life_days: null
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 7.0e-10
+  solubility_mg_L: 9500
+  source_type: point
+  source_release_type: pulse
+  source_easting_offset_m: 32.0
+  source_northing_offset_m: -66.0
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 1
+  source_value: 1.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: 4b60a2918789182474033f4a60c5fa643d9f9228a2642168e93b32080c32680d
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: 99ff5d0169c0a182f33674708b2ad5ee3e4d6ddfa20552417fa58bfaf29fc253
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/doublet_table.csv
+  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+- group: 6
+  concession: b010227
+  flow_scenario_id: 6
+  contaminant_id: 6
+  flow_scenario_type: river_width_and_stage
+  flow_scenario_params:
+    stage_change_factor: -0.5
+    stage_zone: 1
+    target: Limmat & Sihl
+    width_factor: 1.5
+  contaminant: Perchloroethylene (PCE)
+  cas_number: 127-18-4
+  threshold_mg_L: 0.04
+  threshold_basis: drinking_water_MCL
+  conservative: false
+  sorption: true
+  distribution_coefficient_mL_g: 0.08
+  bulk_density_kg_m3: 1800.0
+  decay: false
+  first_order_decay_constant_1_per_day: 0.0
+  half_life_days: null
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 9.0e-10
+  solubility_mg_L: 200
+  source_type: point
+  source_release_type: pulse
+  source_easting_offset_m: 56.0
+  source_northing_offset_m: -244.0
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 90
+  source_value: 50.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: 4b60a2918789182474033f4a60c5fa643d9f9228a2642168e93b32080c32680d
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: 99ff5d0169c0a182f33674708b2ad5ee3e4d6ddfa20552417fa58bfaf29fc253
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/doublet_table.csv
+  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+- group: 7
+  concession: b010213
+  flow_scenario_id: 7
+  contaminant_id: 7
+  flow_scenario_type: aquifer_transmissivity
+  flow_scenario_params:
+    transmissivity_factor: 1.2
+  contaminant: Ammonium (NH4+)
+  cas_number: 14798-03-9
+  threshold_mg_L: 0.5
+  threshold_basis: drinking_water_guideline
+  conservative: false
+  sorption: false
+  distribution_coefficient_mL_g: 0.0
+  bulk_density_kg_m3: 1800.0
+  decay: true
+  first_order_decay_constant_1_per_day: 0.02
+  half_life_days: 34.7
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 1.9e-09
+  solubility_mg_L: 1000000
+  source_type: line
+  source_release_type: continuous
+  source_easting_offset_m: 75.0
+  source_northing_offset_m: -114.0
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 3650
+  source_value: 30.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: 4b60a2918789182474033f4a60c5fa643d9f9228a2642168e93b32080c32680d
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: 99ff5d0169c0a182f33674708b2ad5ee3e4d6ddfa20552417fa58bfaf29fc253
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/doublet_table.csv
+  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+- group: 8
+  concession: b010207
+  flow_scenario_id: 8
+  contaminant_id: 8
+  flow_scenario_type: aquifer_transmissivity
+  flow_scenario_params:
+    transmissivity_factor: 0.8
+  contaminant: Atrazine
+  cas_number: 1912-24-9
+  threshold_mg_L: 0.1
+  threshold_basis: drinking_water_standard_EU
+  conservative: false
+  sorption: true
+  distribution_coefficient_mL_g: 0.3
+  bulk_density_kg_m3: 1800.0
+  decay: false
+  first_order_decay_constant_1_per_day: 0.0
+  half_life_days: null
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 8.0e-10
+  solubility_mg_L: 35
+  source_type: point
+  source_release_type: pulse
+  source_easting_offset_m: -53.0
+  source_northing_offset_m: -82.0
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 1
+  source_value: 5.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: 4b60a2918789182474033f4a60c5fa643d9f9228a2642168e93b32080c32680d
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: 99ff5d0169c0a182f33674708b2ad5ee3e4d6ddfa20552417fa58bfaf29fc253
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling-transport/PROJECT/workspace/template/doublet_table.csv
+  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+repairing_ledger:
+- group: 0
+  contaminant: Trichloroethylene (TCE)
+  original_transport_concession: b010205
+  canonical_flow_concession: b010210
+  changed: true
+  note: contaminant 'Trichloroethylene (TCE)' re-homed from transport concession b010205
+    onto canonical flow doublet b010210 (pedagogic re-homing, not physical inheritance).
+- group: 1
+  contaminant: Nitrate (NO3-)
+  original_transport_concession: b010196
+  canonical_flow_concession: b010219
+  changed: true
+  note: contaminant 'Nitrate (NO3-)' re-homed from transport concession b010196 onto
+    canonical flow doublet b010219 (pedagogic re-homing, not physical inheritance).
+- group: 2
+  contaminant: Benzene
+  original_transport_concession: b010185
+  canonical_flow_concession: b010201
+  changed: true
+  note: contaminant 'Benzene' re-homed from transport concession b010185 onto canonical
+    flow doublet b010201 (pedagogic re-homing, not physical inheritance).
+- group: 3
+  contaminant: Chloride (conservative tracer)
+  original_transport_concession: b010211
+  canonical_flow_concession: b010236
+  changed: true
+  note: contaminant 'Chloride (conservative tracer)' re-homed from transport concession
+    b010211 onto canonical flow doublet b010236 (pedagogic re-homing, not physical
+    inheritance).
+- group: 4
+  contaminant: Chromium (Cr-VI)
+  original_transport_concession: b010223
+  canonical_flow_concession: b010120
+  changed: true
+  note: contaminant 'Chromium (Cr-VI)' re-homed from transport concession b010223
+    onto canonical flow doublet b010120 (pedagogic re-homing, not physical inheritance).
+- group: 5
+  contaminant: PFOA (perfluorooctanoic acid)
+  original_transport_concession: b010200
+  canonical_flow_concession: b010223
+  changed: true
+  note: 'contaminant ''PFOA (perfluorooctanoic acid)'' re-homed from transport concession
+    b010200 onto canonical flow doublet b010223 (pedagogic re-homing, not physical
+    inheritance). NOTE: canonical concession b010223 is ALSO the transport config''s
+    id4 (Chromium) concession -- b010223 appears in both source lists; group 5 canonically
+    carries PFOA on this doublet.'
+- group: 6
+  contaminant: Perchloroethylene (PCE)
+  original_transport_concession: b010224
+  canonical_flow_concession: b010227
+  changed: true
+  note: contaminant 'Perchloroethylene (PCE)' re-homed from transport concession b010224
+    onto canonical flow doublet b010227 (pedagogic re-homing, not physical inheritance).
+- group: 7
+  contaminant: Ammonium (NH4+)
+  original_transport_concession: b010230
+  canonical_flow_concession: b010213
+  changed: true
+  note: contaminant 'Ammonium (NH4+)' re-homed from transport concession b010230 onto
+    canonical flow doublet b010213 (pedagogic re-homing, not physical inheritance).
+- group: 8
+  contaminant: Atrazine
+  original_transport_concession: b010199
+  canonical_flow_concession: b010207
+  changed: true
+  note: contaminant 'Atrazine' re-homed from transport concession b010199 onto canonical
+    flow doublet b010207 (pedagogic re-homing, not physical inheritance).
+threshold_sanity:
+- group: 0
+  contaminant: Trichloroethylene (TCE)
+  cas_number: 79-01-6
+  threshold_mg_L: 0.005
+  ref_lo_mg_L: 0.001
+  ref_hi_mg_L: 0.02
+  basis: drinking_water_MCL
+  flagged: false
+  note: within reference band [0.001, 0.02] mg/L (drinking_water_MCL).
+- group: 1
+  contaminant: Nitrate (NO3-)
+  cas_number: 14797-55-8
+  threshold_mg_L: 25.0
+  ref_lo_mg_L: 1.0
+  ref_hi_mg_L: 11.3
+  basis: drinking_water_as_N
+  flagged: true
+  note: threshold 25.0 mg/L is OUTSIDE reference band [1.0, 11.3] mg/L (drinking_water_as_N).
+    Nitrate reference is as-N (US EPA MCL 10 mg/L-N ~= 44 mg/L as NO3-). 25 mg/L is
+    plausible as NO3- (~5.6 mg/L-N) -- confirm the as-N vs NO3- basis.
+- group: 2
+  contaminant: Benzene
+  cas_number: 71-43-2
+  threshold_mg_L: 0.005
+  ref_lo_mg_L: 0.001
+  ref_hi_mg_L: 0.01
+  basis: drinking_water_MCL
+  flagged: false
+  note: within reference band [0.001, 0.01] mg/L (drinking_water_MCL).
+- group: 3
+  contaminant: Chloride (conservative tracer)
+  cas_number: 16887-00-6
+  threshold_mg_L: 100.0
+  ref_lo_mg_L: 200.0
+  ref_hi_mg_L: 400.0
+  basis: aesthetic_indicator
+  flagged: true
+  note: threshold 100.0 mg/L is OUTSIDE reference band [200.0, 400.0] mg/L (aesthetic_indicator).
+    Chloride is an aesthetic/taste indicator (~250 mg/L WHO/EU/CH). A 100 mg/L compliance
+    threshold is stricter than typical -- confirm intended basis.
+- group: 4
+  contaminant: Chromium (Cr-VI)
+  cas_number: 18540-29-9
+  threshold_mg_L: 0.1
+  ref_lo_mg_L: 0.01
+  ref_hi_mg_L: 0.1
+  basis: drinking_water_standard
+  flagged: false
+  note: within reference band [0.01, 0.1] mg/L (drinking_water_standard).
+- group: 5
+  contaminant: PFOA (perfluorooctanoic acid)
+  cas_number: 335-67-1
+  threshold_mg_L: 0.0002
+  ref_lo_mg_L: 1.0e-05
+  ref_hi_mg_L: 0.001
+  basis: drinking_water_advisory
+  flagged: false
+  note: within reference band [1e-05, 0.001] mg/L (drinking_water_advisory).
+- group: 6
+  contaminant: Perchloroethylene (PCE)
+  cas_number: 127-18-4
+  threshold_mg_L: 0.04
+  ref_lo_mg_L: 0.001
+  ref_hi_mg_L: 0.05
+  basis: drinking_water_MCL
+  flagged: false
+  note: within reference band [0.001, 0.05] mg/L (drinking_water_MCL).
+- group: 7
+  contaminant: Ammonium (NH4+)
+  cas_number: 14798-03-9
+  threshold_mg_L: 0.5
+  ref_lo_mg_L: 0.1
+  ref_hi_mg_L: 1.5
+  basis: drinking_water_guideline
+  flagged: false
+  note: within reference band [0.1, 1.5] mg/L (drinking_water_guideline).
+- group: 8
+  contaminant: Atrazine
+  cas_number: 1912-24-9
+  threshold_mg_L: 0.1
+  ref_lo_mg_L: 0.0001
+  ref_hi_mg_L: 0.003
+  basis: drinking_water_standard_EU
+  flagged: true
+  note: threshold 0.1 mg/L is OUTSIDE reference band [0.0001, 0.003] mg/L (drinking_water_standard_EU).
+    Atrazine EU single-pesticide limit 0.1 ug/L = 0.0001 mg/L. 0.1 mg/L is ~1000x
+    above -- likely too high.
