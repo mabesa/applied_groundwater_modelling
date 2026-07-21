@@ -1,0 +1,10 @@
+{
+  "authoritative_platform": "linux",
+  "date": "2026-07-21",
+  "group": 3,
+  "mf6_version": "6.7.0",
+  "platform": "macOS-arm64",
+  "radius_walked": 62,
+  "reason": "macOS-arm64 mf6-6.7.0 solve SIGILL / all-overbank RIV reach at r=70; builds+validates locally at walked radius but is non-freezable here; Linux-authoritative golden pending",
+  "status": "linux-pending"
+}

@@ -29,6 +29,7 @@ scenarios are M2a.3.
 """
 from __future__ import annotations
 
+import copy
 import json
 import sys
 import time
@@ -158,6 +159,90 @@ def _frozen_golden_manifest(group) -> Any:
     in the golden dir, else ``None`` (a walker group with no committed pin)."""
     p = _GOLDEN_DIR / f"group{group}_flow.manifest.json"
     return json.loads(p.read_text()) if p.exists() else None
+
+
+# --- M2a.5: Linux-golden-or-deferral anchoring (review #3, Codex #5) --------
+ALL_GROUPS = tuple(range(9))
+DEFERRAL_KEYS = (
+    "group", "reason", "platform", "mf6_version", "date",
+    "radius_walked", "authoritative_platform", "status",
+)
+
+
+def _deferral_path(group) -> Path:
+    return _GOLDEN_DIR / f"group{group}_flow.deferral.json"
+
+
+def _load_deferral(group) -> Any:
+    """Return the committed ``group<N>_flow.deferral.json`` dict if present,
+    else ``None``. A deferral marks a group whose AUTHORITATIVE (Linux) golden
+    is pending -- it builds+validates locally at a walked radius but SIGILLs /
+    cannot be frozen on macOS-arm64."""
+    p = _deferral_path(group)
+    return json.loads(p.read_text()) if p.exists() else None
+
+
+def assert_all_groups_anchored(groups=ALL_GROUPS) -> Dict[str, Any]:
+    """Every group MUST be anchored by EXACTLY ONE of a committed golden XOR a
+    committed deferral artifact (review #3, Codex #5). FAIL if a group has
+    NEITHER or BOTH. Distinguishes provisional-macOS goldens (which still need
+    a Linux re-verify) from authoritative ones, and reports the groups still
+    pending the hub: the deferred groups (need a Linux golden) + the
+    provisional goldens (need a Linux re-verify).
+    """
+    authoritative, provisional, deferrals, problems = [], [], [], []
+    for g in groups:
+        manifest = _frozen_golden_manifest(g)
+        deferral = _load_deferral(g)
+        has_golden, has_deferral = manifest is not None, deferral is not None
+        if has_golden == has_deferral:  # neither, or both
+            problems.append(
+                f"group {g}: has "
+                f"{'BOTH a golden AND a deferral' if has_golden else 'NEITHER a golden nor a deferral'}"
+                f" -- exactly one (golden XOR deferral) is required"
+            )
+            continue
+        if has_golden:
+            if manifest.get("provisional"):
+                provisional.append(g)
+            else:
+                authoritative.append(g)
+        else:
+            missing = [k for k in DEFERRAL_KEYS if k not in deferral]
+            if missing:
+                problems.append(f"group {g}: deferral missing keys {missing}")
+            # Codex REWORK #5: validate the VALUES, not just key presence.
+            if not missing and int(deferral.get("group")) != int(g):
+                problems.append(
+                    f"group {g}: deferral group field {deferral.get('group')!r} != {g}"
+                )
+            rw = deferral.get("radius_walked")
+            if not (isinstance(rw, (int, float)) and not isinstance(rw, bool) and rw > 0):
+                problems.append(
+                    f"group {g}: deferral radius_walked {rw!r} is not a positive number"
+                )
+            if deferral.get("authoritative_platform") != "linux":
+                problems.append(
+                    f"group {g}: deferral authoritative_platform "
+                    f"{deferral.get('authoritative_platform')!r} != 'linux'"
+                )
+            if deferral.get("status") != "linux-pending":
+                problems.append(
+                    f"group {g}: deferral status {deferral.get('status')!r} != 'linux-pending'"
+                )
+            deferrals.append(g)
+    if problems:
+        raise AssertionError("group anchoring failed: " + "; ".join(problems))
+    return {
+        "anchored": True,
+        "authoritative_goldens": authoritative,
+        "provisional_goldens": provisional,
+        "deferrals": deferrals,
+        "hub_pending": {
+            "deferred_need_linux_golden": deferrals,
+            "provisional_need_linux_reverify": provisional,
+        },
+    }
 
 
 def _pin_built_grid_to_frozen_golden(group, spec, riv_info, refine_radius) -> None:
@@ -293,6 +378,7 @@ def _rich_result(*, built, spec, riv_info, grid_hash, package_hashes, diagnostic
 
 def build_flow_state(
     group: Group, state: str = "baseline", *, half_rate: bool = False, work_dir,
+    allow_independent_grid: bool = False, _canonical_walk=None,
 ) -> Dict[str, Any]:
     """Build + solve the corridor-refined steady flow state for *group* and
     return the rich metadata dict (see :data:`BUILD_RESULT_KEYS`).
@@ -338,6 +424,21 @@ def build_flow_state(
         )
     if half_rate and state != "wells_only":
         raise ValueError("half_rate is only valid for state='wells_only'")
+
+    # ---- RUNTIME FENCE (Codex REWORK #1) --------------------------------
+    # A NON-baseline state on an UNPINNED group (no committed golden) walks its
+    # own grid; two such independent calls can land on DIFFERENT grids, making
+    # cross-state comparisons invalid. Block it unless reached via the
+    # sanctioned single-walk path OR explicitly opted into a standalone grid.
+    if state != "baseline" and _canonical_walk is not _CANONICAL_WALK and not allow_independent_grid:
+        if _frozen_golden_manifest(group) is None:  # unpinned
+            raise RuntimeError(
+                f"build_flow_state(group={group}, state={state!r}): group {group} is "
+                "UNPINNED (no committed golden), so independent non-baseline builds can "
+                "land on DIFFERENT walked grids across calls -- cross-state comparisons "
+                "would be invalid. Use build_all_flow_states(group) for ONE canonical "
+                "grid, or pass allow_independent_grid=True to accept a standalone grid."
+            )
 
     work_dir = Path(work_dir)
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -402,6 +503,126 @@ def build_wells_states(group: Group, *, work_dir) -> Dict[str, Any]:
     }
 
 
+# ---------------------------------------------------------------------------
+# M2a.5 -- single-walk ALL-STATES orchestration (review #2, Codex #1/#2).
+#
+# FENCE (RUNTIME-ENFORCED, not just documented -- Codex REWORK #1):
+# ``build_all_flow_states`` is the SOLE all-states orchestration. It builds ONE
+# canonical discretization (a single refine+solve walk) and solves EVERY state
+# -- (i) baseline, (ii) wells_only, (ii-half) half-rate, (iii)
+# wells_plus_scenario -- on that IDENTICAL grid, asserting the grid identity
+# (refine_radius + grid_hash, + the frozen golden hash for a pinned group) is
+# invariant across all four states, checked BEFORE and AFTER each solve.
+#
+# For an UNPINNED (walker) group -- one with no committed golden -- issuing
+# separate ``build_flow_state`` calls runs an INDEPENDENT walk per call, which
+# can land on a DIFFERENT radius/grid, so cross-state comparisons (drawdown,
+# scenario response) would silently compare across grids. ``build_flow_state``
+# therefore RAISES on a NON-baseline state for an unpinned group UNLESS it is
+# reached through the sanctioned single-walk path (the ``_canonical_walk``
+# token) or the caller passes ``allow_independent_grid=True`` to accept a
+# standalone grid. Pinned groups are exempt (the golden-pin forces one grid).
+# The ``TestFence*`` tests in ``test_casestudy_flow_m2a5.py`` guard this.
+# ---------------------------------------------------------------------------
+ALL_STATE_KEYS = ("baseline", "wells_only", "wells_only_half", "wells_plus_scenario")
+
+# Private sentinel: the token the single-walk orchestration passes to prove a
+# non-baseline ``build_flow_state`` call is reached through the sanctioned
+# canonical grid (never constructible by an external caller).
+_CANONICAL_WALK = object()
+
+
+def build_all_flow_states(group: Group, *, work_dir) -> Dict[str, Any]:
+    """Single-walk ALL-STATES orchestration (M2a.5, review #2 + Codex #1/#2).
+
+    ONE refine+solve walk builds the grid ONCE; its gridprops/idomain/
+    refine_radius are FROZEN and the EXACT same discretization (``walk['spec']``)
+    is passed into each state's own workspace+solve -- NO state re-runs
+    refinement / snapping / active-domain generation. Emits:
+
+    * ``baseline``            -- state (i), the walk's baseline solve
+    * ``wells_only``          -- state (ii), full-rate doublet
+    * ``wells_only_half``     -- state (ii), half-rate doublet
+    * ``wells_plus_scenario`` -- state (iii), scenario transform
+
+    ASSERTS ``refine_radius`` + ``grid_hash`` are EQUAL across all four states
+    (and == the committed golden's aggregate hash for a frozen group), checked
+    BEFORE and AFTER each solve (grid-input invariance). Returns
+    ``{baseline, wells_only, wells_only_half, wells_plus_scenario, grid_hash,
+    refine_radius, runtime_s}``.
+    """
+    work_dir = Path(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    _t0 = time.perf_counter()
+
+    # ONE canonical walk -> the single discretization for ALL states.
+    walk = _refine_solve_baseline_walk(
+        group, work_dir / "_baseline_ref",
+        sim_name=f"group{group}_baseline_ref", model_name=f"g{group}_base_ref",
+    )
+    # FREEZE the canonical grid identity BEFORE any state solve. The aggregate
+    # canonical hash over the baseline spec covers gridprops + idomain + the
+    # baseline package arrays -- any grid-input mutation changes it, so it is
+    # our before/after invariance witness.
+    canonical_hash, _ = cfc.spec_canonical_hashes(walk["spec"])
+    canonical_radius = float(walk["refine_radius"])
+    golden = _frozen_golden_manifest(group)
+    if golden is not None and canonical_hash != golden["aggregate_hash"]:
+        raise RuntimeError(
+            f"group {group}: walked grid hash {canonical_hash[:12]} != committed "
+            f"golden {golden['aggregate_hash'][:12]} -- single-walk grid is not the frozen grid"
+        )
+
+    def _assert_grid(state_name: str, res: Dict[str, Any]) -> None:
+        if res["grid_hash"] != canonical_hash:
+            raise RuntimeError(
+                f"group {group}: state {state_name!r} grid hash {res['grid_hash'][:12]} "
+                f"!= canonical {canonical_hash[:12]} -- states did NOT solve one grid"
+            )
+        if float(res.get("refine_radius", canonical_radius)) != canonical_radius:
+            raise RuntimeError(
+                f"group {group}: state {state_name!r} refine_radius "
+                f"{res.get('refine_radius')} != canonical {canonical_radius}"
+            )
+        # AFTER-solve grid-input invariance: the shared spec must be untouched.
+        post_hash, _ = cfc.spec_canonical_hashes(walk["spec"])
+        if post_hash != canonical_hash:
+            raise RuntimeError(
+                f"group {group}: canonical grid spec MUTATED during state "
+                f"{state_name!r} solve ({post_hash[:12]} != {canonical_hash[:12]})"
+            )
+
+    baseline = _finalize_baseline_state(group, walk, work_dir)
+    _assert_grid("baseline", baseline)
+    wells = _solve_validate_wells(group, walk, work_dir, half_rate=False)
+    _assert_grid("wells_only", wells)
+    half = _solve_validate_wells(group, walk, work_dir, half_rate=True)
+    _assert_grid("wells_only_half", half)
+    scenario = _solve_validate_scenario(group, walk, wells, work_dir)
+    _assert_grid("wells_plus_scenario", scenario)
+
+    states = {
+        "baseline": baseline, "wells_only": wells,
+        "wells_only_half": half, "wells_plus_scenario": scenario,
+    }
+    hashes = {s["grid_hash"] for s in states.values()}
+    if len(hashes) != 1:
+        raise RuntimeError(
+            f"group {group}: the four states did not share ONE grid hash: "
+            f"{sorted(h[:12] for h in hashes)}"
+        )
+    runtime_s = float(time.perf_counter() - _t0)
+    # Attach the per-group runtime to the state-(iii) result (M1.5 `runtime`
+    # metric consumer); the band is M3c's.
+    scenario["runtime_s"] = runtime_s
+    return {
+        **states,
+        "grid_hash": canonical_hash,
+        "refine_radius": canonical_radius,
+        "runtime_s": runtime_s,
+    }
+
+
 def _finalize_baseline_state(group, walk, work_dir) -> Dict[str, Any]:
     """State (i): the walk's baseline solve. Emits ``diagnostics.baseline.json``
     (``flow_head_delta`` NULL). Byte-compatible with the M2a.1 baseline path
@@ -428,6 +649,167 @@ def _finalize_baseline_state(group, walk, work_dir) -> Dict[str, Any]:
     )
 
 
+_GRID_COORD_TOL_M = 1e-6  # near-exact: same grid round-trips to <<1 um
+
+
+def _row_values(row):
+    """Normalise a gridprops row (python list/tuple) OR a solved-model DISV
+    recarray record to a plain python list of its field values."""
+    return list(row.tolist()) if hasattr(row, "tolist") else list(row)
+
+
+def _norm_vertices(vlist):
+    """[(ivert:int, xv:float, yv:float), ...] from a vertices list or the
+    solved model's ``disv.vertices.array`` recarray."""
+    out = []
+    for r in vlist:
+        v = _row_values(r)
+        out.append((int(v[0]), float(v[1]), float(v[2])))
+    return out
+
+
+def _norm_cell2d(clist):
+    """[(icell2d:int, xc:float, yc:float, ncvert:int, iverts:tuple[int]), ...].
+
+    FORMAT-FLEXIBLE (fail-safe against a flopy recarray-shape change): handles
+    BOTH representations of the vertex-index columns --
+    * FLATTENED ``(icell2d, xc, yc, ncvert, iv0, iv1, ...)`` -- the current
+      solved-model recarray (short cells padded with None in the extra
+      ``icvert_*`` columns; take exactly the first ``ncvert``), and
+    * NESTED ``(icell2d, xc, yc, ncvert, [iv0, iv1, ...])`` -- a single
+      list/array field of indices.
+    """
+    out = []
+    for r in clist:
+        c = _row_values(r)
+        icell2d, xc, yc, ncvert = int(c[0]), float(c[1]), float(c[2]), int(c[3])
+        if len(c) == 5 and isinstance(c[4], (list, tuple, np.ndarray)):
+            verts = list(c[4])[:ncvert]  # nested single-field representation
+        else:
+            verts = c[4:4 + ncvert]      # flattened columns (padding truncated)
+        iverts = tuple(int(v) for v in verts)
+        out.append((icell2d, xc, yc, ncvert, iverts))
+    return out
+
+
+def _assert_solved_grid_is_canonical(built, canonical_spec, *, group, state) -> None:
+    """Codex REWORK #2 (the crux): prove the state SOLVED the canonical grid,
+    not a grid it re-refined internally while returning the canonical HASH.
+    Reads the DISV arrays back from the SOLVED model and asserts they equal the
+    canonical ``spec``'s gridprops -- not merely the CARDINALITY (ncpl, nvert,
+    #vertices, #cell2d) + the per-cell arrays (idomain, top, botm), but the
+    ACTUAL vertex COORDINATES and the cell2d CONNECTIVITY VALUES. A
+    same-cardinality re-refinement (identical counts but different vertex
+    coordinates or cell->vertex connectivity) is therefore caught too."""
+    gwf = built["gwf"]
+    disv = gwf.get_package("DISV")
+    if disv is None:
+        raise RuntimeError(f"group {group} state {state!r}: solved model has no DISV package")
+    gp = canonical_spec["gridprops"]
+    problems = []
+    if int(np.asarray(disv.ncpl.array)) != int(canonical_spec["ncpl"]):
+        problems.append(f"ncpl {int(np.asarray(disv.ncpl.array))} != {int(canonical_spec['ncpl'])}")
+    if int(np.asarray(disv.nvert.array)) != int(gp["nvert"]):
+        problems.append(f"nvert {int(np.asarray(disv.nvert.array))} != {int(gp['nvert'])}")
+    if not np.array_equal(
+        np.asarray(disv.idomain.array).reshape(-1), np.asarray(canonical_spec["idomain"]).reshape(-1)
+    ):
+        problems.append("idomain arrays differ")
+    if not np.allclose(
+        np.asarray(disv.top.array).reshape(-1), np.asarray(canonical_spec["top"]).reshape(-1),
+        rtol=0, atol=1e-9,
+    ):
+        problems.append("top arrays differ")
+    if not np.allclose(
+        np.asarray(disv.botm.array).reshape(-1), np.asarray(canonical_spec["botm"]).reshape(-1),
+        rtol=0, atol=1e-9,
+    ):
+        problems.append("botm arrays differ")
+
+    # --- vertex COORDINATES (not just count) ---
+    solved_v = _norm_vertices(disv.vertices.array)
+    canon_v = _norm_vertices(gp["vertices"])
+    if len(solved_v) != len(canon_v):
+        problems.append(f"#vertices {len(solved_v)} != {len(canon_v)}")
+    else:
+        if [v[0] for v in solved_v] != [v[0] for v in canon_v]:
+            problems.append("vertex ivert ordering differs")
+        s_xy = np.array([[v[1], v[2]] for v in solved_v], dtype=float)
+        c_xy = np.array([[v[1], v[2]] for v in canon_v], dtype=float)
+        if s_xy.shape != c_xy.shape or not np.allclose(s_xy, c_xy, rtol=0, atol=_GRID_COORD_TOL_M):
+            problems.append("vertex COORDINATES differ")
+
+    # --- cell2d CONNECTIVITY + centroids (not just count) ---
+    solved_c = _norm_cell2d(disv.cell2d.array)
+    canon_c = _norm_cell2d(gp["cell2d"])
+    if len(solved_c) != len(canon_c):
+        problems.append(f"#cell2d {len(solved_c)} != {len(canon_c)}")
+    else:
+        # icell2d, ncvert and the vertex-index tuple must match EXACTLY.
+        s_conn = [(c[0], c[3], c[4]) for c in solved_c]
+        c_conn = [(c[0], c[3], c[4]) for c in canon_c]
+        if s_conn != c_conn:
+            problems.append("cell2d CONNECTIVITY (vertex indices) differ")
+        s_xy = np.array([[c[1], c[2]] for c in solved_c], dtype=float)
+        c_xy = np.array([[c[1], c[2]] for c in canon_c], dtype=float)
+        if s_xy.shape != c_xy.shape or not np.allclose(s_xy, c_xy, rtol=0, atol=_GRID_COORD_TOL_M):
+            problems.append("cell2d centroid coordinates differ")
+
+    if problems:
+        raise RuntimeError(
+            f"group {group} state {state!r}: SOLVED model grid != canonical grid "
+            f"({'; '.join(problems)}) -- the state did NOT solve the one canonical grid"
+        )
+
+
+def _assemble_state_solve(
+    spec, *, work_dir, sim_name, model_name, extra_wells, group, state_label, canonical_spec=None,
+) -> Dict[str, Any]:
+    """Assemble+solve one non-baseline state under the M2a.5 coherence guards
+    (Codex REWORK #2/#3/#4):
+
+    * #3 -- DEEP-COPY the spec so the state can NEVER mutate the shared canonical
+      grid (not even transiently);
+    * #4 -- solve in a FRESH per-state workspace and DELETE any pre-existing
+      CBC/HDS first, so a stale binary from an earlier solve cannot be mistaken
+      for this run's output; then assert the CBC/HDS were (re)written AFTER the
+      run start (mtime freshness);
+    * #2 -- verify the SOLVED model grid == the canonical grid.
+
+    Returns the ``assemble_flow_state`` ``built`` dict (from the fresh ws)."""
+    canonical_spec = spec if canonical_spec is None else canonical_spec
+    ws = Path(work_dir) / f"_state_{sim_name}"
+    ws.mkdir(parents=True, exist_ok=True)
+    for pattern in ("*.cbc", "*.hds"):
+        for stale in ws.glob(pattern):
+            stale.unlink()
+    spec_copy = copy.deepcopy(spec)  # #3: shared grid is untouchable
+    run_start = time.time()
+    built = cfc.assemble_flow_state(
+        spec_copy, workspace=ws, sim_name=sim_name, model_name=model_name,
+        extra_wells=extra_wells, raise_on_failure=False,
+    )
+    # #4: freshness -- the declared CBC/HDS must exist and be NEWER than the run
+    # start (allowing a small slack for coarse filesystem mtime granularity).
+    if built["converged"]:
+        for kind, path in (("budget", built["budgetfile"]), ("head", built["headfile"])):
+            p = Path(path)
+            if not p.exists():
+                raise RuntimeError(
+                    f"group {group} {state_label}: converged but {kind} file missing: {p}"
+                )
+            if p.stat().st_mtime < run_start - 2.0:
+                raise RuntimeError(
+                    f"group {group} {state_label}: {kind} file {p} is STALE "
+                    f"(mtime {p.stat().st_mtime:.3f} < run start {run_start:.3f}) -- "
+                    "not this run's output"
+                )
+    # #2: the solved model must be the canonical grid (guards a helper that
+    # re-refined internally but returned the canonical hash).
+    _assert_solved_grid_is_canonical(built, canonical_spec, group=group, state=state_label)
+    return built
+
+
 def _solve_validate_wells(group, walk, work_dir, *, half_rate) -> Dict[str, Any]:
     """State (ii): background + the flow-only doublet, solved on the SAME
     built grid as the walk's baseline solve; enforces the strengthened
@@ -448,13 +830,15 @@ def _solve_validate_wells(group, walk, work_dir, *, half_rate) -> Dict[str, Any]
     Q = float(cfc.DOUBLET_Q_M3D) * (0.5 if half_rate else 1.0)
 
     # (c) State (ii) solve on the SAME grid: doublet inj +Q / ext -Q. Short
-    # MODELNAME (<=16 chars); descriptive OC file names via sim_name.
+    # MODELNAME (<=16 chars); descriptive OC file names via sim_name. Solved in
+    # a FRESH per-state workspace on a DEEP-COPY of the canonical spec, with the
+    # solved-grid-identity + CBC/HDS freshness guards (Codex REWORK #2/#3/#4).
     wells_model = f"g{group}_wells" + ("_half" if half_rate else "")
-    wells_built = cfc.assemble_flow_state(
-        spec, workspace=work_dir, sim_name=f"group{group}_{wells_state}",
+    wells_built = _assemble_state_solve(
+        spec, work_dir=work_dir, sim_name=f"group{group}_{wells_state}",
         model_name=wells_model,
         extra_wells=[((0, inj_cell), +Q), ((0, ext_cell), -Q)],
-        raise_on_failure=False,
+        group=group, state_label=wells_state,
     )
     converged = wells_built["converged"]
     heads_ii = np.asarray(wells_built["heads"], dtype=float) if wells_built["heads"] is not None else None
@@ -698,12 +1082,15 @@ def _solve_validate_scenario(group, walk, wells, work_dir, *, config_path=None) 
     # apply_scenario mutates the state-ii spec's package VALUES only.
     scen_spec = scn.apply_scenario(spec, scenario_type, scenario)
 
+    # Fresh per-state workspace + deep-copy + solved-grid-identity/freshness
+    # guards. The scenario mutates package VALUES only, so the SOLVED grid must
+    # still equal the CANONICAL (walk) grid -- checked against ``spec``.
     scen_model = f"g{group}_scen"
-    scen_built = cfc.assemble_flow_state(
-        scen_spec, workspace=work_dir, sim_name=f"group{group}_wells_plus_scenario",
+    scen_built = _assemble_state_solve(
+        scen_spec, work_dir=work_dir, sim_name=f"group{group}_wells_plus_scenario",
         model_name=scen_model,
         extra_wells=[((0, inj_cell), +Q), ((0, ext_cell), -Q)],
-        raise_on_failure=False,
+        group=group, state_label="wells_plus_scenario", canonical_spec=spec,
     )
     converged = scen_built["converged"]
     heads_iii = np.asarray(scen_built["heads"], dtype=float) if scen_built["heads"] is not None else None
@@ -784,7 +1171,159 @@ def _solve_validate_scenario(group, walk, wells, work_dir, *, config_path=None) 
     )
 
 
-def state_iii_interface(result: Dict[str, Any], *, state_id: str = "wells_plus_scenario") -> Dict[str, Any]:
+# --- M2a.5: transport (FMI) budget-record assertion (Codex #3/#4) -----------
+# Budget text emitted per boundary GWF package type. Presence is derived from
+# the ENABLED packages that actually contribute in the steady period -- NEVER
+# hard-coded -- to avoid both false-fail (requiring a package that isn't built)
+# and false-pass (not requiring one that is).
+_BOUNDARY_BUDGET_TEXT_BY_TYPE = {
+    "wel": "WEL", "riv": "RIV", "chd": "CHD", "rcha": "RCHA",
+    "rch": "RCH", "drn": "DRN", "ghb": "GHB", "evt": "EVT", "eva": "EVTA",
+}
+
+
+def _expected_boundary_texts(gwf) -> set:
+    """Derive the boundary budget texts the CBC MUST contain from the model's
+    ENABLED packages that HAVE data in the steady stress period. A list-based
+    package (WEL/RIV/CHD/...) with zero period-0 entries is NOT required; an
+    array-based package (e.g. RCHA recharge) always contributes when built."""
+    expected = set()
+    for pkg in gwf.packagelist:
+        text = _BOUNDARY_BUDGET_TEXT_BY_TYPE.get(pkg.package_type.lower())
+        if text is None:
+            continue
+        try:
+            spd = pkg.stress_period_data.get_data(0)
+            has_data = spd is not None and len(spd) > 0
+        except AttributeError:
+            # No stress_period_data -> array-based package (RCHA recharge etc.):
+            # it always contributes a budget term while enabled.
+            has_data = True
+        if has_data:
+            expected.add(text)
+    return expected
+
+
+def assert_transport_budget_records(
+    gwf, budgetfile, *, headfile=None, grid_hash=None, run_start_time=None,
+) -> Dict[str, Any]:
+    """Assert the flow CBC carries the records the M3 transport (FMI) coupling
+    needs, and that it is THIS solved model's OUTPUT (not a stale/foreign file).
+    Presence is NECESSARY but not SUFFICIENT (Codex #3/#4):
+
+    1. File/model consistency -- the budget (and, if given, head) FILENAME
+       equals ``gwf``'s OC record and resides in ``gwf``'s workspace, so a
+       stale CBC from another run/grid can't satisfy the check.
+    2. A SINGLE steady time index.
+    3. ``FLOW-JA-FACE`` + ``DATA-SPDIS`` present AND non-empty (the specific
+       discharge + intercell flows FMI reads).
+    4. The boundary budget texts of the ENABLED packages that have data in the
+       steady period (derived, never hard-coded), each present AND non-empty.
+
+    FRESHNESS (Codex REWORK #4). The authoritative "written by THIS solve"
+    freshness guarantee lives in :func:`_assemble_state_solve` (fresh per-state
+    workspace + delete-then-solve + mtime-after-run-start) -- that is the
+    sanctioned path every M2a state build takes. THIS function's default
+    (``run_start_time=None``) checks IDENTITY only (filename == OC record, file
+    in the model workspace): a caller that already holds a run-start timestamp
+    (e.g. a future external FMI consumer) MAY pass ``run_start_time`` to also
+    assert the CBC/HDS were (re)written after that instant; absent it, freshness
+    is the caller's responsibility via the sanctioned build path.
+
+    Returns a provenance report. Raises ``AssertionError`` / ``FileNotFoundError``
+    on any failure.
+    """
+    import flopy  # local import: only needed when a real budget is checked
+
+    budgetfile = Path(budgetfile)
+    oc = gwf.get_package("OC")
+    if oc is None:
+        raise AssertionError("model has no OC package -- no budget output declared")
+
+    # (1) file/model consistency ------------------------------------------------
+    oc_budget = str(oc.budget_filerecord.array[0][0])
+    if budgetfile.name != oc_budget:
+        raise AssertionError(
+            f"budget file {budgetfile.name!r} != OC budget record {oc_budget!r} "
+            f"-- stale/foreign CBC, not this model's output"
+        )
+    ws = Path(gwf.simulation.simulation_data.mfpath.get_sim_path()).resolve()
+    if budgetfile.resolve().parent != ws:
+        raise AssertionError(
+            f"budget file {budgetfile} is not in the model workspace {ws} -- stale/foreign"
+        )
+    if not budgetfile.exists():
+        raise FileNotFoundError(f"declared budget file does not exist: {budgetfile}")
+    if headfile is not None:
+        oc_head = str(oc.head_filerecord.array[0][0])
+        if Path(headfile).name != oc_head:
+            raise AssertionError(
+                f"head file {Path(headfile).name!r} != OC head record {oc_head!r} -- stale/foreign"
+            )
+        if Path(headfile).resolve().parent != ws:  # Codex REWORK #4
+            raise AssertionError(
+                f"head file {headfile} is not in the model workspace {ws} -- stale/foreign"
+            )
+
+    # (1b) OPTIONAL freshness (Codex REWORK #4): when the caller supplies the
+    # solve's start timestamp, assert the CBC/HDS were (re)written after it --
+    # a stale file from an earlier solve in the same workspace would be older.
+    if run_start_time is not None:
+        for kind, path in (("budget", budgetfile), ("head", headfile)):
+            if path is None:
+                continue
+            p = Path(path)
+            if p.exists() and p.stat().st_mtime < float(run_start_time) - 2.0:
+                raise AssertionError(
+                    f"{kind} file {p} is STALE (mtime {p.stat().st_mtime:.3f} < run "
+                    f"start {float(run_start_time):.3f}) -- not this run's output"
+                )
+
+    # (2) single steady time ----------------------------------------------------
+    cbc = flopy.utils.CellBudgetFile(str(budgetfile))
+    times = cbc.get_times()
+    if len(times) != 1:
+        raise AssertionError(f"expected a SINGLE steady time index, got {list(times)}")
+    totim = times[-1]
+    names = {str(n).strip() for n in cbc.get_unique_record_names(decode=True)}
+
+    def _nonempty(text: str) -> bool:
+        data = cbc.get_data(text=text, totim=totim)
+        if not data:
+            return False
+        first = data[0]
+        return int(getattr(first, "size", len(first))) > 0
+
+    # (3) FMI-required intercell + specific-discharge records -------------------
+    for req in ("FLOW-JA-FACE", "DATA-SPDIS"):
+        if req not in names:
+            raise AssertionError(f"FMI-required budget record {req!r} MISSING from CBC {sorted(names)}")
+        if not _nonempty(req):
+            raise AssertionError(f"FMI-required budget record {req!r} is EMPTY at the steady time")
+
+    # (4) enabled-package boundary records --------------------------------------
+    expected = _expected_boundary_texts(gwf)
+    for text in sorted(expected):
+        if text not in names:
+            raise AssertionError(
+                f"enabled-package budget record {text!r} MISSING from CBC {sorted(names)}"
+            )
+        if not _nonempty(text):
+            raise AssertionError(f"boundary budget record {text!r} is EMPTY at the steady time")
+
+    return {
+        "records": sorted(names),
+        "steady_time": float(totim),
+        "boundary_records": sorted(expected),
+        "budgetfile": str(budgetfile),
+        "workspace": str(ws),
+        "grid_hash": grid_hash,
+    }
+
+
+def state_iii_interface(
+    result: Dict[str, Any], *, state_id: str = "wells_plus_scenario", assert_fmi: bool = False
+) -> Dict[str, Any]:
     """DECLARE the transport-facing state-(iii) binding interface from a
     ``build_flow_state`` result (asserted at M2a.5). It carries exactly what
     the M3 transport coupling needs to reuse the flow field WITHOUT regridding:
@@ -805,4 +1344,22 @@ def state_iii_interface(result: Dict[str, Any], *, state_id: str = "wells_plus_s
     missing = [k for k in STATE_III_INTERFACE_KEYS if k not in interface]
     if missing:
         raise AssertionError(f"state_iii_interface missing keys: {missing}")
+    if assert_fmi:
+        # Presence NECESSARY but not SUFFICIENT: assert the CBC carries the FMI
+        # records, is THIS solved model's output, and the interface grid hash
+        # matches the built model (Codex #3/#4). Requires a real gwf + budget.
+        gwf = result.get("gwf")
+        if gwf is None:
+            raise AssertionError("assert_fmi=True requires result['gwf'] (a solved GWF model)")
+        gh = interface["grid_hash"]
+        if not (isinstance(gh, str) and len(gh) == 64):
+            raise AssertionError(f"interface grid_hash is not a 64-hex digest: {gh!r}")
+        report = assert_transport_budget_records(
+            gwf, result["budgetfile"],
+            headfile=result.get("headfile"), grid_hash=gh,
+        )
+        # The CBC/HDS staleness guard (file == OC record, in the model
+        # workspace) lives in assert_transport_budget_records; the grid_hash is
+        # carried into the report as the transport-facing grid identity.
+        interface["fmi_records"] = report
     return interface

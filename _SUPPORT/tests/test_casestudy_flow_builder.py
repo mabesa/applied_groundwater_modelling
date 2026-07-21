@@ -547,8 +547,11 @@ class TestBuilderNonFiniteHeadGate:
             b.cfc, "resolve_doublet_cells",
             lambda spec, mg, rp: {"injection": {"cell": 0}, "extraction": {"cell": 1}},
         )
+        # Route through the state-assembly SEAM (its fresh-ws/freshness/solved-
+        # grid guards are separately tested in test_casestudy_flow_m2a5.py); this
+        # test targets the downstream NaN-head DIAGNOSTIC logic in _solve_validate_wells.
         monkeypatch.setattr(
-            b.cfc, "assemble_flow_state",
+            b, "_assemble_state_solve",
             lambda spec, **k: {
                 "heads": np.array([8.0, np.nan, 9.0]), "converged": True,
                 "gwf": object(), "sim": object(), "model_name": "g0w",
