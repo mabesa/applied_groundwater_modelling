@@ -409,11 +409,12 @@ class TestNearestRivCellActiveOnly:
 # the target. The hub CI MUST exercise TestRegressionGuardAgainstCommittedGolden
 # (which does the full mf6 solve).
 # =============================================================================
-def test_frozen_goldens_are_valid_provisional_artifacts():
-    """Every group<N>_flow.{npz,manifest.json} present in the golden dir must
-    load + hash-verify and be a provisional (macOS) artifact tagged for Linux
-    re-verify -- guards the M2a.2 per-group baseline goldens (2/7/8) alongside
-    the committed group 0."""
+def test_frozen_goldens_load_and_hash_verify():
+    """Every group<N>_flow.{npz,manifest.json} in the golden dir must load +
+    hash-verify against its manifest, and its provisional flag must be
+    CONSISTENT with the OS it was frozen on (provisional IFF NOT frozen on the
+    authoritative platform, Linux). Graduation-invariant: holds for the macOS
+    provisional goldens AND the Linux-authoritative ones."""
     import model_io_utils as _mio
     npzs = sorted(GOLDEN_DIR.glob("group*_flow.npz"))
     assert npzs, "expected at least the committed group0 golden"
@@ -424,7 +425,8 @@ def test_frozen_goldens_are_valid_provisional_artifacts():
         assert int(spec["ncpl"]) > 0
         agg, arr = cfc.spec_canonical_hashes(spec)
         assert agg == manifest["aggregate_hash"]
-        assert manifest["provisional"] is True
+        expected_provisional = b._golden_generation_os(manifest) != "Linux"
+        assert bool(manifest.get("provisional")) is expected_provisional
         assert manifest["authoritative_platform"] == "linux"
         assert "faithful_riv" in manifest and len(manifest["faithful_riv"]["hash"]) == 64
 
