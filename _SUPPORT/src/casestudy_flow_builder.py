@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import copy
 import json
+import platform
 import sys
 import time
 from pathlib import Path
@@ -245,6 +246,66 @@ def assert_all_groups_anchored(groups=ALL_GROUPS) -> Dict[str, Any]:
     }
 
 
+_KNOWN_OSES = ("Darwin", "Linux", "Windows")  # platform.system() values we map
+
+
+def _os_family(text: str) -> str:
+    """Map an OS string to ``platform.system()`` space (one of ``_KNOWN_OSES``),
+    or "" if unrecognised/blank."""
+    low = str(text or "").lower()
+    if low.startswith("macos") or low.startswith("darwin"):
+        return "Darwin"
+    if low.startswith("linux"):
+        return "Linux"
+    if low.startswith("windows"):
+        return "Windows"
+    return ""
+
+
+def _golden_generation_os(manifest) -> str:
+    """The OS a golden was FROZEN on, mapped to ``platform.system()`` space
+    ("Darwin"/"Linux"/"Windows"). Derived from ``versions.platform`` (e.g.
+    "macOS-26.5.2-arm64-arm-64bit" -> Darwin, "Linux-6.x-..." -> Linux).
+    Returns "" when the manifest/versions is not a dict, or ``platform`` is
+    MISSING/BLANK/UNRECOGNISED -- the caller treats "" as undeterminable ->
+    fail-safe ENFORCE (never crashes on a malformed manifest)."""
+    if not isinstance(manifest, dict):
+        return ""
+    versions = manifest.get("versions")
+    if not isinstance(versions, dict):
+        return ""
+    return _os_family(versions.get("platform", ""))
+
+
+def _golden_is_cross_platform(manifest) -> bool:
+    """True iff the golden was generated on a KNOWN OS DIFFERENT from the KNOWN
+    current OS.
+
+    The refine mesh (Triangle/Voronoi) -- and therefore the grid aggregate +
+    faithful-RIV hashes -- is INHERENTLY PLATFORM-DEPENDENT (the M2a.5 hub run
+    proved a macOS golden does not reproduce on Linux). A golden is thus a valid
+    pin/oracle ONLY on its own generation OS, REGARDLESS of the ``provisional``
+    flag (which stays orthogonal -- it drives only anchoring's linux-reverify
+    reporting).
+
+    FAIL-SAFE RULE: SKIP (return True) ONLY when BOTH the golden generation OS
+    AND the current OS are KNOWN values and they DIFFER. In EVERY ambiguous case
+    -- a non-dict manifest/versions, a missing/blank/unrecognised golden
+    platform, OR an unrecognised current OS -- return False so the caller
+    ENFORCES the pin (never a crash, never a silent skip)."""
+    gen_os = _golden_generation_os(manifest)
+    cur_os = _os_family(platform.system())
+    if not gen_os or not cur_os:
+        print(
+            "[casestudy_flow_builder] cannot confirm cross-platform (golden gen-OS "
+            f"{gen_os or '?'!r} / current OS {cur_os or '?'!r} not both known) "
+            "-- ENFORCING the grid-pin (fail-safe).",
+            file=sys.stderr,
+        )
+        return False
+    return gen_os != cur_os
+
+
 def _pin_built_grid_to_frozen_golden(group, spec, riv_info, refine_radius) -> None:
     """Finding 4: if a FROZEN golden exists for *group*, the builder's built
     grid MUST reproduce it -- the canonical package (grid) hashes, the
@@ -252,10 +313,31 @@ def _pin_built_grid_to_frozen_golden(group, spec, riv_info, refine_radius) -> No
     manifest, or FAIL loudly. This pins EVERY frozen group (not just group 0)
     to its golden, so a builder walk that lands on a different grid than the
     committed artifact can never slip through unnoticed.
+
+    EXCEPTION (M2a.5 hub cross-platform): the refine mesh is platform-DEPENDENT,
+    so a golden frozen on a DIFFERENT OS legitimately will not reproduce here --
+    REGARDLESS of the provisional flag. In that case the pin is SKIPPED (with a
+    loud warning) so a build on an OS other than the golden's generation OS is
+    not falsely failed by an artifact that cannot reproduce cross-platform (e.g.
+    the hub run that will replace a macOS golden, or a macOS build once the
+    authoritative Linux golden is committed). Same-OS goldens STILL enforce
+    (drift protection fully intact); an undeterminable generation OS enforces
+    (fail-safe).
     """
     manifest = _frozen_golden_manifest(group)
     if manifest is None:
         return  # walker / not-frozen group -> nothing to pin against
+    if _golden_is_cross_platform(manifest):
+        golden_os = _golden_generation_os(manifest)
+        print(
+            f"[casestudy_flow_builder] SKIPPING grid-pin for group {group}: committed "
+            f"golden was generated on {golden_os}, building on {platform.system()} -- the "
+            f"Triangle/Voronoi mesh differs cross-platform, so this golden is a valid pin "
+            f"only on {golden_os}. The authoritative {platform.system()} golden supersedes "
+            f"it here (M2a.5 hub / cross-platform regen).",
+            file=sys.stderr,
+        )
+        return
     agg, arr = cfc.spec_canonical_hashes(spec)
     problems: List[str] = []
     if agg != manifest["aggregate_hash"]:
@@ -566,8 +648,16 @@ def build_all_flow_states(group: Group, *, work_dir) -> Dict[str, Any]:
     # our before/after invariance witness.
     canonical_hash, _ = cfc.spec_canonical_hashes(walk["spec"])
     canonical_radius = float(walk["refine_radius"])
+    # The walked grid must match the committed golden EXCEPT for a cross-PLATFORM
+    # golden (the mesh is platform-dependent; a build on an OS other than the
+    # golden's generation OS legitimately produces a different grid -- do not
+    # block it). Same-OS goldens are enforced; undeterminable OS enforces.
     golden = _frozen_golden_manifest(group)
-    if golden is not None and canonical_hash != golden["aggregate_hash"]:
+    if (
+        golden is not None
+        and not _golden_is_cross_platform(golden)
+        and canonical_hash != golden["aggregate_hash"]
+    ):
         raise RuntimeError(
             f"group {group}: walked grid hash {canonical_hash[:12]} != committed "
             f"golden {golden['aggregate_hash'][:12]} -- single-walk grid is not the frozen grid"
