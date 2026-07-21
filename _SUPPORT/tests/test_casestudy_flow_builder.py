@@ -333,6 +333,36 @@ class TestScenarioResponseMetricsActiveMasked:
         assert m["n_dry_iii"] == 0
 
 
+class TestNearestRivCellActiveOnly:
+    """M2a.4 robustness: nearest_riv_cell selects only ACTIVE RIV cells."""
+
+    def test_active_farther_chosen_over_inactive_nearer(self):
+        # ext cell 0 at x=0. RIV cells: cell 1 (x=10, INACTIVE) is nearer than
+        # cell 3 (x=30, ACTIVE) -> the ACTIVE farther one must be chosen.
+        spec = {
+            "idomain": np.array([1, 0, 1, 1]),   # cell 1 inactive
+            "riv_cellid": [(0, 1), (0, 3)],
+        }
+        mg = SimpleNamespace(
+            xcellcenters=np.array([0.0, 10.0, 20.0, 30.0]),
+            ycellcenters=np.array([0.0, 0.0, 0.0, 0.0]),
+        )
+        cell, dist = b.nearest_riv_cell(0, spec, mg)
+        assert cell == 3 and dist == pytest.approx(30.0)
+
+    def test_none_when_no_active_riv_cell(self):
+        spec = {"idomain": np.array([1, 0, 1]), "riv_cellid": [(0, 1)]}  # only RIV inactive
+        mg = SimpleNamespace(xcellcenters=np.array([0.0, 10.0, 20.0]),
+                             ycellcenters=np.array([0.0, 0.0, 0.0]))
+        cell, dist = b.nearest_riv_cell(0, spec, mg)
+        assert cell is None and dist == float("inf")
+
+    def test_none_when_no_riv_cell_at_all(self):
+        spec = {"idomain": np.array([1, 1]), "riv_cellid": []}
+        mg = SimpleNamespace(xcellcenters=np.array([0.0, 10.0]), ycellcenters=np.array([0.0, 0.0]))
+        assert b.nearest_riv_cell(0, spec, mg) == (None, float("inf"))
+
+
 # =============================================================================
 # Finding 3: hash-regression coverage that does NOT need mf6 (spec-only, no
 # solve) + a hub-required assertion so the real guard cannot silently skip on

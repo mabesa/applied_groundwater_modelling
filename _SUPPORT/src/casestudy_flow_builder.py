@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -332,6 +333,9 @@ def build_flow_state(
         walk = _refine_solve_baseline_walk(group, work_dir, sim_name=f"group{group}_baseline")
         return _finalize_baseline_state(group, walk, work_dir)
     # states ii + iii both build on ONE grid (the walk's own baseline solve).
+    # runtime (M2a.4) = the flow build+solve wall-clock for the group's M2a
+    # states -- a METRIC on the RETURN only, NEVER hashed/frozen.
+    _t0 = time.perf_counter()
     walk = _refine_solve_baseline_walk(
         group, work_dir / "_baseline_ref",
         sim_name=f"group{group}_baseline_ref", model_name=f"g{group}_base_ref",
@@ -341,7 +345,9 @@ def build_flow_state(
     # wells_plus_scenario (state iii): needs state ii (wells) as the drawdown
     # reference, solved on the SAME grid.
     wells = _solve_validate_wells(group, walk, work_dir, half_rate=False)
-    return _solve_validate_scenario(group, walk, wells, work_dir)
+    result = _solve_validate_scenario(group, walk, wells, work_dir)
+    result["runtime_s"] = float(time.perf_counter() - _t0)
+    return result
 
 
 def build_wells_states(group: Group, *, work_dir) -> Dict[str, Any]:
@@ -544,6 +550,57 @@ def _riv_net_flux(gwf) -> float:
     return float(np.sum(recs[0]["q"]))
 
 
+def nearest_riv_cell(ext_cell: int, spec: Dict[str, Any], modelgrid):
+    """Resolve the ACTIVE refined RIV cell NEAREST to the doublet *ext_cell*
+    and its separation (m) -- the aquifer->river gradient receptor (M2a.4).
+
+    Only ACTIVE (``idomain != 0``) RIV cells are eligible: an inactive RIV cell
+    that happens to be closest would give a meaningless gradient (and the
+    metric would censor a valid nearest-ACTIVE river gradient). Same
+    active-cell fix class as M2a.2's placement mapper. Returns
+    ``(riv_cell, dist_m)``; ``(None, inf)`` if there is no ACTIVE RIV cell."""
+    idom = np.asarray(spec["idomain"]).reshape(-1)
+    riv_flats = sorted({int(c[1]) for c in spec["riv_cellid"]} if spec.get("riv_cellid") else set())
+    riv_flats = [i for i in riv_flats if idom[i] != 0]
+    if not riv_flats:
+        return None, float("inf")
+    xc = np.asarray(modelgrid.xcellcenters).reshape(-1)
+    yc = np.asarray(modelgrid.ycellcenters).reshape(-1)
+    d = np.hypot(xc[riv_flats] - xc[int(ext_cell)], yc[riv_flats] - yc[int(ext_cell)])
+    j = int(np.argmin(d))
+    return int(riv_flats[j]), float(d[j])
+
+
+def _gradient_inputs(ext_cell, spec, modelgrid, heads_ii, heads_iii, botm):
+    """The aquifer->river gradient RAW inputs (states ii + iii, SAME grid) that
+    M2a.4's ``gradient_change`` obligation aggregates -- head at the extraction
+    cell + head at the nearest refined RIV cell + their separation, plus the
+    active/dry flags the metric censors on."""
+    hii = np.asarray(heads_ii, dtype=float).reshape(-1)
+    hiii = np.asarray(heads_iii, dtype=float).reshape(-1)
+    botm_a = np.asarray(botm, dtype=float).reshape(-1)
+    idom = np.asarray(spec["idomain"]).reshape(-1)
+    riv_cell, dist = nearest_riv_cell(ext_cell, spec, modelgrid)
+
+    def _dry(h, cell):
+        return None if cell is None else bool(h[int(cell)] < (botm_a[int(cell)] - _DRY_TOL_M))
+
+    return {
+        "receptor_type": "river",
+        "ext_cell": int(ext_cell),
+        "riv_cell": riv_cell,
+        "dist_m": dist,
+        "head_ext_ii": float(hii[int(ext_cell)]),
+        "head_ext_iii": float(hiii[int(ext_cell)]),
+        "head_riv_ii": (None if riv_cell is None else float(hii[int(riv_cell)])),
+        "head_riv_iii": (None if riv_cell is None else float(hiii[int(riv_cell)])),
+        "ext_active": bool(idom[int(ext_cell)] != 0),
+        "riv_active": (None if riv_cell is None else bool(idom[int(riv_cell)] != 0)),
+        "ext_dry_ii": _dry(hii, ext_cell), "ext_dry_iii": _dry(hiii, ext_cell),
+        "riv_dry_ii": _dry(hii, riv_cell), "riv_dry_iii": _dry(hiii, riv_cell),
+    }
+
+
 def _scenario_response_metrics(
     group, spec, modelgrid, heads_ii, heads_iii, gwf_ii, gwf_iii, botm,
 ) -> Dict[str, Any]:
@@ -658,6 +715,12 @@ def _solve_validate_scenario(group, walk, wells, work_dir, *, config_path=None) 
         group, scen_spec, scen_built["modelgrid"], heads_ii, heads_iii,
         wells["gwf"], scen_built["gwf"], scen_spec["botm"],
     )
+    # aquifer->river gradient RAW inputs (states ii + iii) for M2a.4's
+    # gradient_change obligation. RIV topology is immutable across the
+    # scenario, so the ext/nearest-river cells are the same for ii and iii.
+    gradient_inputs = _gradient_inputs(
+        ext_cell, spec, scen_built["modelgrid"], heads_ii, heads_iii, scen_spec["botm"],
+    )
 
     # Finding 2: the BUILDER self-enforces the FROZEN expectation. The
     # evaluator first checks the flow-config scenario type+params MATCH the
@@ -694,6 +757,7 @@ def _solve_validate_scenario(group, walk, wells, work_dir, *, config_path=None) 
             "state_ii_heads": heads_ii,
             "head_delta_max_m": head_delta,
             "response_metrics": metrics,
+            "gradient_inputs": gradient_inputs,
             "expectation": expectation,
         },
     )
