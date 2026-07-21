@@ -288,35 +288,59 @@ class TestFmiStalenessGuard:
 # =====================================================================
 class TestAnchoring:
     def test_all_groups_anchored_passes(self):
+        # Graduation-invariant: assert the STRUCTURE -- every group anchored by
+        # exactly one of golden XOR deferral, and the three buckets partition
+        # ALL_GROUPS -- NOT a snapshot of which groups are provisional today.
+        # Survives the Linux-golden graduation (deferrals shrink, goldens grow,
+        # provisional -> authoritative) with no test edit.
         report = b.assert_all_groups_anchored()
         assert report["anchored"] is True
-        assert report["provisional_goldens"] == [0, 2, 7, 8]
-        assert report["deferrals"] == [1, 3, 4, 5, 6]
-        # all provisional-macOS: none authoritative until the hub runs
-        assert report["authoritative_goldens"] == []
+        buckets = (
+            report["authoritative_goldens"]
+            + report["provisional_goldens"]
+            + report["deferrals"]
+        )
+        assert sorted(buckets) == sorted(b.ALL_GROUPS)   # exact partition
+        assert len(buckets) == len(set(buckets))          # no group in two buckets
 
     def test_hub_pending_report(self):
+        # Invariant: hub_pending mirrors the report's own deferral/provisional
+        # lists, whatever the current graduation state is.
         report = b.assert_all_groups_anchored()
         hp = report["hub_pending"]
-        assert hp["deferred_need_linux_golden"] == [1, 3, 4, 5, 6]
-        assert hp["provisional_need_linux_reverify"] == [0, 2, 7, 8]
+        assert hp["deferred_need_linux_golden"] == report["deferrals"]
+        assert hp["provisional_need_linux_reverify"] == report["provisional_goldens"]
 
     def test_deferral_schema(self):
-        for g in (1, 3, 4, 5, 6):
+        # Iterate the deferrals ACTUALLY committed (derived from disk), so this
+        # tracks graduation instead of a hard-coded [1,3,4,5,6] snapshot.
+        deferred = [g for g in b.ALL_GROUPS if b._load_deferral(g) is not None]
+        for g in deferred:
             d = b._load_deferral(g)
             assert d is not None, f"group {g} deferral missing"
             for key in b.DEFERRAL_KEYS:
                 assert key in d, f"group {g} deferral missing key {key!r}"
             assert d["group"] == g
-            assert d["radius_walked"] == 62
+            rw = d["radius_walked"]
+            assert isinstance(rw, (int, float)) and not isinstance(rw, bool) and rw > 0
             assert d["authoritative_platform"] == "linux"
             assert d["status"] == "linux-pending"
-            assert d["mf6_version"] == "6.7.0"
+            assert isinstance(d["mf6_version"], str) and d["mf6_version"]
 
-    def test_provisional_goldens_flagged(self):
-        for g in (0, 2, 7, 8):
+    def test_golden_provisional_flag_consistent_with_generation_os(self):
+        # Invariant (replaces the old "0/2/7/8 are provisional" snapshot): a
+        # committed golden is provisional IFF it was NOT frozen on the
+        # authoritative platform (Linux). Holds for the macOS-provisional
+        # goldens AND the graduated Linux-authoritative ones.
+        for g in b.ALL_GROUPS:
             m = b._frozen_golden_manifest(g)
-            assert m.get("provisional") is True
+            if m is None:
+                continue
+            expected_provisional = b._golden_generation_os(m) != "Linux"
+            assert bool(m.get("provisional")) is expected_provisional, (
+                f"group {g}: provisional={m.get('provisional')} but generation "
+                f"OS is {b._golden_generation_os(m)!r}"
+            )
             assert m.get("authoritative_platform") == "linux"
 
     def test_golden_xor_deferral_no_overlap(self):
