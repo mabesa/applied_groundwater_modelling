@@ -368,16 +368,31 @@ class TestAnchoring:
         with pytest.raises(AssertionError, match="missing keys"):
             b.assert_all_groups_anchored(groups=[3])
 
+    def _valid_deferral(self, group=3):
+        # A synthetic, schema-complete deferral (independent of what's on disk),
+        # so the negative tests below don't depend on any group still being
+        # deferred after the Linux-golden graduation.
+        return {
+            "group": group,
+            "reason": "synthetic deferral for negative testing",
+            "platform": "macOS-arm64",
+            "mf6_version": "6.7.0",
+            "date": "2026-07-21",
+            "radius_walked": 62,
+            "authoritative_platform": "linux",
+            "status": "linux-pending",
+        }
+
     def test_deferral_wrong_group_field_fails(self, monkeypatch):
         # Finding 5: group field must equal the group it anchors
-        bad = dict(b._load_deferral(3)); bad["group"] = 99
+        bad = self._valid_deferral(3); bad["group"] = 99
         monkeypatch.setattr(b, "_frozen_golden_manifest", lambda g: None)
         monkeypatch.setattr(b, "_load_deferral", lambda g: bad)
         with pytest.raises(AssertionError, match="group field"):
             b.assert_all_groups_anchored(groups=[3])
 
     def test_deferral_nonpositive_radius_fails(self, monkeypatch):
-        bad = dict(b._load_deferral(3)); bad["radius_walked"] = 0
+        bad = self._valid_deferral(3); bad["radius_walked"] = 0
         monkeypatch.setattr(b, "_frozen_golden_manifest", lambda g: None)
         monkeypatch.setattr(b, "_load_deferral", lambda g: bad)
         with pytest.raises(AssertionError, match="radius_walked"):
@@ -385,7 +400,7 @@ class TestAnchoring:
 
     def test_deferral_boolean_radius_rejected(self, monkeypatch):
         # bool is a subclass of int -- must NOT count as a positive number
-        bad = dict(b._load_deferral(3)); bad["radius_walked"] = True
+        bad = self._valid_deferral(3); bad["radius_walked"] = True
         monkeypatch.setattr(b, "_frozen_golden_manifest", lambda g: None)
         monkeypatch.setattr(b, "_load_deferral", lambda g: bad)
         with pytest.raises(AssertionError, match="radius_walked"):
