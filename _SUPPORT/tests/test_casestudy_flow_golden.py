@@ -1043,10 +1043,16 @@ class TestGenerateGroup0GoldenEndToEnd:
         assert manifest["nlay"] == 1
         assert manifest["near_field_tol"] == cfg.NEAR_FIELD_TOL
         assert np.array_equal(np.asarray(manifest["heads"]), heads)
-        # provisional (macOS) freeze provenance
-        assert manifest["provisional"] is True
+        # provisional flag is OS-driven: authoritative (False) only when frozen
+        # on Linux (reason None); provisional (True, linux-pending reason) else.
+        import platform as _pf
+        expect_provisional = cfg._os_family(_pf.system()) != "Linux"
+        assert manifest["provisional"] is expect_provisional
         assert manifest["authoritative_platform"] == "linux"
-        assert "linux" in manifest["provisional_reason"].lower()
+        if expect_provisional:
+            assert "linux" in manifest["provisional_reason"].lower()
+        else:
+            assert manifest["provisional_reason"] is None
 
         # faithful RIV provenance recorded + conservation held.
         fr = manifest["faithful_riv"]
