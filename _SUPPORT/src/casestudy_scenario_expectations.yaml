@@ -1,0 +1,127 @@
+# =============================================================================
+# M2a.3 — FROZEN independent state-(ii) -> state-(iii) expectation table
+# =============================================================================
+# Authored from INDEPENDENT HYDRO REASONING and frozen/committed BEFORE any
+# state-(iii) solver run (see DESIGN_DOCS/student_casestudy_M2a_3_plan.md). It
+# is only falsifiable if not tuned to solver output -- so it is written first,
+# marked frozen, then the actual ii->iii response is asserted CONSISTENT with
+# it. A real response that contradicts a frozen expectation is reported as a
+# FINDING, never silently edited to pass.
+#
+# BUDGET / METRIC CONVENTIONS (defined here, before freezing):
+#   * river_to_aquifer_flux : SIGNED sum of the RIV package budget flux with
+#     RIVER-TO-AQUIFER POSITIVE (MF6 RIV budget q > 0 = flow into the aquifer
+#     cell). The Limmat baseline is a NET LOSING reach for the aquifer
+#     (river_to_aquifer_flux < 0) -- "leakage-to-aquifer increases" means this
+#     SIGNED value increases (less negative / more positive).
+#   * abs_river_exchange    : |river_to_aquifer_flux| = absolute total RIV
+#     package flux magnitude (the strength of river<->aquifer exchange).
+#   * mean_head_change      : mean(head_iii - head_ii) over ACTIVE cells (m),
+#     sign stated. head_delta_max_m = max|head_iii - head_ii| (the emitted
+#     flow_head_delta -- the scenario's incremental head effect).
+#
+# ASSERTION CLASSES:
+#   * clear_sign   : the named metric moves in the FORCED direction (a small
+#     numeric deadband guards float noise); magnitude bands only where
+#     independently derivable (here: direction-only -- head feedback makes the
+#     magnitude non-trivial).
+#   * feature_local: AMBIGUOUS sign -> assert a non-trivial ii->iii response is
+#     PRESENT + BOUNDED + spatially LOCALIZED near the changed feature (the
+#     cell of max |head change| lies within locality_dist_m of a feature cell).
+#   * global       : AMBIGUOUS sign, WHOLE-aquifer -> assert PRESENT + BOUNDED +
+#     FINITE + NO-DRY + a SPREAD (not-localized) redistribution. A global Kh
+#     multiplier redistributes heads across the domain with no monotone sign;
+#     requiring localization would be conceptually false.
+# =============================================================================
+frozen_before_run: true
+provenance:
+  authored: "2026-07-20"
+  author: "M2a.3 implementer, from hydro reasoning (NOT tuned to solver output)"
+  flow_config: "PROJECT/workspace/template/case_config.yaml"
+  plan: "DESIGN_DOCS/student_casestudy_M2a_3_plan.md (v4)"
+  note: >
+    Directions are derived from steady-state groundwater physics on the
+    calibrated Limmat model: raising recharge raises heads; a global Kh
+    increase flattens gradients / redistributes heads; raising river stage
+    increases river-to-aquifer flux; scaling river conductance scales the
+    exchange magnitude; a boundary-head or river-geometry change perturbs
+    heads most strongly near that feature.
+
+config:
+  presence_tol_m: 0.001        # a real scenario perturbs heads by > 1 mm somewhere
+  bound_m: 50.0                # sanity upper bound on |head change| (m)
+  clear_sign_min_rel: 1.0e-4   # clear-sign metric must change by > this rel. amount, correct direction
+  locality_dist_m: 500.0       # feature-local: argmax |Δhead| within this of a feature cell
+  global_spread_min_frac: 0.05 # global: >= this fraction of active cells respond substantially
+  global_spread_ampl_frac: 0.10 # "substantially" = |Δhead| > this * max|Δhead|
+
+groups:
+  0:
+    scenario_type: chd_head_change
+    params: {chd_head_change_m: -1}
+    assertion_class: feature_local
+    feature: chd            # response localized near the CHD (regional outflow) boundary
+    metric: max_abs_head_change
+    expectation: "present + bounded + localized near the CHD boundary (sign ambiguous: local gradient dependent)"
+
+  1:
+    scenario_type: river_conductance
+    params: {conductance_factor: 1.2}
+    assertion_class: clear_sign
+    metric: abs_river_exchange
+    direction: increase     # +20% conductance strengthens river<->aquifer exchange magnitude
+    expectation: "|river exchange| (|Σ RIV flux|) INCREASES vs state ii"
+
+  2:
+    scenario_type: river_conductance
+    params: {conductance_factor: 0.8}
+    assertion_class: clear_sign
+    metric: abs_river_exchange
+    direction: decrease     # -20% conductance weakens exchange magnitude
+    expectation: "|river exchange| (|Σ RIV flux|) DECREASES vs state ii"
+
+  3:
+    scenario_type: recharge_scale
+    params: {recharge_factor: 1.2}
+    assertion_class: clear_sign
+    metric: mean_head_change
+    direction: increase     # more recharge -> more water in -> heads rise
+    expectation: "mean head RISES vs state ii (mean_head_change > 0)"
+
+  4:
+    scenario_type: recharge_scale
+    params: {recharge_factor: 0.8}
+    assertion_class: clear_sign
+    metric: mean_head_change
+    direction: decrease     # less recharge -> heads drop
+    expectation: "mean head DROPS vs state ii (mean_head_change < 0)"
+
+  5:
+    scenario_type: river_stage
+    params: {stage_change_m: 1.5}
+    assertion_class: clear_sign
+    metric: river_to_aquifer_flux
+    direction: increase     # raising stage raises river head above aquifer -> more river-to-aquifer flux
+    expectation: "signed river-to-aquifer flux INCREASES vs state ii (Δ > 0)"
+
+  6:
+    scenario_type: river_width_and_stage
+    params: {width_factor: 1.5, stage_change_factor: -0.5}
+    assertion_class: feature_local
+    feature: riv            # response localized near the river
+    metric: max_abs_head_change
+    expectation: "present + bounded + localized near the river (mixed sign: wider channel but lower stage)"
+
+  7:
+    scenario_type: aquifer_transmissivity
+    params: {transmissivity_factor: 1.2}
+    assertion_class: global
+    metric: max_abs_head_change
+    expectation: "present + bounded + finite + no-dry + SPREAD head redistribution (NOT localized; global Kh)"
+
+  8:
+    scenario_type: aquifer_transmissivity
+    params: {transmissivity_factor: 0.8}
+    assertion_class: global
+    metric: max_abs_head_change
+    expectation: "present + bounded + finite + no-dry + SPREAD head redistribution (NOT localized; global Kh)"
