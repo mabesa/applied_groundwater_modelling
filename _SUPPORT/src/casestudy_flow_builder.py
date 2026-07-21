@@ -46,12 +46,19 @@ for _p in (_SRC_DIR, _SCRIPTS_DIR):
 import model_io_utils as mio  # noqa: E402
 import casestudy_flow_common as cfc  # noqa: E402
 import casestudy_diagnostics as cd  # noqa: E402
+import casestudy_flow_scenarios as scn  # noqa: E402
+import case_utils as cu  # noqa: E402
 
 Group = Any
 
 # States this builder can build: (i) baseline (M2a.1) + (ii) wells_only + its
-# 50% half-rate sensitivity (M2a.2). State (iii) scenarios are M2a.3.
-SUPPORTED_STATES = ("baseline", "wells_only")
+# 50% half-rate sensitivity (M2a.2) + (iii) wells_plus_scenario (M2a.3).
+SUPPORTED_STATES = ("baseline", "wells_only", "wells_plus_scenario")
+
+# Default flow config (scenarios.options[id=N]); the state-iii scenario params
+# are read from it, never hard-coded.
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+DEFAULT_FLOW_CONFIG = _REPO_ROOT / "PROJECT" / "workspace" / "template" / "case_config.yaml"
 
 # Doublet magnitude PER WELL (m3/d) + the half-rate sensitivity factor.
 DOUBLET_Q_M3D = cfc.DOUBLET_Q_M3D  # 4320 (inj +Q, ext -Q); half = 0.5*Q
@@ -281,10 +288,11 @@ def build_flow_state(
     group : int
         Student group id (0-8).
     state : str
-        ``"baseline"`` (state i, background wells only) or ``"wells_only"``
-        (state ii, background + the group's flow-only geothermal doublet).
-        States (iii)/scenarios are M2a.3; any other value raises
-        ``NotImplementedError``.
+        ``"baseline"`` (state i, background wells only), ``"wells_only"``
+        (state ii, background + the group's flow-only geothermal doublet), or
+        ``"wells_plus_scenario"`` (state iii, state ii + the group's scenario
+        transform from the flow config, on the SAME grid). Any other value
+        raises ``NotImplementedError``.
     half_rate : bool
         Only valid for ``state='wells_only'``: solve the 50% pumping-
         sensitivity variant (doublet at +-0.5*Q). ``diagnostics.<state>.json``
@@ -323,12 +331,17 @@ def build_flow_state(
     if state == "baseline":
         walk = _refine_solve_baseline_walk(group, work_dir, sim_name=f"group{group}_baseline")
         return _finalize_baseline_state(group, walk, work_dir)
-    # wells_only: the SAME-grid baseline reference solve is the walk's own solve.
+    # states ii + iii both build on ONE grid (the walk's own baseline solve).
     walk = _refine_solve_baseline_walk(
         group, work_dir / "_baseline_ref",
         sim_name=f"group{group}_baseline_ref", model_name=f"g{group}_base_ref",
     )
-    return _solve_validate_wells(group, walk, work_dir, half_rate=half_rate)
+    if state == "wells_only":
+        return _solve_validate_wells(group, walk, work_dir, half_rate=half_rate)
+    # wells_plus_scenario (state iii): needs state ii (wells) as the drawdown
+    # reference, solved on the SAME grid.
+    wells = _solve_validate_wells(group, walk, work_dir, half_rate=False)
+    return _solve_validate_scenario(group, walk, wells, work_dir)
 
 
 def build_wells_states(group: Group, *, work_dir) -> Dict[str, Any]:
@@ -517,6 +530,171 @@ def _solve_validate_wells(group, walk, work_dir, *, half_rate) -> Dict[str, Any]
             "head_delta_max_m": head_delta,
             "doublet_head_delta": {"injection": dh_inj, "extraction": dh_ext},
             "incremental_flux": {"injection": inj_incr, "extraction": ext_incr},
+        },
+    )
+
+
+def _riv_net_flux(gwf) -> float:
+    """SIGNED total RIV package budget flux (river-to-aquifer POSITIVE, the
+    MF6 convention: q > 0 = flow into the aquifer cell)."""
+    bud = gwf.output.budget()
+    recs = bud.get_data(text="RIV", totim=bud.get_times()[-1])
+    if not recs:
+        return float("nan")
+    return float(np.sum(recs[0]["q"]))
+
+
+def _scenario_response_metrics(
+    group, spec, modelgrid, heads_ii, heads_iii, gwf_ii, gwf_iii, botm,
+) -> Dict[str, Any]:
+    """Compute the same-grid ii->iii response metrics the frozen expectation
+    table is checked against (see casestudy_flow_scenarios.evaluate_...).
+
+    Finding 1: ALL head-response statistics (max/argmax/mean/n_responding/
+    n_dry) are computed over ACTIVE cells ONLY -- the frozen table defines
+    mean/spread over active cells. (The refined idomain is currently all-ones,
+    so this is presently a no-op, but the masking is made EXPLICIT so an
+    inactive cell can never contaminate a statistic.)"""
+    idomain = np.asarray(spec["idomain"]).reshape(-1)
+    active = idomain != 0
+    active_idx = np.where(active)[0]  # map masked positions -> global flat index
+
+    hii = np.asarray(heads_ii, dtype=float).reshape(-1)[active]
+    hiii = np.asarray(heads_iii, dtype=float).reshape(-1)[active]
+    botm_a = np.asarray(botm, dtype=float).reshape(-1)[active]
+    dh = hiii - hii
+    adh = np.abs(dh)
+    max_abs = float(adh.max())
+    imax_global = int(active_idx[int(np.argmax(adh))])  # global flat index of the argmax
+
+    # distance from the argmax |Δh| cell (global index) to the nearest CHD/RIV cell.
+    xc = np.asarray(modelgrid.xcellcenters).reshape(-1)
+    yc = np.asarray(modelgrid.ycellcenters).reshape(-1)
+
+    def _dist_to(cellids):
+        flats = sorted({int(c[1]) for c in cellids})
+        if not flats:
+            return float("inf")
+        d = np.hypot(xc[flats] - xc[imax_global], yc[flats] - yc[imax_global])
+        return float(d.min())
+
+    ampl = 0.10  # global_spread_ampl_frac (mirrors the frozen config)
+    n_active = int(active_idx.size)
+    n_responding = int(np.count_nonzero(adh > ampl * max_abs)) if max_abs > 0 else 0
+    n_dry = int(np.count_nonzero(hiii < (botm_a - _DRY_TOL_M)))
+
+    riv_ii = _riv_net_flux(gwf_ii)
+    riv_iii = _riv_net_flux(gwf_iii)
+    return {
+        "max_abs_head_change": max_abs,
+        "mean_head_change": float(dh.mean()),  # active-cell mean
+        "argmax_dist_to_chd_m": _dist_to(spec["chd_cellid"]),
+        "argmax_dist_to_riv_m": _dist_to(spec["riv_cellid"]),
+        "river_to_aquifer_flux": {"ii": riv_ii, "iii": riv_iii},
+        "abs_river_exchange": {"ii": abs(riv_ii), "iii": abs(riv_iii)},
+        "n_active": n_active,
+        "n_responding": n_responding,  # over active cells
+        "n_dry_iii": n_dry,            # over active cells
+        "finite_iii": bool(np.all(np.isfinite(hiii))),
+    }
+
+
+def _solve_validate_scenario(group, walk, wells, work_dir, *, config_path=None) -> Dict[str, Any]:
+    """State (iii) wells_plus_scenario: apply the group's scenario transform to
+    the state-ii spec (values-only, faithful RIV immutable) + the doublet, solve
+    on the SAME grid as states i/ii, emit ``diagnostics.wells_plus_scenario.json``
+    (flow_head_delta = max|state(iii) - state(ii)|), and compute the ii->iii
+    response metrics for the FROZEN-expectation consistency check."""
+    spec, riv_info = walk["spec"], walk["riv_info"]
+    heads_ii = np.asarray(wells["heads"], dtype=float)
+    doublet = wells["doublet"]
+    inj_cell = doublet["injection"]["cell"]
+    ext_cell = doublet["extraction"]["cell"]
+    Q = float(wells["resolved_Q"])
+
+    # scenario params from the FLOW config (never hard-coded).
+    cfg_path = str(config_path) if config_path is not None else str(DEFAULT_FLOW_CONFIG)
+    scenario = cu.get_scenario_for_group(cfg_path, int(group))
+    if scenario is None:
+        raise RuntimeError(f"group {group}: no flow scenario found in {cfg_path}")
+    scenario_type = scenario["type"]
+
+    # apply_scenario mutates the state-ii spec's package VALUES only.
+    scen_spec = scn.apply_scenario(spec, scenario_type, scenario)
+
+    scen_model = f"g{group}_scen"
+    scen_built = cfc.assemble_flow_state(
+        scen_spec, workspace=work_dir, sim_name=f"group{group}_wells_plus_scenario",
+        model_name=scen_model,
+        extra_wells=[((0, inj_cell), +Q), ((0, ext_cell), -Q)],
+        raise_on_failure=False,
+    )
+    converged = scen_built["converged"]
+    heads_iii = np.asarray(scen_built["heads"], dtype=float) if scen_built["heads"] is not None else None
+
+    # Finite BEFORE head_delta (recurring NaN class): a NaN head must not reach
+    # np.max -> NaN into strict JSON. Emit the diagnostic, then raise cleanly.
+    finite_iii = bool(converged and heads_iii is not None and np.all(np.isfinite(heads_iii)))
+    head_delta = float(np.max(np.abs(heads_iii - heads_ii))) if finite_iii else None
+    diagnostics = _emit_flow_diagnostics(
+        converged=converged, heads=heads_iii, botm=scen_spec["botm"],
+        gwf=scen_built["gwf"], head_delta=head_delta,
+    )
+    diag_file = work_dir / "diagnostics.wells_plus_scenario.json"
+    diag_file.write_text(json.dumps(diagnostics, indent=2, allow_nan=False, sort_keys=True) + "\n")
+
+    if not converged:
+        raise RuntimeError(
+            f"build_flow_state(group={group}, state='wells_plus_scenario'): did "
+            f"not converge -- see {scen_built['headfile']} listing; diagnostics {diag_file}"
+        )
+    if not diagnostics["finite_heads"]["passed"]:
+        raise RuntimeError(
+            f"build_flow_state(group={group}, state='wells_plus_scenario'): "
+            f"non-finite head(s); diagnostics {diag_file}"
+        )
+
+    metrics = _scenario_response_metrics(
+        group, scen_spec, scen_built["modelgrid"], heads_ii, heads_iii,
+        wells["gwf"], scen_built["gwf"], scen_spec["botm"],
+    )
+
+    # Finding 2: the BUILDER self-enforces the FROZEN expectation. The
+    # evaluator first checks the flow-config scenario type+params MATCH the
+    # frozen table (the expectation is only valid for the exact frozen
+    # scenario), then the actual ii->iii response. A build that CONTRADICTS
+    # its frozen expectation FAILS -- it must not return successfully.
+    expectation = scn.evaluate_scenario_expectation(
+        int(group), metrics, config_scenario=scenario,
+    )
+    if not expectation["consistent"]:
+        raise RuntimeError(
+            f"build_flow_state(group={group}, state='wells_plus_scenario'): the "
+            f"state-iii response CONTRADICTS its FROZEN expectation "
+            f"({expectation['assertion_class']}): {expectation['problems']}. "
+            "Refusing to return a build that violates the frozen table."
+        )
+
+    # Finding 3: grid_hash = the GEOMETRY identity (state-ii grid, still ==
+    # the committed golden -- the scenario mutates package VALUES, not the
+    # grid). package_hashes MUST reflect the SCENARIO-mutated packages
+    # (scen_spec), not the pre-scenario spec, or they are false metadata.
+    grid_hash, _ = cfc.spec_canonical_hashes(spec)          # geometry == golden
+    _, package_hashes = cfc.spec_canonical_hashes(scen_spec)  # actual state-iii packages
+    return _rich_result(
+        built=scen_built, spec=scen_spec, riv_info=riv_info, grid_hash=grid_hash,
+        package_hashes=package_hashes, diagnostics=diagnostics, diag_file=diag_file,
+        work_dir=work_dir, state="wells_plus_scenario", group=group,
+        extra={
+            "refine_radius": walk["refine_radius"],
+            "scenario_type": scenario_type,
+            "scenario_params": scenario,
+            "resolved_Q": Q,
+            "doublet": doublet,
+            "state_ii_heads": heads_ii,
+            "head_delta_max_m": head_delta,
+            "response_metrics": metrics,
+            "expectation": expectation,
         },
     )
 

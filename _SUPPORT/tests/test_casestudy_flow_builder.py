@@ -21,6 +21,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -212,6 +213,124 @@ class TestBuildWellsStatesSameGrid:
     def test_grid_pinned_to_committed_golden(self, both):
         manifest = json.loads((GOLDEN_DIR / "group0_flow.manifest.json").read_text())
         assert both["grid_hash"] == manifest["aggregate_hash"]
+
+
+# =============================================================================
+# M2a.3 — state (iii) wells_plus_scenario (real group-0 build; mf6-gated).
+# =============================================================================
+@requires_mf6
+class TestScenarioStateGroup0:
+    @pytest.fixture(scope="class")
+    def result(self, tmp_path_factory):
+        return b.build_flow_state(0, "wells_plus_scenario",
+                                  work_dir=tmp_path_factory.mktemp("g0_scen"))
+
+    def test_scenario_read_from_flow_config(self, result):
+        # group 0 flow scenario is chd_head_change (from case_config.yaml)
+        assert result["scenario_type"] == "chd_head_change"
+        assert result["scenario_params"]["type"] == "chd_head_change"
+
+    def test_same_grid_as_committed_golden(self, result):
+        # state iii is on the SAME grid as states i/ii (grid hash == golden)
+        manifest = json.loads((GOLDEN_DIR / "group0_flow.manifest.json").read_text())
+        assert result["grid_hash"] == manifest["aggregate_hash"]
+
+    def test_diagnostics_wells_plus_scenario_json(self, result):
+        p = Path(result["workspace"]) / "diagnostics.wells_plus_scenario.json"
+        assert p.exists()
+        diag = json.loads(p.read_text())
+        assert set(diag.keys()) == set(b.FLOW_DIAGNOSTIC_IDS)
+        # flow_head_delta = same-grid max|iii - ii| (NOT null), and passes
+        assert diag["flow_head_delta"]["value"] == pytest.approx(result["head_delta_max_m"])
+        assert diag["flow_head_delta"]["value"] > 0
+        assert all(e["passed"] for e in diag.values())
+
+    def test_response_consistent_with_frozen_expectation(self, result):
+        # Finding 2: the builder SELF-ENFORCES this (it would have raised on a
+        # contradiction); the result carries the evaluated report.
+        assert result["expectation"]["consistent"], result["expectation"]["problems"]
+        assert result["expectation"]["assertion_class"] == "feature_local"
+
+    def test_package_hashes_reflect_scenario_not_pre_scenario(self, result):
+        # Finding 3: grid_hash == golden (geometry unchanged) BUT package_hashes
+        # reflect the SCENARIO-mutated packages (chd_head changed) -> they must
+        # match hashes of result['spec'] (scen_spec) and DIFFER from the golden.
+        manifest = json.loads((GOLDEN_DIR / "group0_flow.manifest.json").read_text())
+        assert result["grid_hash"] == manifest["aggregate_hash"]
+        agg_scen, arr_scen = cfc.spec_canonical_hashes(result["spec"])
+        assert result["package_hashes"] == arr_scen
+        assert result["package_hashes"] != manifest["array_hashes"], (
+            "package_hashes must reflect the scenario-mutated packages, not the pre-scenario spec"
+        )
+        # the mutated field (chd_head) hash differs; geometry hashes match golden
+        assert arr_scen["chd_head"] != manifest["array_hashes"]["chd_head"]
+        assert arr_scen["gridprops__vertices"] == manifest["array_hashes"]["gridprops__vertices"]
+
+    def test_builder_raises_on_frozen_expectation_contradiction(self, tmp_path, monkeypatch):
+        # Finding 2: a state-iii build whose response CONTRADICTS the frozen
+        # expectation must FAIL (not return). Force the evaluator to report an
+        # inconsistency and assert the real build raises.
+        import casestudy_flow_scenarios as scn
+        monkeypatch.setattr(
+            b.scn, "evaluate_scenario_expectation",
+            lambda group, metrics, **k: {
+                "consistent": False, "assertion_class": "clear_sign",
+                "problems": ["forced contradiction for the test"], "observed": {},
+            },
+        )
+        with pytest.raises(RuntimeError, match="(?i)CONTRADICTS|frozen expectation"):
+            b.build_flow_state(0, "wells_plus_scenario", work_dir=tmp_path)
+
+    def test_rich_return_shape(self, result):
+        for key in b.BUILD_RESULT_KEYS:
+            assert key in result
+        assert result["state"] == "wells_plus_scenario"
+        assert result["headfile"].endswith("group0_wells_plus_scenario.hds")
+
+
+# =============================================================================
+# M2a.3 Finding 1 — response metrics are ACTIVE-CELL masked (no mf6).
+# =============================================================================
+class TestScenarioResponseMetricsActiveMasked:
+    def _fake_gwf(self, riv_q):
+        import numpy as _np
+        rec = _np.array([(1, 1, riv_q)], dtype=[("node", int), ("node2", int), ("q", float)])
+
+        class _Bud:
+            def get_times(self_inner):
+                return [1.0]
+
+            def get_data(self_inner, text, totim):
+                return [rec]
+
+        return SimpleNamespace(output=SimpleNamespace(budget=lambda: _Bud()))
+
+    def test_inactive_cell_excluded_from_all_stats(self):
+        # 4 cells; cell 3 INACTIVE with a huge (bogus) head change -> must be
+        # ignored by max/argmax/mean/n_dry.
+        spec = {
+            "idomain": np.array([1, 1, 1, 0]),
+            "chd_cellid": [(0, 0)], "riv_cellid": [(0, 1)],
+        }
+        mg = SimpleNamespace(
+            xcellcenters=np.array([0.0, 10.0, 20.0, 30.0]),
+            ycellcenters=np.array([0.0, 0.0, 0.0, 0.0]),
+        )
+        heads_ii = np.array([5.0, 5.0, 5.0, 5.0])
+        heads_iii = np.array([5.1, 5.2, 5.3, 999.0])  # cell 3 (inactive) is bogus
+        botm = np.array([0.0, 0.0, 0.0, 0.0])
+        m = b._scenario_response_metrics(
+            0, spec, mg, heads_ii, heads_iii,
+            self._fake_gwf(-100.0), self._fake_gwf(-90.0), botm,
+        )
+        # max over ACTIVE cells is 0.3 (cell 2), NOT 993.9 (inactive cell 3)
+        assert m["max_abs_head_change"] == pytest.approx(0.3)
+        assert m["n_active"] == 3
+        # argmax is the active cell 2 (x=20) -> dist to CHD cell 0 (x=0) = 20 m
+        assert m["argmax_dist_to_chd_m"] == pytest.approx(20.0)
+        # mean over active cells only (0.1+0.2+0.3)/3
+        assert m["mean_head_change"] == pytest.approx(0.2)
+        assert m["n_dry_iii"] == 0
 
 
 # =============================================================================
@@ -445,9 +564,10 @@ class TestBuilderVsGoldenPin:
 # =============================================================================
 class TestContract:
     def test_unsupported_state_raises_not_implemented(self, tmp_path):
-        # 'wells_plus_scenario' (state iii) is M2a.3, not yet supported.
+        # a genuinely unsupported state (baseline/wells_only/wells_plus_scenario
+        # are all handled) must raise NotImplementedError.
         with pytest.raises(NotImplementedError, match="(?i)state"):
-            b.build_flow_state(0, "wells_plus_scenario", work_dir=tmp_path)
+            b.build_flow_state(0, "transport_coupled_future", work_dir=tmp_path)
 
     def test_half_rate_on_non_wells_state_raises(self, tmp_path):
         with pytest.raises(ValueError, match="(?i)half_rate"):
