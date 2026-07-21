@@ -888,6 +888,56 @@ def subprocess_refine_baseline_runner(
 
 
 # =============================================================================
+# Provisional-vs-authoritative provenance (Linux is the authoritative
+# platform for the Triangle/Voronoi refine mesh). This module is the ORACLE
+# for goldens, so it deliberately does NOT import from
+# ``casestudy_flow_builder`` -- ``_os_family`` is replicated verbatim (not
+# imported) to keep this module self-contained.
+# =============================================================================
+_AUTHORITATIVE_OS = "Linux"
+
+
+def _os_family(text: str) -> str:
+    """Map an OS string to ``platform.system()`` space (one of "Darwin",
+    "Linux", "Windows"), or "" if unrecognised/blank."""
+    low = str(text or "").lower()
+    if low.startswith("macos") or low.startswith("darwin"):
+        return "Darwin"
+    if low.startswith("linux"):
+        return "Linux"
+    if low.startswith("windows"):
+        return "Windows"
+    return ""
+
+
+def _provisional_provenance(gen_os: str) -> Dict[str, Any]:
+    """Provisional-vs-authoritative manifest fields, driven by the OS a golden
+    is being FROZEN on. A golden frozen ON the authoritative platform (Linux) is
+    AUTHORITATIVE (provisional False); one frozen anywhere else -- macOS dev box,
+    Windows, or an UNRECOGNISED OS ("") -- is PROVISIONAL (fail-safe: unknown OS
+    => provisional). The Triangle/Voronoi refine mesh (hence grid hashes AND
+    solved heads) is platform-dependent, so a golden is a valid oracle only on
+    its own generation OS; the authoritative re-freeze target is Linux/JupyterHub."""
+    is_authoritative = gen_os == _AUTHORITATIVE_OS
+    return {
+        "provisional": not is_authoritative,
+        "authoritative_platform": "linux",
+        "generation_os": gen_os or "unknown",
+        "provisional_reason": (
+            None if is_authoritative else (
+                "Frozen on a NON-authoritative OS (generation_os="
+                f"{gen_os or 'unknown'!r}) as a PROVISIONAL golden; MUST be "
+                "re-verified and re-frozen on the Linux/JupyterHub target. The "
+                "Triangle/Voronoi mesh (hence the canonical grid hashes AND the "
+                "solved heads) is PLATFORM-DEPENDENT, so this golden is enforced "
+                "ONLY on its own generation OS and must be re-frozen on the "
+                "authoritative platform (Linux)."
+            )
+        ),
+    }
+
+
+# =============================================================================
 # Best-effort environment/tool-version manifest fields (Codex iter-2: "the
 # manifest records the FULL environment" -- OS/arch, Python, MF6 exe+version,
 # FloPy/NumPy/Shapely-GEOS, and the IMS solver settings).
@@ -1036,6 +1086,7 @@ def generate_group0_golden(
 
     # ---- freeze ----------------------------------------------------------
     npz_path = out_dir / f"group{group}_flow.npz"
+    _prov = _provisional_provenance(_os_family(platform.system()))
     caller_fields: Dict[str, Any] = {
         "group": int(group),
         "doublet": False,
@@ -1045,23 +1096,18 @@ def generate_group0_golden(
         "radius_used": radius_used,
         "node": platform.node(),
         "versions": _golden_versions(),
-        # Provisional-freeze provenance: this artifact may be frozen on the dev
-        # box where group 0 happens to be SIGILL-free + deterministic; the
-        # AUTHORITATIVE re-verify/re-freeze is on the Linux/JupyterHub target
-        # (M2a.5). The Triangle/Voronoi refine MESH -- and therefore the
-        # canonical grid hashes AND solved heads -- is PLATFORM-DEPENDENT (the
-        # M2a.5 hub run proved a macOS golden does not reproduce on Linux), so
-        # this golden is a valid oracle ONLY on its own generation OS.
-        "provisional": True,
-        "authoritative_platform": "linux",
-        "provisional_reason": (
-            "Frozen on macOS-arm64 (group 0 is SIGILL-free + deterministic "
-            "here) as a PROVISIONAL golden; MUST be re-verified and re-frozen "
-            "on the Linux/JupyterHub target at M2a.5. The Triangle/Voronoi mesh "
-            "(hence the canonical grid hashes AND the solved heads) is "
-            "PLATFORM-DEPENDENT, so this golden is enforced ONLY on its own "
-            "generation OS and must be re-frozen on the authoritative platform."
-        ),
+        # Provisional-vs-authoritative provenance: CONDITIONAL on the OS this
+        # golden is being frozen on (``_provisional_provenance``, derived from
+        # ``platform.system()`` via ``_os_family``). Linux -- the authoritative
+        # platform for the Triangle/Voronoi refine mesh -- freezes as
+        # AUTHORITATIVE (provisional False); any other OS (macOS dev box,
+        # Windows, or an unrecognised OS) freezes as PROVISIONAL and must be
+        # re-verified/re-frozen on Linux/JupyterHub. The refine MESH -- and
+        # therefore the canonical grid hashes AND solved heads -- is
+        # PLATFORM-DEPENDENT (the M2a.5 hub run proved a macOS golden does not
+        # reproduce on Linux), so a golden is a valid oracle ONLY on its own
+        # generation OS.
+        **_prov,
         "mass_balance_pct_error": mass_balance_pct,
         "near_field_tol": dict(NEAR_FIELD_TOL),
         "near_field_report": near_field_report,
