@@ -102,6 +102,15 @@ class TestBuildAllFlowStatesGroup0:
     def test_grid_hash_equals_committed_group0_golden(self, allstates):
         manifest = b._frozen_golden_manifest(0)
         assert manifest is not None, "group-0 golden should be committed"
+        # The Triangle/Voronoi mesh (hence the grid hash) is platform-DEPENDENT:
+        # the committed golden is a valid oracle only on its own generation OS.
+        # On its OS (macOS) this asserts equality; cross-OS (e.g. the Linux hub)
+        # it legitimately differs -> skip until the authoritative regen.
+        if b._golden_is_cross_platform(manifest):
+            pytest.skip(
+                "cross-platform provisional golden; grid_hash differs cross-OS; "
+                "re-verify after the Linux authoritative regen"
+            )
         assert allstates["grid_hash"] == manifest["aggregate_hash"]
 
     def test_refine_radius_equal_and_frozen(self, allstates):
