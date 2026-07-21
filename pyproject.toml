@@ -46,6 +46,7 @@ dependencies = [
     "requests>=2.32.3",
     "psutil>=7.0.0",
     "pyshp>=3.0.3",
+    "ruamel-yaml>=0.18",
 ]
 
 [dependency-groups]

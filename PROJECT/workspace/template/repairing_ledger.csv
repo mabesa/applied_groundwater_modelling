@@ -1,0 +1,10 @@
+group,contaminant,original_transport_concession,canonical_flow_concession,changed,note
+0,Trichloroethylene (TCE),b010205,b010210,True,"contaminant 'Trichloroethylene (TCE)' re-homed from transport concession b010205 onto canonical flow doublet b010210 (pedagogic re-homing, not physical inheritance)."
+1,Nitrate (NO3-),b010196,b010219,True,"contaminant 'Nitrate (NO3-)' re-homed from transport concession b010196 onto canonical flow doublet b010219 (pedagogic re-homing, not physical inheritance)."
+2,Benzene,b010185,b010201,True,"contaminant 'Benzene' re-homed from transport concession b010185 onto canonical flow doublet b010201 (pedagogic re-homing, not physical inheritance)."
+3,Chloride (conservative tracer),b010211,b010236,True,"contaminant 'Chloride (conservative tracer)' re-homed from transport concession b010211 onto canonical flow doublet b010236 (pedagogic re-homing, not physical inheritance)."
+4,Chromium (Cr-VI),b010223,b010120,True,"contaminant 'Chromium (Cr-VI)' re-homed from transport concession b010223 onto canonical flow doublet b010120 (pedagogic re-homing, not physical inheritance)."
+5,PFOA (perfluorooctanoic acid),b010200,b010223,True,"contaminant 'PFOA (perfluorooctanoic acid)' re-homed from transport concession b010200 onto canonical flow doublet b010223 (pedagogic re-homing, not physical inheritance). NOTE: canonical concession b010223 is ALSO the transport config's id4 (Chromium) concession -- b010223 appears in both source lists; group 5 canonically carries PFOA on this doublet."
+6,Perchloroethylene (PCE),b010224,b010227,True,"contaminant 'Perchloroethylene (PCE)' re-homed from transport concession b010224 onto canonical flow doublet b010227 (pedagogic re-homing, not physical inheritance)."
+7,Ammonium (NH4+),b010230,b010213,True,"contaminant 'Ammonium (NH4+)' re-homed from transport concession b010230 onto canonical flow doublet b010213 (pedagogic re-homing, not physical inheritance)."
+8,Atrazine,b010199,b010207,True,"contaminant 'Atrazine' re-homed from transport concession b010199 onto canonical flow doublet b010207 (pedagogic re-homing, not physical inheritance)."

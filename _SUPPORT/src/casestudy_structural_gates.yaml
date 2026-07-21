@@ -1,0 +1,90 @@
+# casestudy_structural_gates.yaml -- M1.5 structural CODE-HYGIENE grep gates.
+#
+# CODE-HYGIENE gates ONLY (regex-over-files, expected == 0 at the owner
+# milestone). The per-run PHYSICS gates (mass balance, capture stability, the
+# coupled-vs-fallback label, ...) live in M1.4's
+# casestudy_diagnostic_schema.yaml -- this file REFERENCES them via
+# `physics_gates_ref` (by schema_path + id + version/hash) and NEVER restates a
+# threshold. Enforcement of these grep gates is the owner milestone's job;
+# `casestudy_m1_specs.py` lints this file's shape + the physics-ref integrity.
+#
+# Entry shape (a lint enforces it):
+#   id (str, unique) · pattern (regex; the stale string to eliminate)
+#   scope (list of path globs the gate applies to)
+#   expected (int, always 0 -- zero matches at the owner milestone)
+#   owner_milestone (enum: M2a|M3a|M3b)
+#   rationale (str)
+
+schema_version: "1.0"
+
+gates:
+
+  - id: legacy_modflow_nwt
+    pattern: "(?i)\\bnwt\\b|limmat_valley_model_nwt|telescop"
+    scope:
+      - "PROJECT/workspace/template/case_config.yaml"
+      - "_SUPPORT/src/*.py"
+    expected: 0
+    owner_milestone: M2a
+    rationale: >
+      No legacy MODFLOW-NWT / structured-telescope references in the flow model
+      path -- the flow config was switched to MF6 05f in M1.3b and the M2a flow
+      builder must consume only the MF6 model. Matches limmat_valley_model_nwt,
+      a standalone 'nwt' token, and telescope-refinement terms; must NOT match
+      the surviving MF6 keys (mfsim.nam, baseline_model_name). INTENTIONAL: this
+      pattern matches CODE **and COMMENTS/docstrings** in transport src -- once
+      M2a lands, ANY NWT/telescope mention (even an explanatory comment) is a
+      hygiene violation, so this gate deliberately does not spare comments.
+
+  - id: cnc_recirc_live_physics
+    pattern: "(?i:modflowgwtcnc|\\bcnc\\b)|recirc(?:ulation)?_fraction"
+    scope:
+      - "_SUPPORT/src/*.py"
+    expected: 0
+    owner_milestone: M3a
+    rationale: >
+      No fixed-concentration (CNC) source and no recirculation_fraction used as
+      a LIVE physics term in the transport builder code -- the SRC mass-loading
+      formula is authoritative and recirc is derived from the run, not read from
+      config. The CNC branch is case-insensitive and catches both the FloPy
+      class (ModflowGwtcnc) and a standalone 'cnc' package token. Scope is CODE
+      only: the transport config's recirculation_fraction key legitimately
+      survives (linted-only, no physics consumer) until M3b removes it, so the
+      config is intentionally OUT of scope here.
+
+  - id: submodel_buffer_blocks
+    pattern: "(?m)^\\s*submodel:|buffer_(?:north|south|east|west)_m"
+    scope:
+      - "PROJECT/workspace/template/case_config_transport.yaml"
+    expected: 0
+    owner_milestone: M3b
+    rationale: >
+      No leftover submodel:/buffer_*_m telescoping blocks in the transport
+      config -- M3b removes them (the MF6 corridor-refined build replaces the
+      old submodel windowing). expected==0 is the M3b target state; the blocks
+      still exist pre-M3b.
+
+# Physics gates are NOT duplicated here -- they are M1.4's. Reference only
+# (by id + the M1.4 schema version/hash so drift is caught); no thresholds.
+physics_gates_ref:
+  schema_path: "_SUPPORT/src/casestudy_diagnostic_schema.yaml"
+  schema_version: "1.0"
+  schema_sha256: "75aaa294a7181f48c8c376543aebc87ebfcd95689ede1e4eb2bab5aad4558bf8"
+  ids:
+    - transport_mass_balance
+    - flow_mass_balance
+    - capture_stability
+    - capture_fraction_bounds
+    - coupled_or_fallback_label
+
+# EVERY M1.4 diagnostic id that casestudy_equalization_dimensions.yaml uses as a
+# `producer: M1.4:<id>` is pinned here too (same drift-pin), so removing one of
+# these from M1.4 FAILS M1.5's lint (not just resolve_producer at call time).
+# The lint also cross-checks that this list covers every M1.4-backed producer.
+diagnostic_producers_ref:
+  schema_path: "_SUPPORT/src/casestudy_diagnostic_schema.yaml"
+  schema_version: "1.0"
+  schema_sha256: "75aaa294a7181f48c8c376543aebc87ebfcd95689ede1e4eb2bab5aad4558bf8"
+  ids:
+    - flow_head_delta
+    - capture_fraction_bounds

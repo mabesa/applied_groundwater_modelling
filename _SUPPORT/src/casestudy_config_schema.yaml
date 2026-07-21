@@ -1,0 +1,124 @@
+# casestudy_config_schema.yaml -- M1.5 machine-readable config contract.
+#
+# The PARSEABLE required-key / type / enum / unit / nullable / cross-field
+# contract for BOTH student configs. `case_utils.lint_transport_config` /
+# `get_scenario_for_group` remain the ENFORCEMENT source of truth; this file is
+# the machine-readable REFERENCE they (and M2a/M3a/M3b/M6) point at.
+# `casestudy_m1_specs.py` lints this file's SHAPE and runs an ADVISORY smoke
+# test that the keys in its hard-coded case_utils mirror appear here -- it is
+# NOT a guarantee of full coverage and does NOT re-run the linter.
+#
+# NOTE: adding a NEW case_utils-enforced key REQUIRES updating BOTH this schema
+# AND `casestudy_m1_specs.CASE_UTILS_ENFORCED_KEYS` -- the advisory check cannot
+# auto-discover it.
+#
+# key entry shape:
+#   name/path (str) · type (num|int|str|bool|list) · [enum(list)] · [const]
+#   · [unit] · [nullable(bool)] · [gt/ge/range] · [forbidden(bool)]
+
+schema_version: "1.0"
+enforced_by:
+  - "case_utils.lint_transport_config"
+  - "case_utils.get_scenario_for_group"
+
+configs:
+
+  # ============================ FLOW ============================
+  flow:
+    file: "PROJECT/workspace/template/case_config.yaml"
+    required_keys:
+      - {path: "group.number", type: int, range: [0, 8]}
+      - {path: "group.authors", type: list}
+      # model: -- MF6 05f only (switched from legacy NWT in M1.3b)
+      - {path: "model.data_name", type: str, const: "flow_model_mf6"}
+      - {path: "model.workspace", type: str, unit: path}
+      - {path: "model.sim_namefile", type: str, const: "mfsim.nam"}
+      - {path: "model.sim_name", type: str}
+      - {path: "model.baseline_model_name", type: str}
+      - {path: "model.namefile", forbidden: true}   # legacy NWT key MUST be absent
+      # pumping:
+      - {path: "pumping.wells_source", type: str}
+      - {path: "pumping.apply_half_rate_variant", type: bool}
+    list_blocks:
+      - path: "scenarios.options"
+        item_required_keys:
+          - {name: "id", type: int, range: [0, 8]}
+          - {name: "concession", type: int}
+          - {name: "label", type: str}
+          - {name: "type", type: str,
+             enum: [chd_head_change, river_conductance, recharge_scale,
+                    river_stage, river_width_and_stage, aquifer_transmissivity]}
+        item_conditional_params:   # type-specific forcing params (>=1 required per type)
+          chd_head_change: ["chd_head_change_m"]
+          river_conductance: ["conductance_factor"]
+          recharge_scale: ["recharge_factor"]
+          river_stage: ["stage_change_m"]
+          river_width_and_stage: ["width_factor", "stage_change_factor"]
+          aquifer_transmissivity: ["transmissivity_factor"]
+    cross_field:
+      - "scenarios.options[].id are unique and cover exactly {0..8}"
+      - "scenarios.options[id=N].concession (rendered b010{NNN}) == transport.options[id=N].concession (M1.3a canonical link)"
+
+  # ========================== TRANSPORT ==========================
+  transport:
+    file: "PROJECT/workspace/template/case_config_transport.yaml"
+    required_keys:
+      # model: -- MF6 05f (the target the flow config was switched to)
+      - {path: "model.data_name", type: str, const: "flow_model_mf6"}
+      - {path: "model.sim_namefile", type: str, const: "mfsim.nam"}
+      - {path: "model.sim_name", type: str}
+      - {path: "model.baseline_model_name", type: str}
+    list_blocks:
+      - path: "transport_scenarios.options"
+        item_required_keys:
+          - {name: "id", type: int, range: [0, 8]}
+          - {name: "concession", type: str}
+          - {name: "contaminant", type: str}
+          # properties
+          - {name: "properties.cas_number", type: str}
+          - {name: "properties.solubility_mg_L", type: num, unit: "mg/L"}
+          - {name: "properties.conservative", type: bool}
+          # transport reaction fields
+          - {name: "transport.porosity", type: num, unit: "-"}
+          - {name: "transport.bulk_density_kg_m3", type: num, unit: "kg/m3"}
+          - {name: "transport.longitudinal_dispersivity_m", type: num, unit: "m"}
+          - {name: "transport.transverse_dispersivity_m", type: num, unit: "m"}
+          - {name: "transport.vertical_dispersivity_m", type: num, unit: "m"}
+          - {name: "transport.molecular_diffusion_m2_s", type: num, unit: "m2/s"}
+          - {name: "transport.sorption", type: bool}
+          - {name: "transport.distribution_coefficient_mL_g", type: num, unit: "mL/g"}
+          - {name: "transport.decay", type: bool}
+          - {name: "transport.first_order_decay_constant_1_per_day", type: num, unit: "1/day"}
+          - {name: "transport.half_life_days", type: num, unit: "day", nullable: true}
+          # doublet (concession_id + centroid coords + rate) -- M1.3a authoritative
+          - {name: "doublet.concession_id", type: str}
+          - {name: "doublet.injection_easting", type: num, unit: "m (LV95)"}
+          - {name: "doublet.injection_northing", type: num, unit: "m (LV95)"}
+          - {name: "doublet.extraction_easting", type: num, unit: "m (LV95)"}
+          - {name: "doublet.extraction_northing", type: num, unit: "m (LV95)"}
+          - {name: "doublet.pumping_rate_m3_d", type: num, unit: "m3/d", gt: 0}
+          - {name: "doublet.recirculation_fraction", type: num, range: [0, 1]}
+          # source (relative offset spill)
+          - {name: "source.type", type: str, enum: [point, line, area]}
+          - {name: "source.release_type", type: str, enum: [pulse, continuous]}
+          - {name: "source.location.easting", type: num, unit: "m (offset from extraction)"}
+          - {name: "source.location.northing", type: num, unit: "m (offset from extraction)"}
+          - {name: "source.location.layer", type: num}
+          - {name: "source.duration_days", type: num, unit: "day", ge: 1}
+          - {name: "source.concentration_mg_L", type: num, unit: "mg/L"}
+          # simulation
+          - {name: "simulation.duration_days", type: num, unit: "day", gt: 0}
+          - {name: "simulation.output_times_days", type: list}
+          # submodel (removed in M3b; contract still records it for now)
+          - {name: "submodel.cell_size_m", type: num, unit: "m", gt: 0}
+          # monitoring -- threshold is the REGULATORY value (not a difficulty lever)
+          - {name: "monitoring.threshold_mg_L", type: num, unit: "mg/L"}
+          - {name: "monitoring.compliance_location", type: str}
+    cross_field:
+      - "doublet.concession_id == concession"
+      - "decay == true  => first_order_decay_constant_1_per_day > 0 AND half_life_days present (lambda ~ ln2/t_half)"
+      - "decay == false => first_order_decay_constant_1_per_day == 0 AND half_life_days == null"
+      - "sorption == true  => distribution_coefficient_mL_g > 0"
+      - "sorption == false => distribution_coefficient_mL_g == 0"
+      - "conservative == (not sorption and not decay)"
+      - "simulation.output_times_days strictly increasing, non-empty"
