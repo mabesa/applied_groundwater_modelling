@@ -184,6 +184,25 @@ class TestWellsOnlyStateGroup0:
         manifest = json.loads((GOLDEN_DIR / "group0_flow.manifest.json").read_text())
         assert full["grid_hash"] == manifest["aggregate_hash"]
 
+    def test_package_hashes_include_the_doublet_wel(self, full):
+        # provenance fix: state-ii package_hashes must describe the COMBINED
+        # (background + doublet) WEL actually assembled, NOT the background-only
+        # WEL of the baseline golden.
+        manifest = json.loads((GOLDEN_DIR / "group0_flow.manifest.json").read_text())
+        # WEL hashes DIFFER from the baseline golden's background-only WEL
+        assert full["package_hashes"]["wel_cellid"] != manifest["array_hashes"]["wel_cellid"]
+        assert full["package_hashes"]["wel_rate"] != manifest["array_hashes"]["wel_rate"]
+        # package_hashes MATCH the hash of the assembled result spec (combined WEL)
+        _, arr = cfc.spec_canonical_hashes(full["spec"])
+        assert full["package_hashes"] == arr
+        # the doublet cells are actually present in the assembled WEL
+        cells = {int(c[1]) for c in full["spec"]["wel_cellid"]}
+        assert full["doublet"]["injection"]["cell"] in cells
+        assert full["doublet"]["extraction"]["cell"] in cells
+        # geometry package hashes still match the golden (grid unchanged)
+        assert arr["gridprops__vertices"] == manifest["array_hashes"]["gridprops__vertices"]
+        assert full["grid_hash"] == manifest["aggregate_hash"]
+
     def test_rich_return_shape(self, full):
         for key in b.BUILD_RESULT_KEYS:
             assert key in full
@@ -265,6 +284,11 @@ class TestScenarioStateGroup0:
         # the mutated field (chd_head) hash differs; geometry hashes match golden
         assert arr_scen["chd_head"] != manifest["array_hashes"]["chd_head"]
         assert arr_scen["gridprops__vertices"] == manifest["array_hashes"]["gridprops__vertices"]
+        # AND the COMBINED (background + doublet) WEL is reflected (not baseline WEL)
+        assert result["package_hashes"]["wel_cellid"] != manifest["array_hashes"]["wel_cellid"]
+        cells = {int(c[1]) for c in result["spec"]["wel_cellid"]}
+        assert result["doublet"]["injection"]["cell"] in cells
+        assert result["doublet"]["extraction"]["cell"] in cells
 
     def test_builder_raises_on_frozen_expectation_contradiction(self, tmp_path, monkeypatch):
         # Finding 2: a state-iii build whose response CONTRADICTS the frozen

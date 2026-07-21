@@ -195,6 +195,19 @@ def _pin_built_grid_to_frozen_golden(group, spec, riv_info, refine_radius) -> No
         )
 
 
+def _spec_with_assembled_wel(base_spec: Dict[str, Any], assembled: Dict[str, Any]) -> Dict[str, Any]:
+    """Shallow copy of *base_spec* whose WEL (``wel_cellid``/``wel_rate``/
+    ``well_cells``) is REPLACED by the COMBINED (background + doublet)
+    canonicalized WEL that ``assemble_flow_state`` actually built. Used so the
+    state-ii/iii ``package_hashes`` describe the packages the model REALLY
+    solved (with the doublet), not the pre-assemble background-only WEL."""
+    s = dict(base_spec)
+    s["wel_cellid"] = assembled["wel_cellid"]
+    s["wel_rate"] = assembled["wel_rate"]
+    s["well_cells"] = assembled["well_cells"]
+    return s
+
+
 def _refine_solve_baseline_walk(group, workspace, *, sim_name, model_name=None) -> Dict[str, Any]:
     """Load 05f + GIS, then WALK the corridor refine radii; at each radius
     build the baseline spec (faithful RIV) AND solve the baseline flow model,
@@ -522,9 +535,15 @@ def _solve_validate_wells(group, walk, work_dir, *, half_rate) -> Dict[str, Any]
     if not diagnostics["flow_no_dry_cells"]["passed"]:
         raise RuntimeError(f"group {group} {wells_state}: dry cells present")
 
-    grid_hash, package_hashes = cfc.spec_canonical_hashes(spec)
+    # grid_hash = geometry identity (plain baseline spec, still == golden).
+    # The ASSEMBLED spec has the COMBINED (background + doublet) canonicalized
+    # WEL that MF6 actually solved -- so both result['spec'] and package_hashes
+    # describe the real forcing (not the pre-assemble background-only WEL).
+    assembled_spec = _spec_with_assembled_wel(spec, wells_built)
+    grid_hash, _ = cfc.spec_canonical_hashes(spec)
+    _, package_hashes = cfc.spec_canonical_hashes(assembled_spec)
     return _rich_result(
-        built=wells_built, spec=spec, riv_info=riv_info, grid_hash=grid_hash,
+        built=wells_built, spec=assembled_spec, riv_info=riv_info, grid_hash=grid_hash,
         package_hashes=package_hashes, diagnostics=diagnostics, diag_file=diag_file,
         work_dir=work_dir, state=wells_state, group=group,
         extra={
@@ -740,12 +759,14 @@ def _solve_validate_scenario(group, walk, wells, work_dir, *, config_path=None) 
 
     # Finding 3: grid_hash = the GEOMETRY identity (state-ii grid, still ==
     # the committed golden -- the scenario mutates package VALUES, not the
-    # grid). package_hashes MUST reflect the SCENARIO-mutated packages
-    # (scen_spec), not the pre-scenario spec, or they are false metadata.
-    grid_hash, _ = cfc.spec_canonical_hashes(spec)          # geometry == golden
-    _, package_hashes = cfc.spec_canonical_hashes(scen_spec)  # actual state-iii packages
+    # grid). package_hashes MUST reflect the ACTUALLY-assembled state-iii
+    # packages: the SCENARIO-mutated arrays (CHD/RIV/RCHA/NPF) AND the COMBINED
+    # (background + doublet) canonicalized WEL, not the pre-assemble spec.
+    assembled_spec = _spec_with_assembled_wel(scen_spec, scen_built)
+    grid_hash, _ = cfc.spec_canonical_hashes(spec)              # geometry == golden
+    _, package_hashes = cfc.spec_canonical_hashes(assembled_spec)  # real state-iii packages
     return _rich_result(
-        built=scen_built, spec=scen_spec, riv_info=riv_info, grid_hash=grid_hash,
+        built=scen_built, spec=assembled_spec, riv_info=riv_info, grid_hash=grid_hash,
         package_hashes=package_hashes, diagnostics=diagnostics, diag_file=diag_file,
         work_dir=work_dir, state="wells_plus_scenario", group=group,
         extra={
