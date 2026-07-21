@@ -360,6 +360,110 @@ class TestAnchoring:
 
 
 # =====================================================================
+# C2. Cross-PLATFORM golden pin (M2a.5 hub) -- the mesh is platform-dependent
+#
+# A golden is a valid pin/oracle ONLY on its own generation OS (REGARDLESS of
+# the provisional flag). Skip cross-OS; enforce same-OS; enforce when the
+# generation OS is undeterminable (fail-safe).
+# =====================================================================
+class TestCrossPlatformGoldenPin:
+    def _manifest(self, gen_platform, *, provisional=True):
+        return {
+            "aggregate_hash": "GOLDEN_AGG", "array_hashes": {"a": "1"},
+            "faithful_riv": {"hash": "GOLDEN_RIV"}, "radius_used": 70.0,
+            "provisional": provisional, "versions": {"platform": gen_platform},
+        }
+
+    # ---- the helper ----
+    def test_helper_cross_os_true_regardless_of_provisional(self, monkeypatch):
+        monkeypatch.setattr(b.platform, "system", lambda: "Linux")
+        assert b._golden_is_cross_platform(self._manifest("macOS-26.5.2-arm64-arm-64bit"))
+        assert b._golden_is_cross_platform(
+            self._manifest("macOS-26.5.2-arm64-arm-64bit", provisional=False)
+        )
+
+    def test_helper_same_os_false(self, monkeypatch):
+        monkeypatch.setattr(b.platform, "system", lambda: "Darwin")
+        assert not b._golden_is_cross_platform(self._manifest("macOS-26.5.2-arm64-arm-64bit"))
+        # a Linux golden viewed from Linux is also same-OS
+        monkeypatch.setattr(b.platform, "system", lambda: "Linux")
+        assert not b._golden_is_cross_platform(self._manifest("Linux-6.8.0-x86_64"))
+
+    def test_helper_undeterminable_os_enforces(self, monkeypatch):
+        monkeypatch.setattr(b.platform, "system", lambda: "Linux")
+        assert not b._golden_is_cross_platform({"provisional": True, "versions": {}})
+        assert not b._golden_is_cross_platform({"provisional": True})  # no versions at all
+        assert not b._golden_is_cross_platform(self._manifest("Plan9-weird"))  # unrecognised
+
+    # ---- Gap 1: malformed manifest/versions must NOT crash -> enforce ----
+    def test_helper_non_dict_versions_enforces(self, monkeypatch):
+        monkeypatch.setattr(b.platform, "system", lambda: "Linux")
+        assert b._golden_generation_os({"versions": "bad"}) == ""
+        assert not b._golden_is_cross_platform({"versions": "bad"})  # no crash -> enforce
+
+    def test_helper_non_dict_manifest_enforces(self, monkeypatch):
+        monkeypatch.setattr(b.platform, "system", lambda: "Linux")
+        for bad in ("not-a-dict", None, ["list"], 42):
+            assert b._golden_generation_os(bad) == ""
+            assert not b._golden_is_cross_platform(bad)  # no crash -> enforce
+
+    # ---- Gap 2: unknown CURRENT OS must fail-safe ENFORCE, not skip ----
+    def test_helper_unknown_current_os_enforces(self, monkeypatch):
+        monkeypatch.setattr(b.platform, "system", lambda: "Plan9")
+        # golden gen-OS is KNOWN (macOS) but current OS is unknown -> NOT cross
+        assert not b._golden_is_cross_platform(self._manifest("macOS-26.5.2-arm64"))
+
+    def test_pin_enforces_on_unknown_current_os(self, monkeypatch):
+        monkeypatch.setattr(b.platform, "system", lambda: "Plan9")
+        monkeypatch.setattr(
+            b, "_frozen_golden_manifest", lambda g: self._manifest("macOS-26.5.2-arm64")
+        )
+        monkeypatch.setattr(b.cfc, "spec_canonical_hashes", lambda spec: ("DIFFERENT", {"a": "9"}))
+        with pytest.raises(RuntimeError, match="DIVERGED"):
+            b._pin_built_grid_to_frozen_golden(0, {"s": 1}, {"hash": "GOLDEN_RIV"}, 70.0)
+
+    # ---- the pin (skip vs enforce) ----
+    def test_pin_skips_cross_platform(self, monkeypatch):
+        # (a) Linux building vs a macOS golden -> SKIP even though hashes mismatch
+        monkeypatch.setattr(b.platform, "system", lambda: "Linux")
+        monkeypatch.setattr(
+            b, "_frozen_golden_manifest", lambda g: self._manifest("macOS-26.5.2-arm64")
+        )
+        monkeypatch.setattr(b.cfc, "spec_canonical_hashes", lambda spec: ("DIFFERENT", {"a": "9"}))
+        b._pin_built_grid_to_frozen_golden(0, {"s": 1}, {"hash": "DIFFERENT_RIV"}, 62.0)  # no raise
+
+    def test_pin_skips_cross_platform_even_if_authoritative(self, monkeypatch):
+        # provisional is ORTHOGONAL: a non-provisional Linux golden viewed from
+        # macOS still skips (cross-OS) -> no false failure once the hub commits it.
+        monkeypatch.setattr(b.platform, "system", lambda: "Darwin")
+        monkeypatch.setattr(
+            b, "_frozen_golden_manifest",
+            lambda g: self._manifest("Linux-6.8.0-x86_64", provisional=False),
+        )
+        monkeypatch.setattr(b.cfc, "spec_canonical_hashes", lambda spec: ("DIFFERENT", {"a": "9"}))
+        b._pin_built_grid_to_frozen_golden(0, {"s": 1}, {"hash": "DIFFERENT_RIV"}, 62.0)  # no raise
+
+    def test_pin_enforces_same_platform(self, monkeypatch):
+        # (b) Darwin building vs the macOS golden -> ENFORCE -> mismatch RAISES
+        monkeypatch.setattr(b.platform, "system", lambda: "Darwin")
+        monkeypatch.setattr(
+            b, "_frozen_golden_manifest", lambda g: self._manifest("macOS-26.5.2-arm64")
+        )
+        monkeypatch.setattr(b.cfc, "spec_canonical_hashes", lambda spec: ("DIFFERENT", {"a": "9"}))
+        with pytest.raises(RuntimeError, match="DIVERGED"):
+            b._pin_built_grid_to_frozen_golden(0, {"s": 1}, {"hash": "GOLDEN_RIV"}, 70.0)
+
+    def test_pin_enforces_when_gen_os_undeterminable(self, monkeypatch):
+        # (c) missing versions.platform -> fail-safe ENFORCE -> mismatch RAISES
+        monkeypatch.setattr(b.platform, "system", lambda: "Linux")
+        m = self._manifest("macOS-26.5.2-arm64"); m["versions"] = {}
+        monkeypatch.setattr(b, "_frozen_golden_manifest", lambda g: m)
+        monkeypatch.setattr(b.cfc, "spec_canonical_hashes", lambda spec: ("DIFFERENT", {"a": "9"}))
+        with pytest.raises(RuntimeError, match="DIVERGED"):
+            b._pin_built_grid_to_frozen_golden(0, {"s": 1}, {"hash": "GOLDEN_RIV"}, 70.0)
+
+
+# =====================================================================
 # D. FENCE + hub smoke + the hard hub gate
 # =====================================================================
 # =====================================================================

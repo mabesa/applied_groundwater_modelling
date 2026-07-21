@@ -71,8 +71,10 @@ for a fraction of locations (see ``model_io_utils.refine_with_retry``); the
 determinism gate here REJECTS any run that fell back off the first retry
 radius as non-freezable. The artifact this module ultimately commits is
 therefore expected to be generated on the Linux/JupyterHub target (see the
-plan's decision 2) -- this module runs identically there; nothing here is
-platform-specific beyond the underlying Triangle/MF6 binaries.
+plan's decision 2) -- this module runs identically there, BUT the underlying
+Triangle/Voronoi mesher emits a PLATFORM-DEPENDENT mesh, so the resulting grid
+hashes (and solved heads) differ across OSes: a golden is a valid oracle only
+on its own generation OS and must be re-frozen on the authoritative platform.
 
 Run with:
     uv run python -m casestudy_flow_golden --group 0 --reruns 5 --out-dir _SUPPORT/src/golden
@@ -1046,16 +1048,19 @@ def generate_group0_golden(
         # Provisional-freeze provenance: this artifact may be frozen on the dev
         # box where group 0 happens to be SIGILL-free + deterministic; the
         # AUTHORITATIVE re-verify/re-freeze is on the Linux/JupyterHub target
-        # (M2a.5). The PRIMARY oracle (canonical package hashes) is
-        # platform-independent; heads are the SECONDARY oracle at 1e-3 m.
+        # (M2a.5). The Triangle/Voronoi refine MESH -- and therefore the
+        # canonical grid hashes AND solved heads -- is PLATFORM-DEPENDENT (the
+        # M2a.5 hub run proved a macOS golden does not reproduce on Linux), so
+        # this golden is a valid oracle ONLY on its own generation OS.
         "provisional": True,
         "authoritative_platform": "linux",
         "provisional_reason": (
             "Frozen on macOS-arm64 (group 0 is SIGILL-free + deterministic "
             "here) as a PROVISIONAL golden; MUST be re-verified and re-frozen "
-            "on the Linux/JupyterHub target at M2a.5. The primary oracle "
-            "(canonical package hashes) is platform-independent; solved heads "
-            "are the secondary oracle compared within 1e-3 m."
+            "on the Linux/JupyterHub target at M2a.5. The Triangle/Voronoi mesh "
+            "(hence the canonical grid hashes AND the solved heads) is "
+            "PLATFORM-DEPENDENT, so this golden is enforced ONLY on its own "
+            "generation OS and must be re-frozen on the authoritative platform."
         ),
         "mass_balance_pct_error": mass_balance_pct,
         "near_field_tol": dict(NEAR_FIELD_TOL),
