@@ -32,11 +32,22 @@ SOLUBILITY_MGL = 1000.0
 # reactive-transport variant parameters (M4 step 1)
 # ---------------------------------------------------------------------------
 REACTIVE_R = 2.0
-REACTIVE_TOTAL_DAYS = 220.0    # conservative arrival ~41 d; R=2 roughly doubles it,
-                                # plus dispersive tailing -- give it plenty of headroom
+REACTIVE_TOTAL_DAYS = 220.0    # conservative arrival ~41.25 d; R=2 pushes arrival to
+                                # ~59.1 d (~1.4x, not a doubling) plus dispersive
+                                # tailing -- give it plenty of headroom
 DISPERSIVITY_ALPHA_L = 20.0    # vs. the LOCKED default of 10.0 m
 DECAY_HALFLIFE_DAYS = 30.0
 DECAY_LAM = math.log(2.0) / DECAY_HALFLIFE_DAYS
+
+# ---------------------------------------------------------------------------
+# FR.2 re-pin: after the FR.1 shared-RIV-transfer correction (generate_refined_grid
+# was dropping ~36% of river conductance outside the corridor), the demo's plume
+# timing shifted. These pins are the CANONICAL HUB numbers, captured post-fix.
+# Peak tolerances are widened to rel=0.08 (vs. the pre-FR.1 rel=0.02) because the
+# Triangle/Voronoi corridor mesh is platform-dependent: macOS-built and hub-built
+# meshes solve to demo peaks that differ by up to ~5.4%. Arrival keeps abs=5.0,
+# which already comfortably covers that spread.
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="session")
@@ -146,17 +157,16 @@ def decay_demo(case_ws):
         solubility_mgL=SOLUBILITY_MGL, lam=DECAY_LAM, case_ws=case_ws, force=False)
 
 
-@pytest.mark.xfail(
-    reason="FR.2: generate_refined_grid RIV fix shifts plume timing; re-pin on the corrected field",
-    strict=False,
-)
 @pytest.mark.slow
 def test_default_unchanged(demo):
     """Regression lock: the default (conservative) run is unchanged by the new
     optional reactive-transport / dispersivity kwargs (all default to today's
-    behavior)."""
-    assert demo.peak_mgL == pytest.approx(4.95, rel=0.02)
-    assert demo.arrival_day == pytest.approx(41.0, abs=5.0)
+    behavior).
+
+    FR.2 re-pin (canonical HUB numbers, post FR.1 RIV-transfer fix):
+    peak 5.11 mg/L @ arrival 41.25 d (was 4.95 mg/L @ 41.0 d pre-fix)."""
+    assert demo.peak_mgL == pytest.approx(5.11, rel=0.08)
+    assert demo.arrival_day == pytest.approx(41.25, abs=5.0)
     assert demo.alpha_L == pytest.approx(tsd.LOCKED_PARAMS["alh"])
     assert demo.alpha_T == pytest.approx(tsd.LOCKED_PARAMS["ath1"])
     assert demo.R == pytest.approx(1.0)
@@ -204,7 +214,6 @@ def test_nan_rejected_before_any_solve():
         tsd.build_srcpulse_demo(total_days=float("nan"))
 
 
-@pytest.mark.xfail(reason="FR.2: generate_refined_grid RIV fix shifts plume timing; re-pin the reactive peak/arrival on the corrected field", strict=False)
 @pytest.mark.slow
 def test_reactive_is_later_and_lower(demo, reactive_demo):
     """Retardation (R=2) delays and attenuates the peak vs. the conservative run."""
@@ -215,11 +224,12 @@ def test_reactive_is_later_and_lower(demo, reactive_demo):
     assert 0.0 < reactive_demo.arrival_day <= reactive_demo.total_days
     assert reactive_demo.peak_mgL < demo.peak_mgL
     assert reactive_demo.arrival_day > demo.arrival_day
-    # regression lock (verified numbers): R=2.0, total_days=220 -> peak 2.987065 mg/L
-    # @ day 61.46. Pins the MAGNITUDE, not just the direction, so a regression in the
-    # peak/arrival value (not just its sign relative to the conservative run) is caught.
-    assert reactive_demo.peak_mgL == pytest.approx(2.987, rel=0.02)
-    assert reactive_demo.arrival_day == pytest.approx(61.5, abs=5.0)
+    # FR.2 re-pin (verified numbers, canonical HUB): R=2.0, total_days=220 ->
+    # peak 3.16 mg/L @ day 59.1 (was 2.987 mg/L @ 61.46 d pre-FR.1-fix). Pins
+    # the MAGNITUDE, not just the direction, so a regression in the peak/arrival
+    # value (not just its sign relative to the conservative run) is caught.
+    assert reactive_demo.peak_mgL == pytest.approx(3.16, rel=0.08)
+    assert reactive_demo.arrival_day == pytest.approx(59.1, abs=5.0)
     # mass balance still closes for the reactive (sorbing) run
     pct = reactive_demo.mass_balance.get("pct_imbalance")
     assert pct is not None and np.isfinite(pct) and abs(pct) < 1.0
@@ -297,7 +307,6 @@ def test_cache_is_per_variant_no_cross_contamination(demo, reactive_demo, case_w
     assert recalled.mass_balance == demo.mass_balance
 
 
-@pytest.mark.xfail(reason="FR.2: generate_refined_grid RIV fix shifts plume timing; re-pin the decay peak/arrival on the corrected field", strict=False)
 @pytest.mark.slow
 def test_decay_lowers_peak_but_does_not_retard(demo, decay_demo):
     """Pin the exact bug we shipped in prose and then fixed: decay-only
@@ -314,18 +323,20 @@ def test_decay_lowers_peak_but_does_not_retard(demo, decay_demo):
     assert decay_demo.peak_mgL < demo.peak_mgL
 
     # Timing: decay arrival must be NOT LATER than the conservative arrival,
-    # within one output step (verified numbers: conservative 41.25 d,
-    # decay-only 40.00 d -- one step EARLIER; contrast R=2 at 61.46 d, which
-    # IS later -- test_reactive_is_later_and_lower pins that direction).
+    # within one output step (FR.2 re-pin, verified numbers: conservative
+    # 41.25 d, decay-only 38.75 d -- one step EARLIER; contrast R=2 at 59.1 d,
+    # which IS later -- test_reactive_is_later_and_lower pins that direction).
     dt_out = float(np.diff(demo.times).max())
     assert decay_demo.arrival_day <= demo.arrival_day + dt_out, (
         f"decay-only arrival ({decay_demo.arrival_day:.2f} d) is later than the "
         f"conservative arrival ({demo.arrival_day:.2f} d) by more than one output "
         f"step ({dt_out:.2f} d) -- decay should not retard the plume, only R does.")
 
-    # Magnitude locks (regression pins, not just direction).
-    assert decay_demo.peak_mgL == pytest.approx(2.80, rel=0.02)
-    assert decay_demo.arrival_day == pytest.approx(40.0, abs=5.0)
+    # Magnitude locks (regression pins, not just direction). FR.2 re-pin
+    # (canonical HUB numbers): 2.95 mg/L @ 38.75 d (was 2.80 mg/L @ 40.0 d
+    # pre-FR.1-fix).
+    assert decay_demo.peak_mgL == pytest.approx(2.95, rel=0.08)
+    assert decay_demo.arrival_day == pytest.approx(38.75, abs=5.0)
 
     # decay_g must be a real, PHYSICALLY-SIZED sink -- not merely "nonzero"
     # (the replaced `assert decay_g != 0.0` passed for -1e-12 or 9e9 alike).
