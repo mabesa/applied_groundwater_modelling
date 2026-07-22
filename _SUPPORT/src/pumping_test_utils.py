@@ -250,14 +250,18 @@ def plot_semilog(time_min, drawdown_m, fit, well_id="", r_m=None, ax=None):
 
     t = np.asarray(time_min)
     s = np.asarray(drawdown_m)
+    col = _get_color(well_id)
+    mask = np.asarray(fit["mask"], dtype=bool)
 
-    # All data points
-    ax.semilogx(t, s, "o", markersize=3, alpha=0.5,
-                color=_get_color(well_id), label="Observed")
-
-    # Highlight fitted portion
-    ax.semilogx(t[fit["mask"]], s[fit["mask"]], "o", markersize=4,
-                color=_get_color(well_id))
+    # Two point styles, made explicit in the legend so they read as a teaching
+    # cue rather than an unexplained change: the Cooper-Jacob straight line is
+    # only valid at late time, so early-time points are EXCLUDED from the fit
+    # (faint, small) while the points USED for the fit are solid and larger.
+    if (~mask).any():
+        ax.semilogx(t[~mask], s[~mask], "o", markersize=3, alpha=0.4,
+                    color=col, label="excluded (early time)")
+    ax.semilogx(t[mask], s[mask], "o", markersize=4, color=col,
+                label="used for fit")
 
     # Fitted line
     t_line = np.logspace(np.log10(t.min()), np.log10(t.max()), 200)
@@ -265,13 +269,27 @@ def plot_semilog(time_min, drawdown_m, fit, well_id="", r_m=None, ax=None):
     ax.semilogx(t_line, s_line, "--", color="black", linewidth=1.5,
                 label=f"CJ fit (R²={fit['r_squared']:.4f})")
 
-    # Mark t₀
+    # y-axis: always show 0 (pre-pumping drawdown) with a clear zero reference line
+    finite = s[np.isfinite(s)]
+    y_lo = min(0.0, float(finite.min())) if finite.size else 0.0
+    y_hi = float(finite.max()) if finite.size else 1.0
+    pad = 0.06 * (y_hi - y_lo) if y_hi > y_lo else 0.1
+    if finite.size:  # guard the all-NaN case: set_ylim(NaN) would raise
+        ax.set_ylim(y_lo - pad, y_hi + pad)
+        ax.axhline(0.0, color="0.35", linewidth=1.0, zorder=0)
+
+    # Mark t₀ (zero-drawdown intercept). Black label with a legible backing box,
+    # anchored just above the x-axis at the t₀ line so it stays visible in every
+    # panel (the previous gray label at y=-0.1 was clipped for small-t₀ wells).
     if np.isfinite(fit["t0_min"]):
-        ax.axvline(fit["t0_min"], color="gray", linestyle=":", alpha=0.6)
+        ax.axvline(fit["t0_min"], color="0.4", linestyle=":", linewidth=1.2)
         ax.annotate(
             f"t₀ = {fit['t0_min']:.2f} min",
-            xy=(fit["t0_min"], 0), xytext=(fit["t0_min"] * 2, -0.1),
-            fontsize=9, color="gray",
+            xy=(fit["t0_min"], y_lo - pad), xycoords="data",
+            xytext=(3, 3), textcoords="offset points",
+            fontsize=8, color="black", ha="left", va="bottom",
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
+                      edgecolor="0.6", alpha=0.85),
         )
 
     label = well_id
@@ -280,7 +298,7 @@ def plot_semilog(time_min, drawdown_m, fit, well_id="", r_m=None, ax=None):
     ax.set_xlabel("Time [min]")
     ax.set_ylabel("Drawdown [m]")
     ax.set_title(f"Cooper-Jacob Analysis — {label}")
-    ax.legend(fontsize=9)
+    ax.legend(fontsize=8, loc="lower right")
     ax.grid(True, which="both", alpha=0.3)
     return ax
 
@@ -319,13 +337,15 @@ def plot_all_wells_cj(df, fits, results_df):
             grp["time_min"].values, grp["drawdown_m"].values,
             fits[wid], well_id=wid, r_m=r, ax=axes[i],
         )
-        # Add T and K annotation
+        # T/K/S annotation — placed in the empty UPPER-LEFT corner (early time,
+        # high drawdown never occurs) so it never overlaps the data or the
+        # lower-right legend.
         axes[i].text(
-            0.02, 0.02,
+            0.02, 0.98,
             f"T = {row['T_m2d']:.0f} m²/d\nK = {row['K_md']:.1f} m/d\nS = {row['S']:.2e}",
             transform=axes[i].transAxes, fontsize=9,
-            verticalalignment="bottom",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="wheat", alpha=0.7),
+            verticalalignment="top",
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="wheat", alpha=0.85),
         )
 
     # Hide unused axes
