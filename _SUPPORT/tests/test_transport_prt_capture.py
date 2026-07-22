@@ -551,11 +551,14 @@ def test_advection_engine_matches_the_flow_field_it_was_given(capture):
     # confirm/finalize on the hub re-run): tt_p10 22.7 d, tt_p90 28.6 d,
     # arc_len_median 83.6 m.
     assert capture.tt_median_d == pytest.approx(24.6, rel=0.12)
-    # PROVISIONAL post-FR.1 value -- confirm/finalize on the hub re-run
+    # Carried from the pre-FR.1 pin; CONFIRMED to pass at the widened rel=0.15
+    # on the FR.1-corrected hub field (the wide band also spans the macOS<->hub spread)
     assert capture.tt_p10_d == pytest.approx(22.7, rel=0.15)
-    # PROVISIONAL post-FR.1 value -- confirm/finalize on the hub re-run
+    # Carried from the pre-FR.1 pin; CONFIRMED to pass at the widened rel=0.15
+    # on the FR.1-corrected hub field (the wide band also spans the macOS<->hub spread)
     assert capture.tt_p90_d == pytest.approx(28.6, rel=0.15)
-    # PROVISIONAL post-FR.1 value -- confirm/finalize on the hub re-run
+    # Carried from the pre-FR.1 pin; CONFIRMED to pass at the widened rel=0.15
+    # on the FR.1-corrected hub field (the wide band also spans the macOS<->hub spread)
     assert capture.arc_len_median_m == pytest.approx(83.6, rel=0.15)
     assert capture.v_prt_path_mpd == pytest.approx(3.24, rel=0.12)
     assert capture.v_flow_qn_mpd == pytest.approx(2.745, rel=0.12)
