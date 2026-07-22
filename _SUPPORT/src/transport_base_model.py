@@ -224,6 +224,16 @@ def build_doublet_base(
     # ---- 1. corridor refinement (grid + interpolated props) ----
     corr_pts, u, L = _corridor_points(src_xy, receptor_xy)
     refgrid_ws = case_ws / "refgrid"
+    # NOTE (FR.1): this calls build_refined_gwf_model at a FIXED radius with
+    # NO retry (unlike refine_with_retry's radius-walk). Since FR.1,
+    # generate_refined_grid's RIV transfer is the faithful (conductance-
+    # conserving) one, which RAISES on an all-overbank coarse reach instead of
+    # silently mis-transferring it -- there is no fallback radius here to
+    # retry into if that raise fires. No shipped/tested caller currently
+    # exercises this fixed-radius path with a corridor that trips it; if one
+    # ever does, this is a hard failure by design (FR.4 adds a documented
+    # botm-floor fallback for the all-overbank case, but this call site would
+    # still need a retry wrapper to make use of it).
     res = mio.build_refined_gwf_model(
         coarse_gwf, boundary_gdf=boundary_gdf, river_gdf=river_gdf,
         refine_points=corr_pts, head_array=heads_array, workspace=str(refgrid_ws),

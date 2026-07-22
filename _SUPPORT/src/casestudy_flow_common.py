@@ -24,11 +24,15 @@ Contents
 * ``load_coarse_model`` / ``load_gis`` -- load the 05f-calibrated GWF + the
   Limmat/Sihl river + boundary geometry.
 * ``refine_baseline_grid(...)`` -- generate_refined_grid(well_data=background)
-  + canonicalize WEL (the DEFECTIVE-RIV refined spec; grid identity).
-* ``apply_faithful_riv(spec, cgwf, river_gdf)`` -- REPLACE the defective RIV
-  with the conservation-exact faithful transfer (case-study addendum); the
-  golden generator applies it AFTER its determinism gate, the builder applies
-  it inline via ``build_baseline_spec``.
+  + canonicalize WEL (grid identity; as of FR.1, generate_refined_grid's own
+  RIV is already the faithful conservation-exact transfer).
+* ``apply_faithful_riv(spec, cgwf, river_gdf)`` -- RE-APPLY the conservation-
+  exact faithful transfer (case-study addendum) on top of
+  generate_refined_grid's own faithful RIV. Since FR.1, this is redundant
+  (both compute the same faithful result) but is retained for the case
+  study's independent provenance/hash trail pending the FR.3 consolidation
+  decision; the golden generator applies it AFTER its determinism gate, the
+  builder applies it inline via ``build_baseline_spec``.
 * ``build_baseline_spec(...)`` -- refine_baseline_grid + apply_faithful_riv:
   the single-shot "baseline spec" the builder uses (minus the generator's
   freeze/validate/determinism machinery).
@@ -259,9 +263,11 @@ def refine_baseline_grid(
     installed + canonicalized -- i.e. ``generate_refined_grid`` (with the 238
     background wells as ``well_data``) followed by ``canonicalize_wel_entries``.
 
-    This is the GRID-IDENTITY spec (still the DEFECTIVE centroid-in-polygon
-    RIV; ``apply_faithful_riv`` replaces that). *wells* defaults to
-    ``baseline_well_data(cgwf)``.
+    This is the GRID-IDENTITY spec. As of FR.1, ``generate_refined_grid``'s
+    own RIV is already the faithful conservation-exact transfer;
+    ``apply_faithful_riv`` re-applies the same computation for the case
+    study's independent provenance/hash trail (redundant but retained
+    pending FR.3). *wells* defaults to ``baseline_well_data(cgwf)``.
     """
     if wells is None:
         wells = baseline_well_data(cgwf)

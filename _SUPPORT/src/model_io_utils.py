@@ -2012,8 +2012,6 @@ def generate_refined_grid(
     """
     from scipy.interpolate import NearestNDInterpolator
     from shapely.geometry import Point as ShapelyPoint
-    from shapely.geometry import Polygon as ShapelyPolygon
-    from shapely.prepared import prep as shapely_prep
     import disv_grid_utils as dgu
 
     # ------------------------------------------------------------------
@@ -2124,45 +2122,41 @@ def generate_refined_grid(
     print(f"CHD cells: {len(chd_dedup)}")
 
     # ------------------------------------------------------------------
-    # 5. RIV transfer
+    # 5. RIV transfer -- FAITHFUL (conductance-conserving, per-reach,
+    #    overbank-filtered) delegation to casestudy_refine_riv. Replaces the
+    #    old centroid-in-polygon + per-cell area-scaling transfer, which
+    #    assigned RIV only where a refined cell CENTER fell inside the river
+    #    polygon and dropped ~36% of calibrated river conductance on cells
+    #    whose center missed the ~40 m-wide river footprint (FR.1 fix; see
+    #    DESIGN_DOCS/student_casestudy_FR_steps.md).
     # ------------------------------------------------------------------
-    riv_orig = gwf.get_package('RIV').stress_period_data.get_data(0)
-    riv_xy = np.array([
-        (xc_orig[_cellid_to_flat(r['cellid'])],
-         yc_orig[_cellid_to_flat(r['cellid'])])
-        for r in riv_orig
-    ])
-    stage_nn = NearestNDInterpolator(riv_xy, [r['stage'] for r in riv_orig])
-    rbot_nn = NearestNDInterpolator(riv_xy, [r['rbot'] for r in riv_orig])
-    riv_cond_orig = np.array([r['cond'] for r in riv_orig])
+    import casestudy_refine_riv as _crr  # deferred import; no circular dep
+                                          # (crr imports only stdlib+numpy)
 
-    orig_riv_areas = np.array([
-        ShapelyPolygon(coarse_modelgrid.get_cell_vertices(
-            _cellid_to_flat(r['cellid'])
-        )).area
-        for r in riv_orig
-    ])
+    idomain_ref = np.ones(ncpl, dtype=int)  # refined mask (was created later
+                                             # as a duplicate; hoisted here so
+                                             # both the RIV transfer and the
+                                             # returned spec share ONE array
 
-    river_union = river_gdf[
-        river_gdf.intersects(boundary_gdf.geometry.iloc[0])
-    ].geometry.union_all()
-    river_prep = shapely_prep(river_union)
-
-    riv_cellid = []
-    riv_stage = []
-    riv_cond = []
-    riv_rbot = []
-    for i in range(ncpl):
-        if river_prep.contains(ShapelyPoint(xc_ref[i], yc_ref[i])):
-            dists = (riv_xy[:, 0] - xc_ref[i])**2 + (riv_xy[:, 1] - yc_ref[i])**2
-            j = np.argmin(dists)
-            area_new = ShapelyPolygon(mg_ref.get_cell_vertices(i)).area
-            cond_scaled = riv_cond_orig[j] * area_new / orig_riv_areas[j]
-            riv_cellid.append((0, i))
-            riv_stage.append(float(stage_nn(xc_ref[i], yc_ref[i])))
-            riv_cond.append(float(cond_scaled))
-            riv_rbot.append(float(rbot_nn(xc_ref[i], yc_ref[i])))
-    print(f"RIV cells: {len(riv_cellid)}")
+    coarse_reaches = _crr.build_coarse_riv_reaches(gwf)
+    records, riv_stats = _crr.faithful_riv_from_coarse(
+        gridprops, idomain_ref, coarse_reaches, river_gdf,
+        crs=str(boundary_gdf.crs), refined_botm=botm_ref, return_stats=True,
+    )
+    # COVERAGE INVARIANT (mirrors casestudy_flow_common.apply_faithful_riv):
+    # every coarse RIV reach must be represented in the refined field.
+    if not (riv_stats["n_reaches_placed"] == riv_stats["n_source_reaches"] == len(coarse_reaches)):
+        raise ValueError(
+            f"faithful RIV coverage: {riv_stats['n_reaches_placed']} placed vs "
+            f"{riv_stats['n_source_reaches']} source vs {len(coarse_reaches)} "
+            "coarse reaches -- not every coarse RIV reach was represented"
+        )
+    riv_cellid = [r[0] for r in records]
+    riv_stage = [float(r[1]) for r in records]
+    riv_cond = [float(r[2]) for r in records]
+    riv_rbot = [float(r[3]) for r in records]
+    print(f"RIV cells: {len(riv_cellid)} (records: {len(records)}, "
+          f"Sigma cond: {sum(riv_cond):.1f})")
 
     # ------------------------------------------------------------------
     # 6. WEL
@@ -2186,7 +2180,7 @@ def generate_refined_grid(
         'k': k_ref,
         'rch': rch_ref,
         'strt': strt_ref,
-        'idomain': np.ones(ncpl, dtype=int),
+        'idomain': idomain_ref,
         'chd_cellid': chd_cellid,
         'chd_head': chd_head,
         'riv_cellid': riv_cellid,
@@ -2198,6 +2192,7 @@ def generate_refined_grid(
         'well_cells': well_cells_out,
         'refine_radius_used': refine_radius,
         'crs': str(boundary_gdf.crs),
+        'riv_stats': riv_stats,
     }
     if bl_heads_ref is not None:
         spec['baseline_heads'] = bl_heads_ref

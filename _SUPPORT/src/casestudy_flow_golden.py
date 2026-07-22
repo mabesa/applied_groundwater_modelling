@@ -1010,15 +1010,18 @@ def generate_group0_golden(
     coarse_heads = cgwf.output.head().get_data().flatten()
     boundary_gdf, river_gdf = _load_gis(mother_model)
 
-    # ---- FAITHFUL RIV re-transfer (replace the defective centroid-in-polygon
-    # RIV with the conservation-exact area-weighted per-reach transfer) BEFORE
-    # the solve, so the golden baseline heads are on the faithful river. The
-    # subprocess determinism gate above proved the GRID is reproducible; the
-    # faithful RIV is applied HERE in the parent, so its determinism is NOT
-    # covered by that gate. GATE it explicitly (Finding 1b): apply the faithful
-    # RIV to EVERY rerun's spec and require a byte-identical record hash across
-    # all reruns before proceeding -- otherwise a hash drift in the frozen RIV
-    # (and thus the primary NPZ hash) could slip through unnoticed.
+    # ---- FAITHFUL RIV re-transfer. As of FR.1, generate_refined_grid's own
+    # RIV is already the conservation-exact area-weighted per-reach faithful
+    # transfer, so this re-application is redundant -- retained (pending FR.3
+    # consolidation) for the case study's independent provenance/hash trail,
+    # applied BEFORE the solve so the golden baseline heads are on the
+    # faithful river. The subprocess determinism gate above proved the GRID
+    # is reproducible; the faithful RIV is applied HERE in the parent, so its
+    # determinism is NOT covered by that gate. GATE it explicitly (Finding
+    # 1b): apply the faithful RIV to EVERY rerun's spec and require a
+    # byte-identical record hash across all reruns before proceeding --
+    # otherwise a hash drift in the frozen RIV (and thus the primary NPZ
+    # hash) could slip through unnoticed.
     faithful_by_rerun = [
         apply_faithful_riv(rerun_spec, cgwf, river_gdf)
         for (rerun_spec, _r, _t) in calls
