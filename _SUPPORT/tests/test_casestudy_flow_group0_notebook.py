@@ -8,7 +8,7 @@ MACOS-DOABLE (this file, always-on, NO notebook execution):
   (config, metrics, sandbox, interpretation -- at least one each), the
   imports cell references ``casestudy_flow_viz``, ``casestudy_flow_particles``,
   and ``build_all_flow_states``, and a ``RUN_PRT`` toggle defaulting to
-  ``False`` is present. Guards deletion/drift of the replaced legacy
+  ``True`` is present. Guards deletion/drift of the replaced legacy
   (NWT telescope) notebook.
 
 HUB-TODO (cannot run here -- AGM_HUB=1, SKIPPED on macOS, M2a5 precedent):
@@ -213,14 +213,15 @@ class TestImportsCell:
 
 
 # =============================================================================
-# RUN_PRT toggle, default False.
+# RUN_PRT toggle, default True (owner-chosen: the capture-zone demo runs out of
+# the box; students can still set it False to skip the PRT step).
 # =============================================================================
 class TestRunPrtToggle:
-    def test_run_prt_toggle_present_and_defaults_false(self):
+    def test_run_prt_toggle_present_and_defaults_true(self):
         nb = _load_notebook()
         text = _all_source(nb, cell_type="code")
-        assert re.search(r"RUN_PRT\s*=\s*False", text), (
-            "RUN_PRT toggle must be present and default to False"
+        assert re.search(r"RUN_PRT\s*=\s*True", text), (
+            "RUN_PRT toggle must be present and default to True"
         )
 
     def test_run_prt_gates_the_prt_calls(self):
