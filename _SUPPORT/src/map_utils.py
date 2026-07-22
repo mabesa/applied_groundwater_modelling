@@ -550,7 +550,8 @@ def display_concessions_map(
     shape_cycle = ['circle', 'square', 'triangle', 'diamond', 'star']
     shape_map = {u: shape_cycle[i % len(shape_cycle)] for i, u in enumerate(use_categories)}
 
-    m = folium.Map(location=map_center, zoom_start=zoom_start, tiles="OpenStreetMap")
+    m = folium.Map(location=map_center, zoom_start=zoom_start, tiles="OpenStreetMap",
+                   scrollWheelZoom=False, width=780, height=560)
 
     if map_title:
         title_style = _caption_css("position:relative;width:100%;display:block;padding:6px 0 4px 0;text-align:center;")
@@ -2033,7 +2034,9 @@ def create_interactive_dem_map(
         location=[center_lat, center_lon],
         zoom_start=zoom_start,
         tiles='cartodbpositron',
-        control_scale=True
+        control_scale=True,
+        scrollWheelZoom=False,  # don't hijack page scroll; zoom via +/- or double-click
+        width=780, height=560,  # narrower than the full notebook width
     )
 
     if custom_title:
@@ -2290,7 +2293,8 @@ def display_wel_map(modelgrid, north_cell_ids, south_cell_ids,
         np.mean([yc[i] for i in all_ids]),
     )
 
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=14)
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=14,
+                   scrollWheelZoom=False, width=780, height=560)
 
     for cid in north_cell_ids:
         lon, lat = transformer.transform(xc[cid], yc[cid])
