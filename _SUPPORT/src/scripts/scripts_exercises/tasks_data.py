@@ -384,13 +384,13 @@ You re-ran PRT (particle tracking) under the reduced-recharge scenario.
 
 # Transport Track — Notebook 2: Perceptual Model
 "task_t02_checkpoint_1": r"""
-## Checkpoint 1 — Seepage Velocity
+## Checkpoint 1 — Mean Water Velocity
 Given:
 - Hydraulic conductivity $K = 864$ m/d
 - Hydraulic gradient $i = 0.0026$
-- Effective porosity $n_e = 0.20$
+- Effective porosity $\phi_e = 0.20$
 
-**Calculate the seepage velocity $v$ in m/day.**
+**Calculate the mean water velocity $u$ in m/day.**
 """,
 
 "task_t02_checkpoint_2": r"""
@@ -401,9 +401,9 @@ Five of the nine case-study contaminants are reactive. A **sorbing** solute is r
 Given:
 - Dry bulk density $\rho_b = 1800$ kg/m³
 - Distribution coefficient $K_d = 2.0$ mL/g $= 2.0 \times 10^{-3}$ m³/kg
-- Effective porosity $n_e = 0.20$ (dimensionless)
+- Effective porosity $\phi_e = 0.20$ (dimensionless)
 
-$$R = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
+$$R = 1 + \frac{\rho_b \cdot K_d}{\phi_e}$$
 
 **Calculate $R$ (dimensionless).**
 """,
@@ -411,15 +411,15 @@ $$R = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
 "task_t02_checkpoint_pe": r"""
 ## Checkpoint — Grid Peclet Number
 Given:
-- Seepage velocity $v = 2.5 \times 10^{-5}$ m/s
+- Mean water velocity $u = 2.5 \times 10^{-5}$ m/s
 - Longitudinal dispersivity $\alpha_L = 10$ m
 - Grid cell size $\Delta x = 100$ m
 
 The grid Peclet number is defined as:
 
-$$Pe_{grid} = \frac{v \cdot \Delta x}{D_L}$$
+$$Pe_{grid} = \frac{u \cdot \Delta x}{D_L}$$
 
-where $D_L = \alpha_L \cdot v + D_m^* \approx \alpha_L \cdot v$ (molecular diffusion negligible).
+where $D_L = \alpha_L \cdot u + D_m^* \approx \alpha_L \cdot u$ (molecular diffusion negligible).
 
 **Calculate $Pe_{grid}$.**
 """,
@@ -448,7 +448,7 @@ Given a longitudinal dispersivity $\alpha_L = 15$ m:
 "task_t03_checkpoint_3": r"""
 ## Checkpoint 3 — Package Identification
 In a MODFLOW 6 GWT (solute transport) model:
-- **Which package handles mass storage and optional sorption/decay, and takes the effective porosity ($n_e$) as input?**
+- **Which package handles mass storage and optional sorption/decay, and takes the effective porosity ($\phi_e$) as input?**
 """,
 
 # ============================================================================
@@ -501,7 +501,7 @@ You have now seen the whole model assembled on the Limmat valley aquifer: the fl
 ## Checkpoint — Why is transport calibration under-constrained?
 
 The **flow** phase of your project carries the calibration rubric (heads, fluxes, PEST++).
-The **transport** phase does *not* ask you to calibrate $\alpha_L$, $\alpha_T$ and $n_e$
+The **transport** phase does *not* ask you to calibrate $\alpha_L$, $\alpha_T$ and $\phi_e$
 against plume data — instead you lock them and run an $\alpha_L$ **sensitivity** sweep.
 
 **What is the main reason a full transport calibration is beyond the scope of this course project?**
@@ -1202,11 +1202,11 @@ multiple_choice_options = {
     # Transport Track — Notebook 5 checkpoints
     "task_t05_checkpoint_1": [
         ("A) Sparse plume data plus parameter trade-offs leave the inverse problem under-constrained",
-         "A) In the field you rarely have enough concentration observations to pin alpha_L, alpha_T and n_e separately, and they trade off against each other (e.g. alpha_L vs n_e both reshape arrival time and spread) — so the transport inverse problem is under-constrained. That is why the flow phase carries the calibration rubric and the transport phase runs a sensitivity sweep instead."),
+         "A) In the field you rarely have enough concentration observations to pin alpha_L, alpha_T and phi_e separately, and they trade off against each other (e.g. alpha_L vs phi_e both reshape arrival time and spread) — so the transport inverse problem is under-constrained. That is why the flow phase carries the calibration rubric and the transport phase runs a sensitivity sweep instead."),
         ("B) MODFLOW 6 GWT models cannot be calibrated",
          "B) Untrue — GWT transport models can be calibrated (e.g. with PEST++); the obstacle here is data and identifiability, not the software."),
         ("C) The transport parameters are already known exactly",
-         "C) Untrue — alpha_L, alpha_T and n_e are genuinely uncertain; that is exactly why you report an alpha_L sensitivity range rather than one calibrated value."),
+         "C) Untrue — alpha_L, alpha_T and phi_e are genuinely uncertain; that is exactly why you report an alpha_L sensitivity range rather than one calibrated value."),
         ("D) Calibration runs are simply too slow to ever finish",
          "D) Runtime is a practical nuisance, but the fundamental issue is identifiability: too few plume observations to constrain the parameters uniquely."),
     ],
@@ -2189,7 +2189,7 @@ The exact value comes from computing the difference between baseline and drought
 
 Under reduced recharge:
 1. The regional hydraulic gradient **decreases** (flatter water table)
-2. Ambient groundwater velocity **decreases** ($v = Ki/n_e$)
+2. Ambient groundwater velocity **decreases** ($u = Ki/\phi_e$)
 3. The well must therefore draw water from a **larger area** to capture the same volume
 4. The capture zone boundary moves **outward** (wider and longer)
 
@@ -2203,11 +2203,11 @@ This is exactly the non-stationarity effect discussed in Section 3: the drought-
 
 # Transport Track — Notebook 2: Perceptual Model
 "task_t02_checkpoint_1": r"""
-## Solution — Seepage Velocity
+## Solution — Mean Water Velocity
 
-The seepage velocity is:
+The mean water velocity is:
 
-$$v = \frac{K \cdot i}{n_e} = \frac{864 \times 0.0026}{0.20} = \frac{2.246}{0.20} = 11.2 \text{ m/d}$$
+$$u = \frac{K \cdot i}{\phi_e} = \frac{864 \times 0.0026}{0.20} = \frac{2.246}{0.20} = 11.2 \text{ m/d}$$
 
 This is the average linear velocity of groundwater — the speed at which a conservative tracer would move through the aquifer.
 
@@ -2220,14 +2220,14 @@ Note: the specific discharge $q = Ki = 2.25$ m/d is the flux per unit area. Divi
 
 For a linearly-sorbing solute at equilibrium, the (dimensionless) retardation factor is:
 
-$$R = 1 + \frac{\rho_b \cdot K_d}{n_e}$$
+$$R = 1 + \frac{\rho_b \cdot K_d}{\phi_e}$$
 
-For chromium (group 4), substituting $\rho_b = 1800$ kg/m³, $K_d = 2.0 \times 10^{-3}$ m³/kg, and $n_e = 0.20$:
+For chromium (group 4), substituting $\rho_b = 1800$ kg/m³, $K_d = 2.0 \times 10^{-3}$ m³/kg, and $\phi_e = 0.20$:
 
 $$R = 1 + \frac{1800 \times 2.0 \times 10^{-3}}{0.20} = 1 + \frac{3.6}{0.20} = 1 + 18 = 19$$
 
 The units cancel ($\text{kg/m}^3 \times \text{m}^3/\text{kg}$ is dimensionless), so $R$ is dimensionless.
-Chromium's front travels about **19× slower** than a conservative tracer (front velocity $v / R$) — strong retardation.
+Chromium's front travels about **19× slower** than a conservative tracer (front velocity $u / R$) — strong retardation.
 
 Reactive transport is **in scope**: 5 of the 9 case studies sorb or decay. In MODFLOW 6 GWT, sorption is activated in the **MST** package (`sorption`, `bulk_density`, `distcoef`) and first-order decay via `decay`; your group's parameters are pinned in `case_config_transport.yaml`.
 <br>
@@ -2236,13 +2236,13 @@ Reactive transport is **in scope**: 5 of the 9 case studies sorb or decay. In MO
 "task_t02_checkpoint_pe": r"""
 ## Solution — Grid Peclet Number
 
-Since molecular diffusion is negligible ($D_m^* \ll \alpha_L v$), the hydrodynamic dispersion coefficient simplifies to:
+Since molecular diffusion is negligible ($D_m^* \ll \alpha_L u$), the hydrodynamic dispersion coefficient simplifies to:
 
-$$D_L \approx \alpha_L \cdot v = 10 \times 2.5 \times 10^{-5} = 2.5 \times 10^{-4} \text{ m}^2/\text{s}$$
+$$D_L \approx \alpha_L \cdot u = 10 \times 2.5 \times 10^{-5} = 2.5 \times 10^{-4} \text{ m}^2/\text{s}$$
 
 The grid Peclet number is:
 
-$$Pe_{grid} = \frac{v \cdot \Delta x}{D_L} = \frac{v \cdot \Delta x}{\alpha_L \cdot v} = \frac{\Delta x}{\alpha_L} = \frac{100}{10} = 10$$
+$$Pe_{grid} = \frac{u \cdot \Delta x}{D_L} = \frac{u \cdot \Delta x}{\alpha_L \cdot u} = \frac{\Delta x}{\alpha_L} = \frac{100}{10} = 10$$
 
 Note that when $D_m^*$ is negligible, the velocity cancels and $Pe_{grid}$ reduces to the simple ratio $\Delta x / \alpha_L$. This is well above the classical stability limit of 2, so a TVD advection scheme is needed.
 <br>
@@ -2269,11 +2269,11 @@ Each doublet withdraws water at one well and returns it at another, setting up a
 
 **Correct answer: B) Advection**
 
-Advection is the process that transports solute or heat at the groundwater velocity $\mathbf{v}$. In the ADE:
+Advection is the process that transports solute or heat at the groundwater velocity $\mathbf{u}$. In the ADE:
 
-$$\frac{\partial (nC)}{\partial t} = \nabla \cdot (n \mathbf{D} \nabla C) - \nabla \cdot (n \mathbf{v} C) + q_s$$
+$$\frac{\partial (\phi C)}{\partial t} = \nabla \cdot (\phi \mathbf{D} \nabla C) - \nabla \cdot (\phi \mathbf{u} C) + q_s$$
 
-The advection term $\nabla \cdot (n \mathbf{v} C)$ moves the concentration front bodily with the flow. Dispersion and diffusion spread the front around its mean position but do not control the front velocity. Retardation (for sorbing solutes) modifies the effective front speed but is separate from the advective process itself.
+The advection term $\nabla \cdot (\phi \mathbf{u} C)$ moves the concentration front bodily with the flow. Dispersion and diffusion spread the front around its mean position but do not control the front velocity. Retardation (for sorbing solutes) modifies the effective front speed but is separate from the advective process itself.
 <br>
 """,
 
@@ -2284,9 +2284,9 @@ The grid Peclet criterion requires:
 
 $$Pe_{grid} = \frac{v \cdot \Delta x}{D_L} \leq 2$$
 
-When molecular diffusion is negligible, $D_L \approx \alpha_L \cdot v$, so:
+When molecular diffusion is negligible, $D_L \approx \alpha_L \cdot u$, so:
 
-$$\Delta x \leq \frac{2 \cdot D_L}{v} = \frac{2 \cdot \alpha_L \cdot v}{v} = 2 \cdot \alpha_L = 2 \times 15 = 30 \text{ m}$$
+$$\Delta x \leq \frac{2 \cdot D_L}{u} = \frac{2 \cdot \alpha_L \cdot u}{u} = 2 \cdot \alpha_L = 2 \times 15 = 30 \text{ m}$$
 
 This means cells must be no larger than 30 m in the flow direction. Note that this constraint depends only on dispersivity, not on velocity — a useful simplification for grid design.
 <br>
@@ -2297,7 +2297,7 @@ This means cells must be no larger than 30 m in the flow direction. Note that th
 
 **Correct answer: A) MST**
 
-The **MST** (Mass Storage and Transfer) package handles dissolved-mass storage and takes the **effective porosity** ($n_e$) as its `porosity` input. It is also where **optional** sorption (`sorption`, `bulk_density`, `distcoef`) and first-order **decay** are switched on — for the conservative core path these stay off.
+The **MST** (Mass Storage and Transfer) package handles dissolved-mass storage and takes the **effective porosity** ($\phi_e$) as its `porosity` input. It is also where **optional** sorption (`sorption`, `bulk_density`, `distcoef`) and first-order **decay** are switched on — for the conservative core path these stay off.
 
 DSP handles dispersion ($\alpha_L$/`alh`, $\alpha_T$/`ath1`, $D_m^*$/`diffc`), ADV selects the advection scheme (TVD), and SSM assigns concentrations to GWF source/sink fluxes — none of these own the porosity/storage input.
 <br>
@@ -2352,7 +2352,7 @@ Two features of the setup make this the physical expectation *before* any number
 - **The source is close and upgradient.** The spill sits only ~90 m from the extraction well, directly up the local flow direction — so the ambient gradient alone carries it toward the well.
 - **The well pulls the flow toward itself.** The extraction well removes ~1370 m³/d; even though it carries no solute of its own (option D), it bends the flow field so that upgradient water — and the dissolved mass it carries — converges on the well. That is exactly why the extraction well is the *compliance / monitoring* well.
 
-With a seepage velocity of order a few metres per day over ~90 m, an arrival on the scale of **weeks-to-a-couple-of-months** is expected, and because a large finite mass is released the peak comfortably clears the stated threshold. When you run the next cell you should see a **peak of ≈ 4.95 mg/L at ~day 41** — an early, clear exceedance, matching prediction A. (Options B and C under-estimate how fast a forced-gradient doublet delivers a nearby upgradient spill.)
+With a mean water velocity of order a few metres per day over ~90 m, an arrival on the scale of **weeks-to-a-couple-of-months** is expected, and because a large finite mass is released the peak comfortably clears the stated threshold. When you run the next cell you should see a **peak of ≈ 4.95 mg/L at ~day 41** — an early, clear exceedance, matching prediction A. (Options B and C under-estimate how fast a forced-gradient doublet delivers a nearby upgradient spill.)
 <br>
 """,
 
@@ -2369,8 +2369,8 @@ key parameters **trade off** against one another:
 
 | Parameter | What shifts it | Trade-off |
 |---|---|---|
-| $\alpha_L$ (longitudinal dispersivity) | spreads/flattens the breakthrough | higher $\alpha_L$ mimics lower $n_e$ |
-| $n_e$ (effective porosity) | sets advective arrival time $x/v$ | lower $n_e$ → earlier arrival |
+| $\alpha_L$ (longitudinal dispersivity) | spreads/flattens the breakthrough | higher $\alpha_L$ mimics lower $\phi_e$ |
+| $\phi_e$ (effective porosity) | sets advective arrival time $x/u$ | lower $\phi_e$ → earlier arrival |
 | $\alpha_T$ (transverse dispersivity) | lateral width — but **numerically unresolved** (Pe$_T \gg 2$) |
 
 With sparse data and these correlations, the inverse problem is **under-constrained**: many
@@ -2379,7 +2379,7 @@ calibration (so B is wrong), the parameters are genuinely uncertain (so C is wro
 is a nuisance rather than the core obstacle (so D is wrong).
 
 That is why this course **carries the calibration rubric in the flow phase** and, for transport,
-asks you to **lock** $\alpha_L = 10$ m / $\alpha_T = 1$ m / $n_e = 0.20$ and report an
+asks you to **lock** $\alpha_L = 10$ m / $\alpha_T = 1$ m / $\phi_e = 0.20$ and report an
 $\alpha_L$ **sensitivity range** instead of a single calibrated value.
 <br>
 """,
@@ -2504,7 +2504,7 @@ That is the whole point of the applications: keep straight which knob moves the 
 
 **Correct answer: A) Later and lower peak.**
 
-Retardation slows the *plume's* velocity to $v/R$ (R=2 halves it), so the arrival is delayed. Sorption (via R) removes mass from the mobile (aqueous) phase before it reaches the well, so the peak concentration also drops. Running Rung A confirms this:
+Retardation slows the *plume's* velocity to $u/R$ (R=2 halves it), so the arrival is delayed. Sorption (via R) removes mass from the mobile (aqueous) phase before it reaches the well, so the peak concentration also drops. Running Rung A confirms this:
 
 - **R = 2, sorption-only**: peak ≈ **2.99 mg/L at ≈ day 61** (vs. the conservative 4.95 mg/L @ day 41) — later AND lower.
 
@@ -2542,7 +2542,7 @@ Running Rung D confirms it: every one of the 200 particles released across the r
 
 **What that verdict does — and does not — corroborate.** Full advective capture corroborates the Keystone's **arrival and timing**: the water carrying the spill really does reach *this* well, on an advective timescale of weeks. It says **nothing whatsoever about concentration**, so it cannot corroborate the **exceedance** verdict. That verdict (peak 4.95 mg/L at day 41) is, and remains, the ADE model's alone. It is tempting to argue that because the footprint stays inside the well's *advective* streamtube the lateral limitation cannot matter — but that argument is wrong: transverse dispersion is precisely what carries mass *across* an advective streamtube boundary, so full advective capture does **not** guarantee the peak concentration. PRT bounds advective connection; it does not measure concentration.
 
-**How PRT is verified here.** Not by arithmetic against the ADE's day-41 peak — an advective travel time and a dispersive concentration peak are different quantities, and no simple identity connects them in a converging 2-D flow field. PRT is checked against **the flow field it was handed**: integrating the seepage velocity v = q/n_e straight from the GWF budget (`DATA-SPDIS`, locked porosity 0.20) along the spill→well axis gives a path-averaged **3.21 m/d**, and PRT's particles report **3.24 m/d** — agreement to ~1%, from two independent computations, nothing tuned. (Note that PRT and the ADE share the same flow field, grid and porosity, so this verifies the *particle tracker*, not the flow solution; the track's end-to-end transport verification is 04t §5's analytical benchmark.)
+**How PRT is verified here.** Not by arithmetic against the ADE's day-41 peak — an advective travel time and a dispersive concentration peak are different quantities, and no simple identity connects them in a converging 2-D flow field. PRT is checked against **the flow field it was handed**: integrating the mean water velocity $u = q/\phi_e$ straight from the GWF budget (`DATA-SPDIS`, locked porosity 0.20) along the spill→well axis gives a path-averaged **3.21 m/d**, and PRT's particles report **3.24 m/d** — agreement to ~1%, from two independent computations, nothing tuned. (Note that PRT and the ADE share the same flow field, grid and porosity, so this verifies the *particle tracker*, not the flow solution; the track's end-to-end transport verification is 04t §5's analytical benchmark.)
 
 - **B** is wrong: the spill sits directly on the spill→well axis, and the capture zone's **bisected half-width at the spill transect is ≈ 79 m** — the 10 m footprint is nowhere near escaping it.
 - **C** is wrong twice over. (i) The footprint does not straddle anything: a 10 m disc centred on the axis sits ~79 m inside the boundary, so *nothing* in it escapes. (ii) And do not carry away "the probe shows roughly half" either — the wider 120 m probe returns a fraction of **0.719**, not ~0.5, and that number is not a physical split at all: it is a property of **that probe disc** ("the fraction of a 120 m disc that happens to lie inside the capture zone"), a disc that even reaches ~30 m *downgradient* of the well, where capture is impossible. The scalar is an artefact of where we chose to release; the captured/escaped **scatter** and the bisected half-width are the real results.
