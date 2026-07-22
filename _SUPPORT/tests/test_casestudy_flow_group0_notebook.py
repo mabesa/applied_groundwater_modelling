@@ -266,8 +266,13 @@ class TestHubNotebookExecution:
         from nbclient import NotebookClient
 
         nb = nbformat.read(str(NOTEBOOK_PATH), as_version=4)
-        client = NotebookClient(nb, timeout=1800, kernel_name="python3")
-        client.execute(resources={"metadata": {"path": str(NOTEBOOK_PATH.parent)}})
+        # `resources` (execution cwd) is a NotebookClient CONSTRUCTOR arg -- passing
+        # it to .execute() forwards it to the kernel Popen and raises TypeError.
+        client = NotebookClient(
+            nb, timeout=1800, kernel_name="python3",
+            resources={"metadata": {"path": str(NOTEBOOK_PATH.parent)}},
+        )
+        client.execute()
 
         # Locate the work_dir the notebook resolved (group 0's output workspace).
         import case_utils
