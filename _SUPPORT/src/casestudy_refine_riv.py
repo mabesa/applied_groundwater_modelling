@@ -12,12 +12,17 @@ reaches, dropping ~36% of the calibrated river conductance (measured: coarse
 drifts the regional head field ~0.34 m RMS / 1.2 m max and corridor velocity
 ~33% (see DESIGN_DOCS/student_casestudy_M2a_0_riv_addendum.md).
 
-This module implements the OWNER-APPROVED fix for the CASE-STUDY PATH ONLY --
-`generate_refined_grid` and the shipped transport demo are left untouched
-(the demo's latent error is a tracked follow-up). Both the M2a.0 golden
-generator and the later M2a.1 builder call `faithful_riv_from_coarse` to
-REPLACE the defective refined RIV package with a faithful one BEFORE the
-solve, so the golden baseline heads are computed on the faithful river.
+This module originally implemented the OWNER-APPROVED fix for the
+CASE-STUDY PATH ONLY. As of FR.1 (see
+DESIGN_DOCS/student_casestudy_FR_steps.md), `model_io_utils.generate_refined_grid`
+ITSELF now delegates its RIV transfer to `faithful_riv_from_coarse` (this
+module), so the shared/demo path is fixed too -- the ~36%-conductance-loss
+centroid-in-polygon transfer is gone. Both the M2a.0 golden generator and
+the later M2a.1 builder still call `faithful_riv_from_coarse` directly (via
+`apply_faithful_riv`) to REPLACE `generate_refined_grid`'s RIV with a
+freshly-computed faithful one BEFORE the solve -- this is now redundant
+(generate_refined_grid's own RIV is already faithful) but is retained for
+provenance/hash reasons pending the FR.3 consolidation decision.
 
 Method (river-geometry-weighted, PER-REACH records) -- per the v2 addendum:
   For each coarse RIV cell `c` (calibrated stage `s_c`, cond `K_c`, rbot
