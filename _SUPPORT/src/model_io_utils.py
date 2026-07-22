@@ -2158,6 +2158,21 @@ def generate_refined_grid(
     print(f"RIV cells: {len(riv_cellid)} (records: {len(records)}, "
           f"Sigma cond: {sum(riv_cond):.1f})")
 
+    # SIGMA-COND CONSERVATION INVARIANT (belt-and-suspenders): the coverage
+    # check above only confirms every coarse reach is REPRESENTED in the
+    # refined field, not that its conductance survived intact.
+    # `faithful_riv_from_coarse` conserves Sigma cond by construction (FR.1),
+    # so this should always hold -- it exists to catch any future regression
+    # in that conservation, not because we expect it to fire today.
+    import math
+    _coarse_cond = math.fsum(float(r.cond) for r in coarse_reaches)
+    _refined_cond = math.fsum(riv_cond)
+    if not math.isclose(_refined_cond, _coarse_cond, rel_tol=1e-9, abs_tol=1e-6):
+        raise ValueError(
+            f"faithful RIV Sigma-cond not conserved: refined {_refined_cond:.6f} "
+            f"vs coarse {_coarse_cond:.6f} (delta {_refined_cond - _coarse_cond:.3e})"
+        )
+
     # ------------------------------------------------------------------
     # 6. WEL
     # ------------------------------------------------------------------
