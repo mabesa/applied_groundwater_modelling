@@ -218,6 +218,64 @@ def _courant_nstp(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
     return nstp, dt, critical * dt, diag
 
 
+def _budget_has_spdis(cgwf) -> bool:
+    """True iff the loaded model's saved budget carries the DATA-SPDIS record."""
+    try:
+        recs = cgwf.output.budget().get_unique_record_names(decode=True)
+    except Exception:
+        return False  # no/unreadable .cbc -> treat as missing so we regenerate
+    return any("DATA-SPDIS" in str(r) for r in recs)
+
+
+def _ensure_spdis(csim, cgwf, flow_ws, exe):
+    """Guarantee the coarse flow model's budget carries ``DATA-SPDIS``.
+
+    The transport track reads the specific-discharge recarray
+    (``cgwf.output.budget().get_data(text='DATA-SPDIS')``) to place the spill and
+    Courant-size the time steps. A pre-computed / archived flow model whose NPF
+    was saved without ``save_specific_discharge`` lacks that record, so loading it
+    on a fresh JupyterHub (or any stale ``<data>/calibration`` cache) raises
+    "The specified text string is not in the budget file."
+
+    We repair it in place: enable the specific-discharge output flags and re-run
+    the (steady-state, single-period) model — a few-second regeneration that
+    persists in the workspace, so it is a one-time cost per workspace. Returns a
+    freshly reloaded ``(csim, cgwf)`` so downstream output handles read the new
+    ``.cbc``.
+    """
+    if _budget_has_spdis(cgwf):
+        return csim, cgwf
+
+    mname = cgwf.name
+    cgwf.npf.save_specific_discharge = True
+    cgwf.npf.save_flows = True
+    try:
+        cgwf.npf.save_saturation = True
+    except Exception:
+        pass  # older grids may not expose the option; SPDIS only needs the two above
+
+    try:
+        csim.write_simulation(silent=True)
+        ok, buf = csim.run_simulation(silent=True)
+    except Exception as exc:
+        raise RuntimeError(
+            "The calibrated flow model's budget lacks specific discharge "
+            "(DATA-SPDIS), which the transport track needs, and it could not be "
+            f"regenerated (is the workspace writable and mf6 available?).\n"
+            f"  workspace: {flow_ws}\n  mf6: {exe}\n(underlying error: {exc})"
+        ) from exc
+    if not ok:
+        tail = "\n".join(buf[-15:]) if buf else ""
+        raise RuntimeError(
+            "Re-running the calibrated flow model to add specific discharge "
+            f"(DATA-SPDIS) failed.\n  workspace: {flow_ws}\n  mf6: {exe}\n{tail}"
+        )
+
+    # reload so cached output handles point at the freshly written .cbc
+    csim = flopy.mf6.MFSimulation.load(sim_ws=str(flow_ws), exe_name=exe, verbosity_level=0)
+    return csim, csim.get_model(mname)
+
+
 def _load_calibrated_flow():
     """Load the 05f-calibrated coarse flow model + GIS (boundary, Limmat/Sihl)."""
     from data_utils import download_named_file
@@ -226,6 +284,9 @@ def _load_calibrated_flow():
     exe = shutil.which("mf6") or _MF6_FALLBACK
     csim = flopy.mf6.MFSimulation.load(sim_ws=str(flow_ws), exe_name=exe, verbosity_level=0)
     cgwf = csim.get_model("limmat_valley")
+    # Archived / stale flow models may lack DATA-SPDIS in their budget; the
+    # transport track requires it, so regenerate it once if missing.
+    csim, cgwf = _ensure_spdis(csim, cgwf, flow_ws, exe)
     boundary = gpd.read_file(download_named_file(name="model_boundary", data_type="gis"))
     rivers = gpd.read_file(download_named_file(name="rivers", data_type="gis"))
     rivers = rivers[rivers["GEWAESSERNAME"].isin(["Limmat", "Sihl"])
