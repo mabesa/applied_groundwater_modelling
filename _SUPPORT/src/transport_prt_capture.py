@@ -28,10 +28,10 @@ PRT answers a **geometry / wellfield-protection** question:
 PRT says **NOTHING** about concentration, dilution, dispersion, sorption, decay or
 any regulatory threshold.  "Is the concentration above the limit, and when" is the
 ADE question, and it is answered -- separately -- by ``transport_srcpulse_demo``
-(peak 4.95 mg/L at day 41).
+(peak ≈5.1 mg/L at day 41).
 
 **Do not connect the two numbers with arithmetic.**  PRT's median ADVECTIVE travel
-time (~25.8 d) and the ADE's CONCENTRATION peak (day 41) are different quantities,
+time (~24.6 d) and the ADE's CONCENTRATION peak (day 41) are different quantities,
 and in a converging 2-D flow field NO simple identity links them.  (The textbook
 identity ``source centroid + mean advective travel time`` predicts a breakthrough
 curve's CENTRE OF MASS -- its first temporal moment -- not its PEAK, because a
@@ -48,17 +48,22 @@ the ADE at all.  Integrate the seepage velocity ``v = q / n_e`` (specific discha
 straight from the GWF budget's ``DATA-SPDIS``, locked porosity ``n_e = 0.20``)
 along the spill -> well axis, and compare with what PRT reports:
 
-    * flow field:  path-averaged ``v = L / integral(ds / v(s))`` = **3.21 m/d**;
-      the travel-time integral over the 90 m axis is **28.0 d**
+    * flow field:  path-averaged ``v = L / integral(ds / v(s))`` = **≈2.745 m/d**;
+      the travel-time integral over the 90 m axis is **≈32.8 d**
       (``v_flow_qn_mpd`` / ``tt_flow_integral_d``)
     * PRT:         median (pathline arc length / travel time) over the captured
-      particles = **3.24 m/d** (``v_prt_path_mpd``), median arc length 83.6 m,
-      median travel time 25.8 d
+      particles = **3.24 m/d** (``v_prt_path_mpd``), median arc length ≈83.6 m,
+      median travel time ≈24.6 d
 
-The two velocities agree to ~1%.  The ~8% gap between the 28.0 d integral and PRT's
-25.8 d median is expected and diagnostic: PRT's paths curve as they converge, and
-they TERMINATE on entering the extraction-well CELL (~7 m of the 90 m axis short of
-the well node), so a PRT particle travels 83.6 m, not 90 m.
+On this corrected, less-uniform flow field the two velocities legitimately DIVERGE
+by ~18% rather than agreeing closely: ``v_flow`` is the straight-axis q/n average
+and ``v_prt`` is the curved-path arc-length average, and those are two different
+averages of the same non-uniform flow, not the same quantity -- see the
+implementation's coarse same-order-of-magnitude check.  The gap between the ≈32.8 d
+integral and PRT's ≈24.6 d median is expected and diagnostic in the same direction:
+PRT's paths curve as they converge, and they TERMINATE on entering the
+extraction-well CELL (~7 m of the 90 m axis short of the well node), so a PRT
+particle travels ≈83.6 m, not 90 m.
 
 This is an *independent* computation -- specific discharge from the flow budget vs a
 Lagrangian particle integration -- so it genuinely verifies the particle-tracking
@@ -72,15 +77,15 @@ THE LATERAL ANSWER: A REAL CAPTURE-ZONE HALF-WIDTH
 ``halfwidth_at_spill_m`` is measured by BISECTION on a TRANSECT: single particles are
 released at increasing |offset| perpendicular to the spill -> well axis, at a stated
 along-axis position ``s``, and the dividing streamline is bracketed to ``tol_m``.
-It is a property of the FLOW FIELD, not of any probe: measured **78.9 m at the spill
+It is a property of the FLOW FIELD, not of any probe: measured **≈76 m at the spill
 transect (s = 0)**, unchanged when the bisection's own probe settings are varied
 (max offset 120-200 m, scan density 25-41 points, tolerance 0.25-1.0 m).  See
 :func:`capture_halfwidth_at`, which measures it at any transect.
 
-The zone WIDENS upgradient -- 78.9 m at the spill, 104.7 m at 200 m upgradient,
-~112 m at 300-500 m upgradient -- converging on the flow field's analytic asymptote
+The zone WIDENS upgradient -- ≈76 m at the spill, ~104-112 m upgradient at
+200-500 m -- converging on the flow field's analytic asymptote
 
-    y_max = Q / (2 q b) ~= 1370 / (2 * 6.34) ~= 108 m   (``asymptotic_halfwidth_m``)
+    y_max = Q / (2 q b) ~= 114 m   (``asymptotic_halfwidth_m``)
 
 with the regional unit-width discharge ``q * b`` read from the GWF budget upgradient
 of the doublet.  That asymptote is the same screening formula 01t uses as
@@ -91,14 +96,16 @@ so the asymptote is only sharp to ~95-117 m.  It is a screen, not a measurement.
 
 ``max_captured_offset_m`` is the OTHER, weaker number: the most off-axis release point
 that happened to be captured in THIS disc.  It is a lower bound that GROWS with the
-probe radius (82.9 m at r = 120 m, 90.3 m at r = 160 m, 86.9 m at r = 200 m in an
-UNCHANGED flow field), and the point that sets it can sit upgradient of the spill
-rather than on the spill transect.  It is NOT a capture-zone half-width; it is kept
-only to show a student why a sampling statistic is not a physical property.
+probe radius (e.g. ≈100 m at r = 120 m in one measured run, larger again at r = 200 m,
+in an UNCHANGED flow field -- this quantity is severely mesh/platform-dependent, so
+treat the figures as illustrative order-of-magnitude only), and the point that sets it
+can sit upgradient of the spill rather than on the spill transect.  It is NOT a
+capture-zone half-width; it is kept only to show a student why a sampling statistic is
+not a physical property.
 
 A capture zone is also a purely ADVECTIVE envelope.  A real, dispersive plume
 straddles it: a source just outside the dividing streamline can still register at the
-well, at low concentration.  "Outside 79 m => safe" is false.
+well, at low concentration.  "Outside ~76 m => safe" is false.
 
 HOW A PARTICLE IS CLASSIFIED (verified, not guessed)
 ----------------------------------------------------
@@ -197,7 +204,7 @@ _IREASON_TERMINATE = 3
 WIDE_RELEASE_RADIUS_M: float = 120.0
 
 # --- transect-bisection settings for the REAL capture-zone half-width ---------
-# The measured half-width is INSENSITIVE to all three (verified: 78.9 m at the spill
+# The measured half-width is INSENSITIVE to all three (verified: ≈76 m at the spill
 # for max offset 120-200 m, 25-41 scan points, tolerance 0.25-1.0 m).  That
 # insensitivity is the whole point: unlike `max_captured_offset_m`, this number is a
 # property of the flow field and not of the probe that measured it.
@@ -763,9 +770,9 @@ def capture_halfwidth_at(
     ``scan_contiguous`` (False => capture is not monotone in |offset| on this transect
     and a single half-width does not describe it).
 
-    Measured at the spill (s = 0): **78.9 m** (+81.4 / -76.4).  It WIDENS upgradient
-    -- 104.7 m at s = -200 m, ~112 m at s = -300..-500 m -- converging on the flow
-    field's analytic asymptote ``Q / (2 q b) ~= 108 m``.
+    Measured at the spill (s = 0): **≈76 m** (asymmetric about the axis -- the
+    injection well sits off to one side).  It WIDENS upgradient, converging on the
+    flow field's analytic asymptote ``Q / (2 q b) ~= 114 m``.
 
     Each call builds the steady GWF flow field once (~2 s) and then runs a handful of
     small PRT simulations (~0.2 s each), so it is cheap.
@@ -885,7 +892,7 @@ def build_prt_capture(
 
         BIAS, STATED PLAINLY: a dropped point would have been CAPTURED (it is inside
         the well), so dropping it DEFLATES the capture fraction -- at r = 120 m the
-        one dropped point turns 144/200 = 0.7200 into 143/199 = 0.7186.  Points in
+        one dropped point deflates the capture fraction to ≈0.68.  Points in
         the INJECTION-well cell are NOT dropped: the injection well is a SOURCE, a
         particle released there advects away normally, and its travel time is not 0.
         (In practice no release point lands there at any radius used here;
