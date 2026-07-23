@@ -926,20 +926,49 @@ def flow_model_pumping_m3d(sim_ws: Union[str, Path]) -> float:
     return float(q[q < 0].sum())
 
 
+def _assert_current_pumping(pumping_m3d: float, sim_ws: Union[str, Path]) -> None:
+    """Raise unless ``pumping_m3d`` matches the current course model.
+
+    Chokepoint for the "is this workspace eligible to be labeled the current
+    archive version?" check. Called from :func:`build_flow_manifest`, so BOTH the
+    05f local stamp and the offline packager (:mod:`package_flow_model`) refuse to
+    bless a calibration built on a stale ``notebook4_model`` — otherwise the old
+    1,080 m³/d model could be shipped / served as ``archive_version`` current.
+    """
+    pumping = abs(float(pumping_m3d))
+    if abs(pumping - EXPECTED_PUMPING_M3D) / EXPECTED_PUMPING_M3D > _PUMPING_TOL:
+        raise ValueError(
+            f"Refusing to treat {sim_ws} as the current flow model: total pumping is "
+            f"{pumping:.0f} m³/d, but the current course model is "
+            f"~{EXPECTED_PUMPING_M3D:.0f} m³/d. This workspace was built from an "
+            "out-of-date notebook4_model — re-run 04f_model_implementation.ipynb, "
+            "then re-run the calibration before stamping/packaging."
+        )
+
+
 def build_flow_manifest(sim_ws: Union[str, Path]) -> Dict[str, Any]:
     """Core identity manifest for a calibrated flow-model workspace:
     ``{archive_version, flow_fingerprint, pumping_m3d, mean_K_md}``. The packager
-    (:mod:`package_flow_model`) adds toolchain metadata on top of these."""
+    (:mod:`package_flow_model`) adds toolchain metadata on top of these.
+
+    Because ``archive_version`` is unconditionally set to the CURRENT
+    :data:`FLOW_MODEL_MIN_VERSION`, building a manifest asserts the workspace is
+    current — so this validates the pumping (:func:`_assert_current_pumping`) and
+    raises ``ValueError`` on a stale (e.g. 1,080 m³/d) model rather than minting a
+    manifest that lies about its currency.
+    """
     import flopy
 
     ws = Path(sim_ws)
     sim = flopy.mf6.MFSimulation.load(sim_ws=str(ws), load_only=["disv", "npf"],
                                       verbosity_level=0)
     mean_k = float(np.mean(sim.get_model(sim.model_names[0]).npf.k.array))
+    pumping = round(flow_model_pumping_m3d(ws), 1)
+    _assert_current_pumping(pumping, ws)
     return {
         "archive_version": FLOW_MODEL_MIN_VERSION,
         "flow_fingerprint": flow_model_fingerprint(ws),
-        "pumping_m3d": round(flow_model_pumping_m3d(ws), 1),
+        "pumping_m3d": pumping,
         "mean_K_md": round(mean_k, 1),
     }
 
@@ -951,29 +980,13 @@ def stamp_flow_manifest(sim_ws: Union[str, Path]) -> Dict[str, Any]:
     a legitimate LOCAL 05f output is marked current and :func:`ensure_flow_model`
     does not mistake it for a stale download and clobber it. Returns the manifest.
 
-    Stamping *blesses* a workspace as the current archive version, so it first
-    validates that the workspace actually carries the current pumping
-    (:data:`EXPECTED_PUMPING_M3D`). Otherwise a calibration built on a stale
-    ``notebook4_model`` (e.g. the old 1,080 m³/d model, if a student ignored the
-    ``ensure_notebook4_model_exists`` warning) would be laundered into a
-    version-current manifest and then served forever by :func:`ensure_flow_model`.
-
-    Raises
-    ------
-    ValueError
-        If the workspace pumping is more than :data:`_PUMPING_TOL` off the expected
-        current value — the upstream 04f model is stale; re-run it, then recalibrate.
+    :func:`build_flow_manifest` validates the pumping first, so a calibration built
+    on a stale ``notebook4_model`` (e.g. the old 1,080 m³/d model, if a student
+    ignored the ``ensure_notebook4_model_exists`` warning) raises ``ValueError``
+    here instead of being laundered into a version-current manifest.
     """
     ws = Path(sim_ws)
     manifest = build_flow_manifest(ws)
-    pumping = abs(float(manifest["pumping_m3d"]))
-    if abs(pumping - EXPECTED_PUMPING_M3D) / EXPECTED_PUMPING_M3D > _PUMPING_TOL:
-        raise ValueError(
-            f"Refusing to stamp {ws} as current: total pumping is {pumping:.0f} m³/d, "
-            f"but the current course model is ~{EXPECTED_PUMPING_M3D:.0f} m³/d. This "
-            "calibration was built from an out-of-date notebook4_model — re-run "
-            "04f_model_implementation.ipynb, then re-run the calibration."
-        )
     (ws / _FLOW_MANIFEST_NAME).write_text(json.dumps(manifest, indent=2))
     return manifest
 

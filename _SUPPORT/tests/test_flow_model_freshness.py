@@ -53,11 +53,15 @@ def test_stamp_writes_current_manifest(tmp_path):
 
 def test_stamp_refuses_stale_pumping(tmp_path):
     """A calibration built on the OLD 1,080 m³/d model must NOT be blessed as
-    current — otherwise ensure_flow_model would serve it forever."""
+    current — otherwise ensure_flow_model would serve it forever. The guard lives in
+    build_flow_manifest, so BOTH stamp_flow_manifest (below) and the offline packager
+    (which also calls build_flow_manifest) refuse a stale workspace."""
     ws = tmp_path / "cal"; ws.mkdir()
     _tiny_model(ws, pumping=1080.0)
-    with pytest.raises(ValueError, match="Refusing to stamp"):
-        mio.stamp_flow_manifest(ws)
+    with pytest.raises(ValueError, match="Refusing to treat"):
+        mio.build_flow_manifest(ws)                       # packager path
+    with pytest.raises(ValueError, match="Refusing to treat"):
+        mio.stamp_flow_manifest(ws)                       # 05f stamp path
     assert mio._flow_manifest_version(ws) == 0            # left unstamped
 
 
