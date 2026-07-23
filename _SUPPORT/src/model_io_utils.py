@@ -855,6 +855,13 @@ def load_base_simulation(
     return sim
 
 
+# Minimum flow-model archive version the CODE requires. Bump when the shipped
+# flow_model_mf6 archive must be regenerated (e.g. the 1,080->2,160 m³/d pumping
+# recalibration). ensure_flow_model() refuses/refetches a local workspace whose
+# MANIFEST_flow.json archive_version is below this.
+FLOW_MODEL_MIN_VERSION = 2
+_FLOW_MANIFEST_NAME = "MANIFEST_flow.json"
+
 # Physics-defining MF6 input files: NPF (K), WEL (pumping), DISV (geometry),
 # RIV/CHD/RCHA (boundaries), IC (initial). Excludes solver (IMS), output control
 # (OC), TDIS, NAM, and all run outputs (.hds/.cbc/.grb/.lst) — so the fingerprint

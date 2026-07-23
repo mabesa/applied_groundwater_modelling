@@ -39,7 +39,7 @@ import numpy as np
 import pandas as pd
 
 
-CALIBRATION_BUNDLE_MIN_VERSION = 2
+CALIBRATION_BUNDLE_MIN_VERSION = 3
 
 COURSE_PEST_SETTINGS = {
     "n_pilot_points": 20,
