@@ -33,7 +33,7 @@ dependencies = [
     "plotly>=6.2.0",
     "graphviz>=0.20.3",
     # Jupyter and interactive
-    "jupyterlab>=4.4.2",
+    "jupyterlab>=4.6.2",  # >=4.6.2: patches 2 HIGH XSS advisories (overrides.json settings + image viewer) affecting 4.6.0-4.6.1
     "ipython>=9.2.0",
     "ipywidgets>=8.1.5",
     "ipympl>=0.9.7",
