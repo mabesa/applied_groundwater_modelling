@@ -20,7 +20,7 @@ are in **grams per day**.  A released mass ``M`` [g] over a pulse ``T`` [d] give
 per-cell loading ``smassrate = M / (n_src_cells * T)`` [g/d].
 
 Diagnostics returned: breakthrough at the extraction well (mg/L), peak + arrival,
-a mass-balance table from the GWT listing budget (SRC in, well out, boundary out,
+a mass-balance table from the binary GWT budget (SRC in, well out, boundary out,
 storage, % imbalance), a solubility guardrail (emergent source-cell concentration
 vs a stated solubility), and the grid Peclet numbers Pe_L / Pe_T on the corridor.
 
@@ -741,8 +741,8 @@ def build_srcpulse_demo(
     solubility_ok = bool(emergent_C < solubility_mgL)
     sol_margin = float(solubility_mgL / emergent_C) if emergent_C > 0 else float("inf")
 
-    # ---- mass balance from the GWT listing budget ----
-    mb = _mass_balance(case_ws / "sim" / "gwt.lst")
+    # ---- mass balance from the binary GWT budget (gwt.cbc) ----
+    mb = _mass_balance(case_ws / "sim" / "gwt.cbc")
 
     # ---- grid Peclet on the corridor (uses the EFFECTIVE dispersivities) ----
     csz_corr = csz[corridor_mask]
@@ -791,116 +791,111 @@ def build_srcpulse_demo(
 # ---------------------------------------------------------------------------
 # mass balance from the GWT listing file
 # ---------------------------------------------------------------------------
-def _mass_balance(gwt_lst: Union[str, Path]) -> Dict[str, float]:
+_MB_NUMERIC_KEYS = (
+    "src_in_g", "well_out_g", "boundary_out_g", "storage_g", "decay_g",
+    "total_in_g", "total_out_g", "pct_imbalance", "grouped_residual_g",
+)
+# Budget-record substrings -> mass-balance group. Each GWT budget record name
+# (SRC, WEL, RIV, CHD, RCHA, STORAGE-AQUEOUS/-SORBED, DECAY-AQUEOUS/-SORBED) is
+# classified by the FIRST substring it contains. FLOW-JA-FACE / DATA-SPDIS are
+# internal/GWF and excluded.
+_MB_GROUPS = ("SRC", "WEL", "RIV", "CHD", "RCH", "STORAGE", "DECAY")
+
+
+def _mass_balance(gwt_cbc: Union[str, Path]) -> Dict[str, float]:
     """Cumulative GWT mass budget: SRC in, well out, boundary out, storage, decay, % imbalance.
 
-    Reads the final cumulative budget from the GWT listing via Mf6ListBudget.
-    Terms are grouped: source (SRC), extraction-well out (WEL), boundary out
-    (RIV + CHD + RCHA / GHB), storage (STORAGE-AQUEOUS always; STORAGE-SORBED
-    too when R > 1), decay (DECAY-AQUEOUS when lam > 0; DECAY-SORBED too when
-    R > 1 as well), and the reported percent discrepancy.  Column names were
-    verified against a real reactive (R>1) and a real decaying (lam>0) GWT
-    listing -- MF6 emits "STORAGE-SORBED" (not "STORAGE-SORBATE").  Units are
-    grams (model mg/L -> g/m^3, m/day).
+    Reads the BINARY GWT budget (``gwt.cbc``) and integrates each package's
+    per-timestep flow rate [g/d] over the run (rate x dt) to recover cumulative
+    mass [g]. Terms are grouped exactly as before: source (SRC), extraction-well
+    out (WEL), boundary out (RIV + CHD + RCHA), storage (STORAGE-AQUEOUS always;
+    STORAGE-SORBED too when R > 1), decay (DECAY-AQUEOUS when lam > 0; DECAY-SORBED
+    too when R > 1). Units are grams (model g/m^3, m/day).
 
-    ``pct_imbalance`` is MF6's own PERCENT_DISCREPANCY -- it reflects only
-    MF6's internal solve, not whether OUR substring grouping above actually
-    captured every budget column without missing or double-counting one.
-    ``grouped_residual_g`` is a separate self-check: it reconciles the sum of
-    our grouped _IN / _OUT terms against MF6's own TOTAL_IN / TOTAL_OUT and
-    should be ~0 g when the grouping is complete and non-overlapping.
+    Why the binary budget, not the text listing (``Mf6ListBudget`` on ``gwt.lst``):
+    at high pumping (2,160 m3/d) a cumulative boundary-mass term overflows the
+    listing's fixed-width Fortran field ("error casting in cumu for CHD to float"),
+    so the listing parse silently returns NaN for that term -> NaN pct_imbalance.
+    The binary budget stores float64 rates with no field-width limit, so it is
+    robust at any magnitude. Cumulative = sum_i(rate_i * dt_i) reproduces MF6's own
+    cumulative (rate is constant over each step).
+
+    ``pct_imbalance`` is the percent discrepancy of the integrated TOTAL_IN vs
+    TOTAL_OUT. ``grouped_residual_g`` is a self-check: the sum of the grouped
+    terms above reconciled against the all-records total; ~0 g iff the grouping
+    captured every budget record without missing or double-counting one.
     """
-    from flopy.utils import Mf6ListBudget
-    out: Dict[str, float] = {}
+    from flopy.utils import CellBudgetFile
     try:
-        # GWT listings use the MASS (not VOLUME) budget key.
-        lst = Mf6ListBudget(str(gwt_lst), budgetkey="MASS BUDGET FOR ENTIRE MODEL")
-        inc, cum = lst.get_dataframes()
-        row = cum.iloc[-1]
+        cbc = CellBudgetFile(str(gwt_cbc))
+        times = list(cbc.get_times())
+        raw_names = cbc.get_unique_record_names(decode=True)
+        names = [n.decode() if isinstance(n, bytes) else n for n in raw_names]
+        names = [n.strip() for n in names]
     except Exception as e:                       # keep the demo robust
-        # Return the expected NUMERIC keys as NaN alongside "error".  The
-        # notebook does `for k, v in res.mass_balance.items(): print(f"{v:14.4g}")`
-        # -- returning only {"error": ...} means that format spec crashes with
-        # "ValueError: Unknown format code 'g' for object of type 'str'",
-        # which hides the REAL MF6 parse error (this except's `e`) behind an
-        # unrelated formatting traceback.
-        return {
-            "error": repr(e),
-            "src_in_g": float("nan"), "well_out_g": float("nan"),
-            "boundary_out_g": float("nan"), "storage_g": float("nan"),
-            "decay_g": float("nan"), "total_in_g": float("nan"),
-            "total_out_g": float("nan"), "pct_imbalance": float("nan"),
-            "grouped_residual_g": float("nan"),
-        }
+        # Return the expected NUMERIC keys as NaN alongside "error" so the
+        # notebook's `f"{v:14.4g}"` over mass_balance.values() does not crash on a
+        # str and hide the REAL read error behind a formatting traceback.
+        return {"error": repr(e), **{k: float("nan") for k in _MB_NUMERIC_KEYS}}
 
-    def _grab(substr_in, substr_out=None):
-        _in = sum(float(row[c]) for c in row.index if substr_in in c.upper() and c.upper().endswith("_IN"))
-        key_out = substr_out if substr_out is not None else substr_in
-        _out = sum(float(row[c]) for c in row.index if key_out in c.upper() and c.upper().endswith("_OUT"))
-        return _in, _out
+    acc = {g: [0.0, 0.0] for g in _MB_GROUPS}    # group -> [cum_in_g, cum_out_g]
+    total_in_all = total_out_all = 0.0
+    t_prev = 0.0
+    for t in times:
+        dt = t - t_prev
+        t_prev = t
+        for name in names:
+            u = name.upper()
+            if "FLOW-JA-FACE" in u or "DATA-SPDIS" in u:
+                continue
+            try:
+                data = cbc.get_data(text=name, totim=t)
+            except Exception:
+                continue
+            if not data:
+                continue
+            arr = data[0]
+            if getattr(arr, "dtype", None) is not None and arr.dtype.names \
+                    and "q" in arr.dtype.names:
+                q = np.asarray(arr["q"], dtype=float)
+            else:
+                q = np.asarray(arr, dtype=float).ravel()
+            q_in = float(q[q > 0].sum()) * dt
+            q_out = float(-q[q < 0].sum()) * dt
+            total_in_all += q_in
+            total_out_all += q_out
+            grp = next((g for g in _MB_GROUPS if g in u), None)
+            if grp is not None:
+                acc[grp][0] += q_in
+                acc[grp][1] += q_out
 
-    src_in, src_out = _grab("SRC")
-    wel_in, wel_out = _grab("WEL")
-    riv_in, riv_out = _grab("RIV")
-    chd_in, chd_out = _grab("CHD")
-    rch_in, rch_out = _grab("RCH")
-    sto_in, sto_out = 0.0, 0.0
-    dcy_in, dcy_out = 0.0, 0.0
-    for c in row.index:
-        cu = c.upper()
-        # both storage flavours a reactive (sorbing) run emits -- STORAGE-AQUEOUS and
-        # STORAGE-SORBED -- share the "STORAGE" substring with the conservative-run
-        # "STORAGE" term, so this single branch already catches all of them (verified
-        # against a real R>1 gwt.lst).  (MF6 emits STORAGE-AQUEOUS/STORAGE-SORBED,
-        # never an "MST"-prefixed budget column, so that alternative is dead code.)
-        if "STORAGE" in cu:
-            if cu.endswith("_IN"):
-                sto_in += float(row[c])
-            elif cu.endswith("_OUT"):
-                sto_out += float(row[c])
-        # decay terms (DECAY / DECAY-AQUEOUS / DECAY-SORBED) only appear when
-        # first_order_decay=True on MST; net mass loss usually lands in _OUT.
-        if "DECAY" in cu:
-            if cu.endswith("_IN"):
-                dcy_in += float(row[c])
-            elif cu.endswith("_OUT"):
-                dcy_out += float(row[c])
+    src_in, src_out = acc["SRC"]
+    wel_in, wel_out = acc["WEL"]
+    riv_in, riv_out = acc["RIV"]
+    chd_in, chd_out = acc["CHD"]
+    rch_in, rch_out = acc["RCH"]
+    sto_in, sto_out = acc["STORAGE"]
+    dcy_in, dcy_out = acc["DECAY"]
 
-    total_in = float(row["TOTAL_IN"]) if "TOTAL_IN" in row.index else None
-    total_out = float(row["TOTAL_OUT"]) if "TOTAL_OUT" in row.index else None
-    if "PERCENT_DISCREPANCY" in row.index:
-        pct = float(row["PERCENT_DISCREPANCY"])
-    elif total_in is not None and total_out is not None and (total_in + total_out) != 0:
-        pct = 100.0 * (total_in - total_out) / (0.5 * (total_in + total_out))
-    else:
-        pct = float("nan")
+    denom = 0.5 * (total_in_all + total_out_all)
+    pct = 100.0 * (total_in_all - total_out_all) / denom if denom != 0 else float("nan")
 
-    # ---- self-check: reconcile OUR substring-grouped terms against MF6's own
-    # TOTAL_IN / TOTAL_OUT. pct_imbalance above is MF6's own PERCENT_DISCREPANCY --
-    # it says nothing about whether the grouping just above (SRC/WEL/RIV/CHD/RCH,
-    # "STORAGE" in cu, "DECAY" in cu) missed or double-counted a budget column.
-    # If it did, the sum of our grouped _IN terms will drift from MF6's TOTAL_IN
-    # (and likewise for _OUT), even while pct_imbalance stays ~0%.
-    grouped_total_in = src_in + wel_in + riv_in + chd_in + rch_in + sto_in + dcy_in
-    grouped_total_out = src_out + wel_out + riv_out + chd_out + rch_out + sto_out + dcy_out
-    if total_in is not None and total_out is not None:
-        grouped_residual_g = float(abs(grouped_total_in - total_in)
-                                    + abs(grouped_total_out - total_out))
-    else:
-        grouped_residual_g = float("nan")
+    grouped_in = src_in + wel_in + riv_in + chd_in + rch_in + sto_in + dcy_in
+    grouped_out = src_out + wel_out + riv_out + chd_out + rch_out + sto_out + dcy_out
+    grouped_residual_g = float(abs(grouped_in - total_in_all)
+                               + abs(grouped_out - total_out_all))
 
-    out.update(
-        src_in_g=src_in,
-        well_out_g=wel_out,
-        boundary_out_g=riv_out + chd_out + rch_out,
-        storage_g=sto_out - sto_in,           # net into storage (accumulation) [g]
-        decay_g=dcy_out - dcy_in,             # net mass removed by decay [g] (0 if no decay)
-        total_in_g=total_in if total_in is not None else float("nan"),
-        total_out_g=total_out if total_out is not None else float("nan"),
-        pct_imbalance=pct,
-        grouped_residual_g=grouped_residual_g,
-    )
-    return out
+    return {
+        "src_in_g": src_in,
+        "well_out_g": wel_out,
+        "boundary_out_g": riv_out + chd_out + rch_out,
+        "storage_g": sto_out - sto_in,        # net into storage (accumulation) [g]
+        "decay_g": dcy_out - dcy_in,          # net mass removed by decay [g] (0 if no decay)
+        "total_in_g": total_in_all,
+        "total_out_g": total_out_all,
+        "pct_imbalance": pct,
+        "grouped_residual_g": grouped_residual_g,
+    }
 
 
 # ---------------------------------------------------------------------------

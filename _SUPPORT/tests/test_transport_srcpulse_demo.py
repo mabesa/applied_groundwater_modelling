@@ -666,7 +666,7 @@ def test_public_builders_compose_to_build_srcpulse_demo(tmp_path):
         np.array([cobj.get_data(totim=t)[0, 0, grid["ext_cell"]] for t in times]), 0.0)
     peak = float(bt.max())
     arrival = float(times[int(np.argmax(bt))])
-    mb = tsd._mass_balance(comp_ws / "sim" / "gwt.lst")
+    mb = tsd._mass_balance(comp_ws / "sim" / "gwt.cbc")
 
     assert peak == pytest.approx(reference.peak_mgL, rel=1e-9), (
         f"composed peak {peak} != build_srcpulse_demo peak {reference.peak_mgL}")
