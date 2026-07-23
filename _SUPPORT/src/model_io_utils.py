@@ -863,11 +863,24 @@ def load_base_simulation(
 FLOW_MODEL_MIN_VERSION = 2
 _FLOW_MANIFEST_NAME = "MANIFEST_flow.json"
 
+# Total municipal (negative-Q) WEL pumping [m³/d] the CURRENT course flow model
+# carries: 1,500 L/min at 50% utilisation. The 25%-utilisation predecessor was
+# -1,080. stamp_flow_manifest() refuses to bless a workspace whose pumping is far
+# from this, so a calibration built on a stale (1,080) notebook4_model cannot be
+# laundered into a "current" archive_version.
+EXPECTED_PUMPING_M3D = 2160.0
+_PUMPING_TOL = 0.05  # fractional tolerance on the expected pumping
+
 # Physics-defining MF6 input files: NPF (K), WEL (pumping), DISV (geometry),
-# RIV/CHD/RCHA (boundaries), IC (initial). Excludes solver (IMS), output control
-# (OC), TDIS, NAM, and all run outputs (.hds/.cbc/.grb/.lst) — so the fingerprint
-# changes iff the *modeled flow field* changes, not merely on a re-run.
-_FLOW_FINGERPRINT_EXTS: Tuple[str, ...] = (".npf", ".wel", ".disv", ".riv", ".chd", ".rcha", ".ic")
+# RIV/CHD/RCHA (boundaries), IC (initial). Also ".txt" — flopy writes OPEN/CLOSE
+# external arrays (e.g. a calibrated K field as ``<model>.npf_k.txt``) with that
+# extension, so an externalised array still moves the fingerprint. Excludes solver
+# (IMS), output control (OC), TDIS, NAM, and all run outputs (.hds/.cbc/.grb/.lst)
+# — so the fingerprint changes iff the *modeled flow field* changes, not on a re-run.
+# NOTE: assumes physics arrays are INTERNAL or externalised to ``.txt``; a model
+# that externalises to some other extension would need it added here.
+_FLOW_FINGERPRINT_EXTS: Tuple[str, ...] = (
+    ".npf", ".wel", ".disv", ".riv", ".chd", ".rcha", ".ic", ".txt")
 
 
 def flow_model_fingerprint(sim_ws: Union[str, Path]) -> str:
@@ -937,9 +950,30 @@ def stamp_flow_manifest(sim_ws: Union[str, Path]) -> Dict[str, Any]:
     Call this at the end of the 05f calibration (after the model is written/run) so
     a legitimate LOCAL 05f output is marked current and :func:`ensure_flow_model`
     does not mistake it for a stale download and clobber it. Returns the manifest.
+
+    Stamping *blesses* a workspace as the current archive version, so it first
+    validates that the workspace actually carries the current pumping
+    (:data:`EXPECTED_PUMPING_M3D`). Otherwise a calibration built on a stale
+    ``notebook4_model`` (e.g. the old 1,080 m³/d model, if a student ignored the
+    ``ensure_notebook4_model_exists`` warning) would be laundered into a
+    version-current manifest and then served forever by :func:`ensure_flow_model`.
+
+    Raises
+    ------
+    ValueError
+        If the workspace pumping is more than :data:`_PUMPING_TOL` off the expected
+        current value — the upstream 04f model is stale; re-run it, then recalibrate.
     """
     ws = Path(sim_ws)
     manifest = build_flow_manifest(ws)
+    pumping = abs(float(manifest["pumping_m3d"]))
+    if abs(pumping - EXPECTED_PUMPING_M3D) / EXPECTED_PUMPING_M3D > _PUMPING_TOL:
+        raise ValueError(
+            f"Refusing to stamp {ws} as current: total pumping is {pumping:.0f} m³/d, "
+            f"but the current course model is ~{EXPECTED_PUMPING_M3D:.0f} m³/d. This "
+            "calibration was built from an out-of-date notebook4_model — re-run "
+            "04f_model_implementation.ipynb, then re-run the calibration."
+        )
     (ws / _FLOW_MANIFEST_NAME).write_text(json.dumps(manifest, indent=2))
     return manifest
 

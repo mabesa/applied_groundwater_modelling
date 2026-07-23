@@ -152,20 +152,25 @@ def ensure_calibration_workspace(data_dir: str) -> str:
         _download_calibration_bundle(data_dir)
         did_download = True
     else:
+        # A manifest-less local bundle predates versioning (so it carries the OLD
+        # flow field / obs weighting) — treat it as version 0 and refresh it just
+        # like a version-stale one, so old installs self-heal instead of dead-ending
+        # on the "MANIFEST.json missing" error and forcing a manual delete.
         manifest = _read_calibration_manifest(pest_ws)
-        if manifest is not None:
-            bundle_version = int(manifest.get("bundle_version", 0))
-            if bundle_version < CALIBRATION_BUNDLE_MIN_VERSION:
-                print(
-                    "Local calibration is schema-stale "
-                    f"(bundle_version={bundle_version} < min={CALIBRATION_BUNDLE_MIN_VERSION}); refreshing."
-                )
-                stale_ws = os.path.join(data_dir, "calibration", "pest_setup.stale")
-                if os.path.exists(stale_ws):
-                    shutil.rmtree(stale_ws)
-                shutil.move(pest_ws, stale_ws)
-                _download_calibration_bundle(data_dir)
-                did_download = True
+        bundle_version = int(manifest.get("bundle_version", 0)) if manifest else 0
+        if bundle_version < CALIBRATION_BUNDLE_MIN_VERSION:
+            reason = (
+                "has no manifest (pre-versioning bundle)" if manifest is None
+                else f"is schema-stale (bundle_version={bundle_version} "
+                     f"< min={CALIBRATION_BUNDLE_MIN_VERSION})"
+            )
+            print(f"Local calibration {reason}; refreshing.")
+            stale_ws = os.path.join(data_dir, "calibration", "pest_setup.stale")
+            if os.path.exists(stale_ws):
+                shutil.rmtree(stale_ws)
+            shutil.move(pest_ws, stale_ws)
+            _download_calibration_bundle(data_dir)
+            did_download = True
 
     _validate_calibration_bundle(pest_ws)
     manifest = _read_calibration_manifest(pest_ws)
@@ -235,13 +240,10 @@ def ensure_notebook4_model_exists(data_dir: str) -> str:
     return nb4_workspace
 
 
-# Total municipal pumping [m³/d] the current course 04f produces (1,500 L/min,
-# 50% utilisation). A notebook4_model whose WEL sum is far from this was built by
-# an out-of-date 04f and must be rebuilt before it feeds 05f-08f.
-EXPECTED_NB4_PUMPING_M3D = 2160.0
-
-
 def _warn_if_stale_pumping(nb4_workspace: str) -> None:
+    # EXPECTED_PUMPING_M3D / the tolerance live in model_io_utils as the single
+    # source of truth (stamp_flow_manifest enforces the same value), so the warning
+    # here and the hard stamp-time guard can never drift apart.
     try:
         sys.path.insert(
             0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -249,15 +251,17 @@ def _warn_if_stale_pumping(nb4_workspace: str) -> None:
         import model_io_utils as _mio
 
         pumping = abs(_mio.flow_model_pumping_m3d(nb4_workspace))
+        expected = _mio.EXPECTED_PUMPING_M3D
+        tol = _mio._PUMPING_TOL
     except Exception:
         return  # no WEL / unreadable -> nothing to compare against
     if pumping <= 1.0:
         return
-    if abs(pumping - EXPECTED_NB4_PUMPING_M3D) / EXPECTED_NB4_PUMPING_M3D > 0.05:
+    if abs(pumping - expected) / expected > tol:
         warnings.warn(
             f"`notebook4_model` total pumping is {pumping:.0f} m³/d, but the current "
-            f"course model expects ~{EXPECTED_NB4_PUMPING_M3D:.0f} m³/d (1,500 L/min, "
-            "50% utilisation). This workspace was most likely built by an older "
+            f"course model expects ~{expected:.0f} m³/d (1,500 L/min, 50% "
+            "utilisation). This workspace was most likely built by an older "
             "04f_model_implementation.ipynb — re-run 04f to rebuild it before "
             "continuing, or downstream heads and particle paths will not match the "
             "calibrated model.",

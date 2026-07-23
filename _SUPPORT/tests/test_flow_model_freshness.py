@@ -16,9 +16,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import model_io_utils as mio  # noqa: E402
 
 
-def _tiny_model(ws):
-    """Write a minimal loadable MF6/DISV workspace (2 cells, 2 pumping wells)."""
+def _tiny_model(ws, pumping=None):
+    """Write a minimal loadable MF6/DISV workspace (2 cells, 2 pumping wells).
+
+    ``pumping`` is the TOTAL negative-Q rate; defaults to the current course value
+    (EXPECTED_PUMPING_M3D) split over the two wells so stamp_flow_manifest accepts it.
+    """
     flopy = pytest.importorskip("flopy")
+    if pumping is None:
+        pumping = mio.EXPECTED_PUMPING_M3D
+    half = abs(pumping) / 2.0
     sim = flopy.mf6.MFSimulation(sim_name="t", sim_ws=str(ws))
     flopy.mf6.ModflowTdis(sim, nper=1, perioddata=[(1.0, 1, 1.0)])
     flopy.mf6.ModflowIms(sim)
@@ -30,7 +37,7 @@ def _tiny_model(ws):
                              vertices=vertices, cell2d=cell2d)
     flopy.mf6.ModflowGwfic(gwf, strt=10.0)
     flopy.mf6.ModflowGwfnpf(gwf, k=10.0)
-    flopy.mf6.ModflowGwfwel(gwf, stress_period_data=[[(0, 0), -540.0], [(0, 1), -540.0]])
+    flopy.mf6.ModflowGwfwel(gwf, stress_period_data=[[(0, 0), -half], [(0, 1), -half]])
     sim.write_simulation(silent=True)
 
 
@@ -40,8 +47,18 @@ def test_stamp_writes_current_manifest(tmp_path):
     assert mio._flow_manifest_version(ws) == 0            # unstamped
     m = mio.stamp_flow_manifest(ws)
     assert m["archive_version"] == mio.FLOW_MODEL_MIN_VERSION
-    assert m["pumping_m3d"] == pytest.approx(-1080.0)
+    assert m["pumping_m3d"] == pytest.approx(-mio.EXPECTED_PUMPING_M3D)
     assert mio._flow_manifest_version(ws) == mio.FLOW_MODEL_MIN_VERSION
+
+
+def test_stamp_refuses_stale_pumping(tmp_path):
+    """A calibration built on the OLD 1,080 m³/d model must NOT be blessed as
+    current — otherwise ensure_flow_model would serve it forever."""
+    ws = tmp_path / "cal"; ws.mkdir()
+    _tiny_model(ws, pumping=1080.0)
+    with pytest.raises(ValueError, match="Refusing to stamp"):
+        mio.stamp_flow_manifest(ws)
+    assert mio._flow_manifest_version(ws) == 0            # left unstamped
 
 
 def test_fresh_workspace_used_without_download(tmp_path, monkeypatch):

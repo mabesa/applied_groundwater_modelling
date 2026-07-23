@@ -55,6 +55,19 @@ def test_fingerprint_ignores_non_defining_files(tmp_path):
     assert mio.flow_model_fingerprint(ws) == fp0
 
 
+def test_fingerprint_tracks_external_txt_arrays(tmp_path):
+    """A K field externalised via OPEN/CLOSE to ``<model>.npf_k.txt`` must move the
+    fingerprint — flopy writes external arrays with a .txt extension, so a
+    recalibrated external K field cannot escape the fingerprint (and the caches)."""
+    ws = tmp_path / "m"; ws.mkdir()
+    _write(ws, "limmat_valley.npf", b"OPEN/CLOSE limmat_valley.npf_k.txt")
+    _write(ws, "limmat_valley.disv", b"grid data")
+    _write(ws, "limmat_valley.npf_k.txt", b"100 100 100")
+    fp0 = mio.flow_model_fingerprint(ws)
+    _write(ws, "limmat_valley.npf_k.txt", b"350 350 350")  # recalibrated K field
+    assert mio.flow_model_fingerprint(ws) != fp0
+
+
 def test_fingerprint_requires_inputs(tmp_path):
     empty = tmp_path / "empty"; empty.mkdir()
     with pytest.raises(FileNotFoundError):

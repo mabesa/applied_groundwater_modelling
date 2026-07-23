@@ -269,6 +269,25 @@ def test_ensure_calibration_workspace_refreshes_stale_version(tmp_path, monkeypa
     assert manifest["bundle_version"] == 1
 
 
+def test_ensure_calibration_workspace_refreshes_missing_manifest(tmp_path, monkeypatch):
+    """A pre-versioning local bundle (no MANIFEST.json) carries the OLD flow field,
+    so it must self-heal via re-download instead of dead-ending on the
+    missing-manifest error and forcing a manual delete."""
+    data_dir = tmp_path / "data"
+    current = data_dir / "calibration" / "pest_setup"
+    _write_stub_pest_setup(current, include_manifest=False)   # old install, no manifest
+    zip_path = _write_bundle_zip(tmp_path / "bundle.zip")     # current-version bundle
+    calls = []
+    _patch_calibration_download(monkeypatch, zip_path, calls)
+
+    pest_ws = ensure_calibration_workspace(str(data_dir))
+
+    assert len(calls) == 1                                    # it re-downloaded
+    assert (data_dir / "calibration" / "pest_setup.stale").is_dir()
+    manifest = json.loads((Path(pest_ws) / "MANIFEST.json").read_text())
+    assert manifest["bundle_version"] >= CALIBRATION_BUNDLE_MIN_VERSION
+
+
 def test_ensure_calibration_workspace_fails_hard_on_version_skew(tmp_path, monkeypatch):
     """A downloaded bundle still below the code minimum must fail hard, not be
     silently accepted — otherwise students calibrate against the OLD flow field
@@ -305,15 +324,28 @@ def test_ensure_calibration_workspace_keeps_single_stale_snapshot(tmp_path, monk
     assert len(list(calibration_dir.glob("pest_setup.stale*"))) == 1
 
 
-def test_ensure_calibration_workspace_missing_manifest_message(tmp_path):
+def test_ensure_calibration_workspace_missing_manifest_triggers_refresh(tmp_path, monkeypatch):
+    """A manifest-less local bundle no longer dead-ends on the MANIFEST-missing
+    error: it takes the refresh path (re-download). Here the download is
+    unavailable, so we assert the refresh was ATTEMPTED rather than the old
+    hard stop."""
     data_dir = tmp_path / "data"
     _write_stub_pest_setup(
         data_dir / "calibration" / "pest_setup",
         include_manifest=False,
     )
 
-    with pytest.raises(FileNotFoundError, match="`MANIFEST.json` missing from bundle"):
+    called = {"n": 0}
+
+    def _boom(dd):
+        called["n"] += 1
+        raise RuntimeError("download unavailable in test")
+
+    monkeypatch.setattr("setup_pest_calibration._download_calibration_bundle", _boom)
+
+    with pytest.raises(RuntimeError, match="download unavailable in test"):
         ensure_calibration_workspace(str(data_dir))
+    assert called["n"] == 1  # refresh attempted, not the MANIFEST-missing dead-end
 
 
 # =============================================================================
