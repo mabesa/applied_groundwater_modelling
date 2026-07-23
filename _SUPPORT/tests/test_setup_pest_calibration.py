@@ -200,6 +200,44 @@ def test_ensure_notebook4_model_exists_valid_missing_and_truncated(tmp_path):
         ensure_notebook4_model_exists(str(data_dir))
 
 
+def _write_nb4_model_with_pumping(workspace, q_total):
+    """Valid MF6/DISV workspace with a single WEL entry of total pumping q_total."""
+    import flopy
+
+    workspace = Path(workspace)
+    workspace.mkdir(parents=True, exist_ok=True)
+    sim = flopy.mf6.MFSimulation(sim_name="t", sim_ws=str(workspace), exe_name="mf6")
+    flopy.mf6.ModflowTdis(sim)
+    gwf = flopy.mf6.ModflowGwf(sim, modelname="limmat_valley")
+    sim.register_ims_package(flopy.mf6.ModflowIms(sim), [gwf.name])
+    flopy.mf6.ModflowGwfdisv(
+        gwf, nlay=1, ncpl=1, nvert=4,
+        vertices=[(0, 0.0, 0.0), (1, 1.0, 0.0), (2, 1.0, 1.0), (3, 0.0, 1.0)],
+        cell2d=[(0, 0.5, 0.5, 4, 0, 1, 2, 3)], top=[1.0], botm=[[0.0]],
+    )
+    flopy.mf6.ModflowGwfwel(gwf, stress_period_data=[[(0, 0), -abs(q_total)]])
+    sim.write_simulation(silent=True)
+    return workspace
+
+
+def test_ensure_notebook4_model_warns_on_stale_pumping(tmp_path, recwarn):
+    """An nb4 workspace built by the OLD 04f (1,080 m³/d) is flagged; the current
+    2,160 m³/d model is silent."""
+    pytest.importorskip("flopy")
+    data_dir = tmp_path / "data"
+
+    _write_nb4_model_with_pumping(data_dir / "notebook4_model", 1080.0)
+    ensure_notebook4_model_exists(str(data_dir))
+    stale = [w for w in recwarn.list if "total pumping is 1080" in str(w.message)]
+    assert stale, "expected a stale-pumping warning for the 1,080 m³/d model"
+
+    recwarn.clear()
+    shutil.rmtree(data_dir / "notebook4_model")
+    _write_nb4_model_with_pumping(data_dir / "notebook4_model", 2160.0)
+    ensure_notebook4_model_exists(str(data_dir))
+    assert not [w for w in recwarn.list if "total pumping" in str(w.message)]
+
+
 def test_ensure_calibration_workspace_downloads_complete_bundle(tmp_path, monkeypatch):
     data_dir = tmp_path / "data"
     zip_path = _write_bundle_zip(tmp_path / "bundle.zip")
@@ -231,20 +269,19 @@ def test_ensure_calibration_workspace_refreshes_stale_version(tmp_path, monkeypa
     assert manifest["bundle_version"] == 1
 
 
-def test_ensure_calibration_workspace_warns_and_accepts_version_skew(tmp_path, monkeypatch, recwarn):
+def test_ensure_calibration_workspace_fails_hard_on_version_skew(tmp_path, monkeypatch):
+    """A downloaded bundle still below the code minimum must fail hard, not be
+    silently accepted — otherwise students calibrate against the OLD flow field
+    after the 1,080->2,160 m³/d recalibration."""
     data_dir = tmp_path / "data"
     zip_path = _write_bundle_zip(tmp_path / "bundle.zip", bundle_version=1)
     calls = []
     _patch_calibration_download(monkeypatch, zip_path, calls)
     monkeypatch.setattr("setup_pest_calibration.CALIBRATION_BUNDLE_MIN_VERSION", 2)
 
-    pest_ws = ensure_calibration_workspace(str(data_dir))
-
-    warning = recwarn.pop(UserWarning)
-    assert "Downloaded bundle version 1 is below code minimum 2" in str(warning.message)
+    with pytest.raises(RuntimeError, match="stale.*bundle_version=1 < required 2"):
+        ensure_calibration_workspace(str(data_dir))
     assert len(calls) == 1
-    manifest = json.loads((Path(pest_ws) / "MANIFEST.json").read_text())
-    assert manifest["bundle_version"] == 1
 
 
 def test_ensure_calibration_workspace_keeps_single_stale_snapshot(tmp_path, monkeypatch):

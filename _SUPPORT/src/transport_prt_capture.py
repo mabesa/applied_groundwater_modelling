@@ -387,6 +387,19 @@ def _src_sha() -> str:
     return h.hexdigest()[:16]
 
 
+def _flow_fp() -> str:
+    """Fingerprint of the CALIBRATED flow field this capture builds on.
+
+    ``_src_sha`` covers the SOURCE that builds the model; this covers the DATA — the
+    downloaded calibrated flow field itself. The 1,080->2,160 m³/d recalibration
+    changed that field without changing a byte of source, so without this a warm
+    cache would silently mask the new flow. See
+    ``model_io_utils.calibrated_flow_fingerprint``.
+    """
+    import model_io_utils as _mio
+    return _mio.calibrated_flow_fingerprint()
+
+
 # ---------------------------------------------------------------------------
 # the flow field (steady GWF + doublet), built once per distinct FLOW identity
 # ---------------------------------------------------------------------------
@@ -403,7 +416,8 @@ def _flow_params(track_days: float, refine_radii: Sequence[float]) -> Dict[str, 
     return dict(track_days=float(track_days),
                 refine_radii=list(map(float, refine_radii)),
                 locked=dict(LOCKED_PARAMS),
-                src_sha=_src_sha())
+                src_sha=_src_sha(),
+                flow_fp=_flow_fp())
 
 
 def _build_flow(case_ws: Path, track_days: float,
@@ -971,6 +985,10 @@ def build_prt_capture(
         # while the model changed underneath it.  This repo has already shipped that
         # bug once.
         src_sha=_src_sha(),
+        # A fingerprint of the calibrated flow DATA (not its source) -- the
+        # 1,080->2,160 m³/d recalibration changed the downloaded flow field without
+        # touching src_sha, so this is what actually busts the cache on that change.
+        flow_fp=_flow_fp(),
     )
     cache_hash = hashlib.sha1(
         json.dumps(params, sort_keys=True).encode("utf-8")).hexdigest()[:16]

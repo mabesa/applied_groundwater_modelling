@@ -965,7 +965,8 @@ def ensure_flow_model(sim_path: Optional[Union[str, Path]] = None) -> Path:
     MODFLOW 6 / DISV flow model produced by the flow track's
     ``05f_calibration.ipynb``. It has the same DISV grid and wells as the base
     ``notebook4_model`` but with the *calibrated* hydraulic-conductivity field
-    (mean K ~ 361 m/d). The model name inside the simulation is ``limmat_valley``.
+    (mean K ~ 375 m/d, 2,160 m³/d pumping). The model name inside the simulation is
+    ``limmat_valley``.
     The transport track builds on this calibrated field.
 
     Resolution order:
@@ -1063,6 +1064,19 @@ def ensure_flow_model(sim_path: Optional[Union[str, Path]] = None) -> Path:
             "package_flow_model.py and update the 'flow_model_mf6' url in config.py."
         )
     return sim_path
+
+
+def calibrated_flow_fingerprint(sim_path: Optional[Union[str, Path]] = None) -> str:
+    """Fingerprint of the calibrated flow field the transport track builds on.
+
+    Resolves (and, if necessary, freshness-refetches) the calibrated workspace via
+    :func:`ensure_flow_model`, then returns its :func:`flow_model_fingerprint`. Fold
+    this into ANY flow-derived cache key (PRT capture, srcpulse ADE, doublet base)
+    so a recalibration — e.g. the 1,080->2,160 m³/d pumping change, which alters the
+    downloaded model but not a byte of source — invalidates every warm cache instead
+    of silently masking the new flow field behind a stale one.
+    """
+    return flow_model_fingerprint(ensure_flow_model(sim_path))
 
 
 # Additional utility functions that may be useful

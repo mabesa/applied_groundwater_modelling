@@ -61,6 +61,18 @@ def test_fingerprint_requires_inputs(tmp_path):
         mio.flow_model_fingerprint(empty)
 
 
+def test_calibrated_flow_fingerprint_delegates(tmp_path, monkeypatch):
+    """calibrated_flow_fingerprint() resolves the workspace via ensure_flow_model
+    and returns its flow_model_fingerprint — the value folded into every
+    flow-derived transport cache key so a recalibration busts warm caches."""
+    ws = tmp_path / "cal"; ws.mkdir()
+    _write(ws, "limmat_valley.npf", b"k data")
+    _write(ws, "limmat_valley.wel", b"wel data")
+    _write(ws, "limmat_valley.disv", b"grid data")
+    monkeypatch.setattr(mio, "ensure_flow_model", lambda p=None: ws)
+    assert mio.calibrated_flow_fingerprint() == mio.flow_model_fingerprint(ws)
+
+
 def test_pumping_helper(tmp_path):
     """flow_model_pumping_m3d sums the negative-Q WEL entries of a real MF6 model."""
     flopy = pytest.importorskip("flopy")

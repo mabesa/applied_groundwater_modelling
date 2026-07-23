@@ -658,7 +658,12 @@ def build_srcpulse_demo(
                   # is in the fingerprint because it BUILDS the refined grid
                   # (mio.build_refined_gwf_model): an edit to grid generation
                   # changes this model just as surely as an edit here does.
-                  src_sha=_src_sha())
+                  src_sha=_src_sha(),
+                  # A fingerprint of the calibrated flow DATA itself (not its
+                  # source): the 1,080->2,160 m³/d recalibration changed the
+                  # downloaded flow field without touching src_sha, so this is what
+                  # busts the warm cache on that change.
+                  flow_fp=mio.calibrated_flow_fingerprint())
     cache_hash = hashlib.sha1(
         json.dumps(params, sort_keys=True).encode("utf-8")).hexdigest()[:16]
     cache = case_ws / f"srcpulse_cache_{cache_hash}.npz"

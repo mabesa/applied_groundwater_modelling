@@ -181,22 +181,23 @@ def ensure_calibration_workspace(data_dir: str) -> str:
         print(f"Calibration found (bundle_version={bundle_version}).")
         return pest_ws
 
+    # bundle_version < min. Fail hard rather than silently calibrate against a
+    # stale interface: after the 1,080->2,160 m³/d recalibration a below-min
+    # bundle carries the OLD flow field / obs weighting, so its outputs would be
+    # inconsistent with 04f. A warning here would be ignored; enforcement is the
+    # only mechanism that guarantees students get the current model.
     if did_download:
-        message = (
-            f"Downloaded bundle version {bundle_version} is below code minimum "
-            f"{CALIBRATION_BUNDLE_MIN_VERSION} — Dropbox bundle has not yet "
-            "been refreshed after a schema bump. Proceeding with the older "
-            "bundle; outputs may not match current code paths. Re-run after "
-            "the bundle URL is updated."
+        raise RuntimeError(
+            f"Downloaded calibration bundle is stale: bundle_version="
+            f"{bundle_version} < required {CALIBRATION_BUNDLE_MIN_VERSION}. The "
+            "Dropbox bundle has not yet been refreshed after a schema bump — "
+            "contact the instructor; do not proceed with the older bundle."
         )
-        warnings.warn(message, UserWarning)
-        print(message)
-        return pest_ws
-
-    raise FileNotFoundError(
-        "`MANIFEST.json` missing from bundle. The bundle was likely produced "
-        "before v3 or by an out-of-date `package_calibration.py`. Re-run "
-        "packaging from a clean NB5 workspace, or contact the instructor."
+    raise RuntimeError(
+        f"Local calibration bundle is stale: bundle_version={bundle_version} < "
+        f"required {CALIBRATION_BUNDLE_MIN_VERSION}, and a fresh copy could not be "
+        f"obtained. Delete '{pest_ws}' and re-run to force a re-download, or "
+        "contact the instructor."
     )
 
 
@@ -223,7 +224,45 @@ def ensure_notebook4_model_exists(data_dir: str) -> str:
             "MODFLOW 6 model — it is a hard prerequisite. "
             f"(Underlying error: `{exc}`)"
         ) from exc
+
+    # Freshness guard: notebook4_model is the STUDENT's 04f output, not a shipped
+    # download, so the manifest-version enforcement used for the calibration
+    # workspace does not apply here. After the 1,080->2,160 m³/d recalibration a
+    # workspace left over from an OLD 04f run would silently feed the wrong
+    # pumping into 05f-08f. We cannot rebuild it (it is their notebook output),
+    # but we can flag the mismatch loudly and point them back to 04f.
+    _warn_if_stale_pumping(nb4_workspace)
     return nb4_workspace
+
+
+# Total municipal pumping [m³/d] the current course 04f produces (1,500 L/min,
+# 50% utilisation). A notebook4_model whose WEL sum is far from this was built by
+# an out-of-date 04f and must be rebuilt before it feeds 05f-08f.
+EXPECTED_NB4_PUMPING_M3D = 2160.0
+
+
+def _warn_if_stale_pumping(nb4_workspace: str) -> None:
+    try:
+        sys.path.insert(
+            0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        )
+        import model_io_utils as _mio
+
+        pumping = abs(_mio.flow_model_pumping_m3d(nb4_workspace))
+    except Exception:
+        return  # no WEL / unreadable -> nothing to compare against
+    if pumping <= 1.0:
+        return
+    if abs(pumping - EXPECTED_NB4_PUMPING_M3D) / EXPECTED_NB4_PUMPING_M3D > 0.05:
+        warnings.warn(
+            f"`notebook4_model` total pumping is {pumping:.0f} m³/d, but the current "
+            f"course model expects ~{EXPECTED_NB4_PUMPING_M3D:.0f} m³/d (1,500 L/min, "
+            "50% utilisation). This workspace was most likely built by an older "
+            "04f_model_implementation.ipynb — re-run 04f to rebuild it before "
+            "continuing, or downstream heads and particle paths will not match the "
+            "calibrated model.",
+            UserWarning,
+        )
 
 
 def _write_k_tpl(tpl_path, n_pilot_points, k_array_file="hk_layer1.dat"):
