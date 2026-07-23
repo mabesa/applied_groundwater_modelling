@@ -32,8 +32,8 @@ SOLUBILITY_MGL = 1000.0
 # reactive-transport variant parameters (M4 step 1)
 # ---------------------------------------------------------------------------
 REACTIVE_R = 2.0
-REACTIVE_TOTAL_DAYS = 220.0    # conservative arrival ~41.25 d; R=2 pushes arrival to
-                                # ~59.1 d (~1.4x, not a doubling) plus dispersive
+REACTIVE_TOTAL_DAYS = 220.0    # conservative arrival ~38.8 d; R=2 pushes arrival to
+                                # ~54.5 d (~1.4x, not a doubling) plus dispersive
                                 # tailing -- give it plenty of headroom
 DISPERSIVITY_ALPHA_L = 20.0    # vs. the LOCKED default of 10.0 m
 DECAY_HALFLIFE_DAYS = 30.0
@@ -163,10 +163,11 @@ def test_default_unchanged(demo):
     optional reactive-transport / dispersivity kwargs (all default to today's
     behavior).
 
-    FR.2 re-pin (canonical HUB numbers, post FR.1 RIV-transfer fix):
-    peak 5.11 mg/L @ arrival 41.25 d (was 4.95 mg/L @ 41.0 d pre-fix)."""
-    assert demo.peak_mgL == pytest.approx(5.11, rel=0.08)
-    assert demo.arrival_day == pytest.approx(41.25, abs=5.0)
+    Phase-4 re-pin (canonical HUB numbers, 2,160 m³/d / 50%-utilisation pumping):
+    peak 5.28 mg/L @ arrival 38.8 d (was 5.11 @ 41.25 at 1,080 m³/d; stronger
+    regional throughflow raises the peak and speeds arrival)."""
+    assert demo.peak_mgL == pytest.approx(5.28, rel=0.08)
+    assert demo.arrival_day == pytest.approx(38.8, abs=5.0)
     assert demo.alpha_L == pytest.approx(tsd.LOCKED_PARAMS["alh"])
     assert demo.alpha_T == pytest.approx(tsd.LOCKED_PARAMS["ath1"])
     assert demo.R == pytest.approx(1.0)
@@ -224,12 +225,12 @@ def test_reactive_is_later_and_lower(demo, reactive_demo):
     assert 0.0 < reactive_demo.arrival_day <= reactive_demo.total_days
     assert reactive_demo.peak_mgL < demo.peak_mgL
     assert reactive_demo.arrival_day > demo.arrival_day
-    # FR.2 re-pin (verified numbers, canonical HUB): R=2.0, total_days=220 ->
-    # peak 3.16 mg/L @ day 59.1 (was 2.987 mg/L @ 61.46 d pre-FR.1-fix). Pins
-    # the MAGNITUDE, not just the direction, so a regression in the peak/arrival
+    # Phase-4 re-pin (canonical HUB, 2,160 m³/d): R=2.0, total_days=220 ->
+    # peak 3.39 mg/L @ day 54.5 (was 3.16 @ 59.1 at 1,080 m³/d). Pins the
+    # MAGNITUDE, not just the direction, so a regression in the peak/arrival
     # value (not just its sign relative to the conservative run) is caught.
-    assert reactive_demo.peak_mgL == pytest.approx(3.16, rel=0.08)
-    assert reactive_demo.arrival_day == pytest.approx(59.1, abs=5.0)
+    assert reactive_demo.peak_mgL == pytest.approx(3.39, rel=0.08)
+    assert reactive_demo.arrival_day == pytest.approx(54.5, abs=5.0)
     # mass balance still closes for the reactive (sorbing) run
     pct = reactive_demo.mass_balance.get("pct_imbalance")
     assert pct is not None and np.isfinite(pct) and abs(pct) < 1.0
@@ -332,11 +333,11 @@ def test_decay_lowers_peak_but_does_not_retard(demo, decay_demo):
         f"conservative arrival ({demo.arrival_day:.2f} d) by more than one output "
         f"step ({dt_out:.2f} d) -- decay should not retard the plume, only R does.")
 
-    # Magnitude locks (regression pins, not just direction). FR.2 re-pin
-    # (canonical HUB numbers): 2.95 mg/L @ 38.75 d (was 2.80 mg/L @ 40.0 d
-    # pre-FR.1-fix).
-    assert decay_demo.peak_mgL == pytest.approx(2.95, rel=0.08)
-    assert decay_demo.arrival_day == pytest.approx(38.75, abs=5.0)
+    # Magnitude locks (regression pins, not just direction). Phase-4 re-pin
+    # (canonical HUB, 2,160 m³/d): 3.20 mg/L @ 36.85 d (was 2.95 @ 38.75 at
+    # 1,080 m³/d).
+    assert decay_demo.peak_mgL == pytest.approx(3.20, rel=0.08)
+    assert decay_demo.arrival_day == pytest.approx(36.85, abs=5.0)
 
     # decay_g must be a real, PHYSICALLY-SIZED sink -- not merely "nonzero"
     # (the replaced `assert decay_g != 0.0` passed for -1e-12 or 9e9 alike).
