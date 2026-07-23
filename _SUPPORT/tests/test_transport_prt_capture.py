@@ -546,23 +546,22 @@ def test_advection_engine_matches_the_flow_field_it_was_given(capture):
     # field (rel widened to 0.12: PRT velocity/travel spread ~8% macOS<->hub).
     # Confirmed on hub (50%-utilisation pumping): tt_median 20.4 d (was 24.6 at
     # 1,080 m³/d — stronger throughflow shortens travel time).
-    # PROVISIONAL (the hub re-run aborted at the coarse velocity check above before
-    # reaching these; carried forward from the pre-FR.1 pin at a widened rel=0.15 --
-    # confirm/finalize on the hub re-run): tt_p10 22.7 d, tt_p90 28.6 d,
-    # arc_len_median 83.6 m.
+    # Phase-4 (2,160 m³/d) canonical HUB values: tt_p10 18.1 d, tt_p90 22.3 d
+    # (were 22.7 / 28.6 at 1,080; stronger throughflow shortens the whole
+    # travel-time distribution). rel=0.15 keeps the macOS<->hub spread band.
     assert capture.tt_median_d == pytest.approx(20.4, rel=0.12)
+    assert capture.tt_p10_d == pytest.approx(18.1, rel=0.15)
+    assert capture.tt_p90_d == pytest.approx(22.3, rel=0.15)
     # Carried from the pre-FR.1 pin; CONFIRMED to pass at the widened rel=0.15
     # on the FR.1-corrected hub field (the wide band also spans the macOS<->hub spread)
-    assert capture.tt_p10_d == pytest.approx(22.7, rel=0.15)
-    # Carried from the pre-FR.1 pin; CONFIRMED to pass at the widened rel=0.15
-    # on the FR.1-corrected hub field (the wide band also spans the macOS<->hub spread)
-    assert capture.tt_p90_d == pytest.approx(28.6, rel=0.15)
-    # Carried from the pre-FR.1 pin; CONFIRMED to pass at the widened rel=0.15
-    # on the FR.1-corrected hub field (the wide band also spans the macOS<->hub spread)
-    assert capture.arc_len_median_m == pytest.approx(83.6, rel=0.15)
-    assert capture.v_prt_path_mpd == pytest.approx(3.24, rel=0.12)
-    assert capture.v_flow_qn_mpd == pytest.approx(2.745, rel=0.12)
-    assert capture.tt_flow_integral_d == pytest.approx(32.8, rel=0.12)
+    # Phase-4 (2,160 m³/d) canonical HUB values (were 83.6 / 3.24 / 2.745 / 32.8 at
+    # 1,080): the path length barely moves (same spill/well geometry), but the
+    # stronger regional flow raises both velocities and shortens the flow-integral
+    # travel time. v_prt_path ~= arc_len / tt_median; v_prt ~= v_flow (rel=0.25 above).
+    assert capture.arc_len_median_m == pytest.approx(84.4, rel=0.15)
+    assert capture.v_prt_path_mpd == pytest.approx(4.15, rel=0.12)
+    assert capture.v_flow_qn_mpd == pytest.approx(4.25, rel=0.12)
+    assert capture.tt_flow_integral_d == pytest.approx(21.2, rel=0.12)
 
 
 @pytest.mark.slow
@@ -700,10 +699,10 @@ def test_halfwidth_probe_converges_and_widens_upgradient(case_ws):
     far upgradient.
 
     (a) CONVERGENCE: at the spill transect, vary the bisection's max offset, scan
-        density and tolerance.  All must return 78.9 m.
-    (b) PHYSICS: the capture zone WIDENS upgradient (78.9 m at the spill -> ~112 m at
+        density and tolerance.  All must return 53.1 m (2,160 m³/d field).
+    (b) PHYSICS: the capture zone WIDENS upgradient (53.1 m at the spill -> ~67.5 m at
         300 m upgradient) and converges on the analytic asymptote y_max = Q / (2 q b)
-        ~= 108 m read from the GWF budget -- the same screening formula 01t writes as
+        ~= 71.6 m read from the GWF budget -- the same screening formula 01t writes as
         Q / (2 T i).  Two completely different computations of the same number.
     """
     base = tpc.capture_halfwidth_at(0.0, case_ws=case_ws)
@@ -721,15 +720,19 @@ def test_halfwidth_probe_converges_and_widens_upgradient(case_ws):
 
     far = tpc.capture_halfwidth_at(-300.0, case_ws=case_ws, max_offset_m=200.0, n_scan=41)
     assert far["scan_contiguous"] is True
-    assert far["halfwidth_m"] > base["halfwidth_m"] + 20.0, (
+    # Phase-4 (2,160 m³/d): the zone is narrower AND widens less upgradient
+    # (spill 53.1 -> far 67.5 m = +14.4 m, vs +33 m at 1,080), because the asymptote
+    # itself shrank to 71.6 m. Threshold relaxed 20 -> 10 m; it still catches a
+    # non-widening (broken) capture zone while fitting the tighter geometry.
+    assert far["halfwidth_m"] > base["halfwidth_m"] + 10.0, (
         "the capture zone does not widen upgradient of the spill; it must -- the "
         "streamtube that ends at the well is narrowest where the flow is fastest")
-    assert far["halfwidth_m"] == pytest.approx(112.0, rel=0.10)
+    assert far["halfwidth_m"] == pytest.approx(67.5, rel=0.10)  # Phase-4 (was 112 at 1,080)
 
     # the analytic asymptote, from the GWF budget's regional q*b
     # Phase-4: 2,160 m³/d -> larger regional q*b -> smaller y_max=Q/(2qb) (was 108 at 1,080)
     assert base["asymptotic_halfwidth_m"] == pytest.approx(71.6, rel=0.10)
-    assert base["regional_qb_m2d"] == pytest.approx(6.3, rel=0.10)
+    assert base["regional_qb_m2d"] == pytest.approx(9.56, rel=0.10)  # Phase-4: 2,160 m³/d (was 6.3 at 1,080)
     # the numeric half-width AT THE SPILL is NARROWER than the far-field asymptote ...
     assert base["halfwidth_m"] < base["asymptotic_halfwidth_m"]
     # ... and the far-upgradient one has essentially reached it
