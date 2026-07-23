@@ -38,6 +38,7 @@ Author: Applied Groundwater Modelling Course
 from __future__ import annotations
 
 import os
+import hashlib
 import json
 import logging
 import zipfile
@@ -852,6 +853,56 @@ def load_base_simulation(
         print(f"  {model_name} packages: {package_names}")
 
     return sim
+
+
+# Physics-defining MF6 input files: NPF (K), WEL (pumping), DISV (geometry),
+# RIV/CHD/RCHA (boundaries), IC (initial). Excludes solver (IMS), output control
+# (OC), TDIS, NAM, and all run outputs (.hds/.cbc/.grb/.lst) — so the fingerprint
+# changes iff the *modeled flow field* changes, not merely on a re-run.
+_FLOW_FINGERPRINT_EXTS: Tuple[str, ...] = (".npf", ".wel", ".disv", ".riv", ".chd", ".rcha", ".ic")
+
+
+def flow_model_fingerprint(sim_ws: Union[str, Path]) -> str:
+    """Stable 16-char content fingerprint of a calibrated flow-model workspace.
+
+    Hashes the physics-defining MF6 input files (see ``_FLOW_FINGERPRINT_EXTS``),
+    independent of run outputs. Used to (a) stamp the shipped archive manifest,
+    (b) detect a stale/mismatched local workspace in :func:`ensure_flow_model`,
+    and (c) key every flow-derived cache so a changed calibration cannot be
+    silently masked by a warm cache. Changes iff the modeled flow field changes.
+    """
+    ws = Path(sim_ws)
+    files = sorted(
+        p for p in ws.iterdir()
+        if p.is_file() and p.suffix.lower() in _FLOW_FINGERPRINT_EXTS
+    )
+    if not files:
+        raise FileNotFoundError(
+            f"No flow-model input files ({', '.join(_FLOW_FINGERPRINT_EXTS)}) to "
+            f"fingerprint in {ws}"
+        )
+    h = hashlib.sha1()
+    for p in files:
+        h.update(p.name.encode("utf-8"))
+        h.update(p.read_bytes())
+    return h.hexdigest()[:16]
+
+
+def flow_model_pumping_m3d(sim_ws: Union[str, Path]) -> float:
+    """Total municipal (negative-Q) WEL pumping [m³/d] in a flow-model workspace.
+
+    Human-readable identity value recorded in the archive manifest alongside the
+    fingerprint (e.g. -2160.0 for the 50%-utilisation model, -1080.0 for 25%).
+    """
+    import flopy  # local import: keep module import light
+
+    sim = flopy.mf6.MFSimulation.load(
+        sim_ws=str(sim_ws), load_only=["disv", "wel"], verbosity_level=0
+    )
+    gwf = sim.get_model(sim.model_names[0])
+    spd = gwf.get_package("WEL").stress_period_data.get_data(0)
+    q = np.array([rec["q"] for rec in spd], dtype=float)
+    return float(q[q < 0].sum())
 
 
 def ensure_flow_model(sim_path: Optional[Union[str, Path]] = None) -> Path:
