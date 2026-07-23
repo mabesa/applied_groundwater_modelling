@@ -47,7 +47,8 @@ description: >
 # MF6 GWT base: the transport base builds on the CALIBRATED steady-state
 # MODFLOW 6 / DISV flow model produced by the flow track's 05f_calibration.ipynb
 # (same DISV grid + wells as notebook4_model, but with the calibrated K field,
-# mean K ~ 361 m/d). See _SUPPORT/src/transport_base_model.py, which calls
+# mean K ~ 375 m/d, 2,160 m³/d municipal pumping). See
+# _SUPPORT/src/transport_base_model.py, which calls
 # model_io_utils.ensure_flow_model() to load the calibration simulation and gets
 # model "limmat_valley". This REPLACES both the uncalibrated notebook4_model base
 # and the legacy MODFLOW-NWT references (limmat_valley_model_nwt) that no longer apply.
