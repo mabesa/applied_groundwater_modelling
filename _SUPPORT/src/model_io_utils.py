@@ -41,6 +41,7 @@ import os
 import hashlib
 import json
 import logging
+import warnings
 import zipfile
 from pathlib import Path
 from typing import Union, Dict, List, Optional, Any, Tuple, Sequence
@@ -912,6 +913,50 @@ def flow_model_pumping_m3d(sim_ws: Union[str, Path]) -> float:
     return float(q[q < 0].sum())
 
 
+def build_flow_manifest(sim_ws: Union[str, Path]) -> Dict[str, Any]:
+    """Core identity manifest for a calibrated flow-model workspace:
+    ``{archive_version, flow_fingerprint, pumping_m3d, mean_K_md}``. The packager
+    (:mod:`package_flow_model`) adds toolchain metadata on top of these."""
+    import flopy
+
+    ws = Path(sim_ws)
+    sim = flopy.mf6.MFSimulation.load(sim_ws=str(ws), load_only=["disv", "npf"],
+                                      verbosity_level=0)
+    mean_k = float(np.mean(sim.get_model(sim.model_names[0]).npf.k.array))
+    return {
+        "archive_version": FLOW_MODEL_MIN_VERSION,
+        "flow_fingerprint": flow_model_fingerprint(ws),
+        "pumping_m3d": round(flow_model_pumping_m3d(ws), 1),
+        "mean_K_md": round(mean_k, 1),
+    }
+
+
+def stamp_flow_manifest(sim_ws: Union[str, Path]) -> Dict[str, Any]:
+    """Write ``MANIFEST_flow.json`` into a calibrated flow-model workspace.
+
+    Call this at the end of the 05f calibration (after the model is written/run) so
+    a legitimate LOCAL 05f output is marked current and :func:`ensure_flow_model`
+    does not mistake it for a stale download and clobber it. Returns the manifest.
+    """
+    ws = Path(sim_ws)
+    manifest = build_flow_manifest(ws)
+    (ws / _FLOW_MANIFEST_NAME).write_text(json.dumps(manifest, indent=2))
+    return manifest
+
+
+def _flow_manifest_version(sim_ws: Union[str, Path]) -> int:
+    """archive_version stamped in the workspace's MANIFEST_flow.json, or 0 if the
+    manifest is absent (a pre-versioning archive or an unstamped local run) /
+    unreadable."""
+    mpath = Path(sim_ws) / _FLOW_MANIFEST_NAME
+    if not mpath.exists():
+        return 0
+    try:
+        return int(json.loads(mpath.read_text()).get("archive_version", 0))
+    except Exception:
+        return 0
+
+
 def ensure_flow_model(sim_path: Optional[Union[str, Path]] = None) -> Path:
     """Return the CALIBRATED flow-model simulation path, downloading + extracting
     the pre-computed calibration if it is not already present locally.
@@ -956,15 +1001,29 @@ def ensure_flow_model(sim_path: Optional[Union[str, Path]] = None) -> Path:
 
     nam_path = sim_path / "mfsim.nam"
 
-    # 2. Already present (05f output or a prior download) -> use as-is.
+    # 2. Present + FRESH (MANIFEST_flow.json archive_version >= min) -> use as-is.
+    #    Present + STALE (missing/old manifest) -> force a re-download: the shipped
+    #    archive can be replaced IN PLACE at the same url, so a cached copy would
+    #    otherwise silently win. A legitimate local 05f output is stamped current via
+    #    model_io_utils.stamp_flow_manifest(), so it reads as fresh and is NOT clobbered.
+    force = False
     if nam_path.exists():
-        return sim_path
+        if _flow_manifest_version(sim_path) >= FLOW_MODEL_MIN_VERSION:
+            return sim_path
+        warnings.warn(
+            f"Flow model at {sim_path} is stale (MANIFEST_flow.json missing or "
+            f"archive_version < {FLOW_MODEL_MIN_VERSION}); re-downloading the current "
+            "archive. If you just ran 05f, call model_io_utils.stamp_flow_manifest() "
+            "to mark it current.",
+            stacklevel=2,
+        )
+        force = True
 
-    # 3. Try to download + extract the pre-computed calibrated flow model.
+    # 3. (Re)download the pre-computed calibrated flow model.
     sim_path.mkdir(parents=True, exist_ok=True)
     try:
         from data_utils import download_named_file
-        zip_path = download_named_file("flow_model_mf6", dest_folder=str(sim_path))
+        zip_path = download_named_file("flow_model_mf6", dest_folder=str(sim_path), force=force)
     except Exception as exc:
         raise FileNotFoundError(
             "Calibrated flow model not found. Either run the flow track "
@@ -973,8 +1032,8 @@ def ensure_flow_model(sim_path: Optional[Union[str, Path]] = None) -> Path:
             f"config.py.\n(underlying error: {exc})"
         ) from exc
 
-    # 4. Extract the archive (handle a zip wrapping either the workspace
-    #    directory or its bare contents). Idempotent on re-run.
+    # 4. Extract over the workspace. Surgical: this overwrites the flow-model files +
+    #    MANIFEST_flow.json but leaves sibling artifacts (pest_setup/, pumping_test/).
     try:
         with zipfile.ZipFile(zip_path) as zf:
             zf.extractall(sim_path)
@@ -984,19 +1043,26 @@ def ensure_flow_model(sim_path: Optional[Union[str, Path]] = None) -> Path:
             f"{zip_path}\n(underlying error: {exc})"
         ) from exc
 
-    if nam_path.exists():
-        return sim_path
+    # 5. Resolve the workspace root (zip may wrap a top-level directory).
+    if not nam_path.exists():
+        found = list(sim_path.rglob("mfsim.nam"))
+        if not found:
+            raise FileNotFoundError(
+                "Calibrated flow model archive did not contain 'mfsim.nam'. Either run "
+                "the flow track 05f_calibration.ipynb, or fix the 'flow_model_mf6' "
+                "download in config.py."
+            )
+        sim_path = found[0].parent
 
-    # zip wrapped a top-level directory -> locate mfsim.nam and use its parent.
-    found = list(sim_path.rglob("mfsim.nam"))
-    if found:
-        return found[0].parent
-
-    raise FileNotFoundError(
-        "Calibrated flow model archive did not contain 'mfsim.nam'. Either run "
-        "the flow track 05f_calibration.ipynb, or fix the 'flow_model_mf6' "
-        "download in config.py."
-    )
+    # 6. The downloaded archive must itself be current, or the Dropbox artifact has not
+    #    been regenerated for the latest model.
+    if _flow_manifest_version(sim_path) < FLOW_MODEL_MIN_VERSION:
+        raise FileNotFoundError(
+            "The downloaded flow_model_mf6 archive is stale (MANIFEST_flow.json missing "
+            f"or archive_version < {FLOW_MODEL_MIN_VERSION}). Regenerate it with "
+            "package_flow_model.py and update the 'flow_model_mf6' url in config.py."
+        )
+    return sim_path
 
 
 # Additional utility functions that may be useful

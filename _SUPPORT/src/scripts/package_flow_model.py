@@ -28,7 +28,6 @@ import zipfile
 from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-import numpy as np  # noqa: E402
 import flopy  # noqa: E402
 import model_io_utils as mio  # noqa: E402
 
@@ -67,22 +66,16 @@ def _model_files(source: Path) -> list[Path]:
     )
 
 
-def _mean_k(source: Path) -> float:
-    sim = flopy.mf6.MFSimulation.load(sim_ws=str(source), load_only=["disv", "npf"],
-                                      verbosity_level=0)
-    return float(np.mean(sim.get_model(sim.model_names[0]).npf.k.array))
-
-
 def build_manifest(source: Path) -> dict:
-    return {
-        "archive_version": mio.FLOW_MODEL_MIN_VERSION,
-        "flow_fingerprint": mio.flow_model_fingerprint(source),
-        "pumping_m3d": round(mio.flow_model_pumping_m3d(source), 1),
-        "mean_K_md": round(_mean_k(source), 1),
-        "commit_sha": _commit_sha(),
-        "mf6_version": _mf6_version(),
-        "flopy_version": flopy.__version__,
-    }
+    # Core identity fields come from model_io_utils (the single source of truth the
+    # freshness check reads); packaging adds toolchain metadata on top.
+    manifest = mio.build_flow_manifest(source)
+    manifest.update(
+        commit_sha=_commit_sha(),
+        mf6_version=_mf6_version(),
+        flopy_version=flopy.__version__,
+    )
+    return manifest
 
 
 def package_flow_model(source: Path, output_dir: Path, dry_run: bool = False) -> tuple[Path, dict]:

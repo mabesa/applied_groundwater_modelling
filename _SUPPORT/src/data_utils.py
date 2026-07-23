@@ -72,15 +72,18 @@ def get_default_data_folder():
     home_dir = os.path.expanduser("~")
     return os.path.join(home_dir, "applied_groundwater_modelling_data", CASE_STUDY)
 
-def download_named_file(name, dest_folder=None, data_type=None):
+def download_named_file(name, dest_folder=None, data_type=None, force=False):
     """
     Download a named file from the configured data source.
-    
+
     Args:
         name: Name of the file/dataset to download
         dest_folder: Destination folder (if None, uses default structure)
         data_type: Type of data (climate, groundwater, rivers, geology) for organization
-    
+        force: If True, re-download even if the file already exists locally (used to
+            defeat a stale cached zip when the remote content changed at the SAME url —
+            e.g. an in-place Dropbox replacement of the calibrated-model archives).
+
     Returns:
         Path to the downloaded file
     """
@@ -105,7 +108,7 @@ def download_named_file(name, dest_folder=None, data_type=None):
     # --- Helper function for downloading ---
     def _download(url, filename, description):
         dest_path = os.path.join(dest_folder, filename)
-        if os.path.exists(dest_path):
+        if os.path.exists(dest_path) and not force:
             print(f"{filename} already exists in {dest_folder}.")
             return dest_path
         

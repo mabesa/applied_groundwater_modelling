@@ -114,7 +114,7 @@ DATA_URLS = {
                 "readme_url": "https://www.dropbox.com/scl/fi/1gbut8vgrf3k0gl46bkhx/limmat_valley_calibrated_model_README.md?rlkey=yaxlxk02zwk6yf9bylw2i9pho&dl=1",
             }, 
             "flow_model_mf6": {
-                # Transport track: the 05f-CALIBRATED MF6/DISV flow model (mean K ~361 m/d).
+                # Transport track: the 05f-CALIBRATED MF6/DISV flow model (mean K ~375 m/d, 2,160 m³/d pumping).
                 # ensure_flow_model() (model_io_utils) downloads + unzips this into
                 # <data>/limmat/calibration/ so the transport notebooks (04t/05t/08t + the
                 # student template) run standalone without first running the flow track.
