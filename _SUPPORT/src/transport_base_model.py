@@ -227,13 +227,12 @@ def build_doublet_base(
     # NOTE (FR.1): this calls build_refined_gwf_model at a FIXED radius with
     # NO retry (unlike refine_with_retry's radius-walk). Since FR.1,
     # generate_refined_grid's RIV transfer is the faithful (conductance-
-    # conserving) one, which RAISES on an all-overbank coarse reach instead of
-    # silently mis-transferring it -- there is no fallback radius here to
-    # retry into if that raise fires. No shipped/tested caller currently
-    # exercises this fixed-radius path with a corridor that trips it; if one
-    # ever does, this is a hard failure by design (FR.4 adds a documented
-    # botm-floor fallback for the all-overbank case, but this call site would
-    # still need a retry wrapper to make use of it).
+    # conserving) one; it now applies the BOTM-FLOOR FALLBACK (default on) for an
+    # all-overbank coarse reach -- flooring the emitted rbot up to the cell botm
+    # rather than raising -- so this fixed-radius path no longer hard-fails on
+    # that case and needs no retry wrapper for it. It still raises only if a
+    # reach's overlapping cells are overbank ABOVE the water stage (no riverbed
+    # can sit below the surface there), which no shipped corridor trips.
     res = mio.build_refined_gwf_model(
         coarse_gwf, boundary_gdf=boundary_gdf, river_gdf=river_gdf,
         refine_points=corr_pts, head_array=heads_array, workspace=str(refgrid_ws),

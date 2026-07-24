@@ -202,6 +202,7 @@ def faithful_riv_from_coarse(
     crs: Optional[str] = None,
     refined_botm=None,
     min_overlap: float = _DEFAULT_MIN_OVERLAP,
+    botm_floor_fallback: bool = True,
     return_primitive: bool = False,
     return_stats: bool = False,
 ):
@@ -237,6 +238,18 @@ def faithful_riv_from_coarse(
     min_overlap : float
         Overlap weights (m^2 or m) at/below this are dropped as slivers.
         Conservation stays exact (split renormalized by retained weights).
+    botm_floor_fallback : bool, default True
+        Behavior when the overbank filter finds that EVERY overlapping cell is
+        overbank (``botm > rbot``), so the riverbed cannot sit at the coarse
+        channel elevation anywhere. When True (default), the BOTM-FLOOR FALLBACK
+        keeps the overlapping cells that can still host a riverbed below the
+        water stage (``botm <= stage``) and FLOORS each emitted ``rbot`` up to
+        that cell's ``botm`` -- the minimal feasible adjustment that preserves
+        Sigma cond and the wetted footprint while never lowering a cell botm
+        (each floored reach is recorded in ``stats["reaches_botm_floored"]``).
+        When False, that case FAILS FAST instead (the pre-fallback behavior). A
+        cell whose botm exceeds even the stage is genuinely dry overbank and is
+        dropped either way.
     return_primitive : bool
         If True, also return the chosen weighting primitive name.
     return_stats : bool
@@ -245,8 +258,10 @@ def faithful_riv_from_coarse(
         coverage invariant), ``min_retained_weight_ratio`` (min over reaches of
         retained/pre-filter overbank ratio, 1.0 when no filtering), and
         ``reaches_below_warn_ratio`` (list of reaches whose overbank-retained
-        ratio fell below :data:`OVERBANK_RETAINED_WARN_RATIO`). Takes
-        precedence over *return_primitive* if both are set.
+        ratio fell below :data:`OVERBANK_RETAINED_WARN_RATIO`), and
+        ``reaches_botm_floored`` (list of reaches the botm-floor fallback placed,
+        each with ``rbot_coarse_m`` / ``rbot_floored_min_m`` / ``rise_m`` /
+        ``n_cells``). Takes precedence over *return_primitive* if both are set.
 
     Returns
     -------
@@ -267,11 +282,12 @@ def faithful_riv_from_coarse(
         If a coarse reach's wetted-bed footprint intersects NO active refined
         cell (naming the reach, its footprint area, the nearest active-cell
         distance, and idomain/CRS status) -- FAIL FAST, no silent drop. Also
-        if the overbank filter is active and EVERY overlapping active cell is
-        overbank (``botm > rbot``) so the reach's channel cannot be placed at
-        channel elevation anywhere; or if the overbank-retained footprint
-        ratio falls below :data:`OVERBANK_RETAINED_FAIL_RATIO` (near-total
-        conductance concentration onto a sliver) -- FAIL FAST rather than
+        if EVERY overlapping active cell is overbank AND (``botm_floor_fallback``
+        is False, or every overlapping cell's botm exceeds even the river stage
+        so no riverbed can sit below the water surface); or if the
+        overbank-retained footprint ratio falls below
+        :data:`OVERBANK_RETAINED_FAIL_RATIO` (near-total conductance
+        concentration onto a sliver) -- FAIL FAST rather than
         invent/over-concentrate geometry.
     """
     from shapely.strtree import STRtree
@@ -305,6 +321,7 @@ def faithful_riv_from_coarse(
     n_reaches_placed = 0
     min_retained_ratio = 1.0
     reaches_below_warn: List[Dict[str, Any]] = []
+    reaches_botm_floored: List[Dict[str, Any]] = []
     for ci, reach in enumerate(coarse_riv):
         footprint = river_union.intersection(reach.geometry)
         foot_w = weight_fn(footprint)
@@ -351,17 +368,91 @@ def faithful_riv_from_coarse(
             pre_w = math.fsum(w for _, w in overlaps)
             compat = [(j, w) for (j, w) in overlaps if botm[j] <= reach.rbot]
             if not compat:
-                overbank = sorted(
-                    (int(j), round(float(botm[j]), 3)) for j, _ in overlaps
+                # ALL overlapping cells are overbank (botm > rbot): the riverbed
+                # cannot sit at the coarse channel elevation anywhere.
+                if not botm_floor_fallback:
+                    overbank = sorted(
+                        (int(j), round(float(botm[j]), 3)) for j, _ in overlaps
+                    )
+                    raise ValueError(
+                        "faithful RIV: coarse RIV reach "
+                        f"{reach.cellid} (rbot={reach.rbot:.3f}) overlaps only "
+                        f"OVERBANK refined cells (all botm > rbot): {overbank[:5]}. "
+                        "No refined cell can host the river bed at channel "
+                        "elevation (botm_floor_fallback=False)."
+                    )
+                # BOTM-FLOOR FALLBACK: keep the overlapping cells that can still
+                # host a riverbed BELOW the water stage (botm <= stage) and FLOOR
+                # each record's rbot UP to that cell's botm at emission -- the
+                # minimal feasible adjustment (MF6 requires rbot >= cell botm; a
+                # cell botm is never lowered). Preserves Sigma cond + the footprint;
+                # only the local riverbed elevation is raised. A cell whose botm
+                # exceeds even the STAGE is genuinely dry overbank and still dropped.
+                floorable = [(j, w) for (j, w) in overlaps if botm[j] <= reach.stage]
+                if not floorable:
+                    hi = sorted((int(j), round(float(botm[j]), 3)) for j, _ in overlaps)
+                    raise ValueError(
+                        "faithful RIV: coarse RIV reach "
+                        f"{reach.cellid} (rbot={reach.rbot:.3f}, "
+                        f"stage={reach.stage:.3f}) overlaps only OVERBANK refined "
+                        f"cells whose botm also exceeds the river STAGE: {hi[:5]}. "
+                        "Even the botm-floor fallback cannot place a riverbed below "
+                        "the water surface here; refusing to invent geometry."
+                    )
+                # The fallback obeys the SAME over-concentration policy as the main
+                # overbank path: if only a sliver of the footprint is floorable, the
+                # whole conductance concentrates onto it -- FAIL below the floor,
+                # WARN+record below the warn ratio.
+                floorable_w = math.fsum(w for _, w in floorable)
+                ratio = (floorable_w / pre_w) if pre_w > 0 else 0.0
+                if ratio < OVERBANK_RETAINED_FAIL_RATIO:
+                    retained = sorted(int(j) for j, _ in floorable)
+                    raise ValueError(
+                        "faithful RIV: coarse RIV reach "
+                        f"{reach.cellid} (rbot={reach.rbot:.3f}) botm-floor fallback "
+                        f"retains only {ratio:.3%} of its wetted-bed footprint "
+                        f"(botm <= stage; < {OVERBANK_RETAINED_FAIL_RATIO:.0%}); its "
+                        f"full conductance {reach.cond:g} would concentrate onto "
+                        f"{len(retained)} sliver cell(s) {retained[:5]}. Refusing to "
+                        "over-concentrate calibrated conductance."
+                    )
+                if ratio < OVERBANK_RETAINED_WARN_RATIO:
+                    reaches_below_warn.append({
+                        "reach": [int(reach.cellid[0]), int(reach.cellid[1])],
+                        "retained_ratio": float(ratio),
+                        "retained_cells": sorted(int(j) for j, _ in floorable),
+                    })
+                    logger.warning(
+                        "faithful RIV: reach %s botm-floor fallback retains %.1f%% of "
+                        "footprint (botm <= stage; < %.0f%%) -- conductance "
+                        "concentrated onto %d cell(s)", reach.cellid, 100 * ratio,
+                        100 * OVERBANK_RETAINED_WARN_RATIO, len(floorable),
+                    )
+                min_retained_ratio = min(min_retained_ratio, ratio)
+                reach_botm_floored = True
+                floored_to = min(float(botm[j]) for j, _ in floorable)
+                reaches_botm_floored.append({
+                    "reach": [int(reach.cellid[0]), int(reach.cellid[1])],
+                    "rbot_coarse_m": float(reach.rbot),
+                    "rbot_floored_min_m": floored_to,
+                    "rise_m": float(floored_to - reach.rbot),
+                    "n_cells": len(floorable),
+                })
+                logger.warning(
+                    "faithful RIV: reach %s all-overbank -> BOTM-FLOOR fallback: "
+                    "rbot %.3f raised to cell botm (min %.3f, +%.3f m) on %d cell(s)",
+                    reach.cellid, reach.rbot, floored_to, floored_to - reach.rbot,
+                    len(floorable),
                 )
-                raise ValueError(
-                    "faithful RIV: coarse RIV reach "
-                    f"{reach.cellid} (rbot={reach.rbot:.3f}) overlaps only "
-                    f"OVERBANK refined cells (all botm > rbot): {overbank[:5]}. "
-                    "No refined cell can host the river bed at channel "
-                    "elevation; refusing to invent geometry (would need a "
-                    "documented botm-floor fallback)."
-                )
+                overlaps = floorable
+                overlaps.sort(key=lambda t: t[0])
+                wsum = math.fsum(w for _, w in overlaps)
+                for rcell, w in overlaps:
+                    split_cond = reach.cond * (w / wsum)
+                    records.append(((0, int(rcell)), reach.stage, split_cond,
+                                    max(reach.rbot, float(botm[rcell])), ci))
+                n_reaches_placed += 1
+                continue
             post_w = math.fsum(w for _, w in compat)
             ratio = (post_w / pre_w) if pre_w > 0 else 0.0
             if ratio < OVERBANK_RETAINED_FAIL_RATIO:
@@ -428,6 +519,7 @@ def faithful_riv_from_coarse(
         "n_reaches_placed": n_reaches_placed,
         "min_retained_weight_ratio": float(min_retained_ratio),
         "reaches_below_warn_ratio": reaches_below_warn,
+        "reaches_botm_floored": reaches_botm_floored,
     }
     if return_stats:
         return out, stats

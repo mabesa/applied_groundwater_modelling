@@ -285,17 +285,112 @@ class TestOverbankFilter:
         for cid, _, _, rbot in recs:
             assert rbot >= botm[cid[1]]
 
-    def test_all_overbank_reach_raises(self):
+    def test_all_overbank_above_stage_raises_even_with_fallback(self):
+        # botm 9 > rbot 5 (overbank) AND > stage 8: a riverbed cannot sit below the
+        # water surface anywhere, so even the (default-on) botm-floor fallback drops
+        # it. This is the fallback's LIMIT case.
         gp = quad_gridprops(2, 1, dx=10.0)
         idomain = np.ones(2, dtype=int)
         coarse_poly = box(0, 0, 20, 10)
         river = box(0, 0, 20, 10)
         reaches = [reach((0, 0), 8.0, 200.0, 5.0, coarse_poly)]
-        botm = np.array([9.0, 9.0])  # both overbank (botm 9 > rbot 5)
-        with pytest.raises(ValueError, match="(?i)overbank"):
+        botm = np.array([9.0, 9.0])
+        with pytest.raises(ValueError, match="(?i)overbank.*stage|stage"):
             crr.faithful_riv_from_coarse(
                 gp, idomain, reaches, river_polygon_gdf(river), crs="EPSG:2056", refined_botm=botm,
             )
+
+    def test_botm_floor_fallback_places_and_floors_rbot(self):
+        # all cells overbank (botm > rbot 5) but below stage 8 -> fallback keeps
+        # both, floors each rbot UP to the cell botm, preserves Sigma cond.
+        gp = quad_gridprops(2, 1, dx=10.0)
+        idomain = np.ones(2, dtype=int)
+        coarse_poly = box(0, 0, 20, 10)
+        river = box(0, 0, 20, 10)  # equal overlap on both cells
+        reaches = [reach((0, 0), stage=8.0, cond=200.0, rbot=5.0, poly=coarse_poly)]
+        botm = np.array([6.0, 7.0])
+        recs, stats = crr.faithful_riv_from_coarse(
+            gp, idomain, reaches, river_polygon_gdf(river),
+            crs="EPSG:2056", refined_botm=botm, return_stats=True,
+        )
+        assert {cid[1] for cid, _, _, _ in recs} == {0, 1}      # both kept, not dropped
+        assert crr.total_conductance(recs) == pytest.approx(200.0, abs=1e-9)  # Sigma cond exact
+        by_cell = {cid[1]: (stage, cond, rbot) for cid, stage, cond, rbot in recs}
+        assert by_cell[0][2] == pytest.approx(6.0)             # rbot floored to cell botm
+        assert by_cell[1][2] == pytest.approx(7.0)
+        for _, stage, _, rbot in recs:
+            assert rbot >= 5.0 and stage >= rbot               # raised UP; invariant holds
+        # provenance recorded
+        floored = stats["reaches_botm_floored"]
+        assert len(floored) == 1
+        assert floored[0]["reach"] == [0, 0]
+        assert floored[0]["rbot_coarse_m"] == pytest.approx(5.0)
+        assert floored[0]["rbot_floored_min_m"] == pytest.approx(6.0)   # min botm of floored cells
+        assert floored[0]["rise_m"] == pytest.approx(1.0)
+        assert floored[0]["n_cells"] == 2
+
+    def test_botm_floor_fallback_disabled_raises(self):
+        gp = quad_gridprops(2, 1, dx=10.0)
+        idomain = np.ones(2, dtype=int)
+        coarse_poly = box(0, 0, 20, 10)
+        river = box(0, 0, 20, 10)
+        reaches = [reach((0, 0), 8.0, 200.0, 5.0, coarse_poly)]
+        botm = np.array([6.0, 7.0])  # floorable, but fallback disabled
+        with pytest.raises(ValueError, match="(?i)overbank"):
+            crr.faithful_riv_from_coarse(
+                gp, idomain, reaches, river_polygon_gdf(river),
+                crs="EPSG:2056", refined_botm=botm, botm_floor_fallback=False,
+            )
+
+    def test_no_floored_reaches_reports_empty_list(self):
+        # a clean (no-overbank) build reports an empty reaches_botm_floored
+        gp = quad_gridprops(2, 1, dx=10.0)
+        idomain = np.ones(2, dtype=int)
+        coarse_poly = box(0, 0, 20, 10)
+        river = box(0, 0, 20, 10)
+        reaches = [reach((0, 0), 8.0, 200.0, 5.0, coarse_poly)]
+        botm = np.array([1.0, 1.0])  # both compatible (botm <= rbot)
+        recs, stats = crr.faithful_riv_from_coarse(
+            gp, idomain, reaches, river_polygon_gdf(river),
+            crs="EPSG:2056", refined_botm=botm, return_stats=True,
+        )
+        assert stats["reaches_botm_floored"] == []
+
+    def test_botm_floor_fallback_over_concentration_fails(self):
+        # all cells overbank; only a 0.4% sliver is FLOORABLE (rest above stage) ->
+        # the fallback obeys the same FAIL floor as the main path.
+        gp = quad_gridprops(2, 1, dx=100.0)      # cells 0:[0,100], 1:[100,200]
+        idomain = np.ones(2, dtype=int)
+        coarse_poly = box(0, 0, 200, 100)
+        river = box(99.6, 0, 200, 100)           # cell0 sliver (40) + all cell1 (10000)
+        reaches = [reach((0, 0), 8.0, 1000.0, 5.0, coarse_poly)]
+        botm = np.array([6.0, 9.0])              # cell0 floorable (6<=8); cell1 above stage (9>8)
+        with pytest.raises(ValueError, match="(?i)concentrat|retains only"):
+            crr.faithful_riv_from_coarse(
+                gp, idomain, reaches, river_polygon_gdf(river),
+                crs="EPSG:2056", refined_botm=botm,
+            )
+
+    def test_botm_floor_fallback_warn_band_records_and_proceeds(self):
+        gp = quad_gridprops(2, 1, dx=100.0)
+        idomain = np.ones(2, dtype=int)
+        coarse_poly = box(0, 0, 200, 100)
+        river = box(80, 0, 200, 100)             # cell0 2000 + cell1 10000 -> 16.7%
+        reaches = [reach((0, 0), 8.0, 1000.0, 5.0, coarse_poly)]
+        botm = np.array([6.0, 9.0])
+        recs, stats = crr.faithful_riv_from_coarse(
+            gp, idomain, reaches, river_polygon_gdf(river),
+            crs="EPSG:2056", refined_botm=botm, return_stats=True,
+        )
+        # proceeds onto cell0, conductance conserved, rbot floored to cell0 botm
+        assert {cid[1] for cid, _, _, _ in recs} == {0}
+        assert crr.total_conductance(recs) == pytest.approx(1000.0, abs=1e-9)
+        assert recs[0][3] == pytest.approx(6.0)
+        # both the over-concentration WARN and the botm-floor provenance are recorded
+        assert len(stats["reaches_below_warn_ratio"]) == 1
+        assert stats["reaches_below_warn_ratio"][0]["retained_ratio"] == pytest.approx(2000.0 / 12000.0, rel=1e-6)
+        assert len(stats["reaches_botm_floored"]) == 1
+        assert stats["min_retained_weight_ratio"] == pytest.approx(2000.0 / 12000.0, rel=1e-6)
 
     def test_no_botm_means_no_overbank_filter(self):
         gp = quad_gridprops(2, 1, dx=10.0)
