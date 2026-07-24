@@ -839,6 +839,7 @@ def _mass_balance(gwt_cbc: Union[str, Path]) -> Dict[str, float]:
         return {"error": repr(e), **{k: float("nan") for k in _MB_NUMERIC_KEYS}}
 
     acc = {g: [0.0, 0.0] for g in _MB_GROUPS}    # group -> [cum_in_g, cum_out_g]
+    other = [0.0, 0.0]                            # records matching NO group (see below)
     total_in_all = total_out_all = 0.0
     t_prev = 0.0
     for t in times:
@@ -868,6 +869,15 @@ def _mass_balance(gwt_cbc: Union[str, Path]) -> Dict[str, float]:
             if grp is not None:
                 acc[grp][0] += q_in
                 acc[grp][1] += q_out
+            else:
+                # Ungrouped record. The BINARY GWT budget aggregates the SSM
+                # boundary+well solute flux under a single record (e.g. "SSM")
+                # rather than per-package (WEL/CHD/RIV/RCHA) as the text listing
+                # does, so the dominant sink (the extraction well capturing the
+                # plume) matches none of _MB_GROUPS. Fold it into the boundary
+                # term so the budget still CLOSES (Σ grouped == Σ all-records).
+                other[0] += q_in
+                other[1] += q_out
 
     src_in, src_out = acc["SRC"]
     wel_in, wel_out = acc["WEL"]
@@ -880,15 +890,18 @@ def _mass_balance(gwt_cbc: Union[str, Path]) -> Dict[str, float]:
     denom = 0.5 * (total_in_all + total_out_all)
     pct = 100.0 * (total_in_all - total_out_all) / denom if denom != 0 else float("nan")
 
-    grouped_in = src_in + wel_in + riv_in + chd_in + rch_in + sto_in + dcy_in
-    grouped_out = src_out + wel_out + riv_out + chd_out + rch_out + sto_out + dcy_out
+    grouped_in = (src_in + wel_in + riv_in + chd_in + rch_in + sto_in + dcy_in
+                  + other[0])
+    grouped_out = (src_out + wel_out + riv_out + chd_out + rch_out + sto_out + dcy_out
+                   + other[1])
     grouped_residual_g = float(abs(grouped_in - total_in_all)
                                + abs(grouped_out - total_out_all))
 
     return {
         "src_in_g": src_in,
         "well_out_g": wel_out,
-        "boundary_out_g": riv_out + chd_out + rch_out,
+        # includes any SSM-aggregated boundary/well sink (see the `other` bucket)
+        "boundary_out_g": riv_out + chd_out + rch_out + other[1],
         "storage_g": sto_out - sto_in,        # net into storage (accumulation) [g]
         "decay_g": dcy_out - dcy_in,          # net mass removed by decay [g] (0 if no decay)
         "total_in_g": total_in_all,
