@@ -13,7 +13,7 @@
 
 ![Groundwater Model Visualization](_SUPPORT/static/figures/0_readme/Groundwater_course.jpg)
 
-> **Tip:** This README is best viewed on [GitHub](https://github.com/mabesa/applied_groundwater_modelling). In VS Code, you can use Markdown preview: right-click the file → *Open Preview*, or press `Ctrl+Shift+V` (`Cmd+Shift+V` on Mac).
+> **Tip:** This README is best viewed on [GitHub](https://github.com/mabesa/applied_groundwater_modelling). In VS Code, you can use Markdown preview: right-click the file → *Open Preview*, or press `Ctrl+Shift+V` (`Cmd+Shift+V` on Mac). On the **JupyterHub**, a `.md` opens as raw text by default — right-click the file in the left file browser → *Open With → Markdown Preview* to see it rendered.
 
 ## 1 Overview
 
