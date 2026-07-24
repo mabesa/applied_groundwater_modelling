@@ -103,7 +103,7 @@ Known outcome (grounded against the live registry, 2026-07 snapshot)
 Deliverable
 -----------
 ``build_doublet_table()`` returns a ``pandas.DataFrame`` (9 rows) and writes
-it deterministically to ``PROJECT/workspace/template/doublet_table.csv``
+it deterministically to ``_SUPPORT/casestudy_scenarios/doublet_table.csv``
 (+ a ``.yaml`` mirror). Re-running yields byte-identical coordinates -- no
 randomness anywhere in this module.
 """
@@ -155,7 +155,10 @@ GEOTHERMAL_NUTZART = "WPG"
 
 # repo_root/_SUPPORT/src/casestudy_doublet_roster.py -> repo_root
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_OUT_CSV = _REPO_ROOT / "PROJECT" / "workspace" / "template" / "doublet_table.csv"
+# Instructor-only scenario-pipeline artifacts live OUTSIDE the student-copied
+# PROJECT/workspace/template/ (students must not receive the all-groups roster).
+_SCENARIO_DIR = _REPO_ROOT / "_SUPPORT" / "casestudy_scenarios"
+DEFAULT_OUT_CSV = _SCENARIO_DIR / "doublet_table.csv"
 DEFAULT_OUT_YAML = DEFAULT_OUT_CSV.with_suffix(".yaml")
 
 # A number is either thousands-grouped with a Swiss separator (3'000 / 3’000 /
@@ -615,7 +618,7 @@ def build_doublet_table(check_active_cell: bool = True,
         ``strict=True`` -- see below.)
     out_csv, out_yaml : Path, optional
         Override the default output locations
-        (``PROJECT/workspace/template/doublet_table.{csv,yaml}``).
+        (``_SUPPORT/casestudy_scenarios/doublet_table.{csv,yaml}``).
     write : bool
         If False, compute the table but do not write it to disk (used by
         tests that only want the in-memory result).

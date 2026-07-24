@@ -3,8 +3,9 @@ Tests for casestudy_canonical_mapping (M1.2 -- canonical group -> concession ->
 scenario -> contaminant mapping).
 
 Data-only, deterministic, no model run. Reads the two committed configs
-(``case_config.yaml`` / ``case_config_transport.yaml``) and the M1.1
-``doublet_table.csv``, all under ``PROJECT/workspace/template/``. Fast.
+(``case_config.yaml`` / ``case_config_transport.yaml`` under
+``PROJECT/workspace/template/``) and the M1.1 ``doublet_table.csv`` (under the
+instructor-only ``_SUPPORT/casestudy_scenarios/``). Fast.
 
 Run with: uv run pytest _SUPPORT/tests/test_casestudy_canonical_mapping.py -v
 """
@@ -465,7 +466,10 @@ def test_g4_flow_preswap_must_be_190(monkeypatch):
 # ===========================================================================
 # STATE-AWARE reconcile acceptance (pre/post reconcile; fail any third state)
 # ===========================================================================
-_TEMPLATE = ccm.DEFAULT_OUT_CSV.parent
+# The .bak files sit next to the case_config.yaml, which STAYS in the student
+# template/ (the pipeline artifacts moved to _SUPPORT/casestudy_scenarios/), so
+# derive the template dir from the config input, not from the moved output.
+_TEMPLATE = ccm.DEFAULT_FLOW_CONFIG.parent
 _BAK_FLOW = _TEMPLATE / "case_config.yaml.bak"
 _BAK_TR = _TEMPLATE / "case_config_transport.yaml.bak"
 

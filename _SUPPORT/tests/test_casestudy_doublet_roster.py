@@ -398,7 +398,7 @@ def test_determinism_on_disk_byte_identical(tmp_path):
 
 
 def test_deliverable_files_exist_and_parse():
-    """The checked-in deliverable (PROJECT/workspace/template/doublet_table.*)
+    """The checked-in deliverable (_SUPPORT/casestudy_scenarios/doublet_table.*)
     should exist and round-trip through pandas/yaml. (This does not rebuild
     it -- it just checks whatever is currently committed is well-formed.)"""
     assert cdr.DEFAULT_OUT_CSV.exists(), (

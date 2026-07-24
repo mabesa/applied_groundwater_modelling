@@ -38,7 +38,7 @@ IMPORTANT ownership boundaries
   half-life), NOT R.
 
 Outputs (all deterministic, provenance-stamped; written under
-``PROJECT/workspace/template/``)
+``_SUPPORT/casestudy_scenarios/`` -- instructor-only, NOT the student template)
   1. ``canonical_mapping.{csv,yaml}`` -- the 9-row mapping (identifiers + exact
      reaction fields + difficulty/source metadata + provenance).
   2. ``repairing_ledger.csv`` -- one row per group: original transport
@@ -70,15 +70,18 @@ import yaml
 # repo_root/_SUPPORT/src/casestudy_canonical_mapping.py -> repo_root
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _TEMPLATE_DIR = _REPO_ROOT / "PROJECT" / "workspace" / "template"
+# Instructor-only scenario-pipeline artifacts (roster/mapping/ledgers) live OUTSIDE
+# the student-copied template/; only the two case_config*.yaml INPUTS stay there.
+_SCENARIO_DIR = _REPO_ROOT / "_SUPPORT" / "casestudy_scenarios"
 
 DEFAULT_FLOW_CONFIG = _TEMPLATE_DIR / "case_config.yaml"
 DEFAULT_TRANSPORT_CONFIG = _TEMPLATE_DIR / "case_config_transport.yaml"
-DEFAULT_DOUBLET_TABLE = _TEMPLATE_DIR / "doublet_table.csv"
+DEFAULT_DOUBLET_TABLE = _SCENARIO_DIR / "doublet_table.csv"
 
-DEFAULT_OUT_CSV = _TEMPLATE_DIR / "canonical_mapping.csv"
-DEFAULT_OUT_YAML = _TEMPLATE_DIR / "canonical_mapping.yaml"
-DEFAULT_LEDGER_CSV = _TEMPLATE_DIR / "repairing_ledger.csv"
-DEFAULT_SANITY_CSV = _TEMPLATE_DIR / "threshold_sanity.csv"
+DEFAULT_OUT_CSV = _SCENARIO_DIR / "canonical_mapping.csv"
+DEFAULT_OUT_YAML = _SCENARIO_DIR / "canonical_mapping.yaml"
+DEFAULT_LEDGER_CSV = _SCENARIO_DIR / "repairing_ledger.csv"
+DEFAULT_SANITY_CSV = _SCENARIO_DIR / "threshold_sanity.csv"
 
 N_GROUPS = 9
 _LN2 = math.log(2.0)

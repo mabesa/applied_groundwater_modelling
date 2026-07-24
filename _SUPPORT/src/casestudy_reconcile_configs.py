@@ -83,12 +83,15 @@ from ruamel.yaml import YAML
 # ---------------------------------------------------------------------------
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _TEMPLATE_DIR = _REPO_ROOT / "PROJECT" / "workspace" / "template"
+# Instructor-only scenario-pipeline artifacts live OUTSIDE the student-copied
+# template/; only the two case_config*.yaml (read + rewritten in place) stay there.
+_SCENARIO_DIR = _REPO_ROOT / "_SUPPORT" / "casestudy_scenarios"
 
 DEFAULT_FLOW_CONFIG = _TEMPLATE_DIR / "case_config.yaml"
 DEFAULT_TRANSPORT_CONFIG = _TEMPLATE_DIR / "case_config_transport.yaml"
-DEFAULT_DOUBLET_TABLE = _TEMPLATE_DIR / "doublet_table.csv"
-DEFAULT_CANONICAL_MAPPING = _TEMPLATE_DIR / "canonical_mapping.csv"
-DEFAULT_LEDGER_CSV = _TEMPLATE_DIR / "coherence_ledger.csv"
+DEFAULT_DOUBLET_TABLE = _SCENARIO_DIR / "doublet_table.csv"
+DEFAULT_CANONICAL_MAPPING = _SCENARIO_DIR / "canonical_mapping.csv"
+DEFAULT_LEDGER_CSV = _SCENARIO_DIR / "coherence_ledger.csv"
 
 N_GROUPS = 9
 
