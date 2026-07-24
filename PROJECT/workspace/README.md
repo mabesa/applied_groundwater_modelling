@@ -4,6 +4,10 @@ You are here: `PROJECT/workspace/`. The parent course overview is in the root [R
 
 This is where you work on your flow and transport case study.
 
+> **Reading this on JupyterHub?** A `.md` file opens as *raw* text by default. To see it
+> nicely rendered, **right-click the file in the left file browser → Open With → Markdown
+> Preview**. The same works for any `.md` here (e.g. `template/COLLABORATION.md`).
+
 ## Getting Started
 
 1. Copy the `template/` folder to create your own workspace.
