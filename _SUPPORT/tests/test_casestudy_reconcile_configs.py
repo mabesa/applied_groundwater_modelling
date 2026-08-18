@@ -450,13 +450,19 @@ def test_committed_ledger_exists_and_parses():
 # Codex fix 1: stale machine-authored docs are REFRESHED (not blindly preserved)
 # ===========================================================================
 def test_transport_header_regenerated_current():
-    """The header assignment table must state the CURRENT canonical assignment:
-    new concessions, Q=4320 for all, recirc stale/M3b, coords pending-M4 -- and
-    must NOT carry the old per-doublet Q=1370/5760 or old concessions."""
+    """The header assignment table must state the CURRENT canonical assignment --
+    new concessions, Q=4320 for all -- and must NOT carry the old per-doublet
+    Q=1370/5760 or old concessions.
+
+    This file is COPIED INTO THE STUDENT WORKSPACE, so it must also carry no
+    instructor bookkeeping: no milestone ids, no pointers to the instructor-only
+    coherence ledger (which was moved out of the template in cdf8bde and which a
+    student therefore cannot open).
+    """
     txt = REAL_TR.read_text()
     header = txt.split("title:")[0]  # everything above the first `title:` key
-    assert "CANONICAL assignment (M1.3a)" in header
-    assert "Q = licensed max (4320 m3/d) for ALL groups" in header
+    assert "real AWEL geothermal-doublet concession" in header or "REAL AWEL" in header
+    assert "Q = licensed maximum (4320 m3/d) for all groups" in header
     # every group's header line names its canonical concession + Q=4320
     for gid, conc in enumerate(EXPECTED_CONCESSIONS):
         assert f"# Group {gid}: concession {conc} -" in header
@@ -467,14 +473,22 @@ def test_transport_header_regenerated_current():
     assert "higher-rate (>3000 L/min) class" not in header
     for old in ("b010205", "b010196", "b010224", "b010199"):
         assert old not in header
-    # staleness / pending pointers present
-    assert "recirc_stale=True" in header
-    assert "pending M4" in header and "upgradient_unverified=True" in header
+    # no instructor bookkeeping reaches the student copy
+    for marker in ("recirc_stale=True", "upgradient_unverified=True",
+                   "coherence_ledger", "pending M4", "pending M3b", "M1.3a"):
+        assert marker not in header, (
+            f"{marker!r} is instructor bookkeeping and must not ship in the "
+            "student-copied config")
 
 
 def test_inline_spill_comments_neutralised():
     """The OLD-doublet / OLD-Q spill-outcome claims must be replaced with
-    neutral, pending-M4 wording -- across all 9 source.location blocks."""
+    neutral, student-facing wording -- across all 9 source.location blocks.
+
+    "Neutral" means it states what the offset IS without pre-announcing the
+    capture / threshold outcome (that is the question the student answers), and
+    without instructor bookkeeping.
+    """
     txt = REAL_TR.read_text()
     # stale outcome claims gone
     assert "just inside capture" not in txt
@@ -487,7 +501,13 @@ def test_inline_spill_comments_neutralised():
     assert "offset from extraction well (upgradient)" not in txt  # "(upgradient)" dropped
     # neutral wording present, once per group (9 source.location blocks)
     assert txt.count("Source position is an easting/northing OFFSET relative to the") == N
-    assert txt.count("NOT yet\n") >= N or txt.count("NOT yet") >= N
+    # the outcome is posed as the student's question, once per group...
+    assert txt.count("it is deliberately not given to you here") == N
+    # ...and no instructor bookkeeping leaks into the student copy
+    for marker in ("pending M4", "upgradient_unverified", "coherence_ledger", "NOT yet"):
+        assert marker not in txt, (
+            f"{marker!r} is instructor bookkeeping and must not ship in the "
+            "student-copied config")
 
 
 def test_flow_header_g4_comment_updated():

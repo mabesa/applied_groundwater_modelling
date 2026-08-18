@@ -34,10 +34,9 @@ description: >
 model:
   # Calibrated MF6 05f flow model -- the SAME simulation the transport
   # config (case_config_transport.yaml) references; bootstrapped via
-  # model_io_utils.ensure_flow_model(). Switched to MF6 05f from the
-  # legacy structured-grid flow model in M1.3b (config-only). The MF6
-  # flow builder that consumes this block is built in M2a; sim_name IS
-  # the GWF model name inside the simulation (no separate name field).
+  # model_io_utils.ensure_flow_model(). This is the calibrated MODFLOW 6
+  # flow model from 05f; sim_name IS the GWF model name inside the
+  # simulation (there is no separate name field).
   data_name: flow_model_mf6               # Calibrated MF6 GWF model (05f)
   workspace: "~/applied_groundwater_modelling_data/limmat/calibration"  # 05f-calibrated model
   sim_namefile: "mfsim.nam"               # MF6 simulation name file

@@ -15,9 +15,9 @@
 # Fixed assignments by group number (each group gets ONE canonical REAL
 # geothermal-doublet concession; injection + extraction wells both active,
 # extraction well = compliance/monitoring "Well"):
-# CANONICAL assignment (M1.3a): concession + doublet coords come from the
-# M1.1 doublet_table; the contaminant is unchanged from the original
-# scenario; Q = licensed max (4320 m3/d) for ALL groups.
+# Each group is assigned a REAL AWEL geothermal-doublet concession; the
+# concession id and the injection/extraction coordinates below are the real
+# licensed ones. Q = licensed maximum (4320 m3/d) for all groups.
 # Group 0: concession b010210 - TCE       - Industrial spill (demo) - Q=4320 m3/d
 # Group 1: concession b010219 - Nitrate    - Sports field fertilizer - Q=4320 m3/d
 # Group 2: concession b010201 - Benzene    - Gas station leak (decay) - Q=4320 m3/d
@@ -28,12 +28,9 @@
 # Group 7: concession b010213 - Ammonium   - Leaking sewer (decay) - Q=4320 m3/d
 # Group 8: concession b010207 - Atrazine   - Garden allotment - Q=4320 m3/d
 #
-# recirculation_fraction values below are STALE (validated for the OLD
-# doublet); they are linted-only (no physics consumer) and pending removal
-# / re-derivation in M3b -- see coherence_ledger.csv (recirc_stale=True).
-# Doublet coords + capture/upgradient/threshold outcomes are NOT yet
-# re-validated for the swapped doublets -- pending M4
-# (coherence_ledger.csv: upgradient_unverified=True).
+# NOTE: `recirculation_fraction` below is carried for reference only -- no part
+# of the transport model reads it, and the recirculation scenario is described
+# (not built) in 08t.  Do not base any conclusion on it.
 
 title: "Contaminant transport with well field interactions"  # TODO: Tailor with your contaminant
 
@@ -122,9 +119,9 @@ transport_scenarios:
         release_type: "pulse"
         location:
           # Source position is an easting/northing OFFSET relative to the
-          # extraction well (unchanged by the M1.3a doublet swap). After the
-          # swap the capture / upgradient / threshold outcome is NOT yet
-          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
           easting: 51.0              # m, +E offset from extraction well
           northing: -77.0            # m, -N offset from extraction well
           layer: 1
@@ -197,9 +194,9 @@ transport_scenarios:
         release_type: "pulse"
         location:
           # Source position is an easting/northing OFFSET relative to the
-          # extraction well (unchanged by the M1.3a doublet swap). After the
-          # swap the capture / upgradient / threshold outcome is NOT yet
-          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
           easting: -60.0             # m, -E offset from extraction well
           northing: -169.0           # m, -N offset from extraction well
           layer: 1
@@ -273,9 +270,9 @@ transport_scenarios:
         release_type: "pulse"
         location:
           # Source position is an easting/northing OFFSET relative to the
-          # extraction well (unchanged by the M1.3a doublet swap). After the
-          # swap the capture / upgradient / threshold outcome is NOT yet
-          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
           easting: 50.0              # m, +E offset from extraction well
           northing: -102.0           # m, -N offset from extraction well
           layer: 1
@@ -347,9 +344,9 @@ transport_scenarios:
         release_type: "continuous"
         location:
           # Source position is an easting/northing OFFSET relative to the
-          # extraction well (unchanged by the M1.3a doublet swap). After the
-          # swap the capture / upgradient / threshold outcome is NOT yet
-          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
           easting: 100.0             # m, +E offset from extraction well
           northing: -83.0            # m, -N offset from extraction well
           layer: 1
@@ -421,9 +418,9 @@ transport_scenarios:
         release_type: "pulse"
         location:
           # Source position is an easting/northing OFFSET relative to the
-          # extraction well (unchanged by the M1.3a doublet swap). After the
-          # swap the capture / upgradient / threshold outcome is NOT yet
-          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
           easting: 53.0              # m, +E offset from extraction well
           northing: -76.0            # m, -N offset from extraction well
           layer: 1
@@ -504,9 +501,9 @@ transport_scenarios:
         release_type: "pulse"
         location:
           # Source position is an easting/northing OFFSET relative to the
-          # extraction well (unchanged by the M1.3a doublet swap). After the
-          # swap the capture / upgradient / threshold outcome is NOT yet
-          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
           easting: 32.0              # m, +E offset from extraction well
           northing: -66.0            # m, -N offset from extraction well
           layer: 1
@@ -581,9 +578,9 @@ transport_scenarios:
         release_type: "pulse"
         location:
           # Source position is an easting/northing OFFSET relative to the
-          # extraction well (unchanged by the M1.3a doublet swap). After the
-          # swap the capture / upgradient / threshold outcome is NOT yet
-          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
           easting: 56.0              # m, +E offset from extraction well
           northing: -244.0           # m, -N offset from extraction well
           layer: 1
@@ -657,9 +654,9 @@ transport_scenarios:
         release_type: "continuous"
         location:
           # Source position is an easting/northing OFFSET relative to the
-          # extraction well (unchanged by the M1.3a doublet swap). After the
-          # swap the capture / upgradient / threshold outcome is NOT yet
-          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
           easting: 75.0              # m, +E offset from extraction well
           northing: -114.0           # m, -N offset from extraction well
           layer: 1
@@ -730,9 +727,9 @@ transport_scenarios:
         release_type: "pulse"
         location:
           # Source position is an easting/northing OFFSET relative to the
-          # extraction well (unchanged by the M1.3a doublet swap). After the
-          # swap the capture / upgradient / threshold outcome is NOT yet
-          # re-validated -- pending M4 (coherence_ledger.csv: upgradient_unverified=True).
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
           easting: -53.0             # m, -E offset from extraction well
           northing: -82.0            # m, -N offset from extraction well
           layer: 1
