@@ -28,18 +28,17 @@ PRT answers a **geometry / wellfield-protection** question:
 PRT says **NOTHING** about concentration, dilution, dispersion, sorption, decay or
 any regulatory threshold.  "Is the concentration above the limit, and when" is the
 ADE question, and it is answered -- separately -- by ``transport_srcpulse_demo``
-(peak ≈5.1 mg/L at day 41).
+(peak ≈5.3 mg/L at day 39).
 
 **Do not connect the two numbers with arithmetic.**  PRT's median ADVECTIVE travel
-time (~24.6 d) and the ADE's CONCENTRATION peak (day 41) are different quantities,
+time (~20 d) and the ADE's CONCENTRATION peak (day 39) are different quantities,
 and in a converging 2-D flow field NO simple identity links them.  (The textbook
 identity ``source centroid + mean advective travel time`` predicts a breakthrough
 curve's CENTRE OF MASS -- its first temporal moment -- not its PEAK, because a
-dispersive BTC is right-skewed and peaks before its centroid.  Even the centroid
-version fails here: it predicts 40.7 d against the ADE breakthrough curve's actual
-centroid of 48.2 d.  An earlier version of this module taught
-``15 d + 25.8 d = 40.8 d ~= the day-41 peak`` as a cross-validation; it was
-numerology -- two errors cancelling at one pulse length -- and it has been removed.)
+dispersive BTC is right-skewed and peaks before its centroid.  And even the centroid
+version does not hold here: the identity assumes uniform flow, which a converging
+doublet field is not.  Do not use either as a cross-validation -- an apparent match
+is two errors cancelling at one pulse length, not physics.)
 
 HOW THE ADVECTION ENGINE IS ACTUALLY VERIFIED
 ---------------------------------------------
@@ -48,56 +47,55 @@ the ADE at all.  Integrate the seepage velocity ``v = q / n_e`` (specific discha
 straight from the GWF budget's ``DATA-SPDIS``, locked porosity ``n_e = 0.20``)
 along the spill -> well axis, and compare with what PRT reports:
 
-    * flow field:  path-averaged ``v = L / integral(ds / v(s))`` = **≈2.745 m/d**;
-      the travel-time integral over the 90 m axis is **≈32.8 d**
+    * flow field:  path-averaged ``v = L / integral(ds / v(s))`` = **≈4.25 m/d**;
+      the travel-time integral over the 90 m axis is **≈21.2 d**
       (``v_flow_qn_mpd`` / ``tt_flow_integral_d``)
     * PRT:         median (pathline arc length / travel time) over the captured
-      particles = **3.24 m/d** (``v_prt_path_mpd``), median arc length ≈83.6 m,
-      median travel time ≈24.6 d
+      particles = **≈4.15 m/d** (``v_prt_path_mpd``), median arc length ≈84.4 m,
+      median travel time ≈20.4 d
 
-On this corrected, less-uniform flow field the two velocities legitimately DIVERGE
-by ~18% rather than agreeing closely: ``v_flow`` is the straight-axis q/n average
-and ``v_prt`` is the curved-path arc-length average, and those are two different
-averages of the same non-uniform flow, not the same quantity -- see the
-implementation's coarse same-order-of-magnitude check.  The gap between the ≈32.8 d
-integral and PRT's ≈24.6 d median is expected and diagnostic in the same direction:
+The two velocities agree to ~2% here -- but do NOT read that as a percent-accurate
+verification.  ``v_flow`` is the straight-axis q/n average and ``v_prt`` is the
+curved-path arc-length average: two different averages of the same non-uniform flow,
+not the same quantity, and the implementation deliberately checks only that they
+agree to within 25% (see the same-order-of-magnitude check).  The small residual
+between the ≈21.2 d integral and PRT's ≈20.4 d median is expected and diagnostic:
 PRT's paths curve as they converge, and they TERMINATE on entering the
-extraction-well CELL (~7 m of the 90 m axis short of the well node), so a PRT
-particle travels ≈83.6 m, not 90 m.
+extraction-well CELL (a few m of the 90 m axis short of the well node), so a PRT
+particle travels ≈84.4 m, not 90 m.
 
 This is an *independent* computation -- specific discharge from the flow budget vs a
 Lagrangian particle integration -- so it genuinely verifies the particle-tracking
 engine.  Be honest about its reach, though: PRT and the ADE demo share the SAME flow
 field, the SAME grid and the SAME porosity (only the transport engines differ), so
 this check CANNOT detect an error in the flow solution itself.  The track's real
-end-to-end transport verification is 04t Section 5's 2-D analytical benchmark.
+end-to-end transport verification is 04t Section 8's 2-D analytical benchmark.
 
 THE LATERAL ANSWER: A REAL CAPTURE-ZONE HALF-WIDTH
 --------------------------------------------------
 ``halfwidth_at_spill_m`` is measured by BISECTION on a TRANSECT: single particles are
 released at increasing |offset| perpendicular to the spill -> well axis, at a stated
 along-axis position ``s``, and the dividing streamline is bracketed to ``tol_m``.
-It is a property of the FLOW FIELD, not of any probe: measured **≈76 m at the spill
+It is a property of the FLOW FIELD, not of any probe: measured **≈53 m at the spill
 transect (s = 0)**, unchanged when the bisection's own probe settings are varied
 (max offset 120-200 m, scan density 25-41 points, tolerance 0.25-1.0 m).  See
 :func:`capture_halfwidth_at`, which measures it at any transect.
 
-The zone WIDENS upgradient -- ≈76 m at the spill, ~104-112 m upgradient at
-200-500 m -- converging on the flow field's analytic asymptote
+The zone WIDENS upgradient -- ≈53 m at the spill, ≈67.5 m at 300 m upgradient --
+converging on the flow field's analytic asymptote
 
-    y_max = Q / (2 q b) ~= 114 m   (``asymptotic_halfwidth_m``)
+    y_max = Q / (2 q b) ~= 71.6 m   (``asymptotic_halfwidth_m``)
 
 with the regional unit-width discharge ``q * b`` read from the GWF budget upgradient
 of the doublet.  That asymptote is the same screening formula 01t uses as
 ``y_max = Q / (2 T i)``; the numeric transect value AT THE SPILL is narrower than the
 far-field asymptote, which is exactly what the geometry of a capture zone requires.
-(``q * b`` varies 5.9-7.2 m^2/d along the corridor -- heterogeneous K, RIV and RCHA --
-so the asymptote is only sharp to ~95-117 m.  It is a screen, not a measurement.)
+(``q * b`` varies along the corridor -- heterogeneous K, RIV and RCHA -- so the
+asymptote is a screen, not a measurement.)
 
 ``max_captured_offset_m`` is the OTHER, weaker number: the most off-axis release point
 that happened to be captured in THIS disc.  It is a lower bound that GROWS with the
-probe radius (e.g. ≈100 m at r = 120 m in one measured run, larger again at r = 200 m,
-in an UNCHANGED flow field -- this quantity is severely mesh/platform-dependent, so
+probe radius in an UNCHANGED flow field -- this quantity is severely mesh/platform-dependent, so
 treat the figures as illustrative order-of-magnitude only), and the point that sets it
 can sit upgradient of the spill rather than on the spill transect.  It is NOT a
 capture-zone half-width; it is kept only to show a student why a sampling statistic is
@@ -105,7 +103,7 @@ not a physical property.
 
 A capture zone is also a purely ADVECTIVE envelope.  A real, dispersive plume
 straddles it: a source just outside the dividing streamline can still register at the
-well, at low concentration.  "Outside ~76 m => safe" is false.
+well, at low concentration.  "Outside ~53 m => safe" is false.
 
 HOW A PARTICLE IS CLASSIFIED (verified, not guessed)
 ----------------------------------------------------
@@ -196,7 +194,7 @@ _GWF_IMS = dict(complexity="COMPLEX", outer_maximum=200, inner_maximum=100,
 _IREASON_TERMINATE = 3
 
 # A release disc of this radius is wide enough to STRADDLE the capture-zone
-# boundary (measured: capture fraction 0.72 at 120 m vs 1.00 at the default 10 m).
+# boundary (measured: capture fraction ~0.49 at 120 m vs 1.00 at the default 10 m).
 # The default 10 m release radius is a realistic spill footprint and lies ENTIRELY
 # inside the capture zone -- which is the honest answer for this spill, but it
 # teaches nothing about where the capture zone ENDS.  Use this radius for the
@@ -204,7 +202,7 @@ _IREASON_TERMINATE = 3
 WIDE_RELEASE_RADIUS_M: float = 120.0
 
 # --- transect-bisection settings for the REAL capture-zone half-width ---------
-# The measured half-width is INSENSITIVE to all three (verified: ≈76 m at the spill
+# The measured half-width is INSENSITIVE to all three (verified: ≈53 m at the spill
 # for max offset 120-200 m, 25-41 scan points, tolerance 0.25-1.0 m).  That
 # insensitivity is the whole point: unlike `max_captured_offset_m`, this number is a
 # property of the flow field and not of the probe that measured it.
@@ -784,9 +782,9 @@ def capture_halfwidth_at(
     ``scan_contiguous`` (False => capture is not monotone in |offset| on this transect
     and a single half-width does not describe it).
 
-    Measured at the spill (s = 0): **≈76 m** (asymmetric about the axis -- the
+    Measured at the spill (s = 0): **≈53 m** (asymmetric about the axis -- the
     injection well sits off to one side).  It WIDENS upgradient, converging on the
-    flow field's analytic asymptote ``Q / (2 q b) ~= 114 m``.
+    flow field's analytic asymptote ``Q / (2 q b) ~= 71.6 m``.
 
     Each call builds the steady GWF flow field once (~2 s) and then runs a handful of
     small PRT simulations (~0.2 s each), so it is cheap.
@@ -859,7 +857,7 @@ def _regional_qb(flow: Dict[str, Any]) -> Dict[str, float]:
     Feeds the analytic asymptotic half-width ``y_max = Q / (2 q b)`` -- the same
     screening formula 01t writes as ``Q / (2 T i)``, since ``T i = K b i = q b``.
     Sampled far enough upgradient (500 -> 200 m) that the doublet barely perturbs it.
-    ``q * b`` varies 5.9-7.2 m^2/d along the corridor (heterogeneous K, RIV, RCHA), so
+    ``q * b`` varies along the corridor (heterogeneous K, RIV, RCHA), so
     the asymptote is only sharp to about +-10%: it is a SCREEN, not a measurement.
     """
     lo, hi = _ASYMPTOTE_WINDOW_M
@@ -906,7 +904,7 @@ def build_prt_capture(
 
         BIAS, STATED PLAINLY: a dropped point would have been CAPTURED (it is inside
         the well), so dropping it DEFLATES the capture fraction -- at r = 120 m the
-        one dropped point deflates the capture fraction to ≈0.68.  Points in
+        one dropped point deflates the capture fraction to ≈0.49.  Points in
         the INJECTION-well cell are NOT dropped: the injection well is a SOURCE, a
         particle released there advects away normally, and its travel time is not 0.
         (In practice no release point lands there at any radius used here;
@@ -1298,7 +1296,7 @@ if __name__ == "__main__":
     print(f"    FLOW  q/n integrated along the axis       = {r.v_flow_qn_mpd:.2f} m/d "
           f"(travel-time integral {r.tt_flow_integral_d:.1f} d over "
           f"{r.meta['spill_to_well_m']:.0f} m)")
-    print("    NOTE: PRT's advective timescale and the ADE's day-41 CONCENTRATION peak "
+    print("    NOTE: PRT's advective timescale and the ADE's day-39 CONCENTRATION peak "
           "are different\n          quantities; no simple identity connects them in a "
           "converging 2-D field.")
     print(f"  wall-clock = {dt:.0f}s")

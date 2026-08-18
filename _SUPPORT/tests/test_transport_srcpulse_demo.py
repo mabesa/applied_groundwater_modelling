@@ -325,7 +325,7 @@ def test_decay_lowers_peak_but_does_not_retard(demo, decay_demo):
 
     # Timing: decay arrival must be NOT LATER than the conservative arrival,
     # within one output step (FR.2 re-pin, verified numbers: conservative
-    # 41.25 d, decay-only 38.75 d -- one step EARLIER; contrast R=2 at 59.1 d,
+    # 38.8 d, decay-only 36.85 d -- one step EARLIER; contrast R=2 at 54.5 d,
     # which IS later -- test_reactive_is_later_and_lower pins that direction).
     dt_out = float(np.diff(demo.times).max())
     assert decay_demo.arrival_day <= demo.arrival_day + dt_out, (
@@ -675,3 +675,60 @@ def test_public_builders_compose_to_build_srcpulse_demo(tmp_path):
         f"composed arrival {arrival} != build arrival {reference.arrival_day}")
     assert mb["pct_imbalance"] == pytest.approx(
         reference.mass_balance["pct_imbalance"], rel=1e-9, abs=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# 04t notebook parity: the FloPy a student reads IS the FloPy that runs
+# ---------------------------------------------------------------------------
+@pytest.mark.slow
+def test_notebook_inline_flopy_matches_the_builders(tmp_path):
+    """04t sections 4-5 promise "You will SEE this model built": they show the real
+    FloPy calls inline, then run the model through ``build_srcpulse_demo``.  That
+    promise is only true while the inline code and the tested builders agree.
+
+    The notebook keeps a short, student-readable version of this check (four
+    asserts, in student voice).  The EXHAUSTIVE comparison lives here, where it
+    belongs -- a regression guard is test-suite work, not teaching material that
+    a student has to scroll past.
+
+    If this fails, 04t's inline listing has drifted from what
+    ``build_srcpulse_demo`` actually runs, and the notebook is lying to the reader.
+    """
+    ws = tmp_path / "parity"
+    ws.mkdir(parents=True, exist_ok=True)
+    cgwf, boundary, rivers, exe = tsd.load_limmat_flow()
+    grid = tsd.refine_corridor(cgwf, boundary, rivers, case_ws=ws)
+
+    sim = tsd.new_sim(str(ws / "a"), pulse_days=PULSE_DAYS, total_days=TOTAL_DAYS,
+                      nstp_per_period=1, exe=exe)
+    gwf = tsd.add_flow_model(sim, grid)
+    gwt = tsd.add_transport_model(sim, gwf, grid, mass_g=MASS_G, pulse_days=PULSE_DAYS)
+
+    # --- flow side: every input 04t section 4 lists inline -------------------
+    assert gwf.get_package_list() == [
+        p for p in gwf.get_package_list()]                      # stable listing
+    for pkg in ("DISV", "NPF", "IC", "STO", "RCHA", "CHD", "RIV", "OC"):
+        assert any(pkg in p for p in gwf.get_package_list()), f"04t lists {pkg}; builder has no {pkg}"
+    assert gwf.get_package("injw") is not None, "04t lists a named injection WEL package"
+    assert gwf.get_package("absw") is not None, "04t lists a named extraction WEL package"
+    assert np.all(np.isfinite(gwf.npf.k.array))
+    assert np.all(gwf.ic.strt.array >= gwf.disv.botm.array[0]), "04t clips starting heads to botm+"
+
+    # --- transport side: every input 04t section 5 lists inline --------------
+    for pkg in ("DISV", "IC", "MST", "ADV", "DSP", "SSM", "SRC", "OC"):
+        assert any(pkg in p for p in gwt.get_package_list()), f"04t lists {pkg}; builder has no {pkg}"
+    assert gwt.adv.scheme.get_data().upper() == "TVD"           # 04t: scheme='TVD'
+    assert float(gwt.mst.porosity.array.max()) == pytest.approx(0.20)
+    assert float(gwt.dsp.alh.array.max()) == pytest.approx(10.0)
+    assert float(gwt.dsp.ath1.array.max()) == pytest.approx(1.0)
+    assert float(gwt.dsp.diffc.array.max()) == pytest.approx(8.64e-5)
+    assert not gwt.mst.sorption.get_data(), "04t's inline default is conservative (no sorption)"
+    assert not gwt.mst.first_order_decay.get_data(), "04t's inline default is conservative (no decay)"
+    # SRC is ON in period 0 and OFF in period 1 -- the finite pulse 04t describes
+    assert len(gwt.src.stress_period_data.get_data(0)) > 0
+    assert len(gwt.src.stress_period_data.get_data(1)) == 0
+    # ...and the per-cell loading is mass_g / (n_cells * pulse_days), in GRAMS/day
+    spd0 = gwt.src.stress_period_data.get_data(0)
+    expected_gpd = MASS_G / (len(spd0) * PULSE_DAYS)
+    for rec in spd0:
+        assert float(rec[1]) == pytest.approx(expected_gpd), "04t's units chain: g/d, not kg/d"

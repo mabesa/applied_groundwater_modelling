@@ -7,11 +7,10 @@ workspace (see the `case_ws` fixture), via module-scoped fixtures:
     footprint).  Measured: capture fraction 1.000 -- the entire footprint sits
     inside the capture zone.
   * `wide`    -- the CAPTURE-ZONE probe (release_radius_m = 120 m =
-    `WIDE_RELEASE_RADIUS_M`).  Measured: capture fraction 0.719.
+    `WIDE_RELEASE_RADIUS_M`).  Measured: capture fraction ~0.49.
   * `wider`   -- the SAME flow field probed with a 200 m disc.  It exists for one
-    reason: to prove that `max_captured_offset_m` MOVES with the probe (82.9 m ->
-    86.9 m) while the real, bisected `halfwidth_at_spill_m` does NOT (78.9 m in
-    both).  That contrast is the point of the whole lateral rung.
+    reason: to prove that `max_captured_offset_m` MOVES with the probe while the
+    real, bisected `halfwidth_at_spill_m` does NOT (≈53.1 m in both).  That contrast is the point of the whole lateral rung.
 
 The isolated workspace is COLD at session start, so these are real MF6 solves
 (steady GWF + PRT), not cache hits against a pre-warmed ambient workspace.  Do
@@ -472,24 +471,24 @@ def test_advection_engine_matches_the_flow_field_it_was_given(capture):
     porosity, integrated along the spill -> well axis.  Nothing in that path touches
     the particle tracker.
 
-    Measured (hub, post-FR.1 corrected flow field): the flow field's path-averaged
-    v = 2.745 m/d and its travel-time integral = 32.8 d over the 90 m axis; PRT reports
-    a path-averaged v of 3.24 m/d (median arc length 83.6 m [PROVISIONAL] / median
-    travel time 24.6 d).  The two velocities now legitimately DIVERGE by ~18%: v_flow
-    is the straight-axis q/n average and v_prt is the curved-path arc-length average,
-    and on this less-uniform corrected field those are two different averages of the
-    same flow, not the same quantity -- see the coarse same-order-of-magnitude check
-    below.
+    Measured (hub, Phase-4 2,160 m3/d field): the flow field's path-averaged
+    v = 4.25 m/d and its travel-time integral = 21.2 d over the 90 m axis; PRT reports
+    a path-averaged v of 4.15 m/d (median arc length 84.4 m / median travel time
+    20.4 d).  They agree to ~2% here, but that is NOT a percent-accurate verification:
+    v_flow is the straight-axis q/n average and v_prt is the curved-path arc-length
+    average -- two different averages of the same non-uniform flow, not the same
+    quantity -- which is why the check below is deliberately a coarse
+    same-order-of-magnitude band, not a tight one.
 
     (This REPLACES the old `0.5 < v_implied < 20.0` "physics" check, which was a
     40x-wide band already implied by the regression pin below and therefore tested
     nothing, and the old PRT-vs-ADE "cross-validation", which was numerology: PRT's
-    advective timescale and the ADE's day-41 CONCENTRATION peak are different
+    advective timescale and the ADE's day-39 CONCENTRATION peak are different
     quantities and no simple identity connects them in a converging 2-D field.)
 
     NOTE the reach of this check, honestly: PRT and the ADE demo share the SAME flow
     field, grid and porosity, so it verifies the PARTICLE TRACKER against the flow
-    solution -- it cannot detect an error in the flow solution itself.  04t Section 5's
+    solution -- it cannot detect an error in the flow solution itself.  04t Section 8's
     2-D analytical benchmark is the track's end-to-end transport verification.
     """
     tt = capture.travel_times[capture.captured]
@@ -511,7 +510,7 @@ def test_advection_engine_matches_the_flow_field_it_was_given(capture):
 
     # (a) PRT's PATH-AVERAGED velocity vs the flow field's q/n.  This is the real
     #     comparison: the particles fly a CURVED path and terminate on entering the
-    #     well CELL, so they travel ~83.6 m, not the straight 90 m axis -- dividing
+    #     well CELL, so they travel ~84.4 m, not the straight 90 m axis -- dividing
     #     90 m by the travel time (as an earlier version did, giving "3.5 m/d") divides
     #     by a distance no particle travels.
     v_prt = float(np.median(capture.arc_lengths[capture.captured] / tt))
@@ -533,10 +532,10 @@ def test_advection_engine_matches_the_flow_field_it_was_given(capture):
     # (b) and the travel TIME itself, against the flow field's integral.  The tolerance
     #     is looser (rel=0.25) and deliberately so: the integral is taken over the full
     #     90 m straight axis while PRT stops at the well-cell face, so the integral is
-    #     expected to run LONG (32.8 d vs 24.6 d, ~33%, on the corrected post-FR.1 flow
+    #     expected to run LONG (21.2 d vs 20.4 d, ~4%, on the Phase-4 2,160 m3/d
     #     field).  A 40% band still fails hard on a wrong porosity (a factor of 2),
-    #     wrong units, or a broken FMI hand-off, but accommodates that ~33% legitimate
-    #     axis-vs-path divergence (the time analog of the v_flow/v_prt split above).
+    #     wrong units, or a broken FMI hand-off, while leaving room for that
+    #     axis-vs-path divergence AND the macOS<->hub platform spread.
     assert capture.tt_median_d == pytest.approx(tt_flow, rel=0.40)
     assert capture.tt_median_d < tt_flow, (
         "PRT's median travel time is not SHORTER than the axis integral; it should be, "
@@ -619,8 +618,8 @@ def test_capture_zone_boundary_on_axis_captured_off_axis_escapes(wide):
 
     # `max_captured_offset_m` is a SAMPLING statistic on a highly mesh/platform
     # -dependent geometric quantity (~24% macOS<->hub spread observed for the
-    # related half-width) -- not portable as a tight absolute pin.  hub fresh value
-    # is ~100.2 m (was 82.9 pre-FR.1); pin the PHYSICS instead: it must be positive
+    # related half-width) -- not portable as a tight absolute pin, so no absolute
+    # figure is quoted here; pin the PHYSICS instead: it must be positive
     # and cannot exceed the theoretical capture half-width asymptote (+10% slack for
     # the discrete probe).
     assert 0.0 < wide.max_captured_offset_m <= wide.asymptotic_halfwidth_m * 1.1
@@ -643,7 +642,7 @@ def test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not(capture, w
 
     `max_captured_offset_m` -- "the most off-axis release point that happened to be
     captured in this disc" -- is a SAMPLING STATISTIC.  It moves with the probe radius
-    in an UNCHANGED flow field (measured 82.9 m at r = 120 m, 86.9 m at r = 200 m), and
+    in an UNCHANGED flow field (it grows with the probe radius), and
     the point that sets it can sit tens of metres UPGRADIENT of the spill rather than on
     the spill transect.  It is a lower bound, not a capture-zone half-width.
 
@@ -662,17 +661,17 @@ def test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not(capture, w
         capture.halfwidth_at_spill_m, abs=1e-9)
     assert wider.halfwidth_at_spill_m == pytest.approx(
         capture.halfwidth_at_spill_m, abs=1e-9)
-    # The bisected half-width is severely platform-variable (~24% macOS<->hub); hub
-    # fresh ~75.9 m (was 78.9). Pin the PHYSICS: positive and below the theoretical
+    # The bisected half-width is severely platform-variable (~24% macOS<->hub), so no
+    # absolute figure is quoted here. Pin the PHYSICS: positive and below the theoretical
     # asymptote. (The probe-invariance + asymmetry relationships below stay strict.)
     assert 0.0 < capture.halfwidth_at_spill_m < capture.asymptotic_halfwidth_m
     assert capture.meta["halfwidth_s_m"] == 0.0            # AT the spill transect
     assert capture.meta["halfwidth_scan_contiguous"] is True
-    # `halfwidth_plus_m` is severely platform-variable (~24% macOS<->hub observed);
-    # hub fresh value is ~86.7 m (was 81.4 pre-FR.1).  Pin the PHYSICS instead: a
+    # `halfwidth_plus_m` is severely platform-variable (~24% macOS<->hub observed),
+    # so no absolute figure is quoted here.  Pin the PHYSICS instead: a
     # probed half-width is positive and must sit below the theoretical asymptote.
     assert 0.0 < capture.meta["halfwidth_plus_m"] < capture.asymptotic_halfwidth_m
-    # hub fresh ~65.2 m (was 76.4); same platform-variability -- pin the physics range
+    # same platform-variability as the plus side -- pin the physics range
     assert 0.0 < capture.meta["halfwidth_minus_m"] < capture.asymptotic_halfwidth_m
     # the two sides differ -- the zone is NOT symmetric about the axis (the injection
     # well sits off to one side), which a single symmetric "half-width" would hide
@@ -685,7 +684,7 @@ def test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not(capture, w
         "max_captured_offset_m did not move between a 120 m and a 200 m probe; the "
         "premise of this whole rename (that it is a probe artifact) needs re-checking")
     # absolute value is platform-variable; physics range (the != relationship above
-    # already proves it moved with the probe). hub fresh differs from the 86.9 pin.
+    # already proves it moved with the probe); no absolute figure is pinned.
     # Bound is 1.5x the ANALYTIC asymptote (not 1.1): max_captured_offset is a
     # EUCLIDEAN release-radius of a captured probe point, and the NUMERIC capture zone
     # near the convergent doublet runs somewhat wider than the analytic y_max=Q/(2qb)
