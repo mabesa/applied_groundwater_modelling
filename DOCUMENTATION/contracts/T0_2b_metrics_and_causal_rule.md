@@ -225,6 +225,30 @@ B arm; and that reduced transverse numerical smearing is a **plausible leading e
 
 ---
 
+## 4.4 Claim-typing rules — how the inventory was actually judged
+
+Every one of the 249 candidates was classified by **two independent codex raters** per surface
+(`DESIGN_DOCS/codex_reviews/T0_2a/`). Agreement was **84%** on the 135 student-facing candidates and
+**65%** on the 114 code/test ones. Agreements were adopted directly; the residue was resolved by the rules
+below, which are recorded **so the same question is never re-litigated candidate by candidate**.
+
+| # | Rule | Rationale |
+|---|---|---|
+| **R0** | **A span may carry SEVERAL types.** A sentence asserting a value *and* a verdict is `numeric` **and** `threshold-decision` | 8 of the student-facing disagreements were exactly this, and both raters were right. The demonstrated case is that the 1 mg/L exceedance is grid-stable while the peak is not — a single type discards half the content |
+| **R1** | **Unit-conversion and implementation guidance is `not_a_claim`** — *"get this wrong and you are 1000× off"*, m/s → m/d, the SRC g/day row | A claim about arithmetic, not discretisation. **No grid could make it true or false**, so `claim_support_state` cannot apply |
+| **R2** | **A multiple-choice option is a claim only if the repo ENDORSES it** — it is the keyed answer, or it carries the repo's own explanation of why the distractor is wrong. Distractor-only text is `not_a_claim` | The repo does not assert what a wrong answer says. But it *does* assert its own explanation of why that answer is wrong — and `t04_checkpoint_3` option B's explanation is a **Tier-1 at-risk claim** |
+| **R3** | **A model-derived number supplied as an exercise INPUT is still `numeric`** — e.g. *"the well-adjacent cell has seepage velocity ≈ 28.3 m/d, read from the NPF specific-discharge field"* | Being handed *to* the student does not exempt it: it is read off the model and moves when the model moves. This is the line between **given data** (K, porosity — out of scope) and **pre-run results** (in scope) |
+| **R4** | **Test assertions, their messages and implementation comments are `not_a_claim` — but they are PINNED SURFACES** and are recorded in `T0_1_pinned_surfaces.md` for T0.1's rebaseline map | Both raters were right about different things. Classifying them as noise must never mean *forgetting* them: they hold result-derived numbers that must move at the JAG |
+
+**Result: the inventory gate exits 0** — 249 candidates, 267 claim-type assignments, 0 unclassified.
+
+⚠️ **Two orphans surfaced during typing.** `task_t05_tt_checkpoint_1/2/3` are referenced by **no notebook**
+— they exist only in `tasks_data.py`, carrying student-visible numbers nothing displays. They are typed
+`illustrative` and flagged for **retirement in T3**, alongside the already-known orphan
+`task_t04_checkpoint_2`.
+
+---
+
 ## 5. The two matrices — named separately
 
 | Matrix | Cardinality | Executed by |
@@ -269,6 +293,5 @@ Recorded here so T2 is never read as owing 50 identities for cases that do not y
    notebooks on 2026-08-20 (§2.5), on the evidence that no inventoried claim uses one. M0 keeps it.
 3. **Regulatory threshold values, PFOA especially** — still open, still a live legal fact, still needed by
    T3/T4 rather than by T0.
-4. **The claim inventory's judgment pass is incomplete** — 123 of 249 candidates classified (114 by
-   two-rater agreement, 9 as compound spans); 12 student-facing disputes and 114 code/test candidates
-   remain. T0.2 does not exit until the inventory gate exits 0.
+4. ✅ **The claim inventory's judgment pass is COMPLETE** — 249/249 classified, 267 assignments, **gate
+   exits 0** (2026-08-20). Two independent raters per surface; the residue resolved by the §4.4 rules.
