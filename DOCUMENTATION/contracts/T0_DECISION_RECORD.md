@@ -194,3 +194,38 @@ the bound forbids**. So the lecturer re-signed on 2026-08-20, and amendments 1�
 
 **What this cost:** one signature. **What it caught:** two allow-list entries that would have been used as
 authority for source edits without ever having been authorised — found before any code was written.
+
+### 8.2 Rendering-only regeneration of `T0_2a_claim_inventory.md` *(2026-08-20)*
+
+`check-internal-links` went red on **24** links, every one in `T0_2a_claim_inventory.md`. The cause was
+**quoting, not content**: `render_markdown` copies notebook prose verbatim into its "Matched text" column
+and escaped only the table delimiter, so relative links written for `PROJECT/transport/` rendered **live**
+and resolved against `DOCUMENTATION/contracts/`. 19 candidates → 21 emitted rows → 24 link instances.
+
+The generator now neutralises link-forming sequences in quoted snippets (`_escape_table_snippet`, applied
+at **both** render sites), and the `.md` was **re-run, not hand-edited** — the change path
+`contracts/README.md` Rule 2 prescribes for a generated artifact.
+
+**What changed:** 21 lines of the `.md`, every one a table row, every edit `](` → `]\(`. Nothing else.
+**What did not:** `T0_2a_claim_inventory.json` is **byte-identical** (`cmp`-verified). Schema **v3**,
+**427** candidates, **458** typed assignments, **three** detector nets, **gate exits 0** — all unchanged.
+§1 is therefore untouched in substance.
+
+Recorded as an amendment rather than an in-flight edit because §1 names the `.md` alongside the `.json`.
+The lecturer's decision was that a rendering-only regeneration of an artifact whose catalogue status is
+*"Generated — do not hand-edit · re-run the generator"* does not require a failure edge. The
+counter-reading — that §5's rule admits no exception — is recorded as available and **not taken**.
+
+**Also fixed, because it blocked the regeneration.** The claim gate read its shared detector net from
+`DESIGN_DOCS/transport_stale_number_audit.sh` **at run time** — gitignored and untracked, so an artifact
+whose prescribed change path is *"re-run the generator"* was **not regenerable from a clean clone**. Moved
+to `_SUPPORT/src/scripts/` (`de26680`). This is the **third** instance of the gitignored-dependency defect
+C1 diagnosed and fixed in its Appendices A and B. Note the limit: the tracked script reproduces the signed
+JSON byte-for-byte today, but it has no git history, so it is **adopted prospectively** as the canonical
+net — historical identity is unprovable and is not claimed.
+
+Verification: snapshot → regenerate → `cmp` on the `.json` → 21-changed-line / escape-only / zero-extracted-
+links assertions → gate reads **`Scanned 53 files; checked 108 internal links; 0 failures.`** Run in an
+isolated worktree at `de26680`, because concurrent T1 edits to `transport_srcpulse_demo.py` and
+`transport_prt_capture.py` — both inside the generator's scanned scope — would otherwise have been swept
+into this artifact.

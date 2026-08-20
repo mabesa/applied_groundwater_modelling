@@ -9,6 +9,9 @@ on:
       - '_SUPPORT/static/**'
       - '_SUPPORT/src/scripts/check_internal_links.py'
       - '_SUPPORT/tests/test_check_internal_links.py'
+      - '_SUPPORT/src/scripts/transport_claim_inventory.py'
+      - '_SUPPORT/src/scripts/transport_stale_number_audit.sh'
+      - '_SUPPORT/tests/test_transport_claim_inventory.py'
       - '.github/workflows/check-internal-links.yml'
   pull_request:
     paths:
@@ -18,6 +21,9 @@ on:
       - '_SUPPORT/static/**'
       - '_SUPPORT/src/scripts/check_internal_links.py'
       - '_SUPPORT/tests/test_check_internal_links.py'
+      - '_SUPPORT/src/scripts/transport_claim_inventory.py'
+      - '_SUPPORT/src/scripts/transport_stale_number_audit.sh'
+      - '_SUPPORT/tests/test_transport_claim_inventory.py'
       - '.github/workflows/check-internal-links.yml'
   workflow_dispatch:
 
@@ -39,7 +45,7 @@ jobs:
         run: uv sync
 
       - name: Run validator unit tests
-        run: uv run pytest _SUPPORT/tests/test_check_internal_links.py -v
+        run: uv run pytest _SUPPORT/tests/test_check_internal_links.py _SUPPORT/tests/test_transport_claim_inventory.py -v
 
       - name: Run validator on repository
         run: uv run python _SUPPORT/src/scripts/check_internal_links.py
