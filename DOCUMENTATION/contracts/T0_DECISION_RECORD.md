@@ -18,7 +18,7 @@ planning. It **assembles** them, checks completeness item by item, and carries t
 | Doc | Version | What it freezes |
 |---|---|---|
 | `T0_0_canonical_contract.md` | **v3** | The canonical default-preservation gate: exact invocation · cold-workspace policy · the payload (the **entire** public `SrcPulseDemo` surface, with the 9 `mass_balance` / 17 `meta` / 9 `locked` keys enumerated) · the normalisation · the two-process harness · the §5.1 qualification · the Hub thresholds |
-| `T0_1_C1_v2.md` | **v4** (amended 1–2) | C1 v2: enumerated surfaces (**generated**) · invariant gates with per-milestone scoping · the versioned change allow-list (A1–A9) · the numeric-rebaseline table |
+| `T0_1_C1_v2.md` | **v4** (amended 1–2) | C1 v2: enumerated surfaces (**generated**) · invariant gates with per-milestone scoping · the versioned change allow-list (**A1–A14**, as amended) · the numeric-rebaseline table |
 | `T0_1_pinned_surfaces.md` | generated | The **32** result-derived pins in tests and modules — input to C1 §4 |
 | `T0_2a_claim_inventory.json` / `.md` | schema **v3** | **427** candidates / **458** typed assignments over **three** detector nets; **gate exits 0** |
 | `T0_2b_metrics_and_causal_rule.md` | **v4** | Metric algorithms + interpolation · sequences and stopping rules · the three tolerances · the causal-support rule and the `causal-physics` / `causal-numerical` split · both matrices · the claim-typing rules R0–R4 |
