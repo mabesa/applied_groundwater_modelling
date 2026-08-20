@@ -423,7 +423,7 @@ T0.0 takes effect only when this section is completed. Until then, **no T1 sourc
 
 | | |
 |---|---|
-| **Document version** | v1 |
+| **Document version** | v2 |
 | **Prepared** | 2026-08-20 |
 | **Approved by** | *(name)* |
 | **Approval date** | *(date)* |

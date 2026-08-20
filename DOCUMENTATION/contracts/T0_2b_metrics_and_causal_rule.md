@@ -1,7 +1,7 @@
 # T0.2b — Metric algorithms, sequences, tolerances and the causal-support rule
 
 **Milestone:** T0.2 of `transport_notebook_milestones.md` (READY v7).
-**Status:** **DRAFT v1 (2026-08-20)** — signs as part of the single T0 decision record.
+**Status:** **DRAFT v2 (2026-08-20)** — §2.7 tolerances accepted by the lecturer — signs as part of the single T0 decision record.
 **Companion:** `T0_3_claim_support_state.md` owns the vocabulary and the gate order; **this document owns
 the numbers**. Neither restates the other.
 **Depends on:** `T0_2a_claim_inventory.json` (the enumerated claim set).
@@ -202,9 +202,23 @@ Recorded here so T2 is never read as owing 50 identities for cases that do not y
 
 ## 7. Open items
 
-1. **The three tolerances in §2.7 are proposed policy and need the lecturer's signature.** They are the
-   single most consequential numbers in T0: they decide what counts as grid-supported. Once signed,
-   changing them after T2 runs is a failure edge.
+1. ✅ **The three tolerances in §2.7 are ACCEPTED** — lecturer, 2026-08-20: *"let's use your decisions for
+   the three tolerances and see how this goes."* `TOL_CONC_REL = 2%` · `TOL_TIME_REL = 2%` ·
+   `TOL_WIDTH_REL = 5%` are **frozen for T2**.
+
+   ⚠️ **What "see how this goes" means procedurally, stated so it cannot drift.** The tolerances are now
+   predeclared. If T2's results suggest a tolerance was wrong, the documented path is a **failure edge back
+   to T0** — re-freeze, then re-run the affected series — **not** an in-flight adjustment once the numbers
+   are visible. That is the whole reason they are frozen before T2 rather than chosen after it. A tolerance
+   revised in light of the result it is meant to judge is not a tolerance.
+
+   These are the first numbers in this workstream chosen by me rather than by the lecturer, so the
+   reasoning is on the record: **2% on concentrations** is roughly 4× tighter than the existing ±8%
+   regression pin, which would absorb over half of the 14.5% effect; **2% on times** is relative rather
+   than absolute because an absolute ~1 day would exceed the output-lattice step and swallow the very
+   effect §1 exists to expose; **5% on widths** is looser because the bisection's own probe settings move
+   the half-width by ~1 m, while still being far tighter than the 24% Mac↔Hub platform spread — which is
+   why the platform qualification stays mandatory.
 2. **The detection floor (§2.5) is owned by M0 and is not yet frozen there.** Until it is, every
    `t_first_detection` claim is `null`.
 3. **Regulatory threshold values, PFOA especially** — still open, still a live legal fact, still needed by
