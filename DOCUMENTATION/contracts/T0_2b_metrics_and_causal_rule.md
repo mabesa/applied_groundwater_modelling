@@ -1,7 +1,8 @@
 # T0.2b — Metric algorithms, sequences, tolerances and the causal-support rule
 
 **Milestone:** T0.2 of `transport_notebook_milestones.md` (READY v7).
-**Status:** **DRAFT v2 (2026-08-20)** — §2.7 tolerances accepted by the lecturer — signs as part of the single T0 decision record.
+**Status:** **DRAFT v3 (2026-08-20)** — §2.7 tolerances accepted; codex sign-decision review folded in
+(`DESIGN_DOCS/codex_reviews/T0/sign_decision_out.md`, verdict SIGN-WITH-CHANGES). — signs as part of the single T0 decision record.
 **Companion:** `T0_3_claim_support_state.md` owns the vocabulary and the gate order; **this document owns
 the numbers**. Neither restates the other.
 **Depends on:** `T0_2a_claim_inventory.json` (the enumerated claim set).
@@ -38,6 +39,33 @@ This is why §2 freezes interpolation for every time-valued metric.
 ---
 
 ## 2. Metric algorithms — frozen
+
+### 2.0 🔴 EVERY INTERPOLATED METRIC BELOW IS EXPERIMENTAL-ONLY UNTIL THE JAG
+
+*(codex sign-review #1, verified. v2 shipped a deterministic contradiction and this section removes it.)*
+
+v2 told T1 that today's un-interpolated computation **"must be replaced"**, without qualifying the
+namespace. Read literally that instruction breaks `T0_0_canonical_contract.md` §5: interpolating `t_peak`
+changes a **default-path payload field** (`arrival_day = 38.8043478261` is a lattice point; the parabolic
+vertex is not), so the default-preservation gate would fail **by construction** — after the engineering
+work was already done, through no engineering mistake. As codex put it: **intent cannot override
+contradictory signed text.**
+
+**The staging, frozen:**
+
+| Phase | Default path | Experimental namespace `exp/vN` |
+|---|---|---|
+| **T1, T2** | **unchanged** — `t_peak` is the **legacy lattice alias, exactly equal to `arrival_day`**; `t_first_exceedance` keeps the notebook's un-interpolated form | the interpolated evaluator of §§2.2–2.4 is built and used **here only** |
+| **JAG** | the interpolated metrics **activate**, in one atomic commit, against T2's audited old→new value map | — |
+
+- **Every "T1 obligation" in §§2.2–2.4 means: implement it in the `exp/vN` metric evaluator.** None of them
+  licenses a default-path change before the JAG.
+- ⚠️ **`t_first_exceedance` is the quiet one.** It is computed in `04t_model_implementation.ipynb` cell 23,
+  **not** in the `SrcPulseDemo` payload, so the canonical gate **cannot see it change**. Changing it before
+  the JAG would therefore breach the default-preservation boundary **invisibly**. It is named here so that
+  cannot happen by accident.
+
+---
 
 Each metric is defined by: **quantity · units · algorithm · tie-break · censoring · tolerance.**
 Where the frozen algorithm differs from what the code does today, the change is listed as a **T1
@@ -84,10 +112,20 @@ signed.
 
 ### 2.5 `t_first_detection`
 - **Units** days. **Algorithm** as §2.3 with the **detection floor** in place of the regulatory threshold.
-- 🔴 **The detection floor is NOT frozen here.** M0 has it under active design
-  (`M0_contract_freeze_plan.md:90–97`, `detection_floor = max(source_normalised_floor,
-  observed_radius_spread)`). **T0.2b adopts M0's floor by reference and does not invent a second one.**
-  Until M0 freezes it, every `t_first_detection` claim is `null / refinement_axis_untested`.
+- 🔴 **DECISION 2026-08-20: `t_first_detection` is OUT OF SCOPE for the transport notebooks.**
+  T0.2's exit explicitly permits a claim to be *"deliberately removed from teaching scope by a recorded
+  decision"*, and this is that record.
+
+  **Evidence:** the claim inventory contains **no transport-notebook claim that uses a detection floor**.
+  Searching all 249 candidates for detection language returns three hits, all the ordinary verb *"detect"*
+  in unrelated contexts (PRT verification; error detection in a test docstring). The single occurrence in
+  `01t_model_goal.ipynb` cell 6 — *"a marginal bypass becomes a small detection"* — is prose with no
+  metric, threshold or number attached.
+
+  **Consequence:** the floor stays where it is genuinely needed — **M0**, for the case study's
+  bypass-versus-arrival-below distinction (`M0_contract_freeze_plan.md:90–97`) — and **M0's unfrozen floor
+  is therefore NOT a T0 blocker.** If a transport notebook ever makes a detection claim, that is a new
+  claim requiring a failure edge to T0, not a silent adoption.
 
 ### 2.6 `capture_halfwidth_m` — upstream plume / capture half-width (PRT)
 - **Units** m. **Algorithm** bisection of the dividing streamline on a transect
@@ -125,6 +163,14 @@ absorb over half of the 14.5% effect and is exactly why T1 needs the canonical d
 2. **Feasibility ceiling** — the next refinement is priced above `HUB_FINE_CEILING_S`
    (`T0_0_canonical_contract.md` §6). Stop and report *"tolerance not reached within the feasible
    envelope"* — which is a **result**, not a failure.
+
+   🔴 **This is NOT the same event as the probe failing** *(codex sign-review #3)*. Two different things
+   share one threshold, and v2 let them be confused:
+   - **A SPATIAL-SERIES point above the ceiling → an allowable feasibility STOP.** The series ends there
+     and the claim is judged on the envelope actually tested.
+   - **The NAMED FEASIBILITY-PROBE IDENTITY above the ceiling → T2 FAILS** and takes its failure edge
+     (T0.0 §6). The probe is the mandatory case-study fine identity; it may **not** be reclassified as a
+     "feasibility stop" to dodge the edge.
 3. **Step-cap** — hitting `nstp_cap` **fails loudly** and takes a failure edge (T1 exit). It may never pass
    as "honest time-stepping".
 4. 🔴 **No open-ended refinement.** The series is these five spatial and three temporal points. Adding a
@@ -219,8 +265,8 @@ Recorded here so T2 is never read as owing 50 identities for cases that do not y
    effect §1 exists to expose; **5% on widths** is looser because the bisection's own probe settings move
    the half-width by ~1 m, while still being far tighter than the 24% Mac↔Hub platform spread — which is
    why the platform qualification stays mandatory.
-2. **The detection floor (§2.5) is owned by M0 and is not yet frozen there.** Until it is, every
-   `t_first_detection` claim is `null`.
+2. ✅ **The detection floor is no longer a T0 item** — `t_first_detection` was scoped out of the transport
+   notebooks on 2026-08-20 (§2.5), on the evidence that no inventoried claim uses one. M0 keeps it.
 3. **Regulatory threshold values, PFOA especially** — still open, still a live legal fact, still needed by
    T3/T4 rather than by T0.
 4. **The claim inventory's judgment pass is incomplete** — 123 of 249 candidates classified (114 by

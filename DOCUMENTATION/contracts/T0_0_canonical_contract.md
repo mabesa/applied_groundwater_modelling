@@ -1,7 +1,9 @@
 # T0.0 — Canonical Default Contract Freeze
 
 **Milestone:** T0.0 of `transport_notebook_milestones.md` (READY v7).
-**Status:** **DRAFT v2 — awaiting the named, dated lecturer approval in §7.**
+**Status:** **DRAFT v3 — awaiting the named, dated lecturer approval in §7.**
+v3 folds the codex **sign-decision review** (`DESIGN_DOCS/codex_reviews/T0/sign_decision_out.md`, verdict
+**SIGN-WITH-CHANGES — do not sign v2**).
 v2 folds all nine findings of codex review round 1 (**BLOCK**, 2026-08-20) —
 `DESIGN_DOCS/codex_reviews/T0/t0_round1_out.md`. Every one was verified against the code before acceptance.
 **Blocks:** every T1 source edit. No edit to `transport_srcpulse_demo.py`, `transport_prt_capture.py`,
@@ -230,6 +232,17 @@ make the migration T0.2 requires a **violation of T0.0**.
   run's `arrival_day` value, and both names are then compared normally.
 - The alias is removed only at or after the JAG, under C1's approved change allow-list — never during T1.
 
+🔴 **AND THROUGH T1/T2 THE DEFAULT `t_peak` IS THE LATTICE ALIAS — IT IS NOT INTERPOLATED**
+*(codex sign-review #1, verified)*. `T0_2b_metrics_and_causal_rule.md` §2.2 freezes `t_peak` as a
+**parabolic-vertex interpolation**, which does **not** equal `arrival_day` (`38.8043478261` is a lattice
+point; the vertex is not). If T1 implemented that on the default path, **this gate would fail by
+construction** — after the engineering work, through no engineering mistake.
+
+**The boundary, stated once and mirrored in both documents:** the interpolated evaluator lives in `exp/vN`
+through T1 and T2; the **default-path `t_peak` stays exactly equal to `arrival_day`**; the interpolated
+metrics activate **at the JAG**, in one commit, against T2's audited old→new value map. T0.2b §2.0 carries
+the matching table.
+
 ---
 
 ## 4. The normalisation, frozen
@@ -437,7 +450,19 @@ T0.0 takes effect only when this section is completed. Until then, **no T1 sourc
    the 1800 s wall) is the value to accept or change; changing it *after* T2 measures the Hub is a failure
    edge, not an edit.
 3. **The `arrival_day` → `t_peak` migration of §3.3** — pre-authorised here, but it is a naming decision
-   T0.2 formally owns and M0 already made. Confirm it rather than reopen it.
+   T0.2 formally owns and M0 already made. Confirm it rather than reopen it. ⚠️ **Confirming the NAME does
+   not confirm an interpolated VALUE**: through T1/T2 `t_peak` is the lattice alias (§3.3); the
+   interpolated form activates only at the JAG.
+4. ✅ **The harness now implements this gate.** v2 was reviewed as unable to execute it — no
+   reference-vs-candidate mode existed, the frozen 29-field set **aborted** on the very fields §3
+   pre-authorises, and there was no schema-lift. `_SUPPORT/src/scripts/t0_gate_harness.py` now has a
+   `compare` mode, side-aware schema validation, an explicit lift table driven by §3, path-aware
+   `ARRAY_PAIR` ordering and full environment-fingerprint comparison. §5.1 self-qualification still
+   passes; 31 unit tests cover the lift path.
+5. ✅ **The qualification evidence is now IN the repository** —
+   `DOCUMENTATION/contracts/evidence/t0_qualification/` holds all six run reports, the run-1 side payloads
+   and a `SHA256SUMS.txt`. v2's evidence lived only in an ephemeral scratch directory, unverifiable by
+   anyone else.
 
 *(The regulatory threshold values — PFOA especially — remain open but are **not** a T0 blocker: they are
 consumed by T3/T4, not by the canonical contract.)*
