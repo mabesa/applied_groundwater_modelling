@@ -2,7 +2,16 @@
 """
 T0.0 canonical-default gate harness.
 
-Implements DESIGN_DOCS/T0_0_canonical_contract.md (v2):
+Implements DOCUMENTATION/contracts/T0_0_canonical_contract.md (v3):
+  - Section 2    -- the frozen per-path TYPE schema (FLOAT/INT/BOOL/STR/
+    ARRAY_FLOAT/ARRAY_INT/ARRAY_PAIR/MAPPING per field, derived once from the
+    contract's own tables) and Section 4.3's None-in-a-numeric-field defect
+    rule. Every payload leaf is validated against its declared class BEFORE
+    normalisation; a type mismatch or a None where a numeric/bool class is
+    declared aborts the gate with the offending path named -- it is a broken
+    or altered run, not a payload difference to diff (mirrors the Section
+    2.2 mass_balance abort precedent). This is what stops, e.g., a numeric
+    string silently taking the place of a float and passing the gate.
   - Section 3    -- pre-authorised fields, schema-lifted (not excluded) on the
     reference side; side-aware schema validation (reference = frozen legacy
     schema exactly, candidate = frozen schema + pre-authorised fields exactly).
@@ -96,31 +105,97 @@ SIGFIG_FLOAT = 12
 FLOAT_FORMAT = "{:.11e}"  # 12 significant digits, one canonical exponent form
 
 # ---------------------------------------------------------------------------
-# Section 2 -- the frozen REFERENCE payload schema (used only to ASSERT the
-# reflected field set matches; the enumeration itself is by reflection, per
-# Section 2). This is the legacy 29/9/17/9 field set -- it never changes.
+# Section 2 -- the frozen REFERENCE payload schema: NAME -> normalisation
+# CLASS, transcribed once from the contract's own tables (Section 2.1's
+# top-level table, Section 2.2's "all FLOAT" mass_balance keys, Section 2.3's
+# meta table, Section 2.4's locked table). This dict pair is the SOLE place
+# a field name is mapped to a type -- every keyset tuple used elsewhere in
+# this file (TOP_LEVEL_FIELDS, MASS_BALANCE_KEYS, META_KEYS, LOCKED_KEYS) is
+# DERIVED from it (`tuple(..._TYPES.keys())`), never hand-duplicated, so a
+# keyset and its types cannot drift apart. See path_type_schema() below for
+# how this combines with PRE_AUTHORIZED_FIELDS's own "class" entries into one
+# path -> class lookup used by validate_types().
 # ---------------------------------------------------------------------------
-TOP_LEVEL_FIELDS = (
-    "times", "breakthrough", "peak_mgL", "arrival_day", "mass_balance",
-    "solubility_ok", "emergent_C_mgL", "solubility_mgL", "solubility_margin",
-    "PeL_min", "PeL_max", "PeT_min", "PeT_max", "mass_g", "pulse_days",
-    "total_days", "smassrate_gpd", "src_cells", "ext_cell", "inj_cell",
-    "spill_xy", "alpha_L", "alpha_T", "R", "rho_b", "Kd", "lam", "meta",
-    "locked",
-)
-MASS_BALANCE_KEYS = (
-    "src_in_g", "well_out_g", "boundary_out_g", "storage_g", "decay_g",
-    "total_in_g", "total_out_g", "pct_imbalance", "grouped_residual_g",
-)
-META_KEYS = (
-    "ncpl", "nstp", "dt", "Cr", "n_src", "q_src_darcy", "b_src", "ds_src",
-    "q_cell", "v_bind", "ds_bind", "ds_true_min", "courant_floor",
-    "refine_radius_used", "u_reg", "cr_capped", "peak_at_last_step",
-)
-LOCKED_KEYS = (
-    "alh", "ath1", "diffc", "porosity", "scheme", "xt3d_off",
-    "refined_cell_size", "base_cell_size", "time_units",
-)
+TOP_LEVEL_TYPES = {
+    "times": "ARRAY_FLOAT",
+    "breakthrough": "ARRAY_FLOAT",
+    "peak_mgL": "FLOAT",
+    "arrival_day": "FLOAT",
+    "mass_balance": "MAPPING",
+    "solubility_ok": "BOOL",
+    "emergent_C_mgL": "FLOAT",
+    "solubility_mgL": "FLOAT",
+    "solubility_margin": "FLOAT",
+    "PeL_min": "FLOAT",
+    "PeL_max": "FLOAT",
+    "PeT_min": "FLOAT",
+    "PeT_max": "FLOAT",
+    "mass_g": "FLOAT",
+    "pulse_days": "FLOAT",
+    "total_days": "FLOAT",
+    "smassrate_gpd": "FLOAT",
+    "src_cells": "ARRAY_INT",
+    "ext_cell": "INT",
+    "inj_cell": "INT",
+    "spill_xy": "ARRAY_FLOAT",
+    "alpha_L": "FLOAT",
+    "alpha_T": "FLOAT",
+    "R": "FLOAT",
+    "rho_b": "FLOAT",
+    "Kd": "FLOAT",
+    "lam": "FLOAT",
+    "meta": "MAPPING",
+    "locked": "MAPPING",
+}
+MASS_BALANCE_TYPES = {
+    "src_in_g": "FLOAT",
+    "well_out_g": "FLOAT",
+    "boundary_out_g": "FLOAT",
+    "storage_g": "FLOAT",
+    "decay_g": "FLOAT",
+    "total_in_g": "FLOAT",
+    "total_out_g": "FLOAT",
+    "pct_imbalance": "FLOAT",
+    "grouped_residual_g": "FLOAT",
+}
+META_TYPES = {
+    "ncpl": "INT",
+    "nstp": "INT",
+    "dt": "FLOAT",
+    "Cr": "FLOAT",
+    "n_src": "INT",
+    "q_src_darcy": "FLOAT",
+    "b_src": "FLOAT",
+    "ds_src": "FLOAT",
+    "q_cell": "FLOAT",
+    "v_bind": "FLOAT",
+    "ds_bind": "FLOAT",
+    "ds_true_min": "FLOAT",
+    "courant_floor": "FLOAT",
+    "refine_radius_used": "FLOAT",
+    "u_reg": "ARRAY_FLOAT",
+    "cr_capped": "BOOL",
+    "peak_at_last_step": "BOOL",
+}
+LOCKED_TYPES = {
+    "alh": "FLOAT",
+    "ath1": "FLOAT",
+    "diffc": "FLOAT",
+    "porosity": "FLOAT",
+    "scheme": "STR",
+    "xt3d_off": "BOOL",
+    "refined_cell_size": "FLOAT",
+    "base_cell_size": "FLOAT",
+    "time_units": "STR",
+}
+
+# Keyset tuples, DERIVED (never hand-duplicated) from the type dicts above --
+# every other place in this file that needs "just the names" (build_payload's
+# set comparisons, the test module's synthetic dataclasses) uses these.
+TOP_LEVEL_FIELDS = tuple(TOP_LEVEL_TYPES.keys())
+MASS_BALANCE_KEYS = tuple(MASS_BALANCE_TYPES.keys())
+META_KEYS = tuple(META_TYPES.keys())
+LOCKED_KEYS = tuple(LOCKED_TYPES.keys())
 
 # ---------------------------------------------------------------------------
 # Section 3 -- pre-authorised fields, as a single table.
@@ -213,10 +288,205 @@ ARRAY_PAIR_PATHS = frozenset(
 
 class GateAbort(RuntimeError):
     """mass_balance carried the 'error' sentinel or a non-conforming keyset
-    (contract Section 2.2), or the top-level/nested field set did not match
-    the schema for this side (Section 2.5 / Section 3.1). A broken run or a
-    schema violation, not a payload difference -- do not compare, do not
+    (contract Section 2.2); the top-level/nested field set did not match the
+    schema for this side (Section 2.5 / Section 3.1); or a payload leaf did
+    not match its declared normalisation class, including a None where a
+    numeric (FLOAT/INT) or BOOL class is declared (Section 2 / Section 4.3
+    -- validate_types() below). A broken run, a schema violation or a type
+    defect -- never a payload difference -- do not compare, do not
     normalise, do not record a canonical result."""
+
+
+# ---------------------------------------------------------------------------
+# Section 2 / 4.3 -- the per-path TYPE schema and its validator.
+#
+# The keyset checks in build_payload() (below) only assert that the right
+# NAMES are present -- they say nothing about what TYPE lives behind each
+# name. That is the hole a codex review found: replacing peak_mgL with a
+# numeric string, or arrival_day with an int, or emergent_C_mgL with None,
+# produced ZERO differences, because normalize() coerces almost anything to
+# a string and nothing upstream of it ever checked the Python type. A type
+# change is a broken-or-altered run (a different code path silently produced
+# a different kind of value), not a payload difference to diff -- so, like
+# Section 2.2's mass_balance "error" key, it is a gate ABORT, not a mismatch
+# to report.
+#
+# path_type_schema() combines TOP_LEVEL_TYPES / MASS_BALANCE_TYPES /
+# META_TYPES / LOCKED_TYPES (the single source of truth above) with
+# PRE_AUTHORIZED_FIELDS's own "class" entries (Section 3) into ONE
+# path-tuple -> class lookup, side-aware exactly like build_payload()'s own
+# keyset logic (the pre-authorised paths only exist on the candidate side).
+# ---------------------------------------------------------------------------
+
+# Section 4.3: "None ... in a numeric field is a DEFECT, not a value" is
+# stated for numeric fields; this harness applies the same hard-abort rule
+# to BOOL for the same reason (a None boolean is exactly as meaningless as a
+# None float -- there is no third truth value in this schema). No field in
+# Section 2/2.2/2.3/2.4/3 is declared to permit an absent value, so in
+# practice None aborts for EVERY class here (STR/ARRAY_*/MAPPING included,
+# via the generic type-mismatch branch in _check_leaf_or_container) -- this
+# set only controls which of the two GateAbort MESSAGES is used, citing
+# Section 4.3 by name for the numeric/bool case the contract calls out
+# explicitly.
+NUMERIC_OR_BOOL_CLASSES = frozenset(("FLOAT", "INT", "BOOL"))
+
+# Section 4.1: the element class inside each array class.
+_ARRAY_ELEMENT_CLASS = {"ARRAY_FLOAT": "FLOAT", "ARRAY_INT": "INT"}
+
+
+def path_type_schema(side: str) -> dict:
+    """Section 2's typed schema, keyed by path tuple (matching the `path`
+    argument threaded through normalize()): {("peak_mgL",): "FLOAT",
+    ("mass_balance", "src_in_g"): "FLOAT", ("meta", "ncpl"): "INT", ...}.
+    `side` controls whether the Section 3 pre-authorised paths
+    (sink_support_m, meta.sink_support_cells, t_peak) are included --
+    candidate only, mirroring build_payload()'s existing side-aware keyset
+    logic (Section 3.1: those fields do not exist on the reference side).
+    """
+    schema = {}
+    for name, cls in TOP_LEVEL_TYPES.items():
+        schema[(name,)] = cls
+    for name, cls in MASS_BALANCE_TYPES.items():
+        schema[("mass_balance", name)] = cls
+    for name, cls in META_TYPES.items():
+        schema[("meta", name)] = cls
+    for name, cls in LOCKED_TYPES.items():
+        schema[("locked", name)] = cls
+    if side == "candidate":
+        for spec in PRE_AUTHORIZED_FIELDS:
+            schema[spec["path"]] = spec["class"]
+    return schema
+
+
+def _is_scalar_class_match(value, cls: str) -> bool:
+    """FLOAT/INT/BOOL/STR leaf check. Deliberately excludes numpy/py bool
+    from FLOAT and INT (bool is a Python int subclass, so `isinstance(True,
+    int)` is True -- without the exclusion a stray bool would silently pass
+    as an INT) and requires the exact declared class, never a coercible
+    look-alike (this is the check the numeric-string hole needed: a str is
+    never a FLOAT/INT no matter what it parses as)."""
+    import numpy as np
+
+    if cls == "FLOAT":
+        return isinstance(value, (float, np.floating)) and not isinstance(value, (bool, np.bool_))
+    if cls == "INT":
+        return isinstance(value, (int, np.integer)) and not isinstance(value, (bool, np.bool_))
+    if cls == "BOOL":
+        return isinstance(value, (bool, np.bool_))
+    if cls == "STR":
+        return isinstance(value, str)
+    raise ValueError(f"_is_scalar_class_match: not a scalar class: {cls!r}")
+
+
+def _fmt_path(path: tuple) -> str:
+    """Human-readable path for a GateAbort message: dict keys joined by
+    '.', list indices attached without an extra dot -- "meta.dt" /
+    "times[1]" / "meta.sink_support_cells[0][1]", matching _diff_normalized
+    ()'s own path style."""
+    out = ""
+    for p in path:
+        s = str(p)
+        if s.startswith("["):
+            out += s
+        elif out:
+            out += "." + s
+        else:
+            out = s
+    return out
+
+
+def _check_leaf_or_container(value, cls: str, path: tuple) -> None:
+    """Recursive worker for validate_types(): checks one (value, declared
+    class) pair, raising GateAbort by NAMED PATH on any mismatch -- the type
+    analogue of build_payload()'s keyset-mismatch abort."""
+    import numpy as np
+
+    dotted = _fmt_path(path)
+
+    if cls == "MAPPING":
+        if not isinstance(value, dict):
+            raise GateAbort(
+                f"type defect at {dotted!r}: declared MAPPING, got "
+                f"{type(value).__name__} ({value!r})"
+            )
+        return
+
+    if value is None:
+        if cls in NUMERIC_OR_BOOL_CLASSES:
+            raise GateAbort(
+                f"type defect at {dotted!r}: None in a {cls} field -- Section 4.3: "
+                f"'None ... in a numeric field is a DEFECT, not a value'; this harness "
+                f"applies the same rule to BOOL. Gate ABORTS, it does not compare or "
+                f"normalise this run."
+            )
+        raise GateAbort(
+            f"type defect at {dotted!r}: None where {cls} is declared -- no field in "
+            f"this schema is declared to permit an absent value (Section 4.3)."
+        )
+
+    if cls in ("FLOAT", "INT", "BOOL", "STR"):
+        if not _is_scalar_class_match(value, cls):
+            raise GateAbort(
+                f"type defect at {dotted!r}: declared {cls}, got "
+                f"{type(value).__name__} ({value!r})"
+            )
+        return
+
+    if cls in ("ARRAY_FLOAT", "ARRAY_INT", "ARRAY_PAIR"):
+        if not isinstance(value, (list, tuple, np.ndarray)):
+            raise GateAbort(
+                f"type defect at {dotted!r}: declared {cls}, got "
+                f"{type(value).__name__} ({value!r})"
+            )
+        items = list(value)
+        if cls == "ARRAY_PAIR":
+            for i, item in enumerate(items):
+                if not isinstance(item, (list, tuple, np.ndarray)) or len(item) != 2:
+                    raise GateAbort(
+                        f"type defect at {dotted!r}[{i}]: ARRAY_PAIR element must be a "
+                        f"two-element (INT, FLOAT) pair, got {item!r}"
+                    )
+                a, b = item
+                _check_leaf_or_container(a, "INT", path + (f"[{i}][0]",))
+                _check_leaf_or_container(b, "FLOAT", path + (f"[{i}][1]",))
+        else:
+            elem_cls = _ARRAY_ELEMENT_CLASS[cls]
+            for i, item in enumerate(items):
+                _check_leaf_or_container(item, elem_cls, path + (f"[{i}]",))
+        return
+
+    raise ValueError(f"validate_types: unknown normalisation class {cls!r} at {dotted!r}")
+
+
+def validate_types(payload: dict, side: str) -> None:
+    """Section 2 / 4.3: every payload leaf must match its declared
+    normalisation class BEFORE normalize() ever runs (Section 2.2's
+    mass_balance abort is the precedent this generalises: a broken or
+    altered run is not a payload difference to diff). Called by
+    build_payload() immediately after its keyset checks, so nothing that
+    reaches normalize() in the real gate pipeline can carry a type defect --
+    a numeric string standing in for a float, an int standing in for a
+    bool, or a None anywhere in a numeric/bool field all raise GateAbort
+    here, with the offending path named, instead of silently passing
+    through as a rendered string.
+
+    Only scalar leaves and array elements are checked directly; the
+    mass_balance/meta/locked keysets themselves are already asserted exact
+    by build_payload() before this runs, so `MAPPING` here only confirms
+    each container really is a dict before validate_types descends into it.
+    """
+    schema = path_type_schema(side)
+    for path, cls in schema.items():
+        cur = payload
+        for key in path:
+            if not isinstance(cur, dict) or key not in cur:
+                raise GateAbort(
+                    f"type validation: path {'.'.join(path)!r} not found while checking "
+                    f"declared class {cls} (schema/keyset mismatch should have aborted "
+                    f"already -- see build_payload())"
+                )
+            cur = cur[key]
+        _check_leaf_or_container(cur, cls, path)
 
 
 def _ts() -> str:
@@ -264,9 +534,17 @@ def normalize(value, path: tuple = ()):
     if isinstance(value, (bool, np.bool_)):
         return "true" if bool(value) else "false"
     if value is None:
-        # Section 4.3: None in a numeric field is a DEFECT, not a value --
-        # it is still rendered so the mismatch is visible in the diff rather
-        # than raising and hiding which field it was.
+        # Section 4.3's canonical form for a None the SCHEMA permits to be
+        # absent -- no field in this payload's Section 2/2.2/2.3/2.4/3
+        # schema is such a field, so in the real gate pipeline
+        # validate_types() (called from build_payload(), before this
+        # function ever runs) has already raised GateAbort on a None in a
+        # numeric/bool field, and on a None anywhere else too, per Section
+        # 4.3: "None ... in a numeric field is a DEFECT, not a value." This
+        # branch is normalize()'s own low-level formatting rule, kept for
+        # the day a field IS declared to permit absence, and for the string
+        # form itself, "null" -- it is not, on its own, the gate's
+        # None-is-a-defect enforcement.
         return "null"
     if isinstance(value, (int, np.integer)):
         return str(int(value))
@@ -338,11 +616,18 @@ def build_payload(result, side: str) -> dict:
     failure edge to T0, it is not merely "allowed to differ"), then assert
     the nested keysets (Section 2.2b): mass_balance (9, unaffected by
     Section 3), meta (17 on the reference side / 17 + len(pre-auth meta
-    fields) on the candidate side), locked (9, unaffected).
+    fields) on the candidate side), locked (9, unaffected). Finally, and
+    only once every keyset is confirmed exact, validates every leaf's TYPE
+    against the Section 2 schema (validate_types(), above) -- a numeric
+    string, an int masquerading as a bool, or a None in a numeric/bool
+    field aborts here too, by named path, before this function ever
+    returns a payload for normalize() to see.
 
     Raises GateAbort per Section 2.2 if mass_balance carries the "error"
-    sentinel key or any non-conforming keyset -- that is a broken run, not a
-    payload difference, and the gate must not compare/normalise/record it.
+    sentinel key or any non-conforming keyset, or per Section 2/4.3 if any
+    leaf's type does not match its declared class -- these are broken runs
+    or type defects, not payload differences, and the gate must not
+    compare/normalise/record them.
     """
     if side not in ("reference", "candidate"):
         raise ValueError(f"build_payload: side must be 'reference' or 'candidate', got {side!r}")
@@ -379,6 +664,11 @@ def build_payload(result, side: str) -> dict:
     if set(locked.keys()) != set(LOCKED_KEYS):
         raise GateAbort(f"locked keyset changed (Section 2.2b): keys={sorted(locked.keys())}")
 
+    # Section 2 / 4.3: keysets are exact -- now validate every leaf's TYPE.
+    # This must run AFTER the keyset checks (a missing/extra key is its own,
+    # more specific abort) and BEFORE any caller normalises the payload.
+    validate_types(payload, side=side)
+
     return payload
 
 
@@ -401,12 +691,132 @@ def _git_commit(worktree_root) -> str:
     return r.stdout.strip()
 
 
+# ---------------------------------------------------------------------------
+# Path sanitisation for anything that reaches a COMMITTED report.
+#
+# This repo ships as public open educational material -- a committed T0.0
+# report must never disclose the operator's home-directory layout, installed
+# applications or local toolchain. That is provenance noise, not contract
+# identity: the identity that matters is a SHA-256 (of a binary or of this
+# harness file) or a commit hash, both of which travel unchanged regardless
+# of where anything happens to be checked out. Everything below is applied
+# at the point each field is CONSTRUCTED (run_worker's env_fp, _run_side's
+# log header, _harness_identity) -- never as a later pass over an
+# already-written report, so a committed report is authentic tool output,
+# not tool output plus redaction.
+# ---------------------------------------------------------------------------
+def _home_relative(path) -> str:
+    """Render an absolute path under the operator's home directory as
+    '~/...'. A path NOT under home (e.g. a scratch/worktree dir under
+    /private/tmp/... or /tmp/...) is returned unchanged -- it does not
+    disclose the home-directory layout in the first place."""
+    p = str(path)
+    home = str(Path.home())
+    if not home or home == os.sep:
+        return p
+    if p == home:
+        return "~"
+    if p.startswith(home + os.sep):
+        return "~" + p[len(home):]
+    return p
+
+
+def _relative_to(path, base) -> str:
+    """Best-effort path relative to `base` (e.g. a file inside a worktree,
+    rendered relative to that worktree's root); falls back to
+    _home_relative() if `path` is not actually under `base`."""
+    try:
+        return str(Path(path).resolve().relative_to(Path(base).resolve()))
+    except ValueError:
+        return _home_relative(path)
+
+
+_LEAK_PREFIXES = ("/Users/", "/home/", "C:\\")
+
+
+def _looks_like_path_list(s: str) -> bool:
+    """A `PATH`-shaped value: several os.pathsep-joined, path-looking
+    segments. Section 5.0's `flopy_bindir_prepended` boolean (below) is the
+    one PATH-related fact this harness actually depends on -- the full
+    value is never contract-relevant and must never reach a report."""
+    if os.pathsep not in s:
+        return False
+    parts = s.split(os.pathsep)
+    return len(parts) >= 4 and sum(1 for p in parts if p.startswith(("/", "~/"))) >= 4
+
+
+def scan_for_leaked_paths(obj, path: str = "") -> list:
+    """Recursively scan a JSON-shaped structure (the kind run_qualification
+    / run_compare are about to write to disk) for any string that discloses
+    an absolute host path or a raw PATH-like value. Returns a list of
+    (json_path, value) violations -- empty means clean. Used both as a
+    pytest regression guard (against synthetic old- and new-format data)
+    and as a hard gate in the orchestrator itself (see run_qualification /
+    run_compare): the harness refuses to WRITE a report a scan flags,
+    rather than trusting the sanitisation at each call site to have been
+    complete."""
+    violations = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            violations.extend(scan_for_leaked_paths(v, f"{path}.{k}" if path else str(k)))
+    elif isinstance(obj, (list, tuple)):
+        for i, v in enumerate(obj):
+            violations.extend(scan_for_leaked_paths(v, f"{path}[{i}]"))
+    elif isinstance(obj, str):
+        if any(obj.startswith(pfx) or pfx in obj for pfx in _LEAK_PREFIXES):
+            violations.append((path, obj))
+        elif _looks_like_path_list(obj):
+            violations.append((path, obj))
+    return violations
+
+
+def _assert_no_leaked_paths(report: dict, report_label: str) -> None:
+    leaks = scan_for_leaked_paths(report)
+    if leaks:
+        shown = "\n".join(f"  {p}: {v!r}" for p, v in leaks[:10])
+        raise SystemExit(
+            f"REFUSING to write {report_label}: {len(leaks)} leaked absolute path(s) / "
+            f"PATH-like value(s) found (public-repo evidence must carry none):\n{shown}"
+        )
+
+
 def _tail(path, n=80) -> str:
+    """Section 4.4-adjacent: log_tail is captured subprocess output
+    (data_utils/FloPy/MF6 console text), not something this harness
+    constructs field-by-field -- so it is sanitised as text here, at the
+    one place it is read for inclusion in a record, rather than trusting
+    every print statement upstream never to mention an absolute path."""
     try:
         lines = Path(path).read_text(errors="replace").splitlines()
     except Exception as e:
         return f"(could not read log: {e})"
-    return "\n".join(lines[-n:])
+    text = "\n".join(lines[-n:])
+    home = str(Path.home())
+    if home and home != os.sep:
+        text = text.replace(home, "~")
+    return text
+
+
+def _harness_identity(repo_root: Path, this_file: str) -> dict:
+    """A report can otherwise be silently mismatched to the code that
+    produced it -- e.g. this hardening pass itself, where the preserved
+    §5.1 evidence was produced by a PRE-hardening copy of this file and no
+    longer matched what the code emits. Every report records the SHA-256 of
+    THIS harness script (the single copy that ran both sides -- see
+    `this_file` in run_qualification/run_compare, always the orchestrator's
+    own `__file__`, never a per-worktree copy, because the harness is the
+    test rig and is not itself under T1's freeze) plus the commit of the
+    repo it was invoked from, so a stale report is detectable by inspection
+    rather than by re-deriving trust from memory.
+
+    The path is recorded REPO-RELATIVE, never absolute: the commit hash
+    already identifies the tree this file lives in, so `harness_repo_root`
+    (an absolute path) is dropped rather than recorded and redacted."""
+    return {
+        "t0_gate_harness_py_sha256": _sha256_file(this_file),
+        "t0_gate_harness_py_path": _relative_to(this_file, repo_root),
+        "harness_repo_commit": _git_commit(repo_root),
+    }
 
 
 # ===========================================================================
@@ -484,31 +894,45 @@ def run_worker(args) -> None:
         boundary_sha = _sha256_file(boundary_path)
         rivers_sha = _sha256_file(rivers_path)
 
+        # Section 5.0's ONE contract-relevant PATH fact: triangle has no
+        # exe_name fallback (unlike mf6, §5.0), so it resolves via
+        # shutil.which("triangle") only because the harness prepended the
+        # flopy bin dir. That is the fact worth recording -- the full PATH
+        # value is operator machine layout, never contract-relevant, and
+        # must never reach a committed report (see scan_for_leaked_paths).
+        _path_entries = (os.environ.get("PATH") or "").split(os.pathsep)
+        flopy_bindir_prepended = bool(_path_entries) and _path_entries[0] == os.path.expanduser(
+            "~/.local/share/flopy/bin"
+        )
+
         env_fp = {
             "os": platform.platform(),
             "machine": platform.machine(),
             "python_version": sys.version,
-            "python_executable": os.path.realpath(sys.executable),
+            "python_executable": _home_relative(os.path.realpath(sys.executable)),
             "flopy_version": getattr(flopy, "__version__", "unknown"),
             "numpy_version": getattr(np, "__version__", "unknown"),
-            "mf6_realpath": mf6_real,
+            # Binaries: the SHA-256 is the identity the contract compares
+            # (Section 5.0); the absolute location is noise and is dropped,
+            # not merely redacted -- only the basename is kept.
+            "mf6_basename": os.path.basename(mf6_real),
             "mf6_sha256": mf6_sha,
-            "triangle_realpath": tri_real,
+            "triangle_basename": os.path.basename(tri_real),
             "triangle_sha256": tri_sha,
-            "data_folder": data_folder,
+            "data_folder": _home_relative(data_folder),
             "flow_fingerprint": flow_fp,
-            "model_boundary_path": str(boundary_path),
+            "model_boundary_path": _home_relative(boundary_path),
             "model_boundary_sha256": boundary_sha,
-            "rivers_path": str(rivers_path),
+            "rivers_path": _home_relative(rivers_path),
             "rivers_sha256": rivers_sha,
             "OMP_NUM_THREADS": os.environ.get("OMP_NUM_THREADS"),
             "GDAL_NUM_THREADS": os.environ.get("GDAL_NUM_THREADS"),
-            "PATH": os.environ.get("PATH"),
-            "worktree_root": str(worktree_root),
+            "flopy_bindir_prepended": flopy_bindir_prepended,
+            "worktree_root": _home_relative(str(worktree_root)),
             "worktree_commit": _git_commit(worktree_root),
-            "case_ws": str(case_ws),
-            "transport_srcpulse_demo_file": _resolve(tsd.__file__),
-            "model_io_utils_file": _resolve(mio.__file__),
+            "case_ws": _home_relative(str(case_ws)),
+            "transport_srcpulse_demo_file": _relative_to(tsd.__file__, worktree_root),
+            "model_io_utils_file": _relative_to(mio.__file__, worktree_root),
         }
 
         # ---- Section 1: the exact invocation -- semantic defaults + the two
@@ -577,8 +1001,22 @@ def _run_side(python_exe, this_file, worktree_root, case_ws, out_path, log_path,
         "--out", str(out_path),
         "--side", side,
     ]
+    # The RAW on-disk log file (never committed -- lives under the caller's
+    # --workdir) keeps full absolute paths, useful for local debugging. What
+    # gets embedded into a committed report is `log_tail` (via _tail(),
+    # above), which redacts the home directory out of whatever text is
+    # captured here -- so the header line intentionally never writes the
+    # full PATH at all (Section 5.0's own "drop PATH, keep the one boolean
+    # fact" rule applies here too, not just in run_worker's env_fp).
+    path_entries = (env.get("PATH") or "").split(os.pathsep)
+    flopy_bindir_prepended = bool(path_entries) and path_entries[0] == os.path.expanduser(
+        "~/.local/share/flopy/bin"
+    )
     with open(log_path, "w") as lf:
-        lf.write(f"cmd: {cmd}\ncwd: {worktree_root}\nPATH: {env['PATH']}\n\n")
+        lf.write(
+            f"cmd: {cmd}\ncwd: {worktree_root}\n"
+            f"flopy_bindir_prepended: {flopy_bindir_prepended}\n\n"
+        )
         lf.flush()
         t0 = time.time()
         proc = subprocess.run(cmd, cwd=str(worktree_root), env=env,
@@ -851,6 +1289,8 @@ def run_qualification(args) -> int:
     b["outer_wall_s"] = wall_b
 
     report = compare_sides(a, b)
+    report["harness_identity"] = _harness_identity(repo_root, this_file)
+    _assert_no_leaked_paths(report, f"qualification report {report_path}")
     report_path.write_text(json.dumps(report, indent=2))
     _log(f"report written: {report_path}")
     _log("SUMMARY:\n" + json.dumps(report["summary"], indent=2))
@@ -970,6 +1410,8 @@ def run_compare(args) -> int:
                 )
 
         report = compare_reference_vs_candidate(a, b)
+        report["harness_identity"] = _harness_identity(repo_root, this_file)
+        _assert_no_leaked_paths(report, f"compare report {report_path}")
         report_path.write_text(json.dumps(report, indent=2))
         _log(f"report written: {report_path}")
         _log("SUMMARY:\n" + json.dumps(report["summary"], indent=2))

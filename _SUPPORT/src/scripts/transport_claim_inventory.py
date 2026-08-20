@@ -7,23 +7,114 @@ Relationship to ``DESIGN_DOCS/transport_stale_number_audit.sh``:
     "result word + number" lines (Tier 2, `--sweep`).  It answers "did any of
     *these known-stale* numbers survive."
 
-    This script answers a different question: "have we looked at *every*
-    claim-shaped candidate in the transport surface, and has each one been
-    judged."  It reuses the audit script's Tier-2 net verbatim (parsed live
-    out of the `.sh` file, at run time, so the two nets cannot drift apart) as
-    the *candidate detector*, then adds structure the audit script does not
-    have: per-notebook-cell / per-tasks_data-key attribution, stable content-
-    sensitive candidate ids, a committed judgment file, and a fail-closed gate
-    that treats "unclassified candidate" and "orphaned classification" as
-    build failures.
+    This script answers a different question: "of the candidates our
+    DECLARED detectors can see across the transport surface, has each one
+    been judged." It reuses the audit script's Tier-2 net verbatim (parsed
+    live out of the `.sh` file, at run time, so the nets cannot drift apart)
+    as the primary *candidate detector*, then adds structure the audit
+    script does not have: per-notebook-cell / per-tasks_data-key
+    attribution, stable content-sensitive candidate ids, a committed
+    judgment file, and a fail-closed gate that treats "unclassified
+    candidate" and "orphaned classification" as build failures.
 
     Neither script replaces the other. Do not fold one into the other.
 
+DECLARED COVERAGE, NOT EXHAUSTIVENESS -- read this before trusting a
+"N/N classified" count from this tool. No regex net can prove it has seen
+every claim in free-form prose; that is not a property a script can
+establish about natural language. What this script CAN honestly claim, and
+does, is *declared* coverage: "every line matching one of these THREE named
+detectors, over these named surfaces" -- with each detector's own blind
+spot stated below, so a reader can judge what is and is not covered rather
+than take "exhaustive" on faith. A "249/249 classified" (or any N/N) count
+is coverage over the union of the declared detectors' matches -- never a
+claim that no further claim-shaped prose exists outside that union. Each
+time a detector's blind spot is discovered (as `word_only` and
+`r_without_n` were, both found by hand-reading real notebook prose the
+first two detectors missed), the honest move is to add another named,
+scoped detector and state its own limits -- not to claim the new total is
+now exhaustive either.
+
+Three independent candidate nets (the second and third close the coverage
+hole found in DESIGN_DOCS/codex_reviews/T0/consolidated_out.md, finding 3,
+item 7/8 -- ``r_and_n`` alone structurally cannot see an unnumbered claim):
+
+    ``r_and_n`` -- the audit script's Tier-2 net verbatim, described above:
+        a line must carry BOTH a result word AND a number. This is the
+        ORIGINAL net and is unchanged in every respect (same source, same
+        matching, same call sites for python_module scanning). Declared
+        blind spot: any claim-shaped line missing either half -- most
+        commonly, a claim with no digit in it at all.
+
+    ``r_without_n`` -- the audit script's live R pattern (the SAME result-
+        word vocabulary as ``r_and_n``, loaded from the same source), with
+        the number requirement dropped, over PROSE ONLY (below). Added
+        because a first attempt at closing the coverage hole with only
+        ``word_only`` (a deliberately different, narrow vocabulary) still
+        missed a further 22 lines that carry R's own result-word vocabulary
+        but no number -- verified examples, all causal or definitional:
+        01t cell 6 "...all of this spreading **lowers the peak**, so an
+        on-centerline plume can be **diluted below the threshold**"; 01t
+        cell 8 "Effective porosity is rarely measured directly and sets the
+        mean water velocity, so it directly controls arrival time"; 03t
+        cell 7 "The two rules of thumb above are **not universal constants
+        of transport**..."; 04t cell 26 "If the numerical plume matches
+        this curve -- arrival, longitudinal and transverse spread -- the
+        **engine is sound**...". Declared blind spot: any claim-shaped line
+        that uses NONE of R's result-word vocabulary (that is exactly what
+        ``word_only`` exists to catch instead).
+
+    ``word_only`` -- a THIRD, independent net for claims using NEITHER
+        R's vocabulary NOR a number. A verified example: 01t_model_goal.ipynb
+        cell 6 contains "...a plume whose centerline would just bypass can
+        **clip** the well at low concentration (a marginal bypass becomes a
+        small detection)" -- student-facing, causal, and it matches none of
+        R (no "peak"/"arrival"/"threshold"/etc.), no digit, so
+        ``r_without_n`` cannot see it either. It is a genuinely separate,
+        independently defined vocabulary (``WORD_ONLY_PATTERN_SOURCE``):
+        the transport track's own capture-vs-bypass outcome/detection
+        language (`detect`, `captur[e/ed/ing]`, `bypass`, `clip`) -- the
+        exact word ("detect") the review finding names, and the words 01t
+        itself teaches the capture-vs-bypass verdict with. Declared blind
+        spot: any claim-shaped line using neither vocabulary at all (e.g. a
+        claim phrased purely in terms this project has not yet named).
+
+    Per the T0_2a plan's own precedent -- the audit script's own two tiers
+    are "deliberately not supersets of each other" -- ``r_without_n`` and
+    ``word_only`` are two genuinely different vocabularies (R vs. a
+    separate capture/bypass/detect list), not one net split into
+    "with number" / "without number" halves of the same list twice over.
+
+    PRECEDENCE when a line matches more than one net: recorded ONCE, most
+    specific first -- ``r_and_n`` > ``r_without_n`` > ``word_only``. A line
+    satisfying ``r_and_n`` is also, trivially, a superset match of
+    ``r_without_n`` (same R vocabulary, weaker condition) and often of
+    ``word_only`` too; reporting the strongest net that matched keeps each
+    candidate's `detector` field meaningful ("the least the net needed to
+    find this") instead of ambiguous. See ``merge_detector_hits``.
+
+    ``r_without_n`` and ``word_only`` are BOTH scoped to PROSE ONLY:
+    notebook markdown cells, and tasks_data.py entries in the six
+    claim-bearing dicts. Neither is run over notebook code cells, the four
+    transport model/test modules, or the three test modules. Reason: those
+    surfaces are source code, not claim prose -- a vocabulary net with no
+    number requirement over Python source would match on essentially every
+    line that mentions a variable/function touching capture, bypass,
+    detection, a peak, a threshold, or an arrival/breakthrough computation,
+    drowning the small number of genuine unnumbered prose claims in noise
+    the classification file was never meant to carry. ``r_and_n`` is
+    unaffected by this scoping decision and still runs over every surface
+    it always has (notebook code cells included, and the model/test
+    modules) -- only ``r_without_n`` and ``word_only`` are prose-restricted.
+
 What this script does, each run:
-    1. Enumerate every claim-shaped *candidate* across the fixed scope (six
-       transport notebooks, tasks_data.py's claim-bearing dicts, and the
-       transport model/test modules) -- this half is COVERAGE, and it is
-       fully deterministic and machine-generated.
+    1. Enumerate every line matching one of the three DECLARED detectors
+       (``r_and_n`` / ``r_without_n`` / ``word_only``, above) across the
+       fixed scope (six transport notebooks, tasks_data.py's claim-bearing
+       dicts, and the transport model/test modules) as a *candidate* -- this
+       half is COVERAGE (of the declared detectors, not of "every claim" --
+       see "DECLARED COVERAGE, NOT EXHAUSTIVENESS" above), and it is fully
+       deterministic and machine-generated.
     2. Load the committed classification file (JUDGMENT, hand-maintained).
     3. Join the two: any candidate absent from the classification file (or
        present but still `unclassified`) fails the run; any classification
@@ -74,6 +165,13 @@ Design constraints (T0_2a_claim_inventory_plan.md, S4):
       sentinels: never combined with each other or with a real claim type.
       Emitted in a stable sorted order (`sort_claim_types`) so determinism
       (AC3) holds regardless of the order a human typed the list in.
+    - Every candidate carries a `detector` field, one of `"r_and_n"`,
+      `"r_without_n"`, `"word_only"`, recording which net found it, at the
+      stated precedence (see the "Three independent candidate nets" section
+      above -- ``r_and_n`` > ``r_without_n`` > ``word_only``). It is NEVER
+      part of the candidate id hash -- a candidate's identity must not churn
+      depending on which net happened to notice it, and the nets can and do
+      overlap on the same line (see above).
 """
 
 from __future__ import annotations
@@ -135,6 +233,34 @@ FLOW_KEY_PATTERN = re.compile(r"^task[0-9]+_")
 
 AUDIT_SCRIPT_RELATIVE_PATH = "DESIGN_DOCS/transport_stale_number_audit.sh"
 
+# The third, independent "word_only" net (T0_2a coverage-hole fix; see the
+# module docstring's "Three independent candidate nets" section). This
+# vocabulary is defined HERE, in this script -- unlike r_pattern/n_pattern
+# it is not extracted from the audit script, because it is not shared with
+# it: the audit script's own job never needed unnumbered detection/causal
+# language and gains nothing from carrying this vocabulary. Deliberately a
+# SEPARATE, independently-defined word list distinct from R, so `word_only`
+# and `r_without_n` (R's own vocabulary, number requirement dropped -- see
+# below) are two genuinely different nets rather than one list counted
+# twice (same reasoning as the audit script's own Tier 1 / Tier 2 nets:
+# "deliberately not supersets of each other"). Case-insensitive: prose
+# capitalises these words at sentence starts and in headers.
+WORD_ONLY_PATTERN_SOURCE = r"detect|captur|bypass|clip"
+
+DETECTOR_R_AND_N = "r_and_n"
+DETECTOR_R_WITHOUT_N = "r_without_n"
+DETECTOR_WORD_ONLY = "word_only"
+
+# Precedence when a line satisfies more than one net: report the single
+# strongest detector, most-specific first. A candidate's `detector` field
+# is therefore never a list -- it names the LEAST net that sufficed to find
+# it, per the module docstring's "PRECEDENCE" paragraph.
+DETECTOR_PRECEDENCE: tuple[str, ...] = (
+    DETECTOR_R_AND_N,
+    DETECTOR_R_WITHOUT_N,
+    DETECTOR_WORD_ONLY,
+)
+
 CLAIM_TYPE_VALUES: tuple[str, ...] = (
     "unclassified",
     "numeric",
@@ -195,6 +321,7 @@ class Candidate:
     scope_symbol: str | None  # enclosing top-level def/class for python_module
     line_number: int  # first matching line, for human navigation only
     matched_text: str
+    detector: str  # "r_and_n" | "r_without_n" | "word_only" -- NOT part of the id hash
 
     def sort_key(self):
         return (
@@ -248,6 +375,16 @@ def load_net_patterns(repo_root: Path) -> tuple[re.Pattern[str], re.Pattern[str]
     return r_pattern, n_pattern
 
 
+def compile_word_only_pattern() -> re.Pattern[str]:
+    """Compile the third, independent word-only net (see module docstring
+    and WORD_ONLY_PATTERN_SOURCE). Unlike load_net_patterns, this vocabulary
+    is not read from the audit script -- it belongs to this script alone."""
+    try:
+        return re.compile(WORD_ONLY_PATTERN_SOURCE, re.IGNORECASE)
+    except re.error as exc:
+        raise ClaimInventoryError(f"word-only net failed to compile: {exc}") from exc
+
+
 def normalise_text(text: str) -> str:
     return " ".join(text.split())
 
@@ -266,6 +403,77 @@ def find_net_hits(
             if normalised:
                 hits.append((first_lineno + offset, normalised))
     return hits
+
+
+def find_single_pattern_hits(
+    lines: list[str],
+    pattern: re.Pattern[str],
+    first_lineno: int,
+) -> list[tuple[int, str]]:
+    """Return [(lineno, normalised_text), ...] for lines matching ONE
+    pattern, no second condition. Shared shape for both single-condition
+    nets (``r_without_n`` and ``word_only``) so they are trivially
+    comparable; find_net_hits (the two-condition r_and_n net) is left
+    completely untouched, as required."""
+    hits: list[tuple[int, str]] = []
+    for offset, raw_line in enumerate(lines):
+        if pattern.search(raw_line):
+            normalised = normalise_text(raw_line)
+            if normalised:
+                hits.append((first_lineno + offset, normalised))
+    return hits
+
+
+def find_r_without_n_hits(
+    lines: list[str],
+    r_pattern: re.Pattern[str],
+    first_lineno: int,
+) -> list[tuple[int, str]]:
+    """Return [(lineno, normalised_text), ...] for lines matching the
+    r_without_n net: the SAME live R pattern as r_and_n, number requirement
+    dropped. Prose-scoped only (module docstring)."""
+    return find_single_pattern_hits(lines, r_pattern, first_lineno)
+
+
+def find_word_only_hits(
+    lines: list[str],
+    word_pattern: re.Pattern[str],
+    first_lineno: int,
+) -> list[tuple[int, str]]:
+    """Return [(lineno, normalised_text), ...] for lines matching the
+    word-only net (WORD_ONLY_PATTERN_SOURCE) -- a vocabulary independent of
+    R, no number required. Prose-scoped only (module docstring)."""
+    return find_single_pattern_hits(lines, word_pattern, first_lineno)
+
+
+def merge_detector_hits(
+    rn_hits: list[tuple[int, str]],
+    r_without_n_hits: list[tuple[int, str]],
+    word_hits: list[tuple[int, str]],
+) -> list[tuple[int, str, str]]:
+    """Merge the three nets' hits for one scan unit (a notebook cell, or
+    one tasks_data entry) into a single per-line candidate list tagged with
+    which net found it, at DETECTOR_PRECEDENCE order (r_and_n >
+    r_without_n > word_only -- module docstring, "PRECEDENCE"). A line
+    satisfying more than one net is emitted ONCE, tagged with the
+    strongest net that matched -- so each weaker net's reported
+    contribution is exactly its NEW, unique-to-it surface."""
+    rn_by_line = {lineno: normalised for lineno, normalised in rn_hits}
+    r_wo_n_by_line = {
+        lineno: normalised for lineno, normalised in r_without_n_hits
+    }
+    merged = [
+        (lineno, normalised, DETECTOR_R_AND_N) for lineno, normalised in rn_hits
+    ]
+    for lineno, normalised in r_without_n_hits:
+        if lineno in rn_by_line:
+            continue
+        merged.append((lineno, normalised, DETECTOR_R_WITHOUT_N))
+    for lineno, normalised in word_hits:
+        if lineno in rn_by_line or lineno in r_wo_n_by_line:
+            continue
+        merged.append((lineno, normalised, DETECTOR_WORD_ONLY))
+    return merged
 
 
 def make_candidate_id(
@@ -297,6 +505,7 @@ def scan_notebook(
     repo_root: Path,
     r_pattern: re.Pattern[str],
     n_pattern: re.Pattern[str],
+    word_pattern: re.Pattern[str],
     coverage: Coverage,
 ) -> list[Candidate]:
     rel_path = nb_path.relative_to(repo_root).as_posix()
@@ -337,8 +546,18 @@ def scan_notebook(
             cell_id = f"idx-{cell_index}"
 
         lines = _cell_source_lines(cell)
-        hits = find_net_hits(lines, r_pattern, n_pattern, first_lineno=1)
-        for lineno, normalised in hits:
+        rn_hits = find_net_hits(lines, r_pattern, n_pattern, first_lineno=1)
+        # r_without_n and word_only are prose-scoped: markdown cells only
+        # (module docstring, "Three independent candidate nets"). Code
+        # cells keep getting r_and_n exactly as before and nothing else.
+        if cell_type == "markdown":
+            r_without_n_hits = find_r_without_n_hits(lines, r_pattern, first_lineno=1)
+            word_hits = find_word_only_hits(lines, word_pattern, first_lineno=1)
+        else:
+            r_without_n_hits = []
+            word_hits = []
+        hits = merge_detector_hits(rn_hits, r_without_n_hits, word_hits)
+        for lineno, normalised, detector in hits:
             cand_id = make_candidate_id(rel_path, cell_id, "", normalised)
             candidates.append(
                 Candidate(
@@ -354,6 +573,7 @@ def scan_notebook(
                     scope_symbol=None,
                     line_number=lineno,
                     matched_text=normalised,
+                    detector=detector,
                 )
             )
     return candidates
@@ -387,6 +607,7 @@ def scan_tasks_data(
     repo_root: Path,
     r_pattern: re.Pattern[str],
     n_pattern: re.Pattern[str],
+    word_pattern: re.Pattern[str],
     coverage: Coverage,
 ) -> tuple[list[Candidate], list[ExcludedDict]]:
     rel_path = py_path.relative_to(repo_root).as_posix()
@@ -438,8 +659,18 @@ def scan_tasks_data(
             # part of the AST but frequently carry the actual claim text,
             # e.g. "# Correct solution ~126 million m3 (...)").
             entry_lines = lines[start - 1 : end]
-            hits = find_net_hits(entry_lines, r_pattern, n_pattern, first_lineno=start)
-            for lineno, normalised in hits:
+            rn_hits = find_net_hits(entry_lines, r_pattern, n_pattern, first_lineno=start)
+            # r_without_n / word_only are prose-scoped: every claim-bearing
+            # tasks_data.py entry is claim prose (question/solution/units
+            # text), so both are in scope -- unlike notebook code cells or
+            # the model/test modules (module docstring, "Three independent
+            # candidate nets").
+            r_without_n_hits = find_r_without_n_hits(
+                entry_lines, r_pattern, first_lineno=start
+            )
+            word_hits = find_word_only_hits(entry_lines, word_pattern, first_lineno=start)
+            hits = merge_detector_hits(rn_hits, r_without_n_hits, word_hits)
+            for lineno, normalised, detector in hits:
                 cand_id = make_candidate_id(
                     rel_path, checkpoint_key, dict_name, normalised
                 )
@@ -457,6 +688,7 @@ def scan_tasks_data(
                         scope_symbol=None,
                         line_number=lineno,
                         matched_text=normalised,
+                        detector=detector,
                     )
                 )
     return candidates, excluded
@@ -503,6 +735,11 @@ def scan_python_module(
     coverage.python_module_files_visited += 1
 
     candidates: list[Candidate] = []
+    # No r_without_n / word_only net here (module docstring, "Three
+    # independent candidate nets"): the four transport_*.py modules and
+    # three test_*.py modules are source code, not claim prose, and are
+    # explicitly excluded from both prose-scoped nets. Only r_and_n runs
+    # over these files.
     hits = find_net_hits(lines, r_pattern, n_pattern, first_lineno=1)
     for lineno, normalised in hits:
         symbol = scope_symbols[lineno] if lineno < len(scope_symbols) else "<module>"
@@ -521,6 +758,7 @@ def scan_python_module(
                 scope_symbol=symbol,
                 line_number=lineno,
                 matched_text=normalised,
+                detector=DETECTOR_R_AND_N,
             )
         )
     return candidates
@@ -536,6 +774,7 @@ def enumerate_candidates(
     scope_paths: list[Path],
     r_pattern: re.Pattern[str],
     n_pattern: re.Pattern[str],
+    word_pattern: re.Pattern[str],
 ) -> tuple[list[Candidate], list[ExcludedDict], Coverage]:
     coverage = Coverage()
     all_candidates: list[Candidate] = []
@@ -548,10 +787,12 @@ def enumerate_candidates(
         coverage.files_visited += 1
 
         if path.suffix == ".ipynb":
-            candidates = scan_notebook(path, repo_root, r_pattern, n_pattern, coverage)
+            candidates = scan_notebook(
+                path, repo_root, r_pattern, n_pattern, word_pattern, coverage
+            )
         elif path.name == TASKS_DATA_BASENAME:
             candidates, excluded = scan_tasks_data(
-                path, repo_root, r_pattern, n_pattern, coverage
+                path, repo_root, r_pattern, n_pattern, word_pattern, coverage
             )
             all_excluded.extend(excluded)
         elif path.suffix == ".py":
@@ -656,6 +897,20 @@ def write_classifications(path: Path, entries: dict[str, dict]) -> None:
             "# other fields are informational context for the human doing the",
             "# judging and are refreshed on every --init-classifications run.",
             "#",
+            "# `detector` records which candidate net found this entry (most",
+            "# specific, if more than one net matched -- r_and_n > r_without_n >",
+            "# word_only):",
+            "#   r_and_n     -- the original net (a result word AND a number,",
+            "#                  same line)",
+            "#   r_without_n -- R's own result-word vocabulary, no number required",
+            "#                  (prose-scoped)",
+            "#   word_only   -- a separate detect/capture/bypass/clip vocabulary,",
+            "#                  no number required (prose-scoped)",
+            "# All three are DECLARED coverage, not proof of exhaustiveness -- see",
+            "# the script's module docstring for each net's own blind spot.",
+            "# `detector` is informational only, like path/location/snippet -- not",
+            "# read by the gate, and never part of a candidate's id.",
+            "#",
             "# claim_type is a LIST, not a single value: one text span can assert",
             "# more than one kind of claim (e.g. \"peak is 5.3 mg/L ... still above",
             "# the 1.0 mg/L threshold\" is both numeric AND threshold-decision).",
@@ -689,7 +944,7 @@ def write_classifications(path: Path, entries: dict[str, dict]) -> None:
     for cand_id in sorted(entries):
         entry = entries[cand_id]
         row = {"claim_type": sort_claim_types(entry["claim_type"])}
-        for key in ("path", "location", "snippet"):
+        for key in ("path", "location", "detector", "snippet"):
             if key in entry and entry[key] is not None:
                 row[key] = str(entry[key]).replace("\n", " ")
         ordered[cand_id] = row
@@ -718,6 +973,7 @@ def build_classification_context(candidate: Candidate) -> dict:
         "claim_type": [UNCLASSIFIED],
         "path": candidate.path,
         "location": location,
+        "detector": candidate.detector,
         "snippet": snippet,
     }
 
@@ -813,6 +1069,13 @@ def build_report(
     classified_count = coverage.candidates_found - unclassified_count
     claim_assignments_found = sum(join_result.by_type.values())
 
+    # by_detector: candidate-level counts (each candidate has exactly one
+    # detector), broken out so the word_only net's coverage delta is visible
+    # directly in the committed report, not just derivable by hand.
+    by_detector: dict[str, int] = {value: 0 for value in DETECTOR_PRECEDENCE}
+    for candidate in candidates:
+        by_detector[candidate.detector] = by_detector.get(candidate.detector, 0) + 1
+
     candidate_rows = []
     for candidate in candidates:
         entry = classifications.get(candidate.id)
@@ -831,11 +1094,12 @@ def build_report(
                 "line_number": candidate.line_number,
                 "matched_text": candidate.matched_text,
                 "claim_type": list(claim_type),
+                "detector": candidate.detector,
             }
         )
 
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "scope_files": list(scope_relative_paths),
         "excluded_dicts": [
             {"path": e.path, "name": e.name, "reason": e.reason} for e in excluded
@@ -857,6 +1121,7 @@ def build_report(
             "candidates_rejected": rejected_count,
             "candidates_unclassified": unclassified_count,
             "by_claim_type": dict(sorted(join_result.by_type.items())),
+            "by_detector": dict(sorted(by_detector.items())),
         },
         "gate": {
             "ok": join_result.ok,
@@ -905,6 +1170,26 @@ def render_markdown(report: dict) -> str:
     lines.append(f"| Candidates unclassified | {cov['candidates_unclassified']} |")
     lines.append("")
 
+    lines.append("### By detector")
+    lines.append("")
+    lines.append(
+        "Candidate-level counts, one per candidate (a line matching more "
+        "than one net is counted once, under the strongest match --"
+        "precedence `r_and_n` > `r_without_n` > `word_only`). `r_and_n` is "
+        "the original result-word+number net; `r_without_n` and `word_only` "
+        "are the two prose-scoped nets added to close the unnumbered-claim "
+        "coverage hole -- see the script's module docstring for what each "
+        "one is declared to cover and its own blind spot. This is declared "
+        "coverage, not proof of exhaustiveness: it counts candidates found "
+        "by these three named detectors, not every claim that might exist."
+    )
+    lines.append("")
+    lines.append("| Detector | Count |")
+    lines.append("|---|---|")
+    for value, count in sorted(cov["by_detector"].items()):
+        lines.append(f"| {value} | {count} |")
+    lines.append("")
+
     lines.append("### By claim type")
     lines.append("")
     lines.append(
@@ -950,12 +1235,12 @@ def render_markdown(report: dict) -> str:
     if rejected_rows:
         lines.append("## Rejected (not_a_claim) candidates")
         lines.append("")
-        lines.append("| Path | Location | Matched text |")
-        lines.append("|---|---|---|")
+        lines.append("| Path | Location | Detector | Matched text |")
+        lines.append("|---|---|---|---|")
         for c in rejected_rows:
             location = _row_location(c)
             snippet = c["matched_text"].replace("|", "\\|")
-            lines.append(f"| {c['path']} | {location} | {snippet} |")
+            lines.append(f"| {c['path']} | {location} | {c['detector']} | {snippet} |")
         lines.append("")
 
     lines.append("## Candidates by notebook / module")
@@ -966,13 +1251,15 @@ def render_markdown(report: dict) -> str:
             current_path = c["path"]
             lines.append(f"### {current_path}")
             lines.append("")
-            lines.append("| Location | Checkpoint key | Claim type(s) | Matched text |")
-            lines.append("|---|---|---|---|")
+            lines.append(
+                "| Location | Checkpoint key | Detector | Claim type(s) | Matched text |"
+            )
+            lines.append("|---|---|---|---|---|")
         location = _row_location(c)
         key = c["checkpoint_key"] or ""
         claim_type = ", ".join(c["claim_type"])
         snippet = c["matched_text"].replace("|", "\\|")
-        lines.append(f"| {location} | {key} | {claim_type} | {snippet} |")
+        lines.append(f"| {location} | {key} | {c['detector']} | {claim_type} | {snippet} |")
     lines.append("")
 
     return "\n".join(lines) + "\n"
@@ -1077,8 +1364,9 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         r_pattern, n_pattern = load_net_patterns(repo_root)
+        word_pattern = compile_word_only_pattern()
         candidates, excluded, coverage = enumerate_candidates(
-            repo_root, scope_paths, r_pattern, n_pattern
+            repo_root, scope_paths, r_pattern, n_pattern, word_pattern
         )
     except ClaimInventoryError as exc:
         print(f"transport_claim_inventory: FAIL (parse/scope error): {exc}", file=sys.stderr)

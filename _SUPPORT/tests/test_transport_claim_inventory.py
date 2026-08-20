@@ -32,10 +32,44 @@ CLAIM_LINE = "The observed peak concentration is 42.5 mg/L."
 CLAIM_LINE_2 = "Fixture threshold-decision claim: exceeds 12.5 mg/L at day 30."
 NON_CLAIM_LINE = "def foo(): return 1  # plain code, no result word or number"
 
+# An unnumbered, causal, student-facing claim -- the exact shape of the
+# T0.2a coverage hole (consolidated_out.md finding 3, item 7/8), modelled on
+# the real one in 01t_model_goal.ipynb cell 6. Verified (in development)
+# against the live nets: matches word_pattern (via "bypass"/"clip"/
+# "detection"), matches NEITHER r_pattern nor n_pattern -- it carries no
+# digit and none of the Tier-2 result-word vocabulary.
+WORD_ONLY_CLAIM_LINE = (
+    "So a plume whose centerline would just bypass can clip the well at low "
+    "concentration -- a marginal bypass becomes a small detection."
+)
+
+# An unnumbered claim that DOES carry R's own result-word vocabulary
+# ("peak", "threshold") but no digit -- the shape of the SECOND coverage
+# hole found by the coordinator: a naive "R without N" net would catch
+# this, but the word_only vocabulary (detect/captur/bypass/clip) does not.
+# Verified (in development): R matches, N does not, word_pattern does not.
+R_WITHOUT_N_CLAIM_LINE = (
+    "All of this spreading lowers the peak, so an on-centerline plume "
+    "stays diluted below the threshold."
+)
+
+# A line that matches BOTH r_without_n's R vocabulary ("peak") AND
+# word_only's vocabulary ("captur...") but carries no digit -- used to lock
+# the DETECTOR_PRECEDENCE rule (r_and_n > r_without_n > word_only): this
+# must be reported once, as "r_without_n".
+PRECEDENCE_CLAIM_LINE = (
+    "The capture zone controls the peak concentration reaching the well."
+)
+
 
 @pytest.fixture(scope="module")
 def real_net():
     return tci.load_net_patterns(REPO_ROOT)
+
+
+@pytest.fixture(scope="module")
+def real_word_pattern():
+    return tci.compile_word_only_pattern()
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess:
@@ -546,12 +580,14 @@ class TestAC4NotebookCoverage:
         write_notebook(root / "PROJECT/transport/01t_model_goal.ipynb", cells)
 
         r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
         coverage = tci.Coverage()
         candidates = tci.scan_notebook(
             root / "PROJECT/transport/01t_model_goal.ipynb",
             root,
             r_pattern,
             n_pattern,
+            word_pattern,
             coverage,
         )
         assert coverage.notebook_cells_visited == 6
@@ -567,12 +603,14 @@ class TestAC4NotebookCoverage:
             nbformat_minor=4,
         )
         r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
         coverage = tci.Coverage()
         candidates = tci.scan_notebook(
             root / "PROJECT/transport/01t_model_goal.ipynb",
             root,
             r_pattern,
             n_pattern,
+            word_pattern,
             coverage,
         )
         assert len(candidates) == 1
@@ -588,16 +626,19 @@ class TestAC4NotebookCoverage:
             [_md_cell("c1", CLAIM_LINE + "  \n\ttrailing whitespace noise")],
         )
         r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
         cov = tci.Coverage()
         cand_reformatted = tci.scan_notebook(
-            root / "PROJECT/transport/01t_model_goal.ipynb", root, r_pattern, n_pattern, cov
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            root, r_pattern, n_pattern, word_pattern, cov,
         )
         write_notebook(
             root / "PROJECT/transport/01t_model_goal.ipynb",
             [_md_cell("c1", CLAIM_LINE)],
         )
         cand_plain = tci.scan_notebook(
-            root / "PROJECT/transport/01t_model_goal.ipynb", root, r_pattern, n_pattern, tci.Coverage()
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            root, r_pattern, n_pattern, word_pattern, tci.Coverage(),
         )
         assert cand_reformatted[0].id == cand_plain[0].id  # whitespace-normalised
 
@@ -606,7 +647,8 @@ class TestAC4NotebookCoverage:
             [_md_cell("c1", "The observed peak concentration is 99.9 mg/L.")],
         )
         cand_reworded = tci.scan_notebook(
-            root / "PROJECT/transport/01t_model_goal.ipynb", root, r_pattern, n_pattern, tci.Coverage()
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            root, r_pattern, n_pattern, word_pattern, tci.Coverage(),
         )
         assert cand_reworded[0].id != cand_plain[0].id  # content-sensitive
 
@@ -624,9 +666,10 @@ class TestAC5TasksDataCoverage:
         write_tasks_data_fixture(fixture_path)
 
         r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
         coverage = tci.Coverage()
         candidates, excluded = tci.scan_tasks_data(
-            fixture_path, root, r_pattern, n_pattern, coverage
+            fixture_path, root, r_pattern, n_pattern, word_pattern, coverage
         )
 
         transport_candidates = [c for c in candidates if c.checkpoint_key == "task_t02_checkpoint_1"]
@@ -646,8 +689,9 @@ class TestAC5TasksDataCoverage:
         fixture_path = root / "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
         write_tasks_data_fixture(fixture_path)
         r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
         candidates, excluded = tci.scan_tasks_data(
-            fixture_path, root, r_pattern, n_pattern, tci.Coverage()
+            fixture_path, root, r_pattern, n_pattern, word_pattern, tci.Coverage()
         )
         excluded_names = {e.name for e in excluded}
         assert excluded_names == {"task_functions", "task_functions_start"}
@@ -661,8 +705,9 @@ class TestAC5bTrackDiscrimination:
         fixture_path = root / "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
         write_tasks_data_fixture(fixture_path)
         r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
         candidates, _ = tci.scan_tasks_data(
-            fixture_path, root, r_pattern, n_pattern, tci.Coverage()
+            fixture_path, root, r_pattern, n_pattern, word_pattern, tci.Coverage()
         )
         keys = {c.checkpoint_key for c in candidates}
         assert keys == {"task_t02_checkpoint_1"}
@@ -670,11 +715,13 @@ class TestAC5bTrackDiscrimination:
 
     def test_real_repo_has_no_flow_track_leak(self):
         r_pattern, n_pattern = tci.load_net_patterns(REPO_ROOT)
+        word_pattern = tci.compile_word_only_pattern()
         candidates, _ = tci.scan_tasks_data(
             REPO_ROOT / "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
             REPO_ROOT,
             r_pattern,
             n_pattern,
+            word_pattern,
             tci.Coverage(),
         )
         keys = {c.checkpoint_key for c in candidates}
@@ -709,11 +756,13 @@ class TestAC5bTrackDiscrimination:
                         expected_keys.add(key_node.value)
 
         r_pattern, n_pattern = tci.load_net_patterns(REPO_ROOT)
+        word_pattern = tci.compile_word_only_pattern()
         candidates, _ = tci.scan_tasks_data(
             REPO_ROOT / "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
             REPO_ROOT,
             r_pattern,
             n_pattern,
+            word_pattern,
             tci.Coverage(),
         )
         found_keys = {c.checkpoint_key for c in candidates}
@@ -904,6 +953,469 @@ class TestSharedNet:
         r_pattern, n_pattern = real_net
         assert r_pattern.search(CLAIM_LINE) and n_pattern.search(CLAIM_LINE)
         assert not r_pattern.search(NON_CLAIM_LINE)
+
+
+# ---------------------------------------------------------------------------
+# Word-only net: the second, independent candidate detector added to close
+# the coverage hole in consolidated_out.md finding 3, item 7/8 (r_and_n
+# structurally cannot see a claim carrying no digits). Requirements per the
+# dispatch: finds an unnumbered prose claim in a fixture; does NOT fire on
+# code cells or module source; the `detector` field round-trips;
+# determinism still holds; previously-classified candidates survive a
+# regeneration unchanged.
+# ---------------------------------------------------------------------------
+
+
+class TestWordOnlyNet:
+    def test_word_only_line_matches_neither_half_of_r_and_n(self, real_net):
+        # The premise of the whole fix: WORD_ONLY_CLAIM_LINE is exactly the
+        # kind of line r_and_n cannot see (no result word, no digit).
+        r_pattern, n_pattern = real_net
+        assert not r_pattern.search(WORD_ONLY_CLAIM_LINE)
+        assert not n_pattern.search(WORD_ONLY_CLAIM_LINE)
+
+    def test_word_only_pattern_matches_the_fixture_line(self, real_word_pattern):
+        assert real_word_pattern.search(WORD_ONLY_CLAIM_LINE)
+        assert not real_word_pattern.search(NON_CLAIM_LINE)
+
+    def test_finds_unnumbered_prose_claim_in_markdown_cell(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_md_cell("c1", WORD_ONLY_CLAIM_LINE)],
+        )
+        r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
+        candidates = tci.scan_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            root, r_pattern, n_pattern, word_pattern, tci.Coverage(),
+        )
+        assert len(candidates) == 1
+        assert candidates[0].detector == "word_only"
+        assert candidates[0].matched_text == tci.normalise_text(WORD_ONLY_CLAIM_LINE)
+
+    def test_does_not_fire_on_code_cells(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_code_cell("c1", f"# {WORD_ONLY_CLAIM_LINE}")],
+        )
+        r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
+        candidates = tci.scan_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            root, r_pattern, n_pattern, word_pattern, tci.Coverage(),
+        )
+        # A code cell only ever gets r_and_n; WORD_ONLY_CLAIM_LINE satisfies
+        # neither half of r_and_n (previous test class), so nothing here.
+        assert candidates == []
+
+    def test_does_not_fire_on_module_source(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        module_path = root / "_SUPPORT/src/transport_srcpulse_demo.py"
+        module_path.parent.mkdir(parents=True, exist_ok=True)
+        module_path.write_text(
+            f'"""Fixture module."""\n\n\ndef f():\n    # {WORD_ONLY_CLAIM_LINE}\n    return 1\n',
+            encoding="utf-8",
+        )
+        r_pattern, n_pattern = tci.load_net_patterns(root)
+        candidates = tci.scan_python_module(
+            module_path, root, r_pattern, n_pattern, tci.Coverage()
+        )
+        assert candidates == []
+
+    def test_fires_on_tasks_data_prose_entry(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        fixture_path = root / "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+        fixture_path.parent.mkdir(parents=True, exist_ok=True)
+        fixture_path.write_text(
+            f'''"""Fixture tasks_data.py."""
+
+questions_markdown = {{
+    "task_t02_checkpoint_1": r"""{WORD_ONLY_CLAIM_LINE}""",
+}}
+
+task_functions = {{}}
+task_functions_start = {{}}
+''',
+            encoding="utf-8",
+        )
+        r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
+        candidates, _ = tci.scan_tasks_data(
+            fixture_path, root, r_pattern, n_pattern, word_pattern, tci.Coverage()
+        )
+        assert len(candidates) == 1
+        assert candidates[0].detector == "word_only"
+        assert candidates[0].dict_name == "questions_markdown"
+
+    def test_detector_field_round_trips_through_json_and_classifications(
+        self, tmp_path
+    ):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_md_cell("c1", CLAIM_LINE), _md_cell("c2", WORD_ONLY_CLAIM_LINE)],
+        )
+        cls_path = tmp_path / "cls.yaml"
+        json_out = tmp_path / "out.json"
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--init-classifications",
+        )
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(json_out),
+            "--md-out", str(tmp_path / "out.md"),
+        )
+        report = json.loads(json_out.read_text())
+        detectors = {c["detector"] for c in report["candidates"]}
+        assert detectors == {"r_and_n", "word_only"}
+
+        cls_data = yaml.safe_load(cls_path.read_text())
+        entry_detectors = {entry.get("detector") for entry in cls_data.values()}
+        assert entry_detectors == {"r_and_n", "word_only"}
+
+    def test_determinism_holds_with_word_only_candidates_present(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [
+                _md_cell("c1", CLAIM_LINE),
+                _md_cell("c2", WORD_ONLY_CLAIM_LINE),
+                _code_cell("c3", f"# {WORD_ONLY_CLAIM_LINE}"),  # must stay silent
+            ],
+        )
+        cls_path = tmp_path / "cls.yaml"
+        json1, md1 = tmp_path / "a.json", tmp_path / "a.md"
+        json2, md2 = tmp_path / "b.json", tmp_path / "b.md"
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(json1), "--md-out", str(md1),
+        )
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(json2), "--md-out", str(md2),
+        )
+        assert json1.read_bytes() == json2.read_bytes()
+        assert md1.read_bytes() == md2.read_bytes()
+
+    def test_previously_classified_candidates_survive_regeneration_unchanged(
+        self, tmp_path
+    ):
+        root = build_scope_dir(tmp_path)
+        nb_path = root / "PROJECT/transport/01t_model_goal.ipynb"
+        write_notebook(nb_path, [_md_cell("c1", CLAIM_LINE)])
+        cls_path = tmp_path / "cls.yaml"
+
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--init-classifications",
+        )
+        cls_before = yaml.safe_load(cls_path.read_text())
+        assert len(cls_before) == 1
+        (old_id,) = cls_before.keys()
+        cls_before[old_id]["claim_type"] = ["numeric"]
+        cls_path.write_text(yaml.safe_dump(cls_before), encoding="utf-8")
+
+        # Now add an unrelated word_only-only claim (this is the fix's new
+        # coverage) and regenerate. The old id's claim_type must be
+        # untouched and its id must not have churned.
+        write_notebook(
+            nb_path,
+            [_md_cell("c1", CLAIM_LINE), _md_cell("c2", WORD_ONLY_CLAIM_LINE)],
+        )
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--init-classifications",
+        )
+        cls_after = yaml.safe_load(cls_path.read_text())
+        assert old_id in cls_after
+        assert cls_after[old_id]["claim_type"] == ["numeric"]
+        assert len(cls_after) == 2
+        new_ids = set(cls_after) - {old_id}
+        (new_id,) = new_ids
+        assert cls_after[new_id]["claim_type"] == ["unclassified"]
+
+
+# ---------------------------------------------------------------------------
+# r_without_n net: THIRD net (coordinator-reported second coverage hole --
+# 22 further lines carrying R's own result-word vocabulary but no number,
+# not caught by word_only's separate detect/capture/bypass/clip vocabulary).
+# Requirements: finds such a line in a fixture; does NOT fire on code cells
+# or module source; DETECTOR_PRECEDENCE (r_and_n > r_without_n > word_only)
+# holds when a line matches more than one net; determinism and no-churn
+# still hold with all three nets active; regression locks for the two named
+# real lines (01t "lowers the peak", 03t "not universal constants").
+# ---------------------------------------------------------------------------
+
+
+class TestRWithoutNNet:
+    def test_r_without_n_line_matches_r_but_not_n_or_word(self, real_net, real_word_pattern):
+        r_pattern, n_pattern = real_net
+        assert r_pattern.search(R_WITHOUT_N_CLAIM_LINE)
+        assert not n_pattern.search(R_WITHOUT_N_CLAIM_LINE)
+        assert not real_word_pattern.search(R_WITHOUT_N_CLAIM_LINE)
+
+    def test_finds_unnumbered_r_vocabulary_claim_in_markdown_cell(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_md_cell("c1", R_WITHOUT_N_CLAIM_LINE)],
+        )
+        r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
+        candidates = tci.scan_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            root, r_pattern, n_pattern, word_pattern, tci.Coverage(),
+        )
+        assert len(candidates) == 1
+        assert candidates[0].detector == "r_without_n"
+        assert candidates[0].matched_text == tci.normalise_text(R_WITHOUT_N_CLAIM_LINE)
+
+    def test_does_not_fire_on_code_cells(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_code_cell("c1", f"# {R_WITHOUT_N_CLAIM_LINE}")],
+        )
+        r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
+        candidates = tci.scan_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            root, r_pattern, n_pattern, word_pattern, tci.Coverage(),
+        )
+        # A code cell only ever gets r_and_n; R_WITHOUT_N_CLAIM_LINE has no
+        # number, so r_and_n does not fire either.
+        assert candidates == []
+
+    def test_does_not_fire_on_module_source(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        module_path = root / "_SUPPORT/src/transport_srcpulse_demo.py"
+        module_path.parent.mkdir(parents=True, exist_ok=True)
+        module_path.write_text(
+            f'"""Fixture module."""\n\n\ndef f():\n    # {R_WITHOUT_N_CLAIM_LINE}\n    return 1\n',
+            encoding="utf-8",
+        )
+        r_pattern, n_pattern = tci.load_net_patterns(root)
+        candidates = tci.scan_python_module(
+            module_path, root, r_pattern, n_pattern, tci.Coverage()
+        )
+        assert candidates == []
+
+    def test_fires_on_tasks_data_prose_entry(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        fixture_path = root / "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+        fixture_path.parent.mkdir(parents=True, exist_ok=True)
+        # Key and value deliberately on SEPARATE lines: the checkpoint key
+        # itself always carries a digit run (task_t02_...), and find_net_hits
+        # is per-line -- keeping the key off the value's line avoids an
+        # incidental N match from the key digits turning this into a false
+        # r_and_n (R_WITHOUT_N_CLAIM_LINE has no digit of its own).
+        fixture_path.write_text(
+            f'''"""Fixture tasks_data.py."""
+
+questions_markdown = {{
+    "task_t02_checkpoint_1":
+        r"""{R_WITHOUT_N_CLAIM_LINE}""",
+}}
+
+task_functions = {{}}
+task_functions_start = {{}}
+''',
+            encoding="utf-8",
+        )
+        r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
+        candidates, _ = tci.scan_tasks_data(
+            fixture_path, root, r_pattern, n_pattern, word_pattern, tci.Coverage()
+        )
+        assert len(candidates) == 1
+        assert candidates[0].detector == "r_without_n"
+
+    def test_precedence_r_without_n_beats_word_only(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_md_cell("c1", PRECEDENCE_CLAIM_LINE)],
+        )
+        r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
+        candidates = tci.scan_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            root, r_pattern, n_pattern, word_pattern, tci.Coverage(),
+        )
+        # PRECEDENCE_CLAIM_LINE matches both r_without_n (R: "peak") and
+        # word_only (captur...) -- it must be reported exactly ONCE, as the
+        # stronger net.
+        assert len(candidates) == 1
+        assert candidates[0].detector == "r_without_n"
+
+    def test_precedence_r_and_n_beats_r_without_n(self, tmp_path):
+        # A numbered version of the same line: now r_and_n also matches
+        # (R + a number, same line), and must win over both weaker nets.
+        root = build_scope_dir(tmp_path)
+        numbered = PRECEDENCE_CLAIM_LINE.replace(
+            "the peak concentration", "a peak concentration of 4.2 mg/L"
+        )
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_md_cell("c1", numbered)],
+        )
+        r_pattern, n_pattern = tci.load_net_patterns(root)
+        word_pattern = tci.compile_word_only_pattern()
+        assert r_pattern.search(numbered) and n_pattern.search(numbered)
+        candidates = tci.scan_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            root, r_pattern, n_pattern, word_pattern, tci.Coverage(),
+        )
+        assert len(candidates) == 1
+        assert candidates[0].detector == "r_and_n"
+
+    def test_determinism_holds_with_all_three_detectors_present(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [
+                _md_cell("c1", CLAIM_LINE),
+                _md_cell("c2", R_WITHOUT_N_CLAIM_LINE),
+                _md_cell("c3", WORD_ONLY_CLAIM_LINE),
+                _code_cell("c4", f"# {R_WITHOUT_N_CLAIM_LINE}"),  # must stay silent
+            ],
+        )
+        cls_path = tmp_path / "cls.yaml"
+        json1, md1 = tmp_path / "a.json", tmp_path / "a.md"
+        json2, md2 = tmp_path / "b.json", tmp_path / "b.md"
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(json1), "--md-out", str(md1),
+        )
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(json2), "--md-out", str(md2),
+        )
+        assert json1.read_bytes() == json2.read_bytes()
+        assert md1.read_bytes() == md2.read_bytes()
+        report = json.loads(json1.read_text())
+        assert {c["detector"] for c in report["candidates"]} == {
+            "r_and_n", "r_without_n", "word_only",
+        }
+
+    def test_previously_classified_candidates_survive_when_r_without_n_added(
+        self, tmp_path
+    ):
+        root = build_scope_dir(tmp_path)
+        nb_path = root / "PROJECT/transport/01t_model_goal.ipynb"
+        write_notebook(nb_path, [_md_cell("c1", CLAIM_LINE)])
+        cls_path = tmp_path / "cls.yaml"
+
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--init-classifications",
+        )
+        cls_before = yaml.safe_load(cls_path.read_text())
+        assert len(cls_before) == 1
+        (old_id,) = cls_before.keys()
+        cls_before[old_id]["claim_type"] = ["numeric"]
+        cls_path.write_text(yaml.safe_dump(cls_before), encoding="utf-8")
+
+        write_notebook(
+            nb_path,
+            [_md_cell("c1", CLAIM_LINE), _md_cell("c2", R_WITHOUT_N_CLAIM_LINE)],
+        )
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--init-classifications",
+        )
+        cls_after = yaml.safe_load(cls_path.read_text())
+        assert old_id in cls_after
+        assert cls_after[old_id]["claim_type"] == ["numeric"]
+        assert len(cls_after) == 2
+        new_ids = set(cls_after) - {old_id}
+        (new_id,) = new_ids
+        assert cls_after[new_id]["claim_type"] == ["unclassified"]
+        assert cls_after[new_id]["detector"] == "r_without_n"
+
+
+class TestRealRepoUnnumberedDetectionClaim:
+    def test_01t_cell6_causal_detection_line_is_found_by_word_only(self):
+        # Regression lock for the exact hole named in consolidated_out.md
+        # finding 3, item 7/8: 01t_model_goal.ipynb cell 6 carries a
+        # causal, unnumbered "...a marginal bypass becomes a small
+        # detection" line that r_and_n structurally cannot see. It must now
+        # be found, via word_only (it matches neither half of R either).
+        r_pattern, n_pattern = tci.load_net_patterns(REPO_ROOT)
+        word_pattern = tci.compile_word_only_pattern()
+        nb_path = REPO_ROOT / "PROJECT/transport/01t_model_goal.ipynb"
+        candidates = tci.scan_notebook(
+            nb_path, REPO_ROOT, r_pattern, n_pattern, word_pattern, tci.Coverage()
+        )
+        hits = [
+            c for c in candidates
+            if c.detector == "word_only" and "small detection" in c.matched_text
+        ]
+        assert hits, (
+            "expected the unnumbered capture-vs-bypass causal claim in 01t "
+            "cell 6 to be found by the word_only net"
+        )
+        assert hits[0].cell_index == 6
+
+    def test_01t_cell6_lowers_the_peak_line_is_found_by_r_without_n(self):
+        # Coordinator-reported second coverage hole: this line carries R's
+        # own vocabulary ("peak", "threshold") but no digit, so r_and_n
+        # cannot see it and word_only's separate vocabulary does not either.
+        r_pattern, n_pattern = tci.load_net_patterns(REPO_ROOT)
+        word_pattern = tci.compile_word_only_pattern()
+        nb_path = REPO_ROOT / "PROJECT/transport/01t_model_goal.ipynb"
+        candidates = tci.scan_notebook(
+            nb_path, REPO_ROOT, r_pattern, n_pattern, word_pattern, tci.Coverage()
+        )
+        hits = [
+            c for c in candidates
+            if c.detector == "r_without_n" and "lowers the peak" in c.matched_text
+        ]
+        assert hits, (
+            "expected the unnumbered 'lowers the peak ... diluted below "
+            "the threshold' claim in 01t cell 6 to be found by r_without_n"
+        )
+        assert hits[0].cell_index == 6
+
+    def test_03t_cell7_not_universal_constants_line_is_found_by_r_without_n(self):
+        r_pattern, n_pattern = tci.load_net_patterns(REPO_ROOT)
+        word_pattern = tci.compile_word_only_pattern()
+        nb_path = REPO_ROOT / "PROJECT/transport/03t_modflow_transport.ipynb"
+        candidates = tci.scan_notebook(
+            nb_path, REPO_ROOT, r_pattern, n_pattern, word_pattern, tci.Coverage()
+        )
+        hits = [
+            c for c in candidates
+            if c.detector == "r_without_n" and "not universal constants" in c.matched_text
+        ]
+        assert hits, (
+            "expected the 'not universal constants of transport' causal "
+            "claim in 03t cell 7 to be found by r_without_n"
+        )
+        assert hits[0].cell_index == 7
 
 
 # ---------------------------------------------------------------------------

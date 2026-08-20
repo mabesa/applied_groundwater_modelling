@@ -1,6 +1,57 @@
 {
   "candidates": [
     {
+      "cell_id": "idx-1",
+      "cell_id_synthetic": true,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "fdceb9c4259f",
+      "line_number": 10,
+      "matched_text": "2. **Frame** the motivating question for a GWHE doublet: does an upgradient contaminant spill **reach the doublet's extraction well (the compliance well)** above the regulatory threshold – or bypass it laterally?",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-3",
+      "cell_id_synthetic": true,
+      "cell_index": 3,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "27f182030c1d",
+      "line_number": 15,
+      "matched_text": "> 🎯 **Motivating question:** A contaminant spills upgradient of a real Limmat doublet. Does the plume **reach the extraction (monitoring) well above the regulatory threshold – and if so, when?** Or does it **bypass** the well laterally?",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-3",
+      "cell_id_synthetic": true,
+      "cell_index": 3,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "62a4f6da9d86",
+      "line_number": 22,
+      "matched_text": "These are real geothermal installations, and their *own* engineering worry is **recirculation** – reinjected water short-circuiting back to the extraction well and degrading performance. We borrow the **same forced-gradient flow field** for a different question: the extraction-well capture zone that a doublet designs *against* (for its own returned water) is exactly what decides whether an *external* contaminant plume is captured or bypasses. Same wells, same flow field – a contaminant-transport question instead of a thermal one. (The heat-transport packages, MODFLOW 6 **GWE**, are the thermal counterpart of the solute packages, **GWT**, we use here.)",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
       "cell_id": "idx-3",
       "cell_id_synthetic": true,
       "cell_index": 3,
@@ -8,10 +59,62 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "84f8e642813d",
       "line_number": 11,
       "matched_text": "We deliberately **start from the conservative case**: it is the simplest, most transparent transport problem – advection carries the solute with the flow while dispersion and diffusion spread it out – and it isolates exactly the processes the flow field controls. Once you can read a conservative breakthrough curve, a **sorbing or decaying contaminant is a single incremental step**, and the provided model already supports it. *(The physics of sorption and decay comes in [02t](02t_perceptual_model.ipynb) and [03t](03t_modflow_transport.ipynb); here we scope only what the model must represent and what data it needs.)*",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-3",
+      "cell_id_synthetic": true,
+      "cell_index": 3,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "df7e1408ae3e",
+      "line_number": 17,
+      "matched_text": "You will answer this by **modifying a provided model** and reading the contaminant breakthrough at the monitoring well.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-3",
+      "cell_id_synthetic": true,
+      "cell_index": 3,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "fcbe750fe873",
+      "line_number": 13,
+      "matched_text": "**The scenario.** Scattered through the Limmat Valley are **groundwater heat-exchange (GWHE) doublets** – paired wells that pump groundwater up, use it for building heating or cooling, and reinject the used water nearby. Each doublet has an **injection well** (returning clean water) and an **extraction well** that abstracts it. In your project, the **extraction well doubles as a monitoring / compliance well**, and a contaminant spills somewhere upgradient. The doublet's pumping bends the flow field into a **capture zone** around the extraction well, so the plume is either drawn in or drifts past:",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-4",
+      "cell_id_synthetic": true,
+      "cell_index": 4,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "972da6db2804",
+      "line_number": 10,
+      "matched_text": "> 2. **Quantify breakthrough at the monitoring (extraction) well** – whether the plume is captured or bypasses, its peak concentration versus the regulatory threshold, and the first-exceedance time",
       "path": "PROJECT/transport/01t_model_goal.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -24,10 +127,198 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "b5634ca92158",
       "line_number": 14,
       "matched_text": "> The model should be **fast enough for interactive exploration** (each breakthrough simulation completes in ≤10 minutes).",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-5",
+      "cell_id_synthetic": true,
+      "cell_index": 5,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "1002c31bf3e3",
+      "line_number": 12,
+      "matched_text": "2. **Delineate the capture zone** of the extraction well and relate it to the spill's position (captured or bypassed)",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-5",
+      "cell_id_synthetic": true,
+      "cell_index": 5,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "9c713871a2d4",
+      "line_number": 21,
+      "matched_text": "- Illustrate how the **flow field controls transport** (the doublet's forced gradient decides whether the plume is captured)",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-5",
+      "cell_id_synthetic": true,
+      "cell_index": 5,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "a7a4d114f9d8",
+      "line_number": 11,
+      "matched_text": "1. **Simulate contaminant migration and read its breakthrough** (arrival time and peak concentration) at the monitoring (extraction) well, versus the regulatory threshold – the capture-vs-bypass question",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "04463005dd6d",
+      "line_number": 10,
+      "matched_text": "> 3. Effective porosity sets the mean water velocity ($u = q / \\phi_e$). If you halved the effective porosity, what would happen to the plume's arrival time at the monitoring well?",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "1a37c772008a",
+      "line_number": 9,
+      "matched_text": "> 2. Dispersivity spreads the plume out around the average flow path. Could *increasing* dispersivity change the verdict at the monitoring well? Explain why it can cut both ways – a wider plume is more likely to clip the well, but its peak concentration is lower.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "2c74fe1b0d09",
+      "line_number": 36,
+      "matched_text": "- *For a sorbing solute the speed-up is weaker than 2×.* The transport velocity is $u_R = q/(\\phi_e + \\rho_b K_d)$, and the retardation factor $R = 1 + \\rho_b K_d/\\phi_e$ **itself contains** $\\phi_e$. So both terms respond to porosity: halving $\\phi_e$ shortens the arrival time by a factor between 2 (non-sorbing) and 1 (strongly sorbing), approaching *no change* for a strongly retarded solute.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "37a8f9bd0695",
+      "line_number": 21,
+      "matched_text": "- *Caveat:* $y_{\\max}$ is also the **single-well** estimate. In a doublet the injection well can both **narrow the effective capture** (part of what the well pulls is re-injected clean water recirculating back, not upstream flow) and **deflect the plume sideways** (the injection mound). Treat $y_{\\max}$ as a first-order **screening** estimate, not the last word — cheap and useful for an early gut-check, but not the answer you would defend to a regulator.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "3e4454af5461",
+      "line_number": 8,
+      "matched_text": "> 1. The extraction well draws a **capture zone** around itself. Describe two paths the contaminant could take from the spill – one that is captured by the extraction (monitoring) well, and one that escapes past it downgradient. What controls which one dominates?",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "46f5f941717f",
+      "line_number": 12,
+      "matched_text": "> **Hint:** Advection follows the doublet's forced-gradient flow field; the extraction well's capture-zone half-width versus the spill's lateral offset decides capture vs bypass. Arrival *time* scales with travel distance divided by mean water velocity.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "4816f6d82564",
+      "line_number": 17,
+      "matched_text": "**1. Capture vs bypass.**",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "6d476a0fd6d1",
+      "line_number": 18,
+      "matched_text": "- *Captured:* a spill released within the extraction well's **capture zone** follows the doublet's forced-gradient streamlines that converge on the well, so it is intercepted and registers in the breakthrough.",
       "path": "PROJECT/transport/01t_model_goal.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -40,6 +331,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "71bdc7fbcd23",
       "line_number": 32,
@@ -54,12 +346,166 @@
       "cell_index": 6,
       "checkpoint_key": null,
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "7abd4ccbe090",
+      "line_number": 20,
+      "matched_text": "- *What controls it:* the spill's lateral offset versus the capture-zone half-width, screened with $y_{\\max} = Q/(2Ti)$ – a larger pumping rate $Q$ widens the zone, a steeper regional gradient $i$ narrows it. Note what this formula actually is: a **far-field asymptote** — the width the capture zone approaches a long way *upgradient*, where the well's own drawdown no longer bends the flow. It is not the width at any particular point.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "85c05b6b5be4",
       "line_number": 22,
       "matched_text": "- *The defensible lateral answer* is computed **numerically** in [08t Rung D](08t_model_application.ipynb) (MF6 PRT particle tracking on the actual doublet flow field, not a hand formula). It finds the **dividing streamline** by bisection on a transect, and reports the half-width **with the location it applies to**: for this spill, **≈53 m on the transect through the spill** (asymmetric about the axis — a real capture zone is not symmetric; 08t Rung D reports the exact ± split). The zone **widens upgradient**, reaching ≈68 m at 300 m upgradient — and *that* is what converges on the screening formula, whose value for this doublet's own flow field is $y_{\\max} = Q/(2qb) \\approx 72$ m. So the screen and the model agree, once you compare them at the right place: **the numeric half-width at the spill (≈53 m) is *narrower* than the far-field asymptote (≈72 m)**, exactly as the geometry of a capture zone requires. Quote the transect value *with its location*; a half-width with no stated position is not a number.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "934ce783d958",
+      "line_number": 23,
+      "matched_text": "- *And a capture boundary is not a fence.* It is a purely **advective** envelope. A real, dispersive plume straddles it, so a source just outside the line can still register at the well at low concentration — see Q2.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "a04430227647",
+      "line_number": 24,
+      "matched_text": "- Capture only answers *whether* the plume reaches the well; *when* it arrives is set by travel distance and mean water velocity – see Q3.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "a51ddfb9360e",
+      "line_number": 30,
+      "matched_text": "- but all of this spreading **lowers the peak**, so an on-centerline plume can be **diluted below the threshold**.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "b338fba8f514",
+      "line_number": 19,
+      "matched_text": "- *Bypass:* a spill whose **lateral offset exceeds the capture-zone half-width** rides the regional streamlines past the well and escapes downgradient – little or no breakthrough.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "b84307e5040a",
+      "line_number": 28,
+      "matched_text": "- the **transverse** term ($\\alpha_T$) widens the plume laterally, so a plume whose centerline would just bypass can **clip** the well at low concentration (a marginal bypass becomes a small detection);",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "d82f1cb6ae01",
+      "line_number": 2,
+      "matched_text": "<summary><strong>Optional: Exercise – Reasoning about capture vs bypass</strong></summary>",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "f95a6a2d3cd3",
+      "line_number": 35,
+      "matched_text": "Mean water velocity is $u = q/\\phi_e$. On a **steady** flow field the specific discharge $q$ and the streamlines are fixed by the head solution – independent of porosity – so halving $\\phi_e$ **doubles** the velocity and the advective arrival time is **halved exactly** (only the dispersive spread of the front carries any \"≈\").",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-7",
+      "cell_id_synthetic": true,
+      "cell_index": 7,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "285af6b54032",
+      "line_number": 23,
+      "matched_text": "| **Simulation period** | Long enough for breakthrough | Run until the plume either reaches the monitoring well or clearly bypasses it |",
       "path": "PROJECT/transport/01t_model_goal.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -72,10 +518,79 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "75d4a7529cee",
       "line_number": 15,
       "matched_text": "> ⚠️ **A grid that is fine enough for flow is often too coarse for transport.** On the ~50 m flow grid, the plume front is artificially smeared (the *grid Peclet* number is too high). The provided model is therefore **refined along the spill → well corridor** so the breakthrough is trustworthy. You will see exactly how this is diagnosed and fixed in **[04t](04t_model_implementation.ipynb)** — here it is enough to know that resolution must be checked against the *transport*, not just the flow.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-8",
+      "cell_id_synthetic": true,
+      "cell_index": 8,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "56a0a0c9904b",
+      "line_number": 37,
+      "matched_text": "- **Observations**: real concentration data are typically sparse and expensive; in this teaching study the \"observation\" is the simulated breakthrough at the monitoring well.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-8",
+      "cell_id_synthetic": true,
+      "cell_index": 8,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "702165328551",
+      "line_number": 35,
+      "matched_text": "- **Effective porosity is rarely measured directly** and sets the mean water velocity, so it directly controls arrival time.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-8",
+      "cell_id_synthetic": true,
+      "cell_index": 8,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "76df2de4e173",
+      "line_number": 33,
+      "matched_text": "- **The source term often dominates the uncertainty**: what is released, at what concentration and over what duration. In this teaching study the spill is *defined by the scenario* (location, concentration, release schedule), which is what makes the breakthrough question well-posed.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-8",
+      "cell_id_synthetic": true,
+      "cell_index": 8,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "871a8b5c33d7",
+      "line_number": 16,
+      "matched_text": "| **Receptor** | Monitoring (extraction) well location and rate; regulatory threshold | Doublet concession | Known |",
       "path": "PROJECT/transport/01t_model_goal.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -88,11 +603,199 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "42f7e265b974",
       "line_number": 18,
       "matched_text": "**2. Because building and refining a transport grid correctly is instructor-time work.** A grid that is adequate for flow is *not* adequate for transport (the grid-Peclet problem, shown in 04t), and refining it reliably along the spill → well corridor is fiddly. Handing you a pre-built, pre-refined model lets you spend your time on the modeling *decisions and judgment* – source, dispersivity, scenario, and interpreting the breakthrough – which is where the learning is.",
       "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-9",
+      "cell_id_synthetic": true,
+      "cell_index": 9,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "99b93b4c1a19",
+      "line_number": 13,
+      "matched_text": "- The **source term** (what is released, at what concentration and over what duration) is the dominant uncertainty in most real solute studies – although here the spill is fixed *by the scenario*, which is what makes the breakthrough question well-posed.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-9",
+      "cell_id_synthetic": true,
+      "cell_index": 9,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "f5bca3f86e0f",
+      "line_number": 16,
+      "matched_text": "Effective porosity is a close third, because it sets the mean water velocity and hence the arrival time. These are the parameters you will deliberately stress-test, because the flow field – and therefore advection – is already constrained by the calibrated flow model.",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-10",
+      "cell_id_synthetic": true,
+      "cell_index": 10,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "0e3b9dd4faad",
+      "line_number": 22,
+      "matched_text": "| **Site owners** | Contamination liability, remediation costs | Plume delineation, arrival-time estimates |",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-10",
+      "cell_id_synthetic": true,
+      "cell_index": 10,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "704bc86387ad",
+      "line_number": 11,
+      "matched_text": "| **Students** | Learning transport concepts | Clear breakthrough curves, interactive scenarios |",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-10",
+      "cell_id_synthetic": true,
+      "cell_index": 10,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "7b4acaeac261",
+      "line_number": 23,
+      "matched_text": "| **Water utilities** | Wellhead protection, safe yield | Capture-zone analysis, early warning |",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-11",
+      "cell_id_synthetic": true,
+      "cell_index": 11,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "2b83260e8dc7",
+      "line_number": 8,
+      "matched_text": "> - Primary: arrival time and peak concentration at the monitoring well vs threshold; the extraction-well capture zone",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-11",
+      "cell_id_synthetic": true,
+      "cell_index": 11,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "51b96f20750e",
+      "line_number": 7,
+      "matched_text": "> **Track a contaminant** from an upgradient spill through a real Limmat GWHE doublet's flow field and **read its breakthrough at the monitoring (extraction) well** – is it captured or does it bypass, does it exceed the regulatory threshold, and when?",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-11",
+      "cell_id_synthetic": true,
+      "cell_index": 11,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "f2cb5719bb22",
+      "line_number": 14,
+      "matched_text": "> - Temporal: transient simulation on a steady flow field, run until breakthrough or clear bypass",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-12",
+      "cell_id_synthetic": true,
+      "cell_index": 12,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "c80b3502807f",
+      "line_number": 5,
+      "matched_text": "You now have a clear, well-posed transport goal — the **breakthrough at the doublet's monitoring well** for an upgradient spill. Two framing decisions carry forward:",
+      "path": "PROJECT/transport/01t_model_goal.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-0",
+      "cell_id_synthetic": true,
+      "cell_index": 0,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "f0ab802e9602",
+      "line_number": 7,
+      "matched_text": "**Story so far:** In Step 1 you set the objective: a **contaminant spills upgradient** of a **groundwater heat-exchange (GWHE) doublet**, and we ask whether the plume reaches the doublet's **extraction well** — which doubles as the monitoring / compliance well — above the regulatory threshold (and when), or **bypasses** it laterally. The doublet runs **flow-only** (clean injection +Q, extraction −Q); its forced-gradient flow field is what captures or bypasses the spill. Now we build a **perceptual model for transport** – what additional understanding do we need beyond the calibrated flow model?",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-1",
+      "cell_id_synthetic": true,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "93a6e4e6987f",
+      "line_number": 16,
+      "matched_text": "5. Describe the **minimal reaction** a non-conservative contaminant needs — sorption (retardation) or first-order decay — and how each reshapes the breakthrough",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
     },
@@ -104,6 +807,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "0ea99787eb57",
       "line_number": 16,
@@ -120,6 +824,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "1736790869d0",
       "line_number": 2,
@@ -136,6 +841,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "35cf77a0f1d0",
       "line_number": 13,
@@ -150,12 +856,64 @@
       "cell_index": 8,
       "checkpoint_key": null,
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "0a2ef8e736e9",
+      "line_number": 4,
+      "matched_text": "- **Contaminant arrival times** — near a pumping well, pumping-induced gradients mean a contaminant spilled a few hundred metres upgradient could arrive within weeks to months",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-8",
+      "cell_id_synthetic": true,
+      "cell_index": 8,
+      "checkpoint_key": null,
+      "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "4b9ecbc02414",
       "line_number": 1,
       "matched_text": "**Key insight:** The mean water velocity (~2.3 m/day on average) is faster than the specific discharge (~0.45 m/day) by a factor of $1/\\phi_e = 5$. This distinction matters for:",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-8",
+      "cell_id_synthetic": true,
+      "cell_index": 8,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "4dd22a783b02",
+      "line_number": 3,
+      "matched_text": "- **Wellhead / capture-zone protection** — defined by travel time of water (velocity), not flux",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-8",
+      "cell_id_synthetic": true,
+      "cell_index": 8,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "b33eddb9964a",
+      "line_number": 5,
+      "matched_text": "- **Capture vs bypass** — whether an upgradient spill is drawn into the extraction well or swept past depends directly on these local velocities and the well's capture zone",
       "path": "PROJECT/transport/02t_perceptual_model.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -168,10 +926,28 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "f1284820286c",
       "line_number": 19,
       "matched_text": "**When local refinement IS used:** around the doublet, where concentrations are highest and gradients steepest, local refinement (Step 4) reduces $Pe_L$ to ~1 — but $Pe_T$ still stays near 10, which is exactly the transverse-resolution limitation above.",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-14",
+      "cell_id_synthetic": true,
+      "cell_index": 14,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "f84e61bf44bf",
+      "line_number": 1,
+      "matched_text": "Our **longitudinal** grid Peclet number is ~5, exceeding the classical limit of 2. With a **central-difference** advection scheme this would cause spurious oscillations. MODFLOW 6 GWT supports **TVD (Total Variation Diminishing)** advection, which stays stable at higher grid Peclet numbers, so the longitudinal front is usable on the native grid (at the cost of some numerical dispersion).",
       "path": "PROJECT/transport/02t_perceptual_model.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -184,6 +960,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "53c8a4af5ae3",
       "line_number": 11,
@@ -200,10 +977,79 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "86a8cc4069d1",
       "line_number": 20,
       "matched_text": "A solute that biodegrades or transforms loses dissolved mass at a rate proportional to its concentration: $\\partial C/\\partial t = -\\lambda C$, with decay constant $\\lambda$ [1/T] and half-life $t_{1/2} = \\ln 2 / \\lambda$. Decay **lowers the peak and the plateau** (for a continuous source, the steady concentration at the well) but — unlike sorption — does **not** delay the front. Two of the case-study contaminants decay: **benzene** (group 2, aerobic biodegradation, $t_{1/2}\\approx139$ d) and **ammonium** (group 7, nitrification, $t_{1/2}\\approx35$ d).",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-17",
+      "cell_id_synthetic": true,
+      "cell_index": 17,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "d0c23cc270ae",
+      "line_number": 4,
+      "matched_text": "We **start from a conservative tracer** ($R = 1$: it moves with the water, neither retained nor degraded) because that isolates the transport the flow field controls. But **5 of the 9 case-study contaminants are reactive**, so a real breakthrough usually needs one incremental process on top — and no case study needs both at once.",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-19",
+      "cell_id_synthetic": true,
+      "cell_index": 19,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "c7d29a2cfcf1",
+      "line_number": 4,
+      "matched_text": "The Limmat Valley is one of Switzerland's most intensely used aquifers for **groundwater heat exchange (GWHE)** — **injection–extraction doublet wells** that pump groundwater, exchange heat for heating or cooling, and reinject it nearby. Although their purpose is thermal, each doublet is also a **hydraulic** feature: it withdraws water at one well and returns it at another, setting up a **forced-gradient flow field** with a capture zone around the extraction well — the field that decides whether an upgradient contaminant spill is drawn in or swept past.",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-22",
+      "cell_id_synthetic": true,
+      "cell_index": 22,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "2874bdc284f7",
+      "line_number": 5,
+      "matched_text": "- Each doublet is a candidate **capture-vs-bypass** setting: whether a contaminant spilled upgradient reaches the extraction (monitoring) well runs through exactly the velocity and dispersion field we just characterised. *(The doublet's own thermal concern — recirculation of reinjected water back to the extraction well — is the same flow field seen from the operator's side; Step 8 sketches it, without building it.)*",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-26",
+      "cell_id_synthetic": true,
+      "cell_index": 26,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "4379c0d1e4f5",
+      "line_number": 8,
+      "matched_text": "| Source term known (released **mass / loading rate**, location, release duration) | The true **spill mass and duration** are usually unknown | Peak concentration scales with the assumed loading (arrival timing is set by advection, dispersion, and retardation — not by loading) |",
       "path": "PROJECT/transport/02t_perceptual_model.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -216,6 +1062,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "6090136ec141",
       "line_number": 15,
@@ -230,8 +1077,26 @@
       "cell_index": 26,
       "checkpoint_key": null,
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "85d3861e1e30",
+      "line_number": 14,
+      "matched_text": "| Steady-state flow field | Transient flow (seasonal water-table changes) | Seasonal changes in path and travel time missed |",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-26",
+      "cell_id_synthetic": true,
+      "cell_index": 26,
+      "checkpoint_key": null,
+      "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "8f559eebad14",
       "line_number": 11,
@@ -246,8 +1111,43 @@
       "cell_index": 26,
       "checkpoint_key": null,
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "c9f97e7cb8ab",
+      "line_number": 26,
+      "matched_text": "> Consider both (a) how likely the assumption is to be wrong and (b) how much impact it would have on the predicted plume arrival at the extraction (monitoring) well.",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-26",
+      "cell_id_synthetic": true,
+      "cell_index": 26,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "d5ebe229411d",
+      "line_number": 24,
+      "matched_text": "> **Which assumption above do you think is most consequential for the capture-vs-bypass question? Why?**",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-26",
+      "cell_id_synthetic": true,
+      "cell_index": 26,
+      "checkpoint_key": null,
+      "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "e5fd0ef19ae3",
       "line_number": 18,
@@ -264,6 +1164,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "ec34c4c892a2",
       "line_number": 12,
@@ -278,8 +1179,26 @@
       "cell_index": 27,
       "checkpoint_key": null,
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "122191c08dba",
+      "line_number": 12,
+      "matched_text": "| Native longitudinal grid Peclet $Pe_L$ | ~5 | — | $u\\,\\Delta x / D_L$ (> 2 → use TVD) |",
+      "path": "PROJECT/transport/02t_perceptual_model.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-27",
+      "cell_id_synthetic": true,
+      "cell_index": 27,
+      "checkpoint_key": null,
+      "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "1394ec82579a",
       "line_number": 13,
@@ -296,6 +1215,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "2c6ea28b0bae",
       "line_number": 8,
@@ -312,6 +1232,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "65b127d2a27d",
       "line_number": 7,
@@ -328,6 +1249,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "4cba36a78c28",
       "line_number": 40,
@@ -344,10 +1266,45 @@
       "claim_type": [
         "illustrative"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "9fa5a8e407fa",
       "line_number": 35,
       "matched_text": "- **1D transient (Ogata–Banks)**, a continuous constant-concentration inlet in 1D uniform flow, verifies **arrival timing** (toe, $t_{50}$, front sharpness):",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-4",
+      "cell_id_synthetic": true,
+      "cell_index": 4,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "d62cfd40876c",
+      "line_number": 17,
+      "matched_text": "where $\\phi$ is the **effective (kinematic) porosity** $\\phi_e$, $C$ concentration, $\\mathbf{u}$ the mean water velocity, $\\mathbf{D}$ the hydrodynamic dispersion tensor, $R$ the retardation factor, and $\\lambda$ the first-order decay constant. The **conservative tracer** is the special case $R = 1,\\ \\lambda = 0$ — the simplest, cleanest starting point — and a **sorbing** ($R>1$) or **decaying** ($\\lambda>0$) contaminant is one incremental step on top (the **MST** package switches each on; see §3).",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "0bc68d59c6e9",
+      "line_number": 7,
+      "matched_text": "Two dimensionless numbers control transport **accuracy and time-stepping** — not solver *stability*: the MODFLOW 6 TVD scheme stays stable above the Peclet limit, and the cost of exceeding it is numerical smearing, not instability:",
       "path": "PROJECT/transport/03t_modflow_transport.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -360,6 +1317,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "3dbad2d6cefe",
       "line_number": 27,
@@ -374,8 +1332,26 @@
       "cell_index": 6,
       "checkpoint_key": null,
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "520676a3505a",
+      "line_number": 13,
+      "matched_text": "This is a **cell-scale** requirement. It says: the advective transport across one cell must not exceed twice the dispersive spreading. Rearranging for maximum cell size:",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-6",
+      "cell_id_synthetic": true,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "c1ecaec30091",
       "line_number": 38,
@@ -393,10 +1369,147 @@
         "numeric",
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "d8ea0db74677",
       "line_number": 34,
       "matched_text": "Near the doublet wells, local velocities can reach ~7 m/d (the flow converges toward the abstraction well), reducing the Courant limit to $\\leq 2.9$ days for the same cell size. With monthly stress periods ($\\Delta t = 30$ days) and typical cell sizes of 25–50 m, Courant numbers can exceed 1 in the fast-flow zone — which is handled by **shorter transport time steps** (sub-stepping the stress period near the wells), *not* by the advection scheme. (TVD, below, relaxes the *Peclet* constraint, not the Courant one.)",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-7",
+      "cell_id_synthetic": true,
+      "cell_index": 7,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "06f842b4b9cb",
+      "line_number": 4,
+      "matched_text": "The two rules of thumb above are **not universal constants of transport** — each is tied to a discretization choice, and a different scheme moves or removes the threshold. They stay useful as *resolution* diagnostics for Eulerian (grid-based) schemes, but the exact numbers come with fine print.",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-7",
+      "cell_id_synthetic": true,
+      "cell_index": 7,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "24cc975dd8a3",
+      "line_number": 17,
+      "matched_text": "**Bottom line for MODFLOW 6 GWT** (cell-centered finite volume, implicit in time, with a TVD advection option): treat both numbers as **accuracy / resolution** guides. The Péclet oscillation threshold strictly applies to the *central* ADV weighting and is relaxed by TVD; a Courant condition would be a *stability* limit only under explicit time stepping, which GWT does not use.",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-7",
+      "cell_id_synthetic": true,
+      "cell_index": 7,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "2a89fb006d66",
+      "line_number": 2,
+      "matched_text": "<summary><b>Optional deep-dive: are the $Pe \\le 2$ and $Cr \\le 1$ thresholds universal, or scheme-specific?</b> (click to expand)</summary>",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-7",
+      "cell_id_synthetic": true,
+      "cell_index": 7,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "eaff9891a636",
+      "line_number": 13,
+      "matched_text": "So \"$Pe \\le 2$\" really means \"keep central-type schemes out of their oscillatory regime.\" As a *resolution* check — is the physical dispersion length $\\alpha_L$ resolved by the cells? — a high grid Péclet stays meaningful for any Eulerian advection–dispersion scheme; only the specific $\\le 2$ **oscillation** threshold is central-scheme-specific.",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-9",
+      "cell_id_synthetic": true,
+      "cell_index": 9,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "ac8bd60a1183",
+      "line_number": 11,
+      "matched_text": "| **SRC** | Mass source/loading: per-cell mass-loading **rate** [M/T] — here **grams/day** (m/day model ⇒ mg/L = g/m³) | **The spill:** a known contaminant mass released with no water flux |",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-9",
+      "cell_id_synthetic": true,
+      "cell_index": 9,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "d60b4babbfa9",
+      "line_number": 47,
+      "matched_text": "| \"RIV captures all river–aquifer solute exchange\" | No — SSM only carries solute on the **advective** water flux; no diffusive exchange at zero net flow. |",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-11",
+      "cell_id_synthetic": true,
+      "cell_index": 11,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "19917b7bdaaa",
+      "line_number": 3,
+      "matched_text": "In 02t, we identified the key transport features of the spill→capture study. Here is how each maps to a MODFLOW 6 GWT package:",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-11",
+      "cell_id_synthetic": true,
+      "cell_index": 11,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "cdcb56e9d73d",
+      "line_number": 17,
+      "matched_text": "> 🤔 **Reflection:** The operational question is **capture vs. bypass** — does the upgradient spill reach the extraction (monitoring) well above the regulatory threshold, and when? In the model, the **SRC** package handles the spill: you specify the *mass-loading rate* on the source cells, so the released mass is exactly what you set — grid-independent and adding no water, so the doublet's flow field stays undisturbed. (The *recirculation* variant — tracer injected *with* the reinjected water — is a water-carrying source and would use WEL+SSM instead; Step 8 sketches that scenario without building it.)",
       "path": "PROJECT/transport/03t_modflow_transport.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -409,6 +1522,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "fc8c78b9aeef",
       "line_number": 12,
@@ -425,10 +1539,28 @@
       "claim_type": [
         "illustrative"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "4830c8acf155",
       "line_number": 7,
       "matched_text": "- Analytical **verification toys** check the numerical scheme on uniform-flow problems — 04t §8 uses the **2D instantaneous point-release** solution, which carries arrival, longitudinal *and* transverse spread (the 1D Ogata–Banks form above is lecture-side only, and is not re-used in this track) — they are *not* benchmarks for the convergent doublet flow",
+      "path": "PROJECT/transport/03t_modflow_transport.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "idx-13",
+      "cell_id_synthetic": true,
+      "cell_index": 13,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "5bbdb33d9b9a",
+      "line_number": 5,
+      "matched_text": "- The **advection-dispersion-reaction equation** extends the flow equation to transport: advection moves the front, dispersion spreads it, sources/sinks add or remove mass, and **retardation $R$** and **first-order decay $\\lambda$** capture reactions — a **conservative tracer** ($R=1,\\lambda=0$) is the clean core case",
       "path": "PROJECT/transport/03t_modflow_transport.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -441,10 +1573,45 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "2244a9c06634",
       "line_number": 7,
       "matched_text": "**Story so far:** In [03t](03t_modflow_transport.ipynb) you translated the perceptual model into MODFLOW 6 language — the advection-dispersion-reaction equation, the Péclet/Courant accuracy criteria, and the GWT packages (with **SRC** as the source for a known-mass spill). Now we **build and run** the model: a contaminant spills upgradient of a GWHE doublet, and we read the breakthrough at the extraction (monitoring) well.",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "0",
+      "cell_id_synthetic": false,
+      "cell_index": 0,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "b548b5f83def",
+      "line_number": 3,
+      "matched_text": "# Step 4: Model Implementation — Building the Spill→Capture GWT Model",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "1",
+      "cell_id_synthetic": false,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "884900e9cf86",
+      "line_number": 3,
+      "matched_text": "A contaminant **spills upgradient** of a GWHE doublet running flow-only (clean injection, extraction). The extraction well is the **monitoring / compliance well**, and the question is blunt: **does the plume reach the well above the regulatory threshold, and when — or bypass it?**",
       "path": "PROJECT/transport/04t_model_implementation.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -457,10 +1624,45 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "be10a2a1541c",
       "line_number": 5,
       "matched_text": "Here is the trap. The plume in the source→well corridor is **narrow** — only as wide as transverse dispersion lets it spread ($\\alpha_T = 1$ m). The inherited flow grid has ~50 m cells; when a cell is far larger than the spreading length, the scheme adds **numerical dispersion** that smears the plume — most damagingly **sideways** — and mis-reads the concentration along the centre-line the well draws from. So we **refine the source→well corridor** to ~10 m, which resolves the *longitudinal* breakthrough; the *transverse* width stays under-resolved (we return to that in §9).",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "2",
+      "cell_id_synthetic": false,
+      "cell_index": 2,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "70e878d63052",
+      "line_number": 13,
+      "matched_text": "4. **Verify the transport engine** against an exact 2D analytical solution (arrival, spread, sorption, decay) — an *engine / unit* check, **not** a compliance decision",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "2",
+      "cell_id_synthetic": false,
+      "cell_index": 2,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "785184d8dbdb",
+      "line_number": 11,
+      "matched_text": "2. Read the **breakthrough** at the monitoring well and state a **threshold verdict** (reach? exceed? when?)",
       "path": "PROJECT/transport/04t_model_implementation.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -473,6 +1675,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "fc7b027ae939",
       "line_number": 4,
@@ -489,6 +1692,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "921c1519ae20",
       "line_number": 39,
@@ -505,6 +1709,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "9f38022aba95",
       "line_number": 30,
@@ -521,6 +1726,7 @@
       "claim_type": [
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "391ddcdddffe",
       "line_number": 4,
@@ -537,6 +1743,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "e3d74869e6a8",
       "line_number": 4,
@@ -553,6 +1760,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "b76567e960f3",
       "line_number": 10,
@@ -569,10 +1777,45 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "81f6999c2519",
       "line_number": 4,
       "matched_text": "The **calibration is already done**: the hydraulic-conductivity field and the boundary conditions come straight from the 05f-calibrated model you *loaded* in §1 — nothing here re-calibrates them. What happens here is **re-gridding and re-solving the flow**, not rebuilding a calibration. Transport needs the ~10 m corridor cells (§2), so the calibrated K and BCs are carried onto the refined grid and flow is solved there; MODFLOW 6 then solves flow and transport **together on that one grid**, so the flow model (GWF) is assembled as part of the same simulation as the transport model (GWT).",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "12",
+      "cell_id_synthetic": false,
+      "cell_index": 12,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "868092fc3a88",
+      "line_number": 6,
+      "matched_text": "So the pipeline is: **load the calibrated model (§1) → re-grid + re-solve flow on the corridor mesh (§2) → build the coupled GWF here (§4) → add transport (§5).** (The §2 solve provides the refined-grid heads used as starting heads and checks; the coupled simulation built here still contains and solves its **own** GWF on that same grid, together with the GWT.)",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "15",
+      "cell_id_synthetic": false,
+      "cell_index": 15,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "cd7a16f7d66d",
+      "line_number": 1,
+      "matched_text": "> 🧭 **Where you use this.** In your own case study you don't type these FloPy calls — a **builder** assembles the same kind of coupled flow + transport model from your configuration file, and you set your scenario there. §4 and §5 show you what is *inside* that builder, so you can read it, adapt it, and debug it when a run misbehaves.",
       "path": "PROJECT/transport/04t_model_implementation.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -585,10 +1828,62 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "0afdf1da4651",
       "line_number": 13,
       "matched_text": "**The units chain — get this wrong and you are 1000× off.** The flow model runs in **metres / day**, so concentration in **mg/L $=$ g/m³**, which makes the SRC source term a **mass rate in grams per day**. A released mass $M$ [g] over a pulse $T$ [d] on $n$ source cells gives `smassrate = M / (n·T)` g/d. Put the mass in **kilograms** and every concentration comes out 1000× too high.",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "16",
+      "cell_id_synthetic": false,
+      "cell_index": 16,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "6d4ad5a2d0bc",
+      "line_number": 15,
+      "matched_text": "Finally, a **GWF6–GWT6 exchange** (`flopy.mf6.ModflowGwfgwt`) ties this transport model to the flow model from §4 into one coupled simulation — `build_srcpulse_demo` then Courant-sizes the time steps and runs it (§6).",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "21",
+      "cell_id_synthetic": false,
+      "cell_index": 21,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "cfe3db7faac1",
+      "line_number": 4,
+      "matched_text": "Now the payoff. `build_srcpulse_demo(...)` composes exactly the builders you just read — load → refine → flow → transport → couple → run (internally a **pilot** solve reads the velocity and sizes the Courant time step, then a **production** solve) — and returns the diagnostics. The question is blunt: **does the plume reach the compliance well above the threshold, and when?**",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "21",
+      "cell_id_synthetic": false,
+      "cell_index": 21,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "d4745b9662db",
+      "line_number": 2,
+      "matched_text": "## 6 — Run it: breakthrough at the monitoring well",
       "path": "PROJECT/transport/04t_model_implementation.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -601,6 +1896,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "5f80549f3817",
       "line_number": 11,
@@ -617,10 +1913,28 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "b69852834ace",
       "line_number": 8,
       "matched_text": "ax.axhline(THRESHOLD_mgL, color='0.4', ls='--', lw=1.4, label=f'threshold = {THRESHOLD_mgL:g} mg/L')",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "26",
+      "cell_id_synthetic": false,
+      "cell_index": 26,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "9cc5caeeee5c",
+      "line_number": 8,
+      "matched_text": "If the numerical plume matches this curve — arrival, longitudinal and transverse spread — the **engine is sound**, and any error in the doublet result is then about the **grid and geometry**, not the solver.",
       "path": "PROJECT/transport/04t_model_implementation.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -633,6 +1947,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "3d36bffc47c3",
       "line_number": 25,
@@ -649,6 +1964,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "a4c7af7c3a74",
       "line_number": 7,
@@ -665,6 +1981,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "ce7a73a273d0",
       "line_number": 6,
@@ -681,10 +1998,28 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "2eb8a7facbe2",
       "line_number": 10,
       "matched_text": "plt.colorbar(cm, ax=ax, label=\"c [mg/L]\", shrink=0.9)",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "29",
+      "cell_id_synthetic": false,
+      "cell_index": 29,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "ebf119bfe249",
+      "line_number": 3,
+      "matched_text": "The same solution carries **retardation** (the peak travels at the slowed velocity $u/R$) and **first-order decay** (mass falls as $e^{-\\lambda t}$). Turning both on verifies the **reactive** terms MF6 applies for sorbing / decaying contaminants — the reason this track models reactive transport at all.",
       "path": "PROJECT/transport/04t_model_implementation.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -697,10 +2032,45 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "f10dc23057e4",
       "line_number": 8,
       "matched_text": "print(f\" peak-position error : {verR.peak_pos_err*100:.2f}%\")",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "31",
+      "cell_id_synthetic": false,
+      "cell_index": 31,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "ba353859534f",
+      "line_number": 1,
+      "matched_text": "> **Engine verified.** On a resolved grid the MF6 GWT scheme reproduces the exact analytical plume — arrival, longitudinal *and* transverse spread, sorption, and decay — to a percent or two. The solver is trustworthy. So whatever we can and cannot claim from the doublet is about **grid and geometry**, which is exactly §9.",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "32",
+      "cell_id_synthetic": false,
+      "cell_index": 32,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "15bbf92b2904",
+      "line_number": 4,
+      "matched_text": "The verification earns us trust in the **longitudinal** result: arrival, peak, and threshold-exceedance timing are reproduced to a percent or two. The **lateral** width is a different story — but the reason is subtler than \"$Pe_T$ is large.\"",
       "path": "PROJECT/transport/04t_model_implementation.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -713,6 +2083,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "a115aa361a34",
       "line_number": 6,
@@ -727,8 +2098,26 @@
       "cell_index": 32,
       "checkpoint_key": null,
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "b2d266374b17",
+      "line_number": 13,
+      "matched_text": "> **The right tool for the lateral / wellfield question is particle tracking.** A **capture zone** (MODFLOW 6 PRT) is *advective* and free of cross-wind numerical dispersion — it answers \"*which* area's water reaches the well,\" which the smeared concentration field cannot. That's [08t Rung D](08t_model_application.ipynb).",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "32",
+      "cell_id_synthetic": false,
+      "cell_index": 32,
+      "checkpoint_key": null,
+      "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "f2d9fb955acb",
       "line_number": 9,
@@ -745,11 +2134,199 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "7a279a001f8c",
       "line_number": 15,
       "matched_text": "fig.colorbar(cm, ax=axes, label='c [mg/L]', shrink=0.85)",
       "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "36",
+      "cell_id_synthetic": false,
+      "cell_index": 36,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "3e038aaf7146",
+      "line_number": 1,
+      "matched_text": "### Checkpoint 3 — defensible threshold claims",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "38",
+      "cell_id_synthetic": false,
+      "cell_index": 38,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "1e80b9812442",
+      "line_number": 4,
+      "matched_text": "You built and ran the spill→capture GWT model, verified the transport engine against an exact solution, and confronted the core trade-off of transport modelling.",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "38",
+      "cell_id_synthetic": false,
+      "cell_index": 38,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "20b1f3ff70d0",
+      "line_number": 17,
+      "matched_text": "**Key idea:** a **known-mass SRC pulse** gives a grid-independent, mass-conservative source; the **engine is verified** against the analytical solution, so errors are about **grid and geometry**; refine the corridor for the longitudinal breakthrough; and answer the lateral / wellfield question with **particle tracking**, not the smeared concentration field.",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "38",
+      "cell_id_synthetic": false,
+      "cell_index": 38,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "46797c72d3c5",
+      "line_number": 11,
+      "matched_text": "| Receptor breakthrough / peak / arrival-time | ✅ resolved (`Pe_L ≤ 2` on the refined corridor) |",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "38",
+      "cell_id_synthetic": false,
+      "cell_index": 38,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "80d99a547e00",
+      "line_number": 12,
+      "matched_text": "| Threshold-exceedance verdict at the well | ✅ defensible |",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "38",
+      "cell_id_synthetic": false,
+      "cell_index": 38,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "a8c919e89849",
+      "line_number": 10,
+      "matched_text": "| Transport engine (the GWT scheme) | ✅ verified vs the exact 2D analytical plume (arrival, spread, $R$, $\\lambda$) |",
+      "path": "PROJECT/transport/04t_model_implementation.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "0",
+      "cell_id_synthetic": false,
+      "cell_index": 0,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "cf5ce7dde82c",
+      "line_number": 7,
+      "matched_text": "**Story so far:** In [04t_model_implementation.ipynb](04t_model_implementation.ipynb) you built the coupled flow-and-transport spill→capture model, met the grid–Péclet problem, and worked with the locked transport parameters ($\\alpha_L = 10$ m, $\\alpha_T = 1$ m, $\\phi_e = 0.20$).",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "1",
+      "cell_id_synthetic": false,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "c8ae81edf5a4",
+      "line_number": 12,
+      "matched_text": "3. offers **one optional, illustrative** $\\alpha_L$ demonstration — predict-then-see how dispersivity reshapes a breakthrough curve.",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "2",
+      "cell_id_synthetic": false,
+      "cell_index": 2,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "010ba581cfd8",
+      "line_number": 8,
+      "matched_text": "- **The defensible-claim judgment** — which threshold claims the model supports, and which it does not (below).",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "2",
+      "cell_id_synthetic": false,
+      "cell_index": 2,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "1f6b9a5b7676",
+      "line_number": 3,
+      "matched_text": "A transport study of a spill→capture problem typically reports:",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "2",
+      "cell_id_synthetic": false,
+      "cell_index": 2,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "aa8fd0667c19",
+      "line_number": 6,
+      "matched_text": "- **A breakthrough result** — concentration vs time at the receptor well against the threshold: does it reach, exceed, and when.",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
     },
@@ -761,6 +2338,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "f17f589ff611",
       "line_number": 7,
@@ -777,10 +2355,62 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "18cdc0462632",
       "line_number": 11,
       "matched_text": "**Why.** It is *not* simply that the transverse grid Péclet is large. On a grid **aligned** with the flow, MODFLOW 6's TVD scheme adds essentially **no** transverse numerical dispersion, so a high $Pe_T$ *by itself* does **not** doom the lateral width ([04t](04t_model_implementation.ipynb) verifies this directly against the 2D analytical solution). The lateral claim fails for two *other* reasons near a doublet: (a) the flow is **convergent and oblique to the grid**, which *does* produce real cross-wind numerical dispersion, and (b) the physical plume is **sub-cell** ($\\alpha_T = 1$ m, narrower than even the refined ~10 m cells), so no feasible grid can *represent* it. So restrict every threshold claim to the **flow axis / receptors**; for the genuine **lateral / wellfield-protection** question, don't read it off the smeared concentration field — use **particle tracking** (a capture zone), which is advective and free of the cross-wind artefact ([08t](08t_model_application.ipynb) Rung D).",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "3",
+      "cell_id_synthetic": false,
+      "cell_index": 3,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "839c21e66350",
+      "line_number": 8,
+      "matched_text": "| **receptor arrival time** / breakthrough at the well | the **exact position** of a concentration contour |",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "6",
+      "cell_id_synthetic": false,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "032ed5cdfd4f",
+      "line_number": 1,
+      "matched_text": "## Optional — predict, then run: how does $\\alpha_L$ reshape a breakthrough? *(illustrative)*",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "6",
+      "cell_id_synthetic": false,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "0d5f48906ba7",
+      "line_number": 11,
+      "matched_text": "> **This curve is illustrative / conservative — do NOT compare it to a regulatory threshold.** It assumes idealised uniform 1D flow and an arbitrary injected mass; only its *shape* trend carries the lesson.",
       "path": "PROJECT/transport/05t_calibration.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -793,10 +2423,45 @@
       "claim_type": [
         "illustrative"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "834093f3ec58",
       "line_number": 7,
       "matched_text": "We use the 1D advection–dispersion **pulse** solution `tracer_test_utils.analytical_btc`, evaluated for three dispersivities ($\\alpha_L = 5, 10, 20$ m) at a receptor $x = 100$ m downstream in idealised uniform flow ($u = 1$ m/d, $\\phi_e = 0.20$).",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "6",
+      "cell_id_synthetic": false,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "b30e2550e32d",
+      "line_number": 5,
+      "matched_text": "**Predict first.** For an **instantaneous pulse** released upstream and observed at a fixed distance, how does *increasing* $\\alpha_L$ change the breakthrough curve — earlier or later first arrival? higher or lower peak?",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "6",
+      "cell_id_synthetic": false,
+      "cell_index": 6,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "d6ba47520d66",
+      "line_number": 9,
+      "matched_text": "> **Units note — flux-averaged concentration (the `/u` handling).** As written, `analytical_btc` returns the pulse solution **without the $1/u$ prefactor**, so its raw output carries units of $\\text{g}\\,\\text{m}^{-2}\\,\\text{d}^{-1}$, not a concentration. We therefore **divide the result by the mean water velocity $u$** in the cell below, which yields the genuine **flux-averaged** concentration in $\\text{mg/L}$ ($=\\text{g/m}^3$).",
       "path": "PROJECT/transport/05t_calibration.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -809,6 +2474,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "49dd5cf3dff1",
       "line_number": 29,
@@ -825,6 +2491,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "856aac028d27",
       "line_number": 33,
@@ -841,6 +2508,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "e3747ac09f5c",
       "line_number": 11,
@@ -857,10 +2525,28 @@
       "claim_type": [
         "illustrative"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "4e56757be4b1",
       "line_number": 3,
       "matched_text": "> *(For a **continuous** source the key differs: larger $\\alpha_L$ gives an earlier first-arrival shoulder and a less-steep front, but the 50% breakthrough stays near $x/u$, so full plateau is reached no sooner.)*",
+      "path": "PROJECT/transport/05t_calibration.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "8",
+      "cell_id_synthetic": false,
+      "cell_index": 8,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "5807a992e209",
+      "line_number": 1,
+      "matched_text": "**What the demo shows ($\\alpha_L$ key for a pulse).** Increasing $\\alpha_L$ spreads the pulse more, so the breakthrough arrives **earlier** (earlier first arrival / leading toe), peaks **lower and broader**, and develops a **longer tail**. Mass is conserved, so a wider curve must be flatter — and the centre-of-mass arrival stays near the advective time $x/u$ (dashed line). This is exactly the pulse behaviour you will reproduce — on the real doublet — when you run your project's $\\alpha_L$ sensitivity.",
       "path": "PROJECT/transport/05t_calibration.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -873,6 +2559,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "a6e32e4df1ca",
       "line_number": 10,
@@ -889,6 +2576,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "cc26e8fd147a",
       "line_number": 8,
@@ -906,10 +2594,130 @@
         "numeric",
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "3fbed8ea5f54",
       "line_number": 7,
       "matched_text": "**Story so far:** In [04t_model_implementation.ipynb](04t_model_implementation.ipynb) you built the spill→capture SRC-pulse model on the Limmat doublet, verified the transport engine against an exact 2D analytical solution, and read the compliance breakthrough directly: **peak ≈ 5.3 mg/L at ~day 39, exceeding the 1.0 mg/L threshold from ~day 14 to ~day 70**. In [05t_calibration.ipynb](05t_calibration.ipynb) you saw where calibration would fit (a thin bridge — the transport parameters stay locked). This notebook takes that **already-built, already-verified** model as **given** and asks what the applications tell us.",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "0",
+      "cell_id_synthetic": false,
+      "cell_index": 0,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "59af41a931d4",
+      "line_number": 3,
+      "matched_text": "# Step 8: Model Application — Spill → Capture at a Compliance Well",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "0",
+      "cell_id_synthetic": false,
+      "cell_index": 0,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "7b3f2f4f5d43",
+      "line_number": 13,
+      "matched_text": "| *Optional — Rung D (MF6 PRT capture zone: 2 MODFLOW flow solves + a bisection probe, ~30 s compute)* | +10–15 min |",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "1",
+      "cell_id_synthetic": false,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "1bc870af60dc",
+      "line_number": 24,
+      "matched_text": "- **§1** — Setup: load the helper, set the threshold and toggles, build the default (conservative) spill",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "1",
+      "cell_id_synthetic": false,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "1c3e0c289269",
+      "line_number": 19,
+      "matched_text": "| **whether the spill footprint is captured, and how wide the doublet's capture zone is** — but only via MF6 PRT particle tracking (**Rung D**), never from the ADE concentration field | |",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "1",
+      "cell_id_synthetic": false,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "2272f32c327a",
+      "line_number": 16,
+      "matched_text": "| **threshold exceedance** — peak concentration vs. `THRESHOLD_MGL`, and the exceedance window | **how much mass, at what concentration**, is captured — PRT (below) tracks particles, not concentration |",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "1",
+      "cell_id_synthetic": false,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "315b50ee041a",
+      "line_number": 30,
+      "matched_text": "- **§5** — Summary",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "1",
+      "cell_id_synthetic": false,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "5500885ff0e2",
+      "line_number": 1,
+      "matched_text": "## §0 — Orientation: what are we trying to find out?",
       "path": "PROJECT/transport/08t_model_application.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -922,6 +2730,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "7e1664057297",
       "line_number": 21,
@@ -938,6 +2747,7 @@
       "claim_type": [
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "ae428ccdc171",
       "line_number": 5,
@@ -954,10 +2764,45 @@
       "claim_type": [
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "c43ef8bbd01b",
       "line_number": 9,
       "matched_text": "Every rung below reuses the **same verified model from 04t**, built by a single helper, `transport_srcpulse_demo.build_srcpulse_demo()` — the *only* model backbone this notebook uses. It is the coupled steady-GWF / transient-GWT simulation on the corridor-refined grid you saw built in [04t](04t_model_implementation.ipynb): a finite **SRC** mass-loading pulse enters the aquifer at the spill point, migrates with the regional + doublet-forced flow field, and breaks through at the extraction well. We do **not** re-derive that breakthrough here — 04t owns it; we call the helper quietly and go straight to the applications.",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "1",
+      "cell_id_synthetic": false,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "d8b7d6aeb454",
+      "line_number": 28,
+      "matched_text": "- **Rung D** — PRT capture zone: is the spill footprint captured, and how wide is the capture zone? (toggle `RUN_PRT`) · *checkpoint 4*",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "1",
+      "cell_id_synthetic": false,
+      "cell_index": 1,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "e062f57f9551",
+      "line_number": 15,
+      "matched_text": "| **breakthrough / arrival** at the compliance well — whether and when the plume gets there | the **exact position of a concentration contour** |",
       "path": "PROJECT/transport/08t_model_application.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -970,6 +2815,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "2c0808505b85",
       "line_number": 21,
@@ -986,6 +2832,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "c0c12f795bb9",
       "line_number": 16,
@@ -1002,6 +2849,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "dc03e04d913f",
       "line_number": 20,
@@ -1018,6 +2866,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "f4188e803345",
       "line_number": 3,
@@ -1034,6 +2883,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "61960857345d",
       "line_number": 18,
@@ -1050,6 +2900,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "79b0c6537a21",
       "line_number": 14,
@@ -1066,6 +2917,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "b18c6f61f07e",
       "line_number": 17,
@@ -1082,6 +2934,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "b357c4497053",
       "line_number": 19,
@@ -1098,6 +2951,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "ba6c0e960434",
       "line_number": 15,
@@ -1114,6 +2968,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "8be54fa89aab",
       "line_number": 1,
@@ -1130,6 +2985,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "21a7b953710d",
       "line_number": 3,
@@ -1146,6 +3002,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "0b82b16f0f4d",
       "line_number": 8,
@@ -1162,6 +3019,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "247742051c0f",
       "line_number": 17,
@@ -1178,6 +3036,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "289aa1c6fb73",
       "line_number": 11,
@@ -1194,6 +3053,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "2cfcdbbc23a0",
       "line_number": 10,
@@ -1210,6 +3070,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "74a110eb764f",
       "line_number": 19,
@@ -1226,6 +3087,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "d81c7b7190c0",
       "line_number": 9,
@@ -1242,6 +3104,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "5a6411c9919d",
       "line_number": 1,
@@ -1256,8 +3119,43 @@
       "cell_index": 14,
       "checkpoint_key": null,
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "17a9f9b9437a",
+      "line_number": 8,
+      "matched_text": "2. **A wide capture-zone probe** — `release_radius_m=WIDE_RELEASE_RADIUS_M` (120 m), deliberately wide enough to straddle the capture-zone boundary, so it resolves *where the capture zone ends* rather than just confirming a small disc is captured.",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "14",
+      "cell_id_synthetic": false,
+      "cell_index": 14,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "39b211c3dc68",
+      "line_number": 5,
+      "matched_text": "That is a **geometry / wellfield-protection** question, not a concentration question, and the ADE's smeared concentration field cannot answer it near a converging doublet. **MF6 PRT** (particle tracking) can: it is purely advective, so it is immune to the cross-wind numerical dispersion that corrupts the concentration field there. This rung pays that debt with `transport_prt_capture.build_prt_capture()` — a forward PRT run on the SAME doublet, SAME spill location, and SAME corridor-refined grid as the ADE model above (it does not build a new model from scratch). Two calls:",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "14",
+      "cell_id_synthetic": false,
+      "cell_index": 14,
+      "checkpoint_key": null,
+      "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "4a5039c92eb0",
       "line_number": 10,
@@ -1274,6 +3172,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "769ebbef352a",
       "line_number": 14,
@@ -1288,8 +3187,60 @@
       "cell_index": 14,
       "checkpoint_key": null,
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "814adb575aa8",
+      "line_number": 7,
+      "matched_text": "1. **The actual spill** — the realistic ~10 m footprint, `build_prt_capture()` — is it captured, and how long does it take?",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "14",
+      "cell_id_synthetic": false,
+      "cell_index": 14,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "91f112e62a90",
+      "line_number": 16,
+      "matched_text": "**Checkpoint 4** below asks you to predict the footprint's capture verdict — and what it would (and would not) tell you — before the toggled run.",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "14",
+      "cell_id_synthetic": false,
+      "cell_index": 14,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "c2aff7478431",
+      "line_number": 1,
+      "matched_text": "## Rung D — PRT capture zone: is the spill footprint captured, and how wide is the doublet's capture zone? (`RUN_PRT`)",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "14",
+      "cell_id_synthetic": false,
+      "cell_index": 14,
+      "checkpoint_key": null,
+      "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "d832f747a850",
       "line_number": 3,
@@ -1306,6 +3257,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "da177b5546b5",
       "line_number": 12,
@@ -1322,6 +3274,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "09d33bd12d56",
       "line_number": 86,
@@ -1338,6 +3291,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "33d848c94e6a",
       "line_number": 95,
@@ -1354,6 +3308,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "34aa14d18895",
       "line_number": 91,
@@ -1370,6 +3325,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "366971673e66",
       "line_number": 24,
@@ -1386,6 +3342,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "5b25f3ecfd5f",
       "line_number": 76,
@@ -1402,6 +3359,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "7c55168e54a3",
       "line_number": 25,
@@ -1418,6 +3376,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "24af3d3688ff",
       "line_number": 5,
@@ -1434,6 +3393,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "6fcd2a63ffb1",
       "line_number": 7,
@@ -1451,6 +3411,7 @@
         "numeric",
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "a85b395ce913",
       "line_number": 1,
@@ -1467,6 +3428,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "caa7f150d729",
       "line_number": 3,
@@ -1483,10 +3445,79 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "f91559570d50",
       "line_number": 9,
       "matched_text": "**The claim boundary — a capture zone is not a fence.** A PRT capture zone is a purely **advective** envelope, and a real, dispersive plume straddles it: a source just *outside* the dividing streamline can still register at the well, at low concentration, because transverse dispersion is exactly what carries mass **across** an advective streamtube boundary. So \"outside 53 m ⇒ safe\" is **false** — it is where the *advective* streamtube ends, not where risk ends. And a capture *fraction* carries **no concentration information at all**: full capture of the footprint corroborates the Keystone's **arrival and timing** — the spill's water does reach this well, on an advective timescale of weeks — and **nothing more**. It can never corroborate an *exceedance* verdict; that is, and remains, the ADE model's alone.",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "18",
+      "cell_id_synthetic": false,
+      "cell_index": 18,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": null,
+      "id": "0cc76c63609c",
+      "line_number": 3,
+      "matched_text": "A different, related application question: for a geothermal doublet, **what fraction of the reinjected water (and any tracer riding it) short-circuits straight back to the extraction well?** It is a genuinely different scenario from spill→capture — reinjection carries tracer *through the doublet's own well*, not from an independent upgradient spill — so it is described here for completeness, not built.",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "18",
+      "cell_id_synthetic": false,
+      "cell_index": 18,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "365a1cac5d98",
+      "line_number": 15,
+      "matched_text": "**What you would have to add to model it.** The current `transport_srcpulse_demo` backbone is flow-only at both doublet wells (no `SSM` auxiliary concentration on either `WEL` package) and uses a finite-pulse `SRC` term at an independent spill location. A live recirculation mode would need: (a) a continuous concentration on the **injection** well's `WEL` stress-period data (via the `AUXILIARY`/`AUX` concentration mechanism and a matching `SSM` entry, rather than `SRC` mass loading), (b) enough total simulated time to reach a steady plateau at the extraction well rather than a single transient peak, and (c) a plateau-reading diagnostic (e.g. the median of the last several breakthrough samples) in place of the peak/arrival-time diagnostics this notebook uses. None of that exists in the current helper, and building it is out of scope here.",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "18",
+      "cell_id_synthetic": false,
+      "cell_index": 18,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "3c5c4694d609",
+      "line_number": 13,
+      "matched_text": "- The governing question is \"how much of what I put IN comes back OUT of the same system,\" which is a mass-recycling question — spill→capture asks \"does an EXTERNAL release reach a receptor,\" which is a threshold-and-arrival question. Conflating the two would blur both.",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "18",
+      "cell_id_synthetic": false,
+      "cell_index": 18,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "ebf4d056c108",
+      "line_number": 12,
+      "matched_text": "- The relevant output is a **steady-state plateau ratio** (C∞ / c_inj at the extraction well) once the doublet reaches dynamic equilibrium, not a transient peak-and-decay breakthrough.",
       "path": "PROJECT/transport/08t_model_application.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -1500,6 +3531,7 @@
         "numeric",
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "1a1c1eb941f3",
       "line_number": 5,
@@ -1517,10 +3549,45 @@
         "numeric",
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "2b4bf3863381",
       "line_number": 3,
       "matched_text": "**Starting point (from 04t).** The compliance verdict was already established and verified in 04t: for the default conservative spill — 3×10⁵ g released over 30 days, ~90 m upgradient of the compliance well — the plume **reaches the extraction well and exceeds** the stated threshold `THRESHOLD_MGL = 1.0` mg/L (peak **≈5.3 mg/L at ≈day 39**, above 1.0 mg/L from ~day 14 to ~day 70). This notebook took that as **given** and asked what the applications add — *which levers move the verdict, and which only reshape the curve.* **The levers change timing and magnitude, not the verdict.** Rung A's two separate variants both leave the exceedance in place at the parameter values explored here, but differently: retardation (sorption-only, R=2) delays AND damps it, while decay (decay-only) damps it without shifting the timing; a larger dispersivity (Rung B) shifts the peak earlier and slightly lower by spreading the finite pulse out longitudinally in time, with transverse dilution also contributing since this helper doubles α_T in lockstep with α_L (this single run cannot separate the two mechanisms). In every variant tested, the compliance well sees an exceedance — just at different times and magnitudes.",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "19",
+      "cell_id_synthetic": false,
+      "cell_index": 19,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "8f746af1d653",
+      "line_number": 7,
+      "matched_text": "**What is defensible, and what is not.** Breakthrough timing, peak concentration, the exceedance window, longitudinal reach, and mass balance are all resolved by the refined corridor; and via Rung D's PRT, **whether the spill footprint is captured and how wide the capture zone is** are defensible too. The **exact position of a concentration contour** is still not — near the converging doublet the flow crosses the grid obliquely (real cross-wind numerical dispersion) and the physical plume is sub-cell, and PRT (advective-only) was never going to supply a contour. Reach, exceedance, and capture are on solid ground; only the concentration field's exact shape stays off the table.",
+      "path": "PROJECT/transport/08t_model_application.ipynb",
+      "scope_symbol": null,
+      "source_kind": "notebook_cell"
+    },
+    {
+      "cell_id": "19",
+      "cell_id_synthetic": false,
+      "cell_index": 19,
+      "checkpoint_key": null,
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": null,
+      "id": "bc0c12bd03be",
+      "line_number": 1,
+      "matched_text": "## §5 — Summary",
       "path": "PROJECT/transport/08t_model_application.ipynb",
       "scope_symbol": null,
       "source_kind": "notebook_cell"
@@ -1533,6 +3600,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "questions_markdown",
       "id": "607ebccee9eb",
       "line_number": 389,
@@ -1545,10 +3613,28 @@
       "cell_id": null,
       "cell_id_synthetic": false,
       "cell_index": null,
+      "checkpoint_key": "task_t02_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "questions_markdown",
+      "id": "eed195b5d77f",
+      "line_number": 393,
+      "matched_text": "**Calculate the mean water velocity $u$ in m/day.**",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_1",
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "questions_markdown",
       "id": "b071440c2cd0",
       "line_number": 469,
@@ -1563,8 +3649,26 @@
       "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_1",
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "questions_markdown",
+      "id": "c7e94102340e",
+      "line_number": 463,
+      "matched_text": "$$Pe_L = \\frac{\\Delta x}{\\alpha_L}$$",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_1",
+      "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "questions_markdown",
       "id": "f98ea3094ed1",
       "line_number": 467,
@@ -1581,6 +3685,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": "questions_markdown",
       "id": "5c5eee8d09da",
       "line_number": 475,
@@ -1597,10 +3702,28 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "questions_markdown",
       "id": "e8ee83f3ef6b",
       "line_number": 487,
       "matched_text": "You report the spill→capture result to a regulator. Even on the **refined** grid the transverse grid Péclet stays $Pe_T \\approx 12 \\gg 2$, so lateral spreading is never fully resolved. **Which one of the following claims can you defend?**",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t05_tt_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "questions_markdown",
+      "id": "cd2ac3a8eb5d",
+      "line_number": 522,
+      "matched_text": "- **What is the estimated seepage velocity (m/d)?**",
       "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
       "scope_symbol": null,
       "source_kind": "tasks_data_dict"
@@ -1614,6 +3737,7 @@
         "numeric",
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": "questions_markdown",
       "id": "714229b12fbe",
       "line_number": 575,
@@ -1626,10 +3750,130 @@
       "cell_id": null,
       "cell_id_synthetic": false,
       "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "questions_markdown",
+      "id": "8036a850c811",
+      "line_number": 581,
+      "matched_text": "Some of these can change the **verdict itself** (exceed vs. not); others only change the **timing or shape** of the same exceedance. **Which statement sorts them correctly?**",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "questions_markdown",
+      "id": "bfe707fee167",
+      "line_number": 579,
+      "matched_text": "- **Rung D** — the doublet's capture-zone geometry, via MF6 **PRT** particle tracking.",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_2",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "questions_markdown",
+      "id": "9c45c231fcf6",
+      "line_number": 589,
+      "matched_text": "**Before running Rung A** — how do you expect the **R = 2, sorption-only** breakthrough curve to compare to the conservative one at the compliance well?",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "questions_markdown",
+      "id": "9f409c1b103d",
+      "line_number": 597,
+      "matched_text": "The keystone breakthrough is a finite **pulse** — it rises from zero, peaks, and falls away again — not a steady plateau. **Before running Rung B** — how do you expect doubling α_L to reshape that pulse at the compliance well?",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "questions_markdown",
+      "id": "34d1478bcc89",
+      "line_number": 603,
+      "matched_text": "Rung D (optional, `RUN_PRT`) runs MODFLOW 6 **PRT** particle tracking: a disc of particles is released across the spill's realistic ~10 m footprint, 90 m **upgradient** of the doublet's extraction (compliance) well, with the doublet pumping. Each particle either terminates in the extraction well's cell (captured) or escapes elsewhere.",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "questions_markdown",
+      "id": "a004afc1431f",
+      "line_number": 605,
+      "matched_text": "**Before running Rung D** — do you expect the spill footprint to be captured by the extraction well, and what would that capture verdict tell you (and *not* tell you) about the compliance question from the Keystone?",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "questions_markdown",
+      "id": "e29c334b4aa4",
+      "line_number": 601,
+      "matched_text": "## Checkpoint 4 — Predict the PRT capture-zone verdict (before running Rung D)",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
       "checkpoint_key": "task_t02_checkpoint_1",
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions",
       "id": "bd30712aec55",
       "line_number": 748,
@@ -1646,6 +3890,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions",
       "id": "6ab55e8c683f",
       "line_number": 757,
@@ -1662,6 +3907,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions",
       "id": "d91a9f40f755",
       "line_number": 763,
@@ -1678,6 +3924,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_exact",
       "id": "041d2b7d79cb",
       "line_number": 862,
@@ -1695,6 +3942,7 @@
         "numeric",
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_exact",
       "id": "be18c404f9dc",
       "line_number": 863,
@@ -1711,6 +3959,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_exact",
       "id": "062469685d96",
       "line_number": 877,
@@ -1727,6 +3976,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_exact",
       "id": "377d264e4a62",
       "line_number": 878,
@@ -1743,6 +3993,7 @@
       "claim_type": [
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_exact",
       "id": "2bf1e64f6976",
       "line_number": 879,
@@ -1759,6 +4010,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "solution_unit",
       "id": "5cd76eb52306",
       "line_number": 964,
@@ -1775,6 +4027,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "solution_unit",
       "id": "f98d0b81e4a7",
       "line_number": 980,
@@ -1792,10 +4045,113 @@
         "numeric",
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "multiple_choice_options",
       "id": "25fe24206ff1",
       "line_number": 1186,
       "matched_text": "\"B) \\\"The contaminated zone is exactly 80 m wide at the 10% contour\\\" — lateral width is governed by transverse dispersion (Pe_T ≈ 12 ≫ 2 even refined): a numerical-dispersion artefact.\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "2cab46ef88ab",
+      "line_number": 1183,
+      "matched_text": "(\"A) The well breakthrough & threshold timing\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "8c5bbc9b9fe2",
+      "line_number": 1184,
+      "matched_text": "\"A) \\\"The plume reaches the monitoring well and exceeds the threshold at ~day D\\\" — a longitudinal receptor-breakthrough quantity resolved on the refined corridor (Pe_L <= 2): arrival time, peak and threshold-exceedance timing are defensible, unlike the transverse width/contour claims.\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "942ae0b05277",
+      "line_number": 1190,
+      "matched_text": "\"D) \\\"Refining the grid removed all numerical error\\\" — refining recovered longitudinal/peak accuracy but transverse stays Pe_T ≫ 2.\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_predict",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "29a3212aa9c8",
+      "line_number": 1196,
+      "matched_text": "\"B) Yes, but only after nearly a year — at this short distance dispersion would have to smear the arrival out that far\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_predict",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "multiple_choice_options",
+      "id": "33743e1f664e",
+      "line_number": 1199,
+      "matched_text": "(\"D) No, the well can't capture solute\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_predict",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "6d8641ee9514",
+      "line_number": 1197,
+      "matched_text": "(\"C) No, stays below threshold\",",
       "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
       "scope_symbol": null,
       "source_kind": "tasks_data_dict"
@@ -1810,6 +4166,7 @@
         "threshold-decision",
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "multiple_choice_options",
       "id": "7bed406a174c",
       "line_number": 1194,
@@ -1822,10 +4179,147 @@
       "cell_id": null,
       "cell_id_synthetic": false,
       "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_predict",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "ada2525365eb",
+      "line_number": 1193,
+      "matched_text": "(\"A) Yes, exceeds within ~1-2 months\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_predict",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "ebc59faeace7",
+      "line_number": 1198,
+      "matched_text": "\"C) No — dilution and dispersion keep the peak concentration below the threshold throughout the simulation\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t05_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "6267dc59de76",
+      "line_number": 1205,
+      "matched_text": "\"A) In the field you rarely have enough concentration observations to pin alpha_L, alpha_T and phi_e separately, and they trade off against each other (e.g. alpha_L vs phi_e both reshape arrival time and spread) — so the transport inverse problem is under-constrained. That is why the flow phase carries the calibration rubric and the transport phase runs a sensitivity sweep instead.\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "3fb88eeeb231",
+      "line_number": 1243,
+      "matched_text": "\"C) A larger dispersivity (Rung B) decides it — doubling α_L and α_T always spreads the finite pulse enough to dilute the peak below any threshold, so dispersion alone settles the verdict\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "4d3022f8b1b7",
+      "line_number": 1239,
+      "matched_text": "\"A) Reactions (Rung A) REMOVE mass — decay destroys it, sorption parks it on the solid — so strong enough attenuation pulls the peak below the threshold and flips the verdict. Capture geometry (Rung D) carries no concentration information at all, so it can NEVER move a concentration verdict. Dispersivity (Rung B) CONSERVES mass and mainly reshapes the breakthrough (lower, broader peak); at realistic values it eases the peak without clearing the threshold here\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "multiple_choice_options",
+      "id": "578717cc9c92",
+      "line_number": 1240,
+      "matched_text": "(\"B) Capture geometry (Rung D) decides the compliance verdict\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "6bda97627863",
+      "line_number": 1241,
+      "matched_text": "\"B) Capture geometry (Rung D) decides it — if PRT shows the spill footprint is captured by the well, the compliance well must then exceed the threshold, so particle tracking settles the verdict\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "b45df77c745e",
+      "line_number": 1242,
+      "matched_text": "(\"C) Larger dispersivity (Rung B) always dilutes below the threshold\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_1",
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "multiple_choice_options",
       "id": "cc709a28d9d8",
       "line_number": 1245,
@@ -1838,10 +4332,351 @@
       "cell_id": null,
       "cell_id_synthetic": false,
       "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_2",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "218978c50573",
+      "line_number": 1249,
+      "matched_text": "\"A) Later and lower — retardation (R=2) slows the plume's effective velocity by a factor of R, delaying arrival, and sorption also partitions mass onto the solid phase, removing it from the mobile aqueous phase, so the aqueous peak reaching the well is both later and lower\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_2",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "52b0eab8ad36",
+      "line_number": 1253,
+      "matched_text": "\"C) Later, but the peak height is unaffected — sorption only shifts timing, not mass delivered\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_2",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "56acc94d0c70",
+      "line_number": 1248,
+      "matched_text": "(\"A) Later and lower peak\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_2",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "db742d1b0313",
+      "line_number": 1252,
+      "matched_text": "(\"C) Later peak, same height\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_2",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "f01e7c0cc591",
+      "line_number": 1251,
+      "matched_text": "\"B) Earlier and lower — sorbed mass reduces the plume's effective bulk, so the thinner plume moves through the matrix faster even as its peak concentration drops\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_2",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "fb8f6d9c408e",
+      "line_number": 1250,
+      "matched_text": "(\"B) Earlier and lower peak\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "181ebe6d5085",
+      "line_number": 1264,
+      "matched_text": "(\"D) Same timing, peak doubles\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "2b7b64e126ac",
+      "line_number": 1258,
+      "matched_text": "(\"A) Earlier toe, broader front, lower peak\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "4604a985ff0f",
+      "line_number": 1265,
+      "matched_text": "\"D) Timing is unchanged, but the peak concentration doubles because the dispersion coefficient doubles\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "96137cc0e1ac",
+      "line_number": 1261,
+      "matched_text": "\"B) The toe arrives later, the front is sharper, and the peak is higher\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "bc5379c63ef6",
+      "line_number": 1259,
+      "matched_text": "\"A) The toe arrives earlier, the front broadens (more gradual rise and fall, longer tail), and the peak is lower\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "c1efc855f829",
+      "line_number": 1260,
+      "matched_text": "(\"B) Later toe, sharper peak, higher peak\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "05d9eac558d9",
+      "line_number": 1274,
+      "matched_text": "(\"D) Yes, fully captured, which proves exceedance\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "28bae04f4d1f",
+      "line_number": 1269,
+      "matched_text": "\"A) Yes, fully captured — every particle in the footprint reaches the well; capture alone says the water arrives, not that concentration exceeds a threshold\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "multiple_choice_options",
+      "id": "5d7d4422c159",
+      "line_number": 1273,
+      "matched_text": "\"C) Partially captured — roughly half the footprint reaches the well and half escapes, because the spill straddles the edge of the capture zone\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "multiple_choice_options",
+      "id": "a1193a802aac",
+      "line_number": 1272,
+      "matched_text": "(\"C) Partially captured, roughly half\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "b9c9a5da1b8a",
+      "line_number": 1268,
+      "matched_text": "(\"A) Yes, fully captured — capture is not exceedance\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "multiple_choice_options",
+      "id": "eb0e9df1b6f5",
+      "line_number": 1271,
+      "matched_text": "\"B) No — at 90 m upgradient the spill sits outside the doublet's capture zone, so the footprint bypasses the well and drifts downgradient\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "multiple_choice_options",
+      "id": "f66ba1418f0d",
+      "line_number": 1270,
+      "matched_text": "(\"B) No, the spill is outside the capture zone\",",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "multiple_choice_options",
+      "id": "f8c153e41be4",
+      "line_number": 1275,
+      "matched_text": "\"D) Yes, fully captured — and since every particle reaches the well, the compliance well must also see the concentration exceed the threshold\"),",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
       "checkpoint_key": "task_t02_checkpoint_1",
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "9c86f0077c51",
       "line_number": 2214,
@@ -1858,6 +4693,7 @@
       "claim_type": [
         "illustrative"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "a23a750e51f5",
       "line_number": 2210,
@@ -1870,10 +4706,28 @@
       "cell_id": null,
       "cell_id_synthetic": false,
       "cell_index": null,
+      "checkpoint_key": "task_t02_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "solutions_markdown",
+      "id": "fc1e78857aeb",
+      "line_number": 2262,
+      "matched_text": "Each doublet withdraws water at one well and returns it at another, setting up a forced-gradient flow field with a capture zone around the extraction well — the field that decides whether an upgradient contaminant spill is drawn into the monitoring well or bypasses it.",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_1",
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "5c7e9553a30d",
       "line_number": 2313,
@@ -1890,6 +4744,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "9a6c5e0bdb2d",
       "line_number": 2315,
@@ -1906,6 +4761,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "9b2fb54ba6df",
       "line_number": 2324,
@@ -1918,10 +4774,96 @@
       "cell_id": null,
       "cell_id_synthetic": false,
       "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "05ef08be625b",
+      "line_number": 2337,
+      "matched_text": "| **Receptor breakthrough / threshold timing** (A) | longitudinal; resolved on the refined corridor ($Pe_L \\le 2$) | **Yes** |",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "1e1272d569b9",
+      "line_number": 2339,
+      "matched_text": "| **Lateral plume width / exact contour** (B, C) | numerical: the physical plume is **sub-cell** and the convergent flow is **oblique to the grid** (cross-wind dispersion); $Pe_T \\gg 2$ | **No** — numerical artefact |",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "5ce3ff217ee9",
+      "line_number": 2341,
+      "matched_text": "A coarse grid dilutes concentration (large cells), so it under-reads the **peak at the well**; refining the source→well corridor **recovers the longitudinal breakthrough** — but it **cannot** fix the transverse under-resolution (so D is wrong): $Pe_T$ stays far above 2 at any affordable grid. So *whether and when* the plume reaches the well above the threshold is defensible once the corridor is refined; the *exact width or contour* of the contaminated area is not. For the genuine **lateral / wellfield-protection** question, use **particle tracking** (a capture zone) — advective and free of the numerical-dispersion artefact — not the smeared concentration field (Step 8). This \"which claims does the grid support?\" judgment is exactly what you carry into your project's interpretation and limitations.",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "cd7ef2bee3c0",
+      "line_number": 2331,
+      "matched_text": "**Correct answer: A** — the receptor breakthrough at the monitoring well (arrival, peak, threshold-exceedance timing).",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t04_checkpoint_predict",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "423f1171e9ad",
+      "line_number": 2348,
+      "matched_text": "**Correct answer: A — yes, it exceeds the threshold within roughly one to two months.**",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_predict",
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "d114fb7bc4cd",
       "line_number": 2355,
@@ -1934,10 +4876,45 @@
       "cell_id": null,
       "cell_id_synthetic": false,
       "cell_index": null,
+      "checkpoint_key": "task_t05_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "570603719d40",
+      "line_number": 2372,
+      "matched_text": "| $\\alpha_L$ (longitudinal dispersivity) | spreads/flattens the breakthrough | higher $\\alpha_L$ mimics lower $\\phi_e$ |",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t05_checkpoint_1",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "90e17229583f",
+      "line_number": 2373,
+      "matched_text": "| $\\phi_e$ (effective porosity) | sets advective arrival time $x/u$ | lower $\\phi_e$ → earlier arrival |",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
       "checkpoint_key": "task_t05_tt_checkpoint_1",
       "claim_type": [
         "illustrative"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "035062e82bdc",
       "line_number": 2401,
@@ -1954,6 +4931,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "5aa62fe542ee",
       "line_number": 2397,
@@ -1970,6 +4948,7 @@
       "claim_type": [
         "illustrative"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "fef2c8c458dc",
       "line_number": 2403,
@@ -1984,8 +4963,26 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_1",
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "5a9f16d4889f",
+      "line_number": 2491,
+      "matched_text": "**Correct answer: A.** The three levers are not the same *kind* of knob. Reactions can move the *verdict* (they remove mass); capture geometry categorically cannot (it carries no concentration information); a larger dispersivity conserves mass and mainly reshapes the curve — at realistic values it eases the peak without clearing the threshold here.",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_1",
+      "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "73aea7022525",
       "line_number": 2494,
@@ -2000,8 +4997,26 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_1",
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "96a75d50c566",
+      "line_number": 2495,
+      "matched_text": "- **Capture geometry carries no concentration information (this is why B is wrong).** PRT tracks *which advective particles are captured* — arrival and timing — not *how much mass at what concentration*. A fully captured footprint says the water gets to the well; it can never say the concentration exceeds a limit. So Rung D cannot set or change the compliance verdict.",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_1",
+      "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "c59cbc914f79",
       "line_number": 2493,
@@ -2016,8 +5031,26 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_2",
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "092c3201f76f",
+      "line_number": 2507,
+      "matched_text": "Retardation slows the *plume's* velocity to $u/R$ (R=2 halves it), so the arrival is delayed. Sorption (via R) removes mass from the mobile (aqueous) phase before it reaches the well, so the peak concentration also drops. Running Rung A confirms this:",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_2",
+      "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "10cdd2d9419a",
       "line_number": 2511,
@@ -2034,6 +5067,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "24269054ac95",
       "line_number": 2509,
@@ -2048,8 +5082,43 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_2",
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "3d7e964fdaa9",
+      "line_number": 2516,
+      "matched_text": "- **C** is wrong: sorption also reduces the aqueous peak concentration (mass partitions onto the solid phase), it is not timing-only.",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_2",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "bab78e077389",
+      "line_number": 2505,
+      "matched_text": "**Correct answer: A) Later and lower peak.**",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_2",
+      "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "d78cc4ff676e",
       "line_number": 2513,
@@ -2066,6 +5135,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "5b80f2d90c29",
       "line_number": 2528,
@@ -2080,12 +5150,64 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_3",
       "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "71c659be1260",
+      "line_number": 2524,
+      "matched_text": "**Correct answer: A) Earlier toe, broader front, lower peak.**",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_3",
+      "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "7dc16f9a2a38",
       "line_number": 2526,
       "matched_text": "More longitudinal dispersion spreads the finite pulse out **in time**: the **toe arrives earlier** (the leading edge of the plume outruns the mean advective front), the **rise and fall are more gradual**, and the pulse leaves a **longer tail** — and on its own, spreading the same released mass over more time already lowers the peak. Because the locked ratio keeps $\\alpha_T = \\alpha_L/10$, doubling $\\alpha_L$ to 20 m also doubles $\\alpha_T$ to 2 m, so **transverse dilution also contributes** to the lower peak (the same mass spread over a wider swath of the corridor). Both mechanisms act together here — and because this helper always moves $\\alpha_L$ and $\\alpha_T$ in lockstep (the locked 10:1 ratio), **this single run cannot apportion how much of the peak drop comes from longitudinal spreading vs. transverse dilution**; separating them would need a run that changes one dispersivity while holding the other fixed.",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_3",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "b0fd7e271cfa",
+      "line_number": 2531,
+      "matched_text": "- **C** is wrong: dispersivity reshapes any breakthrough curve, pulse or plateau, doublet or 1D column.",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "word_only",
+      "dict_name": "solutions_markdown",
+      "id": "17ce8b0eefb9",
+      "line_number": 2537,
+      "matched_text": "## Solution — Is the spill footprint captured?",
       "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
       "scope_symbol": null,
       "source_kind": "tasks_data_dict"
@@ -2099,6 +5221,7 @@
         "numeric",
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "30c19473b919",
       "line_number": 2547,
@@ -2116,6 +5239,7 @@
         "numeric",
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "30d63c89fcff",
       "line_number": 2541,
@@ -2132,6 +5256,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "541264e761a9",
       "line_number": 2543,
@@ -2148,6 +5273,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "b4af63d7dafd",
       "line_number": 2545,
@@ -2164,6 +5290,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": "solutions_markdown",
       "id": "b68ce0f1e9fb",
       "line_number": 2548,
@@ -2176,10 +5303,45 @@
       "cell_id": null,
       "cell_id_synthetic": false,
       "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "b6d9dce102d5",
+      "line_number": 2549,
+      "matched_text": "- **D** is wrong: full capture never by itself proves an exceedance — PRT carries no concentration information at all. Only the ADE model, run separately, answers the threshold question.",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
+      "checkpoint_key": "task_t08_checkpoint_4",
+      "claim_type": [
+        "unclassified"
+      ],
+      "detector": "r_without_n",
+      "dict_name": "solutions_markdown",
+      "id": "bef28f712746",
+      "line_number": 2539,
+      "matched_text": "**Correct answer: A) Yes, fully captured — capture is not exceedance.**",
+      "path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py",
+      "scope_symbol": null,
+      "source_kind": "tasks_data_dict"
+    },
+    {
+      "cell_id": null,
+      "cell_id_synthetic": false,
+      "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "8c6f485ec43c",
       "line_number": 65,
@@ -2196,6 +5358,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "20ed82269e3f",
       "line_number": 407,
@@ -2212,6 +5375,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "5f5b2e8a45ee",
       "line_number": 659,
@@ -2228,6 +5392,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "163af80aac37",
       "line_number": 666,
@@ -2244,6 +5409,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "17afefa098af",
       "line_number": 31,
@@ -2260,6 +5426,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "6ee0c143f535",
       "line_number": 34,
@@ -2276,6 +5443,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "7bf863fafe8d",
       "line_number": 50,
@@ -2292,6 +5460,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "ce49b6462eeb",
       "line_number": 54,
@@ -2308,6 +5477,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "59c3cc1b0cf8",
       "line_number": 55,
@@ -2324,6 +5494,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "1fe6627f2432",
       "line_number": 72,
@@ -2340,6 +5511,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "d979a65ee1f6",
       "line_number": 87,
@@ -2356,6 +5528,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "943d7c3c29ea",
       "line_number": 90,
@@ -2373,6 +5546,7 @@
         "numeric",
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "80f6d07ed747",
       "line_number": 130,
@@ -2389,6 +5563,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "6755341d1a07",
       "line_number": 197,
@@ -2405,6 +5580,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "a0fe2ca6a22c",
       "line_number": 205,
@@ -2421,6 +5597,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "0649509ffcfe",
       "line_number": 787,
@@ -2437,6 +5614,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "0e06ae399699",
       "line_number": 811,
@@ -2453,6 +5631,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "26772e8e90d7",
       "line_number": 827,
@@ -2469,6 +5648,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "c2eb8a6b1eaf",
       "line_number": 858,
@@ -2486,6 +5666,7 @@
         "numeric",
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "bc174232b04b",
       "line_number": 861,
@@ -2502,6 +5683,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "34775325bb0c",
       "line_number": 906,
@@ -2518,6 +5700,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "a2bf4583cfa7",
       "line_number": 907,
@@ -2534,6 +5717,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "d0faaf057a51",
       "line_number": 1073,
@@ -2550,6 +5734,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "8c63dcabddde",
       "line_number": 1076,
@@ -2566,6 +5751,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "db2750d25432",
       "line_number": 1299,
@@ -2582,6 +5768,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "d858a4bbc93e",
       "line_number": 564,
@@ -2598,6 +5785,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "45006a4b2886",
       "line_number": 728,
@@ -2614,6 +5802,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "1141fe8729b2",
       "line_number": 732,
@@ -2630,6 +5819,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "c6ff5eb74a74",
       "line_number": 186,
@@ -2646,6 +5836,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "eddb21659b9b",
       "line_number": 583,
@@ -2662,6 +5853,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "559ca00c8b00",
       "line_number": 659,
@@ -2678,6 +5870,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "86f74ed51315",
       "line_number": 661,
@@ -2694,6 +5887,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "67e81521f283",
       "line_number": 669,
@@ -2711,6 +5905,7 @@
         "numeric",
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "b2f0ffac6766",
       "line_number": 7,
@@ -2727,6 +5922,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "726853728054",
       "line_number": 10,
@@ -2743,6 +5939,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "10de9a3ebd2c",
       "line_number": 13,
@@ -2759,6 +5956,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "f2ee87e0739d",
       "line_number": 176,
@@ -2775,6 +5973,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "8c223283cb9c",
       "line_number": 178,
@@ -2791,6 +5990,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "14aab78ea719",
       "line_number": 273,
@@ -2807,6 +6007,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "1b175ab00325",
       "line_number": 474,
@@ -2823,6 +6024,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "849e951f8343",
       "line_number": 475,
@@ -2839,6 +6041,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "50dfe668edcb",
       "line_number": 476,
@@ -2856,6 +6059,7 @@
         "numeric",
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "b4a8f82e0e03",
       "line_number": 486,
@@ -2872,6 +6076,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "21e4f543c818",
       "line_number": 491,
@@ -2888,6 +6093,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "93099eb1cdb5",
       "line_number": 497,
@@ -2904,6 +6110,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "89be056155f3",
       "line_number": 514,
@@ -2920,6 +6127,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "fedf60c7a7ea",
       "line_number": 523,
@@ -2936,6 +6144,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "5249cbc5ccc5",
       "line_number": 547,
@@ -2952,6 +6161,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "9a7354ff1515",
       "line_number": 559,
@@ -2968,6 +6178,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "0b98527d9946",
       "line_number": 623,
@@ -2984,6 +6195,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "80d330b200b0",
       "line_number": 625,
@@ -3000,6 +6212,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "13e17c023b6e",
       "line_number": 629,
@@ -3017,6 +6230,7 @@
         "numeric",
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "87ec3ff0c528",
       "line_number": 664,
@@ -3033,6 +6247,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "d927be6a82d1",
       "line_number": 667,
@@ -3049,6 +6264,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "765282001389",
       "line_number": 668,
@@ -3066,6 +6282,7 @@
         "numeric",
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "b887df52e8a8",
       "line_number": 670,
@@ -3082,6 +6299,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "bc067bb50905",
       "line_number": 673,
@@ -3098,6 +6316,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "73806ad825cc",
       "line_number": 675,
@@ -3114,6 +6333,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "3f8b723e1bc6",
       "line_number": 688,
@@ -3130,6 +6350,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "07a364a72779",
       "line_number": 691,
@@ -3146,6 +6367,7 @@
       "claim_type": [
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "6caa16b226b6",
       "line_number": 692,
@@ -3162,6 +6384,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "3e98d97bc922",
       "line_number": 694,
@@ -3178,6 +6401,7 @@
       "claim_type": [
         "threshold-decision"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "66c40f677564",
       "line_number": 709,
@@ -3194,6 +6418,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "ed5c4c7fd833",
       "line_number": 713,
@@ -3210,6 +6435,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "eb895cb45a73",
       "line_number": 715,
@@ -3226,6 +6452,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "f70e887c8a25",
       "line_number": 720,
@@ -3242,6 +6469,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "7d8f6f31616c",
       "line_number": 721,
@@ -3258,6 +6486,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "2eb06f9e903f",
       "line_number": 726,
@@ -3274,6 +6503,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "1b2dc36323ad",
       "line_number": 729,
@@ -3290,6 +6520,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "76c3816fe0c6",
       "line_number": 732,
@@ -3306,6 +6537,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "d4b6a6ae3cfd",
       "line_number": 735,
@@ -3322,6 +6554,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "5fb10ef26197",
       "line_number": 738,
@@ -3338,6 +6571,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "97a32a00cd02",
       "line_number": 739,
@@ -3354,6 +6588,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "14d09b80aaed",
       "line_number": 740,
@@ -3370,6 +6605,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "9d1a1be3a4e6",
       "line_number": 744,
@@ -3386,6 +6622,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "bb571e17fee5",
       "line_number": 35,
@@ -3402,6 +6639,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "931178b6badc",
       "line_number": 48,
@@ -3418,6 +6656,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "c59af8b434e4",
       "line_number": 114,
@@ -3434,6 +6673,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "c4dcc829a28b",
       "line_number": 120,
@@ -3450,6 +6690,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "7868d89c8b2d",
       "line_number": 167,
@@ -3466,6 +6707,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "ac52663cce6a",
       "line_number": 169,
@@ -3482,6 +6724,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "0fcb94e2d22e",
       "line_number": 170,
@@ -3498,6 +6741,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "7054b9c51ef4",
       "line_number": 224,
@@ -3514,6 +6758,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "3e9d506fa083",
       "line_number": 225,
@@ -3530,6 +6775,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "bfbdee6effc7",
       "line_number": 229,
@@ -3546,6 +6792,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "0568dd562a16",
       "line_number": 232,
@@ -3562,6 +6809,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "841f354b1d60",
       "line_number": 233,
@@ -3578,6 +6826,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "d040b34d1ff1",
       "line_number": 250,
@@ -3594,6 +6843,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "97d409e02961",
       "line_number": 261,
@@ -3610,6 +6860,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "54e8f0e76135",
       "line_number": 263,
@@ -3626,6 +6877,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "fc4077f8d385",
       "line_number": 314,
@@ -3642,6 +6894,7 @@
       "claim_type": [
         "numeric"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "2bf22b59904e",
       "line_number": 337,
@@ -3658,6 +6911,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "ea17cc64ea64",
       "line_number": 339,
@@ -3674,6 +6928,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "2e15bbd86c1b",
       "line_number": 340,
@@ -3690,6 +6945,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "8c3cc1dff9b7",
       "line_number": 372,
@@ -3706,6 +6962,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "ebaf9c2a87e7",
       "line_number": 378,
@@ -3722,6 +6979,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "42a942837b0f",
       "line_number": 380,
@@ -3738,6 +6996,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "ed586aa83bca",
       "line_number": 410,
@@ -3754,6 +7013,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "e100e9492850",
       "line_number": 411,
@@ -3770,6 +7030,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "51e7332a5eda",
       "line_number": 426,
@@ -3786,6 +7047,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "e96711943890",
       "line_number": 488,
@@ -3802,6 +7064,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "9d3657663822",
       "line_number": 489,
@@ -3818,6 +7081,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "a8f7a4af0f31",
       "line_number": 7,
@@ -3834,6 +7098,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "849752d66e9e",
       "line_number": 32,
@@ -3850,6 +7115,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "55b61609b424",
       "line_number": 117,
@@ -3866,6 +7132,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "2802c929c949",
       "line_number": 130,
@@ -3882,6 +7149,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "83999ab705ac",
       "line_number": 137,
@@ -3898,6 +7166,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "391eca719b5d",
       "line_number": 138,
@@ -3914,6 +7183,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "5deb03c42e94",
       "line_number": 167,
@@ -3930,6 +7200,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "1df5e7fac155",
       "line_number": 168,
@@ -3946,6 +7217,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "62b252cf4b7e",
       "line_number": 200,
@@ -3962,6 +7234,7 @@
       "claim_type": [
         "causal"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "e4168e54d7b8",
       "line_number": 202,
@@ -3978,6 +7251,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "0d52985c12c2",
       "line_number": 208,
@@ -3994,6 +7268,7 @@
       "claim_type": [
         "not_a_claim"
       ],
+      "detector": "r_and_n",
       "dict_name": null,
       "id": "3ab5bc845829",
       "line_number": 275,
@@ -4010,13 +7285,18 @@
       "not_a_claim": 131,
       "numeric": 49,
       "threshold-decision": 17,
-      "unclassified": 0
+      "unclassified": 178
+    },
+    "by_detector": {
+      "r_and_n": 249,
+      "r_without_n": 132,
+      "word_only": 46
     },
     "candidates_classified": 249,
-    "candidates_found": 249,
+    "candidates_found": 427,
     "candidates_rejected": 131,
-    "candidates_unclassified": 0,
-    "claim_assignments_found": 267,
+    "candidates_unclassified": 178,
+    "claim_assignments_found": 445,
     "files_visited": 14,
     "notebook_cells_visited": 127,
     "python_module_files_visited": 7,
@@ -4036,11 +7316,190 @@
     }
   ],
   "gate": {
-    "ok": true,
+    "ok": false,
     "orphan_ids": [],
-    "unclassified_ids": []
+    "unclassified_ids": [
+      "010ba581cfd8",
+      "032ed5cdfd4f",
+      "04463005dd6d",
+      "05d9eac558d9",
+      "05ef08be625b",
+      "06f842b4b9cb",
+      "092c3201f76f",
+      "0a2ef8e736e9",
+      "0bc68d59c6e9",
+      "0cc76c63609c",
+      "0d5f48906ba7",
+      "0e3b9dd4faad",
+      "1002c31bf3e3",
+      "122191c08dba",
+      "15bbf92b2904",
+      "17a9f9b9437a",
+      "17ce8b0eefb9",
+      "181ebe6d5085",
+      "19917b7bdaaa",
+      "1a37c772008a",
+      "1bc870af60dc",
+      "1c3e0c289269",
+      "1e1272d569b9",
+      "1e80b9812442",
+      "1f6b9a5b7676",
+      "20b1f3ff70d0",
+      "218978c50573",
+      "2272f32c327a",
+      "24cc975dd8a3",
+      "27f182030c1d",
+      "285af6b54032",
+      "2874bdc284f7",
+      "28bae04f4d1f",
+      "29a3212aa9c8",
+      "2a89fb006d66",
+      "2b7b64e126ac",
+      "2b83260e8dc7",
+      "2c74fe1b0d09",
+      "2cab46ef88ab",
+      "315b50ee041a",
+      "33743e1f664e",
+      "34d1478bcc89",
+      "365a1cac5d98",
+      "37a8f9bd0695",
+      "39b211c3dc68",
+      "3c5c4694d609",
+      "3d7e964fdaa9",
+      "3e038aaf7146",
+      "3e4454af5461",
+      "3fb88eeeb231",
+      "423f1171e9ad",
+      "4379c0d1e4f5",
+      "4604a985ff0f",
+      "46797c72d3c5",
+      "46f5f941717f",
+      "4816f6d82564",
+      "4d3022f8b1b7",
+      "4dd22a783b02",
+      "51b96f20750e",
+      "520676a3505a",
+      "52b0eab8ad36",
+      "5500885ff0e2",
+      "56a0a0c9904b",
+      "56acc94d0c70",
+      "570603719d40",
+      "578717cc9c92",
+      "5807a992e209",
+      "59af41a931d4",
+      "5a9f16d4889f",
+      "5bbdb33d9b9a",
+      "5ce3ff217ee9",
+      "5d7d4422c159",
+      "6267dc59de76",
+      "62a4f6da9d86",
+      "6bda97627863",
+      "6d476a0fd6d1",
+      "6d4ad5a2d0bc",
+      "6d8641ee9514",
+      "702165328551",
+      "704bc86387ad",
+      "70e878d63052",
+      "71c659be1260",
+      "76df2de4e173",
+      "785184d8dbdb",
+      "7abd4ccbe090",
+      "7b3f2f4f5d43",
+      "7b4acaeac261",
+      "8036a850c811",
+      "80d99a547e00",
+      "814adb575aa8",
+      "839c21e66350",
+      "85d3861e1e30",
+      "868092fc3a88",
+      "871a8b5c33d7",
+      "884900e9cf86",
+      "8c5bbc9b9fe2",
+      "8f746af1d653",
+      "90e17229583f",
+      "91f112e62a90",
+      "934ce783d958",
+      "93a6e4e6987f",
+      "942ae0b05277",
+      "96137cc0e1ac",
+      "96a75d50c566",
+      "972da6db2804",
+      "99b93b4c1a19",
+      "9c45c231fcf6",
+      "9c713871a2d4",
+      "9cc5caeeee5c",
+      "9f409c1b103d",
+      "a004afc1431f",
+      "a04430227647",
+      "a1193a802aac",
+      "a51ddfb9360e",
+      "a7a4d114f9d8",
+      "a8c919e89849",
+      "aa8fd0667c19",
+      "ac8bd60a1183",
+      "ada2525365eb",
+      "b0fd7e271cfa",
+      "b2d266374b17",
+      "b30e2550e32d",
+      "b338fba8f514",
+      "b33eddb9964a",
+      "b45df77c745e",
+      "b548b5f83def",
+      "b6d9dce102d5",
+      "b84307e5040a",
+      "b9c9a5da1b8a",
+      "ba353859534f",
+      "bab78e077389",
+      "bc0c12bd03be",
+      "bc5379c63ef6",
+      "bef28f712746",
+      "bfe707fee167",
+      "c1efc855f829",
+      "c2aff7478431",
+      "c7d29a2cfcf1",
+      "c7e94102340e",
+      "c80b3502807f",
+      "c8ae81edf5a4",
+      "c9f97e7cb8ab",
+      "cd2ac3a8eb5d",
+      "cd7a16f7d66d",
+      "cd7ef2bee3c0",
+      "cdcb56e9d73d",
+      "cf5ce7dde82c",
+      "cfe3db7faac1",
+      "d0c23cc270ae",
+      "d4745b9662db",
+      "d5ebe229411d",
+      "d60b4babbfa9",
+      "d62cfd40876c",
+      "d6ba47520d66",
+      "d82f1cb6ae01",
+      "d8b7d6aeb454",
+      "db742d1b0313",
+      "df7e1408ae3e",
+      "e062f57f9551",
+      "e29c334b4aa4",
+      "eaff9891a636",
+      "eb0e9df1b6f5",
+      "ebc59faeace7",
+      "ebf119bfe249",
+      "ebf4d056c108",
+      "eed195b5d77f",
+      "f01e7c0cc591",
+      "f0ab802e9602",
+      "f2cb5719bb22",
+      "f5bca3f86e0f",
+      "f66ba1418f0d",
+      "f84e61bf44bf",
+      "f8c153e41be4",
+      "f95a6a2d3cd3",
+      "fb8f6d9c408e",
+      "fc1e78857aeb",
+      "fcbe750fe873",
+      "fdceb9c4259f"
+    ]
   },
-  "schema_version": 2,
+  "schema_version": 3,
   "scope_files": [
     "PROJECT/transport/01t_model_goal.ipynb",
     "PROJECT/transport/02t_perceptual_model.ipynb",

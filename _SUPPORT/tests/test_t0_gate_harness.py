@@ -66,12 +66,26 @@ def _locked_kwargs(**overrides):
 
 
 def _meta_kwargs(extra_keys=(), **overrides):
-    d = {k: 1.0 for k in gate.META_KEYS}
+    """Default value per META key is picked from its DECLARED class
+    (gate.META_TYPES), not a blanket 1.0 -- meta has INT keys (ncpl, nstp,
+    n_src) alongside the FLOAT ones, and since build_payload() now type-
+    checks every leaf (Section 2/4.3), a float standing in for a declared
+    INT would itself abort the very tests that are supposed to exercise
+    valid payloads."""
+    d = {}
+    for k, cls in gate.META_TYPES.items():
+        if cls == "INT":
+            d[k] = 1
+        elif cls == "FLOAT":
+            d[k] = 1.0
+        elif cls == "BOOL":
+            d[k] = False
+        elif cls == "ARRAY_FLOAT":
+            d[k] = [1.0, 2.0, 3.0]
+        else:
+            raise AssertionError(f"_meta_kwargs: unhandled class {cls!r} for meta key {k!r}")
     d["ncpl"] = 4408
     d["nstp"] = 200
-    d["cr_capped"] = False
-    d["peak_at_last_step"] = False
-    d["u_reg"] = [1.0, 2.0, 3.0]
     for k in extra_keys:
         d[k] = overrides.pop(k, None)
     d.update(overrides)
@@ -295,22 +309,27 @@ class TestArrayPairOrdering:
 # ===========================================================================
 class TestEnvFingerprintComparison:
     def _base_env(self, **overrides):
+        """Shaped like the CURRENT (post-path-hardening) env_fp: no
+        absolute host paths, no full PATH -- see TestNoLeakedPaths below for
+        the guard that made this the required shape."""
         env = {
             "os": "macOS-14", "machine": "arm64", "python_version": "3.12.0",
-            "python_executable": "/x/.venv/bin/python3",
+            "python_executable": "~/.local/share/uv/python/cpython-3.12.10/bin/python3",
             "flopy_version": "3.9", "numpy_version": "2.0",
-            "mf6_realpath": "/x/mf6", "mf6_sha256": "aaa",
-            "triangle_realpath": "/x/triangle", "triangle_sha256": "bbb",
-            "data_folder": "/data",
+            "mf6_basename": "mf6", "mf6_sha256": "aaa",
+            "triangle_basename": "triangle", "triangle_sha256": "bbb",
+            "data_folder": "~/applied_groundwater_modelling_data/limmat",
             "flow_fingerprint": "flowfp",
-            "model_boundary_path": "/x/boundary.gpkg", "model_boundary_sha256": "ccc",
-            "rivers_path": "/x/rivers.gpkg", "rivers_sha256": "ddd",
+            "model_boundary_path": "~/applied_groundwater_modelling_data/limmat/gis/boundary.gpkg",
+            "model_boundary_sha256": "ccc",
+            "rivers_path": "~/applied_groundwater_modelling_data/limmat/gis/rivers.gpkg",
+            "rivers_sha256": "ddd",
             "OMP_NUM_THREADS": "1", "GDAL_NUM_THREADS": "1",
-            "PATH": "/usr/bin",
-            "worktree_root": "/wt/A", "worktree_commit": "sha_a",
-            "case_ws": "/wt/A/case_ws",
-            "transport_srcpulse_demo_file": "/wt/A/_SUPPORT/src/transport_srcpulse_demo.py",
-            "model_io_utils_file": "/wt/A/_SUPPORT/src/model_io_utils.py",
+            "flopy_bindir_prepended": True,
+            "worktree_root": "/private/tmp/t0_qual/worktree_A", "worktree_commit": "sha_a",
+            "case_ws": "/private/tmp/t0_qual/worktree_A/case_ws",
+            "transport_srcpulse_demo_file": "_SUPPORT/src/transport_srcpulse_demo.py",
+            "model_io_utils_file": "_SUPPORT/src/model_io_utils.py",
         }
         env.update(overrides)
         return env
@@ -460,10 +479,292 @@ class TestCompareReferenceVsCandidate:
 
 
 # ===========================================================================
-# None-as-sentinel (explicitly NOT a bug -- regression guard that it stays)
+# Section 2 / 4.3 -- the per-path TYPE schema. This is the hole a codex
+# review found: schema validation checked KEYSETS only, never value TYPES,
+# so a numeric string standing in for `peak_mgL` (declared FLOAT) produced
+# ZERO differences -- normalize() coerces almost anything to a string, and
+# nothing upstream of it ever checked the Python type. The tests below
+# exercise validate_types()/build_payload() -- the layer that now runs
+# BEFORE normalize() and aborts on a type defect instead of silently
+# rendering it.
+#
+# The single-value `gate.normalize(None) == "null"` fact below is NOT the
+# gate's defect handling -- it is normalize()'s own low-level formatting
+# rule (see its docstring), reachable only for a field the schema declares
+# may be absent. No field in this schema does, so in the real pipeline
+# validate_types() has already raised GateAbort on any None before
+# normalize() runs. The old version of this test asserted that
+# `gate.normalize({"emergent_C_mgL": None})` produced `"null"` with NO
+# abort and called that "explicitly NOT a bug" -- that was the harness's
+# own tests encoding the hole the review found, and it is deleted below,
+# not merely supplemented.
 # ===========================================================================
-def test_none_renders_as_visible_null_sentinel_not_a_raise():
+def test_normalize_null_formatting_is_a_low_level_rule_not_gate_enforcement():
+    """normalize() alone, with no schema in play, still renders a bare
+    None as the literal string "null" (Section 4.3's canonical FORM) --
+    but this is not what decides whether None is legitimate. That
+    decision is validate_types()'s, exercised by the mutation tests below,
+    and it runs BEFORE normalize() in the real pipeline (build_payload)."""
     assert gate.normalize(None) == "null"
-    payload = {"emergent_C_mgL": None}
-    normalized = gate.normalize(payload)
-    assert normalized["emergent_C_mgL"] == "null"
+
+
+class TestTypeSchemaMutations:
+    """Section 2 / 4.3 mutation tests: a value whose Python type does not
+    match its declared normalisation class -- including None in a numeric
+    or bool field -- must abort the gate with the offending path named,
+    never silently pass through as a rendered string."""
+
+    def _valid_candidate_kwargs(self):
+        return _candidate_payload_kwargs()
+
+    def test_numeric_string_for_float_top_level_aborts(self):
+        """The exact review finding: replacing peak_mgL (declared FLOAT)
+        with a numeric string must abort, not compare equal-looking
+        strings after normalisation."""
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["peak_mgL"] = "5.27695440327"
+        with pytest.raises(gate.GateAbort, match=r"peak_mgL.*declared FLOAT"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_none_for_float_top_level_aborts(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["emergent_C_mgL"] = None
+        with pytest.raises(gate.GateAbort, match=r"emergent_C_mgL.*None in a FLOAT field"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_none_for_arrival_day_aborts(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["arrival_day"] = None
+        with pytest.raises(gate.GateAbort, match=r"arrival_day.*None in a FLOAT field"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_int_for_bool_top_level_aborts(self):
+        """int is a Python subclass of bool's opposite relationship (bool
+        IS an int) -- so this specifically checks the harness does not
+        accept a bare 0/1 int where BOOL is declared."""
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["solubility_ok"] = 1
+        with pytest.raises(gate.GateAbort, match=r"solubility_ok.*declared BOOL"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_numeric_string_nested_in_meta_aborts_with_path_named(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["meta"] = dict(kwargs["meta"])
+        kwargs["meta"]["dt"] = "0.5"
+        with pytest.raises(gate.GateAbort, match=r"meta\.dt.*declared FLOAT"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_none_nested_in_meta_aborts_with_path_named(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["meta"] = dict(kwargs["meta"])
+        kwargs["meta"]["ncpl"] = None
+        with pytest.raises(gate.GateAbort, match=r"meta\.ncpl.*None in a INT field"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_int_for_bool_nested_in_meta_aborts_with_path_named(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["meta"] = dict(kwargs["meta"])
+        kwargs["meta"]["cr_capped"] = 0
+        with pytest.raises(gate.GateAbort, match=r"meta\.cr_capped.*declared BOOL"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_numeric_string_nested_in_mass_balance_aborts_with_path_named(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["mass_balance"] = dict(kwargs["mass_balance"])
+        kwargs["mass_balance"]["src_in_g"] = "1.0"
+        with pytest.raises(gate.GateAbort, match=r"mass_balance\.src_in_g.*declared FLOAT"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_none_nested_in_mass_balance_aborts_with_path_named(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["mass_balance"] = dict(kwargs["mass_balance"])
+        kwargs["mass_balance"]["pct_imbalance"] = None
+        with pytest.raises(
+            gate.GateAbort, match=r"mass_balance\.pct_imbalance.*None in a FLOAT field"
+        ):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_string_for_int_in_locked_aborts_with_path_named(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["locked"] = dict(kwargs["locked"])
+        kwargs["locked"]["alh"] = "10.0"
+        with pytest.raises(gate.GateAbort, match=r"locked\.alh.*declared FLOAT"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_pct_imbalance_nan_is_still_a_legitimate_float_not_a_defect(self):
+        """Regression guard the other way: Section 2.2 says NaN is a
+        legitimate value for pct_imbalance, not a skip -- the type
+        validator must not reject a real float just because it is NaN."""
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["mass_balance"] = dict(kwargs["mass_balance"])
+        kwargs["mass_balance"]["pct_imbalance"] = float("nan")
+        payload = gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+        import math
+
+        assert math.isnan(payload["mass_balance"]["pct_imbalance"])
+
+    def test_numeric_string_for_float_element_of_array_float_aborts(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["times"] = [0.0, "1.0", 2.0]
+        with pytest.raises(gate.GateAbort, match=r"times\[1\].*declared FLOAT"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_string_for_int_element_of_array_int_aborts(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["src_cells"] = [10, "11", 12]
+        with pytest.raises(gate.GateAbort, match=r"src_cells\[1\].*declared INT"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_string_for_float_in_pre_authorised_sink_support_m_aborts(self):
+        """The type schema covers the Section 3 pre-authorised fields too,
+        not just the legacy 29 -- sink_support_m is declared FLOAT."""
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["sink_support_m"] = "0.0"
+        with pytest.raises(gate.GateAbort, match=r"sink_support_m.*declared FLOAT"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_none_for_pre_authorised_t_peak_aborts(self):
+        kwargs = self._valid_candidate_kwargs()
+        kwargs["t_peak"] = None
+        with pytest.raises(gate.GateAbort, match=r"t_peak.*None in a FLOAT field"):
+            gate.build_payload(_CandidateStub(**kwargs), side="candidate")
+
+    def test_reference_side_is_type_checked_too(self):
+        """The hole applied to whichever side ran build_payload -- confirm
+        the reference side (b685f24, no pre-authorised fields) is checked
+        exactly like the candidate side."""
+        kwargs = _reference_payload_kwargs()
+        kwargs["peak_mgL"] = "5.27695440327"
+        with pytest.raises(gate.GateAbort, match=r"peak_mgL.*declared FLOAT"):
+            gate.build_payload(_ReferenceStub(**kwargs), side="reference")
+
+    def test_valid_candidate_payload_passes_type_validation(self):
+        """Sanity: a correctly-typed payload is not accidentally caught by
+        an overly strict check."""
+        payload = gate.build_payload(
+            _CandidateStub(**self._valid_candidate_kwargs()), side="candidate"
+        )
+        assert payload["peak_mgL"] == 5.27695440327
+
+    def test_valid_reference_payload_passes_type_validation(self):
+        payload = gate.build_payload(_ReferenceStub(**_reference_payload_kwargs()), side="reference")
+        assert payload["peak_mgL"] == 5.27695440327
+
+
+# ===========================================================================
+# No leaked absolute host paths in committed evidence (public-repo
+# hardening pass, follow-up to the type-schema hole above). A committed
+# report/side-payload must never disclose the operator's home-directory
+# layout, installed applications or local toolchain -- see
+# scan_for_leaked_paths()'s docstring. The critical property this class
+# proves is that the guard is REAL: it is demonstrated to FAIL (find
+# violations) on the exact OLD leaky shape this repo actually committed
+# before this fix, not just to pass on a shape hand-built to please it.
+# ===========================================================================
+class TestNoLeakedPaths:
+    # Copied verbatim (values only) from what the harness used to emit --
+    # this is the OLD env_fp shape, byte-for-byte the field names/values
+    # that were actually committed to
+    # DOCUMENTATION/contracts/evidence/t0_qualification/ before this fix
+    # (mf6_realpath/triangle_realpath/harness_repo_root/full PATH, all
+    # under the real operator's home directory).
+    _OLD_LEAKY_ENV = {
+        "os": "macOS-14.5-arm64-arm-64bit", "machine": "arm64",
+        "python_version": "3.12.10",
+        "python_executable": "/Users/bea/.local/share/uv/python/cpython-3.12.10-macos-aarch64-none/bin/python3.12",
+        "flopy_version": "3.9", "numpy_version": "2.0",
+        "mf6_realpath": "/Users/bea/.local/share/flopy/bin/mf6", "mf6_sha256": "aaa",
+        "triangle_realpath": "/Users/bea/.local/share/flopy/bin/triangle", "triangle_sha256": "bbb",
+        "data_folder": "/Users/bea/applied_groundwater_modelling_data/limmat",
+        "flow_fingerprint": "flowfp",
+        "model_boundary_path": "/Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg",
+        "model_boundary_sha256": "ccc",
+        "rivers_path": "/Users/bea/applied_groundwater_modelling_data/limmat/gis/AV_Gewasser_-OGD.gpkg",
+        "rivers_sha256": "ddd",
+        "OMP_NUM_THREADS": "1", "GDAL_NUM_THREADS": "1",
+        "PATH": (
+            "/Users/bea/.local/share/flopy/bin:/Users/bea/Documents/GitHub/"
+            "applied_groundwater_modelling/.venv/bin:/opt/homebrew/bin:/usr/bin:/bin"
+        ),
+        "worktree_root": "/private/tmp/t0_qual/run1/worktree_A", "worktree_commit": "sha_a",
+        "case_ws": "/private/tmp/t0_qual/run1/case_ws_A",
+        "transport_srcpulse_demo_file": (
+            "/private/tmp/t0_qual/run1/worktree_A/_SUPPORT/src/transport_srcpulse_demo.py"
+        ),
+        "model_io_utils_file": "/private/tmp/t0_qual/run1/worktree_A/_SUPPORT/src/model_io_utils.py",
+    }
+    _OLD_LEAKY_HARNESS_IDENTITY = {
+        "t0_gate_harness_py_sha256": "deadbeef",
+        "t0_gate_harness_py_path": (
+            "/Users/bea/Documents/GitHub/applied_groundwater_modelling/"
+            "_SUPPORT/src/scripts/t0_gate_harness.py"
+        ),
+        "harness_repo_root": "/Users/bea/Documents/GitHub/applied_groundwater_modelling",
+        "harness_repo_commit": "607e09c",
+    }
+
+    def test_guard_actually_fails_on_the_old_leaky_env_shape(self):
+        """The guard is worthless if it only ever passes -- prove it FLAGS
+        the exact shape this repo used to commit."""
+        leaks = gate.scan_for_leaked_paths({"env": self._OLD_LEAKY_ENV})
+        leaked_fields = {p for p, _v in leaks}
+        assert "env.python_executable" in leaked_fields
+        assert "env.mf6_realpath" in leaked_fields
+        assert "env.triangle_realpath" in leaked_fields
+        assert "env.data_folder" in leaked_fields
+        assert "env.model_boundary_path" in leaked_fields
+        assert "env.rivers_path" in leaked_fields
+        # PATH: either the literal /Users/ prefix or the PATH-shaped
+        # heuristic must catch it -- assert at least one does.
+        assert any(p == "env.PATH" for p, _v in leaks)
+        assert len(leaks) >= 7
+
+    def test_guard_actually_fails_on_the_old_leaky_harness_identity_shape(self):
+        leaks = gate.scan_for_leaked_paths(self._OLD_LEAKY_HARNESS_IDENTITY)
+        leaked_fields = {p for p, _v in leaks}
+        assert "t0_gate_harness_py_path" in leaked_fields
+        assert "harness_repo_root" in leaked_fields
+
+    def test_guard_is_silent_on_the_new_sanitised_env_shape(self):
+        env = TestEnvFingerprintComparison()._base_env()
+        assert gate.scan_for_leaked_paths({"env": env}) == []
+
+    def test_guard_is_silent_on_the_new_harness_identity_shape(self):
+        identity = {
+            "t0_gate_harness_py_sha256": "deadbeef",
+            "t0_gate_harness_py_path": "_SUPPORT/src/scripts/t0_gate_harness.py",
+            "harness_repo_commit": "607e09c",
+        }
+        assert gate.scan_for_leaked_paths(identity) == []
+
+    def test_windows_drive_letter_path_is_flagged(self):
+        leaks = gate.scan_for_leaked_paths({"x": r"C:\Users\bea\repo\file.py"})
+        assert leaks
+
+    def test_home_style_unix_path_is_flagged(self):
+        leaks = gate.scan_for_leaked_paths({"x": "/home/bea/data/file.gpkg"})
+        assert leaks
+
+    def test_assert_no_leaked_paths_raises_on_a_leaky_report(self):
+        with pytest.raises(SystemExit, match="leaked absolute path"):
+            gate._assert_no_leaked_paths({"env": self._OLD_LEAKY_ENV}, "test report")
+
+    def test_assert_no_leaked_paths_is_silent_on_a_clean_report(self):
+        clean = {"env": TestEnvFingerprintComparison()._base_env(), "summary": {"comparison": "PASS"}}
+        gate._assert_no_leaked_paths(clean, "test report")  # must not raise
+
+    def test_home_relative_converts_home_prefixed_path(self):
+        home = str(gate.Path.home())
+        assert gate._home_relative(f"{home}/applied_groundwater_modelling_data/limmat") == (
+            "~/applied_groundwater_modelling_data/limmat"
+        )
+
+    def test_home_relative_leaves_non_home_path_unchanged(self):
+        assert gate._home_relative("/private/tmp/some/scratch/dir") == "/private/tmp/some/scratch/dir"
+
+    def test_relative_to_worktree_strips_the_worktree_prefix(self, tmp_path):
+        wt = tmp_path / "worktree_A"
+        f = wt / "_SUPPORT" / "src" / "transport_srcpulse_demo.py"
+        f.parent.mkdir(parents=True)
+        f.write_text("# stub")
+        assert gate._relative_to(str(f), wt) == "_SUPPORT/src/transport_srcpulse_demo.py"

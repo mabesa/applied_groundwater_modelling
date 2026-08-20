@@ -5,6 +5,20 @@
 # other fields are informational context for the human doing the
 # judging and are refreshed on every --init-classifications run.
 #
+# `detector` records which candidate net found this entry (most
+# specific, if more than one net matched -- r_and_n > r_without_n >
+# word_only):
+#   r_and_n     -- the original net (a result word AND a number,
+#                  same line)
+#   r_without_n -- R's own result-word vocabulary, no number required
+#                  (prose-scoped)
+#   word_only   -- a separate detect/capture/bypass/clip vocabulary,
+#                  no number required (prose-scoped)
+# All three are DECLARED coverage, not proof of exhaustiveness -- see
+# the script's module docstring for each net's own blind spot.
+# `detector` is informational only, like path/location/snippet -- not
+# read by the gate, and never part of a candidate's id.
+#
 # claim_type is a LIST, not a single value: one text span can assert
 # more than one kind of claim (e.g. "peak is 5.3 mg/L ... still above
 # the 1.0 mg/L threshold" is both numeric AND threshold-decision).
@@ -24,6 +38,21 @@
 # mix. claim_type: [unclassified, numeric] or [not_a_claim, causal] is
 # a validation error, not a warning.
 
+010ba581cfd8:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[2] id=2
+  detector: r_without_n
+  snippet: '- **The defensible-claim judgment** — which threshold claims the model supports, and which
+    it does not (below).'
+032ed5cdfd4f:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[6] id=6
+  detector: r_without_n
+  snippet: '## Optional — predict, then run: how does $\alpha_L$ reshape a breakthrough? *(illustrative)*'
 035062e82bdc:
   claim_type:
   - illustrative
@@ -36,12 +65,35 @@
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_exact['task_t04_checkpoint_3']
   snippet: '"task_t04_checkpoint_3": "A) The well breakthrough & threshold timing",'
+04463005dd6d:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: '> 3. Effective porosity sets the mean water velocity ($u = q / \phi_e$). If you halved the
+    effective porosity, what would happen to the plume''s arrival time ...'
 0568dd562a16:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_reactive_is_later_and_lower (line 232)
   snippet: assert reactive_demo.peak_mgL == pytest.approx(3.39, rel=0.08)
+05d9eac558d9:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_4']
+  detector: r_without_n
+  snippet: ("D) Yes, fully captured, which proves exceedance",
+05ef08be625b:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t04_checkpoint_3']
+  detector: r_without_n
+  snippet: '| **Receptor breakthrough / threshold timing** (A) | longitudinal; resolved on the refined
+    corridor ($Pe_L \le 2$) | **Yes** |'
 062469685d96:
   claim_type:
   - numeric
@@ -54,18 +106,42 @@
   path: _SUPPORT/src/transport_prt_capture.py
   location: capture_halfwidth_at (line 787)
   snippet: flow field's analytic asymptote ``Q / (2 q b) ~= 71.6 m``.
+06f842b4b9cb:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[7] id=idx-7
+  detector: r_without_n
+  snippet: The two rules of thumb above are **not universal constants of transport** — each is tied to
+    a discretization choice, and a different scheme moves or removes ...
 07a364a72779:
   claim_type:
   - causal
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not (line 691)
   snippet: '# -- at 2,160 m³/d the zone narrowed (asymptote 108->72 m) so a captured point at'
+092c3201f76f:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t08_checkpoint_2']
+  detector: r_without_n
+  snippet: Retardation slows the *plume's* velocity to $u/R$ (R=2 halves it), so the arrival is delayed.
+    Sorption (via R) removes mass from the mobile (aqueous) phase b...
 09d33bd12d56:
   claim_type:
   - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[16] id=16
   snippet: print( " (it GROWS with the probe radius -- compare r=120/160/200). NOT a half-width.")
+0a2ef8e736e9:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[8] id=idx-8
+  detector: r_without_n
+  snippet: '- **Contaminant arrival times** — near a pumping well, pumping-induced gradients mean a contaminant
+    spilled a few hundred metres upgradient could arrive with...'
 0afdf1da4651:
   claim_type:
   - not_a_claim
@@ -85,18 +161,50 @@
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_capture_zone_boundary_on_axis_captured_off_axis_escapes (line 623)
   snippet: '# and cannot exceed the theoretical capture half-width asymptote (+10% slack for'
+0bc68d59c6e9:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: 'Two dimensionless numbers control transport **accuracy and time-stepping** — not solver *stability*:
+    the MODFLOW 6 TVD scheme stays stable above the Peclet l...'
+0cc76c63609c:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[18] id=18
+  detector: word_only
+  snippet: 'A different, related application question: for a geothermal doublet, **what fraction of the
+    reinjected water (and any tracer riding it) short-circuits straig...'
 0d52985c12c2:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_verify_2d.py
   location: test_coarse_transverse_sigma_inflated (line 208)
   snippet: 'assert cse.Pe_T >= 5.0 and fine.Pe_T <= 2.0 # sanity on the two grids'
+0d5f48906ba7:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[6] id=6
+  detector: r_without_n
+  snippet: '> **This curve is illustrative / conservative — do NOT compare it to a regulatory threshold.**
+    It assumes idealised uniform 1D flow and an arbitrary injected...'
 0e06ae399699:
   claim_type:
   - not_a_claim
   path: _SUPPORT/src/transport_prt_capture.py
   location: capture_halfwidth_at (line 811)
   snippet: out["asymptotic_halfwidth_m"] = float(DOUBLET_Q / (2.0 * qb["qb_m2d"]))
+0e3b9dd4faad:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[10] id=idx-10
+  detector: r_without_n
+  snippet: '| **Site owners** | Contamination liability, remediation costs | Plume delineation, arrival-time
+    estimates |'
 0ea99787eb57:
   claim_type:
   - not_a_claim
@@ -109,6 +217,14 @@
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_default_unchanged (line 170)
   snippet: assert demo.arrival_day == pytest.approx(38.8, abs=5.0)
+1002c31bf3e3:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[5] id=idx-5
+  detector: word_only
+  snippet: 2. **Delineate the capture zone** of the extraction well and relate it to the spill's position
+    (captured or bypassed)
 10cdd2d9419a:
   claim_type:
   - causal
@@ -129,6 +245,13 @@
   path: _SUPPORT/src/transport_srcpulse_demo.py
   location: build_srcpulse_demo (line 732)
   snippet: arrival = (float(times[int(np.argmax(bt))]) if (bt.size and peak > 0.0)
+122191c08dba:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[27] id=idx-27
+  detector: r_without_n
+  snippet: '| Native longitudinal grid Peclet $Pe_L$ | ~5 | — | $u\,\Delta x / D_L$ (> 2 → use TVD) |'
 1394ec82579a:
   claim_type:
   - numeric
@@ -155,6 +278,14 @@
   location: test_halfwidth_probe_converges_and_widens_upgradient (line 740)
   snippet: 'assert base["regional_qb_m2d"] == pytest.approx(9.56, rel=0.10) # Phase-4: 2,160 m³/d (was
     6.3 at 1,080)'
+15bbf92b2904:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[32] id=32
+  detector: r_without_n
+  snippet: 'The verification earns us trust in the **longitudinal** result: arrival, peak, and threshold-exceedance
+    timing are reproduced to a percent or two. The **late...'
 163af80aac37:
   claim_type:
   - not_a_claim
@@ -167,12 +298,34 @@
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[7] id=idx-7
   snippet: 'K = 2.31e-3 # hydraulic conductivity [m/s] (≈ 200 m/d, calibrated value)'
+17a9f9b9437a:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[14] id=14
+  detector: word_only
+  snippet: 2. **A wide capture-zone probe** — `release_radius_m=WIDE_RELEASE_RADIUS_M` (120 m), deliberately
+    wide enough to straddle the capture-zone boundary, so it re...
 17afefa098af:
   claim_type:
   - numeric
   path: _SUPPORT/src/transport_prt_capture.py
   location: <module> (line 31)
   snippet: (peak ≈5.3 mg/L at day 39).
+17ce8b0eefb9:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t08_checkpoint_4']
+  detector: word_only
+  snippet: '## Solution — Is the spill footprint captured?'
+181ebe6d5085:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_3']
+  detector: r_without_n
+  snippet: ("D) Same timing, peak doubles",
 18cdc0462632:
   claim_type:
   - causal
@@ -180,6 +333,14 @@
   location: cell[3] id=3
   snippet: '**Why.** It is *not* simply that the transverse grid Péclet is large. On a grid **aligned**
     with the flow, MODFLOW 6''s TVD scheme adds essentially **no** tra...'
+19917b7bdaaa:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[11] id=idx-11
+  detector: word_only
+  snippet: 'In 02t, we identified the key transport features of the spill→capture study. Here is how each
+    maps to a MODFLOW 6 GWT package:'
 1a1c1eb941f3:
   claim_type:
   - numeric
@@ -188,6 +349,14 @@
   location: cell[19] id=19
   snippet: '**Rung D closes the lateral question.** MF6 PRT shows the realistic ~10 m spill footprint
     is **fully captured** (capture fraction 1.000, 200/200; median adve...'
+1a37c772008a:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: '> 2. Dispersivity spreads the plume out around the average flow path. Could *increasing* dispersivity
+    change the verdict at the monitoring well? Explain why ...'
 1b175ab00325:
   claim_type:
   - numeric
@@ -200,24 +369,79 @@
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_halfwidth_probe_converges_and_widens_upgradient (line 729)
   snippet: '# (spill 53.1 -> far 67.5 m = +14.4 m, vs +33 m at 1,080), because the asymptote'
+1bc870af60dc:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[1] id=1
+  detector: r_without_n
+  snippet: '- **§1** — Setup: load the helper, set the threshold and toggles, build the default (conservative)
+    spill'
+1c3e0c289269:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[1] id=1
+  detector: word_only
+  snippet: '| **whether the spill footprint is captured, and how wide the doublet''s capture zone is**
+    — but only via MF6 PRT particle tracking (**Rung D**), never from t...'
 1df5e7fac155:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_verify_2d.py
   location: test_reactive_matches_analytical (line 168)
   snippet: assert r.peak_conc_err < 0.10
+1e1272d569b9:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t04_checkpoint_3']
+  detector: r_without_n
+  snippet: '| **Lateral plume width / exact contour** (B, C) | numerical: the physical plume is **sub-cell**
+    and the convergent flow is **oblique to the grid** (cross-wi...'
+1e80b9812442:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[38] id=38
+  detector: word_only
+  snippet: You built and ran the spill→capture GWT model, verified the transport engine against an exact
+    solution, and confronted the core trade-off of transport modell...
+1f6b9a5b7676:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[2] id=2
+  detector: word_only
+  snippet: 'A transport study of a spill→capture problem typically reports:'
 1fe6627f2432:
   claim_type:
   - not_a_claim
   path: _SUPPORT/src/transport_prt_capture.py
   location: <module> (line 72)
   snippet: end-to-end transport verification is 04t Section 8's 2-D analytical benchmark.
+20b1f3ff70d0:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[38] id=38
+  detector: r_without_n
+  snippet: '**Key idea:** a **known-mass SRC pulse** gives a grid-independent, mass-conservative source;
+    the **engine is verified** against the analytical solution, so e...'
 20ed82269e3f:
   claim_type:
   - not_a_claim
   path: _SUPPORT/src/transport_base_model.py
   location: build_spill_scenario (line 407)
   snippet: 'c_src: float = 1.0, # spill source concentration [mg/L]'
+218978c50573:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_2']
+  detector: r_without_n
+  snippet: '"A) Later and lower — retardation (R=2) slows the plume''s effective velocity by a factor
+    of R, delaying arrival, and sorption also partitions mass onto the s...'
 21a7b953710d:
   claim_type:
   - causal
@@ -238,6 +462,14 @@
   location: cell[0] id=0
   snippet: '**Story so far:** In [03t](03t_modflow_transport.ipynb) you translated the perceptual model
     into MODFLOW 6 language — the advection-dispersion-reaction equat...'
+2272f32c327a:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[1] id=1
+  detector: r_without_n
+  snippet: '| **threshold exceedance** — peak concentration vs. `THRESHOLD_MGL`, and the exceedance window
+    | **how much mass, at what concentration**, is captured — PRT ...'
 24269054ac95:
   claim_type:
   - numeric
@@ -258,6 +490,14 @@
   location: cell[17] id=17
   snippet: '**Two numbers that are *not* the answer, and why.** (i) The **capture fraction ≈0.49** is
     a property of the **probe disc**, not of the doublet — it is "the f...'
+24cc975dd8a3:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[7] id=idx-7
+  detector: r_without_n
+  snippet: '**Bottom line for MODFLOW 6 GWT** (cell-centered finite volume, implicit in time, with a TVD
+    advection option): treat both numbers as **accuracy / resolution...'
 25fe24206ff1:
   claim_type:
   - numeric
@@ -272,12 +512,36 @@
   path: _SUPPORT/src/transport_prt_capture.py
   location: _axis_seepage (line 827)
   snippet: 90 m axis and the equivalent path-averaged velocity ``L / T``.
+27f182030c1d:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[3] id=idx-3
+  detector: r_without_n
+  snippet: '> 🎯 **Motivating question:** A contaminant spills upgradient of a real Limmat doublet. Does
+    the plume **reach the extraction (monitoring) well above the regu...'
 2802c929c949:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_verify_2d.py
   location: test_conservative_grid_is_well_resolved (line 130)
   snippet: 'assert r.Pe_L <= 2.0 and r.Pe_T <= 2.0 # grid Peclet OK for advection'
+285af6b54032:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[7] id=idx-7
+  detector: r_without_n
+  snippet: '| **Simulation period** | Long enough for breakthrough | Run until the plume either reaches
+    the monitoring well or clearly bypasses it |'
+2874bdc284f7:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[22] id=idx-22
+  detector: word_only
+  snippet: '- Each doublet is a candidate **capture-vs-bypass** setting: whether a contaminant spilled
+    upgradient reaches the extraction (monitoring) well runs through e...'
 289aa1c6fb73:
   claim_type:
   - not_a_claim
@@ -285,6 +549,30 @@
   location: cell[12] id=12
   snippet: ax.axhline(THRESHOLD_MGL, color='0.4', ls='--', lw=1.4, label=f'threshold = {THRESHOLD_MGL:g}
     mg/L')
+28bae04f4d1f:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_4']
+  detector: r_without_n
+  snippet: '"A) Yes, fully captured — every particle in the footprint reaches the well; capture alone
+    says the water arrives, not that concentration exceeds a threshold"),'
+29a3212aa9c8:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t04_checkpoint_predict']
+  detector: r_without_n
+  snippet: '"B) Yes, but only after nearly a year — at this short distance dispersion would have to smear
+    the arrival out that far"),'
+2a89fb006d66:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[7] id=idx-7
+  detector: r_without_n
+  snippet: '<summary><b>Optional deep-dive: are the $Pe \le 2$ and $Cr \le 1$ thresholds universal, or
+    scheme-specific?</b> (click to expand)</summary>'
 2b4bf3863381:
   claim_type:
   - numeric
@@ -293,6 +581,21 @@
   location: cell[19] id=19
   snippet: '**Starting point (from 04t).** The compliance verdict was already established and verified
     in 04t: for the default conservative spill — 3×10⁵ g released over...'
+2b7b64e126ac:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_3']
+  detector: r_without_n
+  snippet: ("A) Earlier toe, broader front, lower peak",
+2b83260e8dc7:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[11] id=idx-11
+  detector: r_without_n
+  snippet: '> - Primary: arrival time and peak concentration at the monitoring well vs threshold; the
+    extraction-well capture zone'
 2bf1e64f6976:
   claim_type:
   - threshold-decision
@@ -318,6 +621,21 @@
   location: cell[27] id=idx-27
   snippet: '| Mean water velocity $u$ | ~2.3 (domain average) | m/day | $u = Ki/\phi_e$ from calibrated
     model |'
+2c74fe1b0d09:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: '- *For a sorbing solute the speed-up is weaker than 2×.* The transport velocity is $u_R =
+    q/(\phi_e + \rho_b K_d)$, and the retardation factor $R = 1 + \rho_...'
+2cab46ef88ab:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t04_checkpoint_3']
+  detector: r_without_n
+  snippet: ("A) The well breakthrough & threshold timing",
 2cfcdbbc23a0:
   claim_type:
   - not_a_claim
@@ -358,6 +676,20 @@
   location: solutions_markdown['task_t08_checkpoint_4']
   snippet: 'Running Rung D confirms it: every one of the 200 particles released across the realistic ~10
     m spill footprint terminates in the extraction well''s cell — cap...'
+315b50ee041a:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[1] id=1
+  detector: r_without_n
+  snippet: '- **§5** — Summary'
+33743e1f664e:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t04_checkpoint_predict']
+  detector: word_only
+  snippet: ("D) No, the well can't capture solute",
 33d848c94e6a:
   claim_type:
   - not_a_claim
@@ -376,12 +708,28 @@
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[16] id=16
   snippet: print(f" bisected half-width 300 m UPGRADIENT of the spill = {hw_up['halfwidth_m']:.1f} m "
+34d1478bcc89:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: questions_markdown['task_t08_checkpoint_4']
+  detector: word_only
+  snippet: 'Rung D (optional, `RUN_PRT`) runs MODFLOW 6 **PRT** particle tracking: a disc of particles
+    is released across the spill''s realistic ~10 m footprint, 90 m **u...'
 35cf77a0f1d0:
   claim_type:
   - not_a_claim
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[7] id=idx-7
   snippet: 'u_m_per_day = u * 86400 # convert to m/day'
+365a1cac5d98:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[18] id=18
+  detector: r_without_n
+  snippet: '**What you would have to add to model it.** The current `transport_srcpulse_demo` backbone
+    is flow-only at both doublet wells (no `SSM` auxiliary concentrati...'
 366971673e66:
   claim_type:
   - not_a_claim
@@ -394,6 +742,14 @@
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_exact['task_t08_checkpoint_3']
   snippet: '"task_t08_checkpoint_3": "A) Earlier toe, broader front, lower peak",'
+37a8f9bd0695:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: word_only
+  snippet: '- *Caveat:* $y_{\max}$ is also the **single-well** estimate. In a doublet the injection well
+    can both **narrow the effective capture** (part of what the well...'
 391ddcdddffe:
   claim_type:
   - threshold-decision
@@ -407,18 +763,42 @@
   path: _SUPPORT/tests/test_transport_verify_2d.py
   location: test_conservative_matches_analytical (line 138)
   snippet: 'assert r.peak_conc_err < 0.10 # peak concentration < 10%'
+39b211c3dc68:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[14] id=14
+  detector: word_only
+  snippet: That is a **geometry / wellfield-protection** question, not a concentration question, and the
+    ADE's smeared concentration field cannot answer it near a conve...
 3ab5bc845829:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_verify_2d.py
   location: test_oblique_runs_and_conserves_mass (line 275)
   snippet: '# centroid moved along the +45 deg diagonal (both x and y increased)'
+3c5c4694d609:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[18] id=18
+  detector: r_without_n
+  snippet: '- The governing question is "how much of what I put IN comes back OUT of the same system,"
+    which is a mass-recycling question — spill→capture asks "does an E...'
 3d36bffc47c3:
   claim_type:
   - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[27] id=27
   snippet: axt.set_title('Transverse profile through the peak'); axt.legend(); axt.grid(alpha=0.3)
+3d7e964fdaa9:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t08_checkpoint_2']
+  detector: r_without_n
+  snippet: '- **C** is wrong: sorption also reduces the aqueous peak concentration (mass partitions onto
+    the solid phase), it is not timing-only.'
 3dbad2d6cefe:
   claim_type:
   - numeric
@@ -426,6 +806,21 @@
   location: cell[6] id=idx-6
   snippet: 'Using domain-average values from 02t: $u \approx 2.3$ m/d, $\alpha_L = 10$ m, so $D_L = \alpha_L
     \cdot u \approx 23$ m²/d.'
+3e038aaf7146:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[36] id=36
+  detector: r_without_n
+  snippet: '### Checkpoint 3 — defensible threshold claims'
+3e4454af5461:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: word_only
+  snippet: '> 1. The extraction well draws a **capture zone** around itself. Describe two paths the contaminant
+    could take from the spill – one that is captured by the e...'
 3e98d97bc922:
   claim_type:
   - not_a_claim
@@ -444,6 +839,14 @@
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not (line 688)
   snippet: '# Bound is 1.5x the ANALYTIC asymptote (not 1.1): max_captured_offset is a'
+3fb88eeeb231:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_1']
+  detector: r_without_n
+  snippet: '"C) A larger dispersivity (Rung B) decides it — doubling α_L and α_T always spreads the finite
+    pulse enough to dilute the peak below any threshold, so disper...'
 3fbed8ea5f54:
   claim_type:
   - numeric
@@ -452,6 +855,13 @@
   location: cell[0] id=0
   snippet: '**Story so far:** In [04t_model_implementation.ipynb](04t_model_implementation.ipynb) you
     built the spill→capture SRC-pulse model on the Limmat doublet, veri...'
+423f1171e9ad:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t04_checkpoint_predict']
+  detector: r_without_n
+  snippet: '**Correct answer: A — yes, it exceeds the threshold within roughly one to two months.**'
 42a942837b0f:
   claim_type:
   - not_a_claim
@@ -465,12 +875,51 @@
   location: cell[9] id=idx-9
   snippet: '**2. Because building and refining a transport grid correctly is instructor-time work.** A
     grid that is adequate for flow is *not* adequate for transport (th...'
+4379c0d1e4f5:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[26] id=idx-26
+  detector: r_without_n
+  snippet: '| Source term known (released **mass / loading rate**, location, release duration) | The true
+    **spill mass and duration** are usually unknown | Peak concentr...'
 45006a4b2886:
   claim_type:
   - not_a_claim
   path: _SUPPORT/src/transport_srcpulse_demo.py
   location: build_srcpulse_demo (line 728)
   snippet: '# arrival. Guard (1) with `peak <= 0.0` -> NaN; flag (2) via'
+4604a985ff0f:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_3']
+  detector: r_without_n
+  snippet: '"D) Timing is unchanged, but the peak concentration doubles because the dispersion coefficient
+    doubles"),'
+46797c72d3c5:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[38] id=38
+  detector: r_without_n
+  snippet: '| Receptor breakthrough / peak / arrival-time | ✅ resolved (`Pe_L ≤ 2` on the refined corridor)
+    |'
+46f5f941717f:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: '> **Hint:** Advection follows the doublet''s forced-gradient flow field; the extraction well''s
+    capture-zone half-width versus the spill''s lateral offset decid...'
+4816f6d82564:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: word_only
+  snippet: '**1. Capture vs bypass.**'
 4830c8acf155:
   claim_type:
   - illustrative
@@ -505,6 +954,22 @@
   location: cell[4] id=idx-4
   snippet: '> ⚠️ **These are idealisations, not the doublet.** Both assume **uniform** flow; the doublet''s
     convergent, non-uniform field will *not* match them cleanly, s...'
+4d3022f8b1b7:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_1']
+  detector: r_without_n
+  snippet: '"A) Reactions (Rung A) REMOVE mass — decay destroys it, sorption parks it on the solid — so
+    strong enough attenuation pulls the peak below the threshold and ...'
+4dd22a783b02:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[8] id=idx-8
+  detector: r_without_n
+  snippet: '- **Wellhead / capture-zone protection** — defined by travel time of water (velocity), not
+    flux'
 4e56757be4b1:
   claim_type:
   - illustrative
@@ -518,18 +983,41 @@
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_advection_engine_matches_the_flow_field_it_was_given (line 476)
   snippet: a path-averaged v of 4.15 m/d (median arc length 84.4 m / median travel time
+51b96f20750e:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[11] id=idx-11
+  detector: r_without_n
+  snippet: '> **Track a contaminant** from an upgradient spill through a real Limmat GWHE doublet''s flow
+    field and **read its breakthrough at the monitoring (extraction)...'
 51e7332a5eda:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_cache_string_param_round_trips_and_busts (line 426)
   snippet: assert hit.peak_mgL == pytest.approx(1.0)
+520676a3505a:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: 'This is a **cell-scale** requirement. It says: the advective transport across one cell must
+    not exceed twice the dispersive spreading. Rearranging for maximu...'
 5249cbc5ccc5:
   claim_type:
   - causal
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_advection_engine_matches_the_flow_field_it_was_given (line 547)
   snippet: '# 1,080 m³/d — stronger throughflow shortens travel time).'
+52b0eab8ad36:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_2']
+  detector: r_without_n
+  snippet: '"C) Later, but the peak height is unaffected — sorption only shifts timing, not mass delivered"),'
 53c8a4af5ae3:
   claim_type:
   - causal
@@ -550,6 +1038,13 @@
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_dispersivity_sensitivity (line 263)
   snippet: half = 0.5 * d.breakthrough.max()
+5500885ff0e2:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[1] id=1
+  detector: r_without_n
+  snippet: '## §0 — Orientation: what are we trying to find out?'
 559ca00c8b00:
   claim_type:
   - not_a_claim
@@ -562,6 +1057,51 @@
   path: _SUPPORT/tests/test_transport_verify_2d.py
   location: coarse (line 117)
   snippet: '"""Coarse transverse grid delc=10 m (Pe_T=10), otherwise conservative."""'
+56a0a0c9904b:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[8] id=idx-8
+  detector: r_without_n
+  snippet: '- **Observations**: real concentration data are typically sparse and expensive; in this teaching
+    study the "observation" is the simulated breakthrough at the...'
+56acc94d0c70:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_2']
+  detector: r_without_n
+  snippet: ("A) Later and lower peak",
+570603719d40:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t05_checkpoint_1']
+  detector: r_without_n
+  snippet: '| $\alpha_L$ (longitudinal dispersivity) | spreads/flattens the breakthrough | higher $\alpha_L$
+    mimics lower $\phi_e$ |'
+578717cc9c92:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_1']
+  detector: word_only
+  snippet: ("B) Capture geometry (Rung D) decides the compliance verdict",
+5807a992e209:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[8] id=8
+  detector: r_without_n
+  snippet: '**What the demo shows ($\alpha_L$ key for a pulse).** Increasing $\alpha_L$ spreads the pulse
+    more, so the breakthrough arrives **earlier** (earlier first ar...'
+59af41a931d4:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[0] id=0
+  detector: word_only
+  snippet: '# Step 8: Model Application — Spill → Capture at a Compliance Well'
 59c3cc1b0cf8:
   claim_type:
   - numeric
@@ -575,6 +1115,14 @@
   location: cell[13] id=13
   snippet: '**Rung B punchline.** Doubling α_L drops the peak to ≈4.5 mg/L at ≈day 37 (vs ≈5.3 @ day 39)
     — still far above `THRESHOLD_MGL = 1.0` mg/L, so the **verdict i...'
+5a9f16d4889f:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t08_checkpoint_1']
+  detector: r_without_n
+  snippet: '**Correct answer: A.** The three levers are not the same *kind* of knob. Reactions can move
+    the *verdict* (they remove mass); capture geometry categorically ...'
 5aa62fe542ee:
   claim_type:
   - not_a_claim
@@ -594,6 +1142,14 @@
   location: solutions_markdown['task_t08_checkpoint_3']
   snippet: 'Running Rung B confirms it: peak ≈ **4.5 mg/L at ≈ day 37** (vs. the α_L=10 m keystone''s
     ≈5.3 mg/L @ day 39) — earlier and lower, with both grid Péclet numbe...'
+5bbdb33d9b9a:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[13] id=idx-13
+  detector: word_only
+  snippet: '- The **advection-dispersion-reaction equation** extends the flow equation to transport: advection
+    moves the front, dispersion spreads it, sources/sinks add ...'
 5c5eee8d09da:
   claim_type:
   - numeric
@@ -613,6 +1169,22 @@
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solution_unit['task_t02_checkpoint_1']
   snippet: '"task_t02_checkpoint_1": "m/d",'
+5ce3ff217ee9:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t04_checkpoint_3']
+  detector: r_without_n
+  snippet: A coarse grid dilutes concentration (large cells), so it under-reads the **peak at the well**;
+    refining the source→well corridor **recovers the longitudinal ...
+5d7d4422c159:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_4']
+  detector: word_only
+  snippet: '"C) Partially captured — roughly half the footprint reaches the well and half escapes, because
+    the spill straddles the edge of the capture zone"),'
 5deb03c42e94:
   claim_type:
   - not_a_claim
@@ -656,6 +1228,22 @@
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[8] id=8
   snippet: label=f'decay only, half-life 30 d (peak {res_decay.peak_mgL:.2f} mg/L @ day {res_decay.arrival_day:.0f})')
+6267dc59de76:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t05_checkpoint_1']
+  detector: r_without_n
+  snippet: '"A) In the field you rarely have enough concentration observations to pin alpha_L, alpha_T
+    and phi_e separately, and they trade off against each other (e.g. ...'
+62a4f6da9d86:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[3] id=idx-3
+  detector: word_only
+  snippet: These are real geothermal installations, and their *own* engineering worry is **recirculation**
+    – reinjected water short-circuiting back to the extraction we...
 62b252cf4b7e:
   claim_type:
   - causal
@@ -694,12 +1282,43 @@
   location: solutions['task_t04_checkpoint_1']
   snippet: '"task_t04_checkpoint_1": (0.5, 1.5), # Pe_L = dx/alpha_L = ~10/10 = 1 (refined corridor, <=
     2)'
+6bda97627863:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_1']
+  detector: r_without_n
+  snippet: '"B) Capture geometry (Rung D) decides it — if PRT shows the spill footprint is captured by
+    the well, the compliance well must then exceed the threshold, so p...'
 6caa16b226b6:
   claim_type:
   - threshold-decision
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not (line 692)
   snippet: '# ~89 m Euclidean offset now exceeds 1.1x but not 1.5x. This is exactly why the'
+6d476a0fd6d1:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: '- *Captured:* a spill released within the extraction well''s **capture zone** follows the
+    doublet''s forced-gradient streamlines that converge on the well, so ...'
+6d4ad5a2d0bc:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[16] id=16
+  detector: r_without_n
+  snippet: Finally, a **GWF6–GWT6 exchange** (`flopy.mf6.ModflowGwfgwt`) ties this transport model to
+    the flow model from §4 into one coupled simulation — `build_srcpul...
+6d8641ee9514:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t04_checkpoint_predict']
+  detector: r_without_n
+  snippet: ("C) No, stays below threshold",
 6ee0c143f535:
   claim_type:
   - numeric
@@ -713,12 +1332,36 @@
   location: cell[17] id=17
   snippet: '**How the advection engine is verified.** Not against the ADE''s day-39 peak — PRT''s advective
     timescale (~20 d) and a concentration peak are different quanti...'
+'702165328551':
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[8] id=idx-8
+  detector: r_without_n
+  snippet: '- **Effective porosity is rarely measured directly** and sets the mean water velocity, so
+    it directly controls arrival time.'
+704bc86387ad:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[10] id=idx-10
+  detector: r_without_n
+  snippet: '| **Students** | Learning transport concepts | Clear breakthrough curves, interactive scenarios
+    |'
 7054b9c51ef4:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_reactive_is_later_and_lower (line 224)
   snippet: assert reactive_demo.peak_mgL > 0.0
+70e878d63052:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[2] id=2
+  detector: r_without_n
+  snippet: 4. **Verify the transport engine** against an exact 2D analytical solution (arrival, spread,
+    sorption, decay) — an *engine / unit* check, **not** a complianc...
 714229b12fbe:
   claim_type:
   - numeric
@@ -734,6 +1377,13 @@
   location: cell[6] id=idx-6
   snippet: So more dispersivity can flip a *borderline* verdict either way; for a clearly captured or
     clearly bypassing plume it changes only shape and timing. This is ...
+71c659be1260:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t08_checkpoint_3']
+  detector: r_without_n
+  snippet: '**Correct answer: A) Earlier toe, broader front, lower peak.**'
 '726853728054':
   claim_type:
   - numeric
@@ -785,6 +1435,22 @@
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_halfwidth_probe_converges_and_widens_upgradient (line 732)
   snippet: assert far["halfwidth_m"] > base["halfwidth_m"] + 10.0, (
+76df2de4e173:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[8] id=idx-8
+  detector: r_without_n
+  snippet: '- **The source term often dominates the uncertainty**: what is released, at what concentration
+    and over what duration. In this teaching study the spill is *d...'
+785184d8dbdb:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[2] id=2
+  detector: r_without_n
+  snippet: 2. Read the **breakthrough** at the monitoring well and state a **threshold verdict** (reach?
+    exceed? when?)
 7868d89c8b2d:
   claim_type:
   - numeric
@@ -803,6 +1469,30 @@
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[35] id=35
   snippet: fig.colorbar(cm, ax=axes, label='c [mg/L]', shrink=0.85)
+7abd4ccbe090:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: '- *What controls it:* the spill''s lateral offset versus the capture-zone half-width, screened
+    with $y_{\max} = Q/(2Ti)$ – a larger pumping rate $Q$ widens th...'
+7b3f2f4f5d43:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[0] id=0
+  detector: word_only
+  snippet: '| *Optional — Rung D (MF6 PRT capture zone: 2 MODFLOW flow solves + a bisection probe, ~30
+    s compute)* | +10–15 min |'
+7b4acaeac261:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[10] id=idx-10
+  detector: word_only
+  snippet: '| **Water utilities** | Wellhead protection, safe yield | Capture-zone analysis, early warning
+    |'
 7bed406a174c:
   claim_type:
   - numeric
@@ -844,12 +1534,27 @@
   location: cell[1] id=1
   snippet: '**Why the lateral claim fails.** On a grid that is **aligned** with the flow, MODFLOW 6''s
     TVD advection scheme adds essentially **no transverse numerical dis...'
+8036a850c811:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: questions_markdown['task_t08_checkpoint_1']
+  detector: r_without_n
+  snippet: Some of these can change the **verdict itself** (exceed vs. not); others only change the **timing
+    or shape** of the same exceedance. **Which statement sorts ...
 80d330b200b0:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_capture_zone_boundary_on_axis_captured_off_axis_escapes (line 625)
   snippet: assert 0.0 < wide.max_captured_offset_m <= wide.asymptotic_halfwidth_m * 1.1
+80d99a547e00:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[38] id=38
+  detector: r_without_n
+  snippet: '| Threshold-exceedance verdict at the well | ✅ defensible |'
 80f6d07ed747:
   claim_type:
   - numeric
@@ -857,6 +1562,14 @@
   path: _SUPPORT/src/transport_prt_capture.py
   location: <module> (line 130)
   snippet: same 200/200 capture and identical travel times.
+814adb575aa8:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[14] id=14
+  detector: word_only
+  snippet: 1. **The actual spill** — the realistic ~10 m footprint, `build_prt_capture()` — is it captured,
+    and how long does it take?
 81f6999c2519:
   claim_type:
   - not_a_claim
@@ -877,6 +1590,14 @@
   path: _SUPPORT/tests/test_transport_verify_2d.py
   location: test_conservative_matches_analytical (line 137)
   snippet: 'assert r.peak_pos_err < 0.05 # peak position < 5%'
+839c21e66350:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[3] id=3
+  detector: r_without_n
+  snippet: '| **receptor arrival time** / breakthrough at the well | the **exact position** of a concentration
+    contour |'
 841f354b1d60:
   claim_type:
   - not_a_claim
@@ -915,6 +1636,22 @@
   location: cell[6] id=idx-6
   snippet: '- *The defensible lateral answer* is computed **numerically** in [08t Rung D](08t_model_application.ipynb)
     (MF6 PRT particle tracking on the actual doublet f...'
+85d3861e1e30:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[26] id=idx-26
+  detector: r_without_n
+  snippet: '| Steady-state flow field | Transient flow (seasonal water-table changes) | Seasonal changes
+    in path and travel time missed |'
+868092fc3a88:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[12] id=12
+  detector: r_without_n
+  snippet: 'So the pipeline is: **load the calibrated model (§1) → re-grid + re-solve flow on the corridor
+    mesh (§2) → build the coupled GWF here (§4) → add transport (§...'
 86a8cc4069d1:
   claim_type:
   - causal
@@ -928,6 +1665,14 @@
   path: _SUPPORT/src/transport_verify_2d.py
   location: <module> (line 661)
   snippet: f"-> {100*r.peak_conc_err:.2f}%")
+871a8b5c33d7:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[8] id=idx-8
+  detector: r_without_n
+  snippet: '| **Receptor** | Monitoring (extraction) well location and rate; regulatory threshold | Doublet
+    concession | Known |'
 87ec3ff0c528:
   claim_type:
   - numeric
@@ -935,6 +1680,14 @@
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not (line 664)
   snippet: '# The bisected half-width is severely platform-variable (~24% macOS<->hub), so no'
+884900e9cf86:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[1] id=1
+  detector: r_without_n
+  snippet: A contaminant **spills upgradient** of a GWHE doublet running flow-only (clean injection, extraction).
+    The extraction well is the **monitoring / compliance w...
 89be056155f3:
   claim_type:
   - causal
@@ -960,6 +1713,14 @@
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_arrival_day_guard_never_arrives (line 372)
   snippet: Mirrors the exact guard used in build_srcpulse_demo (`peak > 0.0` gates
+8c5bbc9b9fe2:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t04_checkpoint_3']
+  detector: r_without_n
+  snippet: '"A) \"The plume reaches the monitoring well and exceeds the threshold at ~day D\" — a longitudinal
+    receptor-breakthrough quantity resolved on the refined cor...'
 8c63dcabddde:
   claim_type:
   - not_a_claim
@@ -979,6 +1740,30 @@
   location: cell[26] id=idx-26
   snippet: '| Uniform $\alpha_L = 10$ m | Larger/smaller or spatially variable $\alpha_L$ | More/less
     front spreading; peak concentration and arrival shift |'
+8f746af1d653:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[19] id=19
+  detector: r_without_n
+  snippet: '**What is defensible, and what is not.** Breakthrough timing, peak concentration, the exceedance
+    window, longitudinal reach, and mass balance are all resolve...'
+90e17229583f:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t05_checkpoint_1']
+  detector: r_without_n
+  snippet: '| $\phi_e$ (effective porosity) | sets advective arrival time $x/u$ | lower $\phi_e$ → earlier
+    arrival |'
+91f112e62a90:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[14] id=14
+  detector: word_only
+  snippet: '**Checkpoint 4** below asks you to predict the footprint''s capture verdict — and what it
+    would (and would not) tell you — before the toggled run.'
 921c1519ae20:
   claim_type:
   - not_a_claim
@@ -997,12 +1782,59 @@
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: <module> (line 48)
   snippet: '# meshes solve to demo peaks that differ by up to ~5.4%. Arrival keeps abs=5.0,'
+934ce783d958:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: word_only
+  snippet: '- *And a capture boundary is not a fence.* It is a purely **advective** envelope. A real,
+    dispersive plume straddles it, so a source just outside the line ca...'
+93a6e4e6987f:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[1] id=idx-1
+  detector: r_without_n
+  snippet: 5. Describe the **minimal reaction** a non-conservative contaminant needs — sorption (retardation)
+    or first-order decay — and how each reshapes the breakthrough
+942ae0b05277:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t04_checkpoint_3']
+  detector: r_without_n
+  snippet: '"D) \"Refining the grid removed all numerical error\" — refining recovered longitudinal/peak
+    accuracy but transverse stays Pe_T ≫ 2."),'
 943d7c3c29ea:
   claim_type:
   - not_a_claim
   path: _SUPPORT/src/transport_prt_capture.py
   location: <module> (line 90)
   snippet: of the doublet. That asymptote is the same screening formula 01t uses as
+96137cc0e1ac:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_3']
+  detector: r_without_n
+  snippet: '"B) The toe arrives later, the front is sharper, and the peak is higher"),'
+96a75d50c566:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t08_checkpoint_1']
+  detector: r_without_n
+  snippet: '- **Capture geometry carries no concentration information (this is why B is wrong).** PRT
+    tracks *which advective particles are captured* — arrival and timin...'
+972da6db2804:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[4] id=idx-4
+  detector: r_without_n
+  snippet: '> 2. **Quantify breakthrough at the monitoring (extraction) well** – whether the plume is
+    captured or bypasses, its peak concentration versus the regulatory ...'
 97a32a00cd02:
   claim_type:
   - not_a_claim
@@ -1015,6 +1847,14 @@
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_dispersivity_sensitivity (line 261)
   snippet: '# broader breakthrough curve: width at half max is larger for alpha_L=20.'
+99b93b4c1a19:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[9] id=idx-9
+  detector: r_without_n
+  snippet: '- The **source term** (what is released, at what concentration and over what duration) is
+    the dominant uncertainty in most real solute studies – although her...'
 9a6c5e0bdb2d:
   claim_type:
   - causal
@@ -1035,6 +1875,22 @@
   location: solutions_markdown['task_t04_checkpoint_2']
   snippet: Like $Pe \le 2$, **$Cr \le 1$ is an accuracy criterion, not a stability one** — MF6 solves
     advection implicitly (IMS), so it stays stable for $Cr > 1$; the p...
+9c45c231fcf6:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: questions_markdown['task_t08_checkpoint_2']
+  detector: r_without_n
+  snippet: '**Before running Rung A** — how do you expect the **R = 2, sorption-only** breakthrough curve
+    to compare to the conservative one at the compliance well?'
+9c713871a2d4:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[5] id=idx-5
+  detector: word_only
+  snippet: '- Illustrate how the **flow field controls transport** (the doublet''s forced gradient decides
+    whether the plume is captured)'
 9c86f0077c51:
   claim_type:
   - causal
@@ -1042,6 +1898,14 @@
   location: solutions_markdown['task_t02_checkpoint_1']
   snippet: 'Note: the specific discharge $q = Ki = 2.25$ m/d is the flux per unit area. Dividing by porosity
     converts from flux to velocity because water only moves thro...'
+9cc5caeeee5c:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[26] id=26
+  detector: r_without_n
+  snippet: If the numerical plume matches this curve — arrival, longitudinal and transverse spread — the
+    **engine is sound**, and any error in the doublet result is the...
 9d1a1be3a4e6:
   claim_type:
   - not_a_claim
@@ -1061,6 +1925,14 @@
   location: cell[5] id=5
   snippet: '# Zoom inset: the coarse ~50 m grid around the doublet, at the SAME window as §2''s refined
     mesh.'
+9f409c1b103d:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: questions_markdown['task_t08_checkpoint_3']
+  detector: r_without_n
+  snippet: The keystone breakthrough is a finite **pulse** — it rises from zero, peaks, and falls away
+    again — not a steady plateau. **Before running Rung B** — how do ...
 9fa5a8e407fa:
   claim_type:
   - illustrative
@@ -1068,6 +1940,22 @@
   location: cell[4] id=idx-4
   snippet: '- **1D transient (Ogata–Banks)**, a continuous constant-concentration inlet in 1D uniform
     flow, verifies **arrival timing** (toe, $t_{50}$, front sharpness):'
+a004afc1431f:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: questions_markdown['task_t08_checkpoint_4']
+  detector: word_only
+  snippet: '**Before running Rung D** — do you expect the spill footprint to be captured by the extraction
+    well, and what would that capture verdict tell you (and *not* ...'
+a04430227647:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: word_only
+  snippet: '- Capture only answers *whether* the plume reaches the well; *when* it arrives is set by travel
+    distance and mean water velocity – see Q3.'
 a0fe2ca6a22c:
   claim_type:
   - numeric
@@ -1081,6 +1969,13 @@ a115aa361a34:
   location: cell[32] id=32
   snippet: In fact the verification toy (run it with a coarse transverse grid) shows that on a **grid-aligned**
     flow, TVD adds *almost no* transverse numerical dispersi...
+a1193a802aac:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_4']
+  detector: word_only
+  snippet: ("C) Partially captured, roughly half",
 a23a750e51f5:
   claim_type:
   - illustrative
@@ -1100,6 +1995,14 @@ a4c7af7c3a74:
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[27] id=27
   snippet: 'print(f" peak concentration : {ver.peak_conc_err*100:5.2f}% error")'
+a51ddfb9360e:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: '- but all of this spreading **lowers the peak**, so an on-centerline plume can be **diluted
+    below the threshold**.'
 a6e32e4df1ca:
   claim_type:
   - causal
@@ -1107,6 +2010,14 @@ a6e32e4df1ca:
   location: cell[10] id=10
   snippet: '**Parameters and their identifiability.** The transport unknowns are longitudinal dispersivity
     $\alpha_L$, effective porosity $\phi_e$, retardation $R$, and ...'
+a7a4d114f9d8:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[5] id=idx-5
+  detector: r_without_n
+  snippet: 1. **Simulate contaminant migration and read its breakthrough** (arrival time and peak concentration)
+    at the monitoring (extraction) well, versus the regulat...
 a85b395ce913:
   claim_type:
   - numeric
@@ -1115,18 +2026,49 @@ a85b395ce913:
   location: cell[17] id=17
   snippet: '**Rung D takeaway.** The realistic ~10 m spill footprint is captured **completely** — capture
     fraction 1.000 (200/200), median advective travel time ≈20 d — ...'
+a8c919e89849:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[38] id=38
+  detector: r_without_n
+  snippet: '| Transport engine (the GWT scheme) | ✅ verified vs the exact 2D analytical plume (arrival,
+    spread, $R$, $\lambda$) |'
 a8f7a4af0f31:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_verify_2d.py
   location: <module> (line 7)
   snippet: 4. Coarse-grid transverse smearing (delc=10 -> Pe_T=10) vs the fine grid.
+aa8fd0667c19:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[2] id=2
+  detector: r_without_n
+  snippet: '- **A breakthrough result** — concentration vs time at the receptor well against the threshold:
+    does it reach, exceed, and when.'
 ac52663cce6a:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_default_unchanged (line 169)
   snippet: assert demo.peak_mgL == pytest.approx(5.28, rel=0.08)
+ac8bd60a1183:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[9] id=idx-9
+  detector: r_without_n
+  snippet: '| **SRC** | Mass source/loading: per-cell mass-loading **rate** [M/T] — here **grams/day**
+    (m/day model ⇒ mg/L = g/m³) | **The spill:** a known contaminant m...'
+ada2525365eb:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t04_checkpoint_predict']
+  detector: r_without_n
+  snippet: ("A) Yes, exceeds within ~1-2 months",
 ae428ccdc171:
   claim_type:
   - threshold-decision
@@ -1141,12 +2083,28 @@ b071440c2cd0:
   location: questions_markdown['task_t04_checkpoint_1']
   snippet: '**Step 2 — Compute:** Calculate $Pe_L$ for the **refined corridor** ($\Delta x \approx 10$
     m, $\alpha_L = 10$ m). Is it resolved?'
+b0fd7e271cfa:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t08_checkpoint_3']
+  detector: r_without_n
+  snippet: '- **C** is wrong: dispersivity reshapes any breakthrough curve, pulse or plateau, doublet
+    or 1D column.'
 b18c6f61f07e:
   claim_type:
   - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[8] id=8
   snippet: ax.plot(res_decay.times, res_decay.breakthrough, color='seagreen', lw=2.0,
+b2d266374b17:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[32] id=32
+  detector: word_only
+  snippet: '> **The right tool for the lateral / wellfield question is particle tracking.** A **capture
+    zone** (MODFLOW 6 PRT) is *advective* and free of cross-wind nume...'
 b2f0ffac6766:
   claim_type:
   - numeric
@@ -1154,6 +2112,30 @@ b2f0ffac6766:
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: <module> (line 7)
   snippet: 'footprint). Measured: capture fraction 1.000 -- the entire footprint sits'
+b30e2550e32d:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[6] id=6
+  detector: r_without_n
+  snippet: '**Predict first.** For an **instantaneous pulse** released upstream and observed at a fixed
+    distance, how does *increasing* $\alpha_L$ change the breakthroug...'
+b338fba8f514:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: '- *Bypass:* a spill whose **lateral offset exceeds the capture-zone half-width** rides the
+    regional streamlines past the well and escapes downgradient – litt...'
+b33eddb9964a:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[8] id=idx-8
+  detector: word_only
+  snippet: '- **Capture vs bypass** — whether an upgradient spill is drawn into the extraction well or
+    swept past depends directly on these local velocities and the well...'
 b357c4497053:
   claim_type:
   - not_a_claim
@@ -1161,6 +2143,13 @@ b357c4497053:
   location: cell[8] id=8
   snippet: ax.axhline(THRESHOLD_MGL, color='0.4', ls='--', lw=1.4, label=f'threshold = {THRESHOLD_MGL:g}
     mg/L')
+b45df77c745e:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_1']
+  detector: r_without_n
+  snippet: ("C) Larger dispersivity (Rung B) always dilutes below the threshold",
 b4a8f82e0e03:
   claim_type:
   - numeric
@@ -1175,6 +2164,13 @@ b4af63d7dafd:
   location: solutions_markdown['task_t08_checkpoint_4']
   snippet: '**How PRT is verified here.** Not by arithmetic against the ADE''s day-39 peak — an advective
     travel time and a dispersive concentration peak are different qu...'
+b548b5f83def:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[0] id=0
+  detector: word_only
+  snippet: '# Step 4: Model Implementation — Building the Spill→Capture GWT Model'
 b5634ca92158:
   claim_type:
   - not_a_claim
@@ -1196,12 +2192,28 @@ b69852834ace:
   location: cell[23] id=23
   snippet: ax.axhline(THRESHOLD_mgL, color='0.4', ls='--', lw=1.4, label=f'threshold = {THRESHOLD_mgL:g}
     mg/L')
+b6d9dce102d5:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t08_checkpoint_4']
+  detector: r_without_n
+  snippet: '- **D** is wrong: full capture never by itself proves an exceedance — PRT carries no concentration
+    information at all. Only the ADE model, run separately, an...'
 b76567e960f3:
   claim_type:
   - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[9] id=9
   snippet: 'print("The corridor is refined to ~10 m so Pe_L <= 2: the LONGITUDINAL breakthrough at the")'
+b84307e5040a:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: word_only
+  snippet: '- the **transverse** term ($\alpha_T$) widens the plume laterally, so a plume whose centerline
+    would just bypass can **clip** the well at low concentration (...'
 b887df52e8a8:
   claim_type:
   - numeric
@@ -1209,12 +2221,34 @@ b887df52e8a8:
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not (line 670)
   snippet: '# `halfwidth_plus_m` is severely platform-variable (~24% macOS<->hub observed),'
+b9c9a5da1b8a:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_4']
+  detector: r_without_n
+  snippet: ("A) Yes, fully captured — capture is not exceedance",
+ba353859534f:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[31] id=31
+  detector: r_without_n
+  snippet: '> **Engine verified.** On a resolved grid the MF6 GWT scheme reproduces the exact analytical
+    plume — arrival, longitudinal *and* transverse spread, sorption,...'
 ba6c0e960434:
   claim_type:
   - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[8] id=8
   snippet: ax.plot(res_R.times, res_R.breakthrough, color='darkorange', lw=2.0,
+bab78e077389:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t08_checkpoint_2']
+  detector: r_without_n
+  snippet: '**Correct answer: A) Later and lower peak.**'
 bb571e17fee5:
   claim_type:
   - not_a_claim
@@ -1227,6 +2261,13 @@ bc067bb50905:
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not (line 673)
   snippet: assert 0.0 < capture.meta["halfwidth_plus_m"] < capture.asymptotic_halfwidth_m
+bc0c12bd03be:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[19] id=19
+  detector: r_without_n
+  snippet: '## §5 — Summary'
 bc174232b04b:
   claim_type:
   - numeric
@@ -1234,6 +2275,14 @@ bc174232b04b:
   path: _SUPPORT/src/transport_prt_capture.py
   location: _regional_qb (line 861)
   snippet: 'the asymptote is only sharp to about +-10%: it is a SCREEN, not a measurement.'
+bc5379c63ef6:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_3']
+  detector: r_without_n
+  snippet: '"A) The toe arrives earlier, the front broadens (more gradual rise and fall, longer tail),
+    and the peak is lower"),'
 bd30712aec55:
   claim_type:
   - not_a_claim
@@ -1254,12 +2303,26 @@ be18c404f9dc:
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_exact['task_t04_checkpoint_predict']
   snippet: '"task_t04_checkpoint_predict": "A) Yes, exceeds within ~1-2 months",'
+bef28f712746:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t08_checkpoint_4']
+  detector: r_without_n
+  snippet: '**Correct answer: A) Yes, fully captured — capture is not exceedance.**'
 bfbdee6effc7:
   claim_type:
   - numeric
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_reactive_is_later_and_lower (line 229)
   snippet: '# peak 3.39 mg/L @ day 54.5 (was 3.16 @ 59.1 at 1,080 m³/d). Pins the'
+bfe707fee167:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: questions_markdown['task_t08_checkpoint_1']
+  detector: word_only
+  snippet: '- **Rung D** — the doublet''s capture-zone geometry, via MF6 **PRT** particle tracking.'
 c0c12f795bb9:
   claim_type:
   - not_a_claim
@@ -1273,6 +2336,21 @@ c1ecaec30091:
   location: cell[6] id=idx-6
   snippet: '> ℹ️ **A note on units.** Molecular diffusion in water is $D_m^* \approx 1\times10^{-9}$ m²/s.
     Because the model runs in **days**, convert before use: $D_m^*...'
+c1efc855f829:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_3']
+  detector: r_without_n
+  snippet: ("B) Later toe, sharper peak, higher peak",
+c2aff7478431:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[14] id=14
+  detector: word_only
+  snippet: '## Rung D — PRT capture zone: is the spill footprint captured, and how wide is the doublet''s
+    capture zone? (`RUN_PRT`)'
 c2eb8a6b1eaf:
   claim_type:
   - not_a_claim
@@ -1311,6 +2389,45 @@ c6ff5eb74a74:
   path: _SUPPORT/src/transport_verify_2d.py
   location: _field_moments (line 186)
   snippet: peak_c=0.0, mass_g=0.0)
+c7d29a2cfcf1:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[19] id=idx-19
+  detector: word_only
+  snippet: The Limmat Valley is one of Switzerland's most intensely used aquifers for **groundwater heat
+    exchange (GWHE)** — **injection–extraction doublet wells** that...
+c7e94102340e:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: questions_markdown['task_t04_checkpoint_1']
+  detector: r_without_n
+  snippet: $$Pe_L = \frac{\Delta x}{\alpha_L}$$
+c80b3502807f:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[12] id=idx-12
+  detector: r_without_n
+  snippet: You now have a clear, well-posed transport goal — the **breakthrough at the doublet's monitoring
+    well** for an upgradient spill. Two framing decisions carry ...
+c8ae81edf5a4:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[1] id=1
+  detector: r_without_n
+  snippet: 3. offers **one optional, illustrative** $\alpha_L$ demonstration — predict-then-see how dispersivity
+    reshapes a breakthrough curve.
+c9f97e7cb8ab:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[26] id=idx-26
+  detector: r_without_n
+  snippet: '> Consider both (a) how likely the assumption is to be wrong and (b) how much impact it would
+    have on the predicted plume arrival at the extraction (monitori...'
 caa7f150d729:
   claim_type:
   - numeric
@@ -1332,6 +2449,37 @@ cc709a28d9d8:
   location: multiple_choice_options['task_t08_checkpoint_1']
   snippet: '"D) None of the levers can change it — once 04t shows an exceedance, sorption, decay, dispersion
     and capture geometry only move the timing or shape of the br...'
+cd2ac3a8eb5d:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: questions_markdown['task_t05_tt_checkpoint_1']
+  detector: r_without_n
+  snippet: '- **What is the estimated seepage velocity (m/d)?**'
+cd7a16f7d66d:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[15] id=15
+  detector: r_without_n
+  snippet: '> 🧭 **Where you use this.** In your own case study you don''t type these FloPy calls — a **builder**
+    assembles the same kind of coupled flow + transport model...'
+cd7ef2bee3c0:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t04_checkpoint_3']
+  detector: r_without_n
+  snippet: '**Correct answer: A** — the receptor breakthrough at the monitoring well (arrival, peak, threshold-exceedance
+    timing).'
+cdcb56e9d73d:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[11] id=idx-11
+  detector: r_without_n
+  snippet: '> 🤔 **Reflection:** The operational question is **capture vs. bypass** — does the upgradient
+    spill reach the extraction (monitoring) well above the regulator...'
 ce49b6462eeb:
   claim_type:
   - numeric
@@ -1344,12 +2492,36 @@ ce7a73a273d0:
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[27] id=27
   snippet: 'print(f" peak position : {ver.peak_pos_err*100:5.2f}% error")'
+cf5ce7dde82c:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[0] id=0
+  detector: word_only
+  snippet: '**Story so far:** In [04t_model_implementation.ipynb](04t_model_implementation.ipynb) you
+    built the coupled flow-and-transport spill→capture model, met the g...'
+cfe3db7faac1:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[21] id=21
+  detector: r_without_n
+  snippet: Now the payoff. `build_srcpulse_demo(...)` composes exactly the builders you just read — load
+    → refine → flow → transport → couple → run (internally a **pilo...
 d040b34d1ff1:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_dispersivity_sensitivity (line 250)
   snippet: threshold = 0.01 * demo.peak_mgL
+d0c23cc270ae:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[17] id=idx-17
+  detector: r_without_n
+  snippet: 'We **start from a conservative tracer** ($R = 1$: it moves with the water, neither retained
+    nor degraded) because that isolates the transport the flow field ...'
 d0faaf057a51:
   claim_type:
   - not_a_claim
@@ -1363,12 +2535,51 @@ d114fb7bc4cd:
   location: solutions_markdown['task_t04_checkpoint_predict']
   snippet: With a mean water velocity of order a few metres per day over ~90 m, an arrival on the scale
     of **weeks-to-a-couple-of-months** is expected, and because a la...
+d4745b9662db:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[21] id=21
+  detector: r_without_n
+  snippet: '## 6 — Run it: breakthrough at the monitoring well'
 d4b6a6ae3cfd:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_halfwidth_probe_converges_and_widens_upgradient (line 735)
   snippet: 'assert far["halfwidth_m"] == pytest.approx(67.5, rel=0.10) # Phase-4 (was 112 at 1,080)'
+d5ebe229411d:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[26] id=idx-26
+  detector: word_only
+  snippet: '> **Which assumption above do you think is most consequential for the capture-vs-bypass question?
+    Why?**'
+d60b4babbfa9:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[9] id=idx-9
+  detector: word_only
+  snippet: '| "RIV captures all river–aquifer solute exchange" | No — SSM only carries solute on the **advective**
+    water flux; no diffusive exchange at zero net flow. |'
+d62cfd40876c:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[4] id=idx-4
+  detector: r_without_n
+  snippet: where $\phi$ is the **effective (kinematic) porosity** $\phi_e$, $C$ concentration, $\mathbf{u}$
+    the mean water velocity, $\mathbf{D}$ the hydrodynamic dispe...
+d6ba47520d66:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/05t_calibration.ipynb
+  location: cell[6] id=6
+  detector: r_without_n
+  snippet: '> **Units note — flux-averaged concentration (the `/u` handling).** As written, `analytical_btc`
+    returns the pulse solution **without the $1/u$ prefactor**, ...'
 d78cc4ff676e:
   claim_type:
   - causal
@@ -1382,6 +2593,13 @@ d81c7b7190c0:
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[12] id=12
   snippet: ax.plot(res_aL.times, res_aL.breakthrough, color='steelblue', lw=2.0,
+d82f1cb6ae01:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: word_only
+  snippet: '<summary><strong>Optional: Exercise – Reasoning about capture vs bypass</strong></summary>'
 d832f747a850:
   claim_type:
   - causal
@@ -1395,6 +2613,14 @@ d858a4bbc93e:
   path: _SUPPORT/src/transport_srcpulse_demo.py
   location: build_srcpulse_demo (line 564)
   snippet: '``ath1 = alpha_L / 10.0``. Feeds the DSP package and the Pe_L / Pe_T'
+d8b7d6aeb454:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[1] id=1
+  detector: word_only
+  snippet: '- **Rung D** — PRT capture zone: is the spill footprint captured, and how wide is the capture
+    zone? (toggle `RUN_PRT`) · *checkpoint 4*'
 d8ea0db74677:
   claim_type:
   - numeric
@@ -1434,18 +2660,48 @@ db2750d25432:
   path: _SUPPORT/src/transport_prt_capture.py
   location: <module> (line 1299)
   snippet: 'print(" NOTE: PRT''s advective timescale and the ADE''s day-39 CONCENTRATION peak "'
+db742d1b0313:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_2']
+  detector: r_without_n
+  snippet: ("C) Later peak, same height",
 dc03e04d913f:
   claim_type:
   - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[3] id=3
   snippet: '# quietly from the already-verified 04t model. NO figure here: the full breakthrough-vs-'
+df7e1408ae3e:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[3] id=idx-3
+  detector: r_without_n
+  snippet: You will answer this by **modifying a provided model** and reading the contaminant breakthrough
+    at the monitoring well.
+e062f57f9551:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[1] id=1
+  detector: r_without_n
+  snippet: '| **breakthrough / arrival** at the compliance well — whether and when the plume gets there
+    | the **exact position of a concentration contour** |'
 e100e9492850:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_cache_string_param_round_trips_and_busts (line 411)
   snippet: 'peak_mgL=1.0, arrival_day=1.0, mass_balance={"a": 1.0}, solubility_ok=True,'
+e29c334b4aa4:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: questions_markdown['task_t08_checkpoint_4']
+  detector: word_only
+  snippet: '## Checkpoint 4 — Predict the PRT capture-zone verdict (before running Rung D)'
 e3747ac09f5c:
   claim_type:
   - not_a_claim
@@ -1491,6 +2747,22 @@ ea17cc64ea64:
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_decay_lowers_peak_but_does_not_retard (line 339)
   snippet: assert decay_demo.peak_mgL == pytest.approx(3.20, rel=0.08)
+eaff9891a636:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/03t_modflow_transport.ipynb
+  location: cell[7] id=idx-7
+  detector: r_without_n
+  snippet: So "$Pe \le 2$" really means "keep central-type schemes out of their oscillatory regime." As
+    a *resolution* check — is the physical dispersion length $\alpha...
+eb0e9df1b6f5:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_4']
+  detector: word_only
+  snippet: '"B) No — at 90 m upgradient the spill sits outside the doublet''s capture zone, so the footprint
+    bypasses the well and drifts downgradient"),'
 eb895cb45a73:
   claim_type:
   - not_a_claim
@@ -1504,6 +2776,30 @@ ebaf9c2a87e7:
   path: _SUPPORT/tests/test_transport_srcpulse_demo.py
   location: test_arrival_day_guard_never_arrives (line 378)
   snippet: arrival = (float(times[int(np.argmax(bt))]) if (bt.size and peak > 0.0)
+ebc59faeace7:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t04_checkpoint_predict']
+  detector: r_without_n
+  snippet: '"C) No — dilution and dispersion keep the peak concentration below the threshold throughout
+    the simulation"),'
+ebf119bfe249:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/04t_model_implementation.ipynb
+  location: cell[29] id=29
+  detector: r_without_n
+  snippet: The same solution carries **retardation** (the peak travels at the slowed velocity $u/R$) and
+    **first-order decay** (mass falls as $e^{-\lambda t}$). Turning...
+ebf4d056c108:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/08t_model_application.ipynb
+  location: cell[18] id=18
+  detector: r_without_n
+  snippet: '- The relevant output is a **steady-state plateau ratio** (C∞ / c_inj at the extraction well)
+    once the doublet reaches dynamic equilibrium, not a transient p...'
 ec34c4c892a2:
   claim_type:
   - causal
@@ -1529,6 +2825,29 @@ eddb21659b9b:
   path: _SUPPORT/src/transport_verify_2d.py
   location: build_and_run_2d_verification (line 583)
   snippet: '(u / R) * t_cmp, 0.0, t_cmp, M, phi_e, m, R, DL, DT, u, lam)) # at moving peak'
+eed195b5d77f:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: questions_markdown['task_t02_checkpoint_1']
+  detector: r_without_n
+  snippet: '**Calculate the mean water velocity $u$ in m/day.**'
+f01e7c0cc591:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_2']
+  detector: r_without_n
+  snippet: '"B) Earlier and lower — sorbed mass reduces the plume''s effective bulk, so the thinner plume
+    moves through the matrix faster even as its peak concentration d...'
+f0ab802e9602:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[0] id=idx-0
+  detector: r_without_n
+  snippet: '**Story so far:** In Step 1 you set the objective: a **contaminant spills upgradient** of
+    a **groundwater heat-exchange (GWHE) doublet**, and we ask whether ...'
 f10dc23057e4:
   claim_type:
   - not_a_claim
@@ -1549,6 +2868,14 @@ f17f589ff611:
   location: cell[2] id=2
   snippet: '- **An $\alpha_L$ sensitivity** — re-run with a different $\alpha_L$ (e.g. 10 m → 5 m) and
     report how arrival, peak and tail move; sensitivity stands in for ...'
+f2cb5719bb22:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[11] id=idx-11
+  detector: r_without_n
+  snippet: '> - Temporal: transient simulation on a steady flow field, run until breakthrough or clear
+    bypass'
 f2d9fb955acb:
   claim_type:
   - causal
@@ -1569,12 +2896,43 @@ f4188e803345:
   location: cell[4] id=4
   snippet: We do **not** re-derive the breakthrough here — [04t](04t_model_implementation.ipynb) owns
     it, and the full breakthrough-vs-threshold figure lives there. Two...
+f5bca3f86e0f:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[9] id=idx-9
+  detector: r_without_n
+  snippet: Effective porosity is a close third, because it sets the mean water velocity and hence the
+    arrival time. These are the parameters you will deliberately stres...
+f66ba1418f0d:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_4']
+  detector: word_only
+  snippet: ("B) No, the spill is outside the capture zone",
 f70e887c8a25:
   claim_type:
   - not_a_claim
   path: _SUPPORT/tests/test_transport_prt_capture.py
   location: test_halfwidth_probe_converges_and_widens_upgradient (line 720)
   snippet: alt = tpc.capture_halfwidth_at(0.0, case_ws=case_ws, **kw)
+f84e61bf44bf:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/02t_perceptual_model.ipynb
+  location: cell[14] id=idx-14
+  detector: r_without_n
+  snippet: Our **longitudinal** grid Peclet number is ~5, exceeding the classical limit of 2. With a **central-difference**
+    advection scheme this would cause spurious o...
+f8c153e41be4:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_4']
+  detector: r_without_n
+  snippet: '"D) Yes, fully captured — and since every particle reaches the well, the compliance well must
+    also see the concentration exceed the threshold"),'
 f91559570d50:
   claim_type:
   - causal
@@ -1582,6 +2940,14 @@ f91559570d50:
   location: cell[17] id=17
   snippet: '**The claim boundary — a capture zone is not a fence.** A PRT capture zone is a purely **advective**
     envelope, and a real, dispersive plume straddles it: a s...'
+f95a6a2d3cd3:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[6] id=idx-6
+  detector: r_without_n
+  snippet: Mean water velocity is $u = q/\phi_e$. On a **steady** flow field the specific discharge $q$
+    and the streamlines are fixed by the head solution – independent...
 f98d0b81e4a7:
   claim_type:
   - not_a_claim
@@ -1595,6 +2961,21 @@ f98ea3094ed1:
   location: questions_markdown['task_t04_checkpoint_1']
   snippet: '**Step 1 — Predict (no calculation):** Before computing, decide — do you expect the *inherited
     ~50 m* grid to be *above* or *below* the $Pe_L \le 2$ accuracy...'
+fb8f6d9c408e:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: multiple_choice_options['task_t08_checkpoint_2']
+  detector: r_without_n
+  snippet: ("B) Earlier and lower peak",
+fc1e78857aeb:
+  claim_type:
+  - unclassified
+  path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
+  location: solutions_markdown['task_t02_checkpoint_3']
+  detector: word_only
+  snippet: Each doublet withdraws water at one well and returns it at another, setting up a forced-gradient
+    flow field with a capture zone around the extraction well — ...
 fc4077f8d385:
   claim_type:
   - causal
@@ -1615,6 +2996,22 @@ fc8c78b9aeef:
   location: cell[11] id=idx-11
   snippet: '| The spill: released mass $M$, location, duration | source strength | **SRC** | Mass-loading
     rate [M/T] — in **grams/day** (m/day ⇒ mg/L = g/m³; kg/d is a 1...'
+fcbe750fe873:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[3] id=idx-3
+  detector: word_only
+  snippet: '**The scenario.** Scattered through the Limmat Valley are **groundwater heat-exchange (GWHE)
+    doublets** – paired wells that pump groundwater up, use it for b...'
+fdceb9c4259f:
+  claim_type:
+  - unclassified
+  path: PROJECT/transport/01t_model_goal.ipynb
+  location: cell[1] id=idx-1
+  detector: r_without_n
+  snippet: '2. **Frame** the motivating question for a GWHE doublet: does an upgradient contaminant spill
+    **reach the doublet''s extraction well (the compliance well)** a...'
 fedf60c7a7ea:
   claim_type:
   - not_a_claim
