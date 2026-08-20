@@ -1,7 +1,7 @@
 # T0 — The single decision record
 
 **Milestone:** T0 (Contract closure) of `transport_notebook_milestones.md` (READY v7).
-**Status:** **DRAFT v2 (2026-08-20) — NOT YET SIGNABLE.** Three exit items are open (§2).
+**Status:** **DRAFT v3 (2026-08-20) — SIGNABLE.** All twelve substantive exit items are closed (§2); only the signature remains.
 The codex consolidated review returned **DO-NOT-SIGN**; its findings are folded in and §7 records what
 changed.
 **Until §6 is signed, no T1 source edit may begin.**
@@ -35,21 +35,29 @@ record is NOT signable until they close.**
 
 | # | Required by the T0 exit | Where | Status |
 |---|---|---|---|
-| 1 | T0.0's frozen canonical contract | `T0_0…` §§1–5; approval now **delegated** to §6 here | ⏳ **pending** — the harness validated keysets but not value **types**, so a type change passed silently. Being hardened; **all six qualifications must be re-run** against the hardened code |
+| 1 | T0.0's frozen canonical contract | `T0_0…` §§1–5; approval **delegated** to §6 here | ✅ — typed path→class validation runs **before** normalisation and aborts by named path; the permissive test was **deleted**, not supplemented; **all six qualifications re-run** against the hardened harness (6/6 PASS, 0 mismatches); evidence carries `harness_identity` and no longer leaks machine paths |
 | 2 | The C1 v2 text | `T0_1_C1_v2.md` v2, incl. **Appendix A** | ✅ — A1's normative scope is now **inside** C1 rather than delegated to a gitignored file; A5 points at a frozen schema |
 | 3 | `claim_support_state` **with precedence** | `T0_3…` §4 + §4.6 | ✅ |
 | 4 | The receptor decision | A + B-control; B-default not activated | ✅ |
 | 5 | **Both** matrices, named separately | `T0_2b…` §5 — `notebook_evidence_matrix` now **11 identities**, exactly enumerated; `case_study_release_matrix` 50 | ✅ — v1's "5 × 3" read as a full factorial and overstated it |
 | 6 | The Hub feasibility threshold | `T0_0…` §6 + `T0_5…` v2 | ✅ — but see §7: the probe rule was **wrong in v1** and is corrected |
-| 7 | Exhaustive claim inventory | `T0_2a…` | ⏳ **pending** — the detector required a result word **AND** a number, so unnumbered claims were invisible. "249/249" was coverage over *detected* candidates. A word-only net is being added; the gate will go **red** and must be re-judged |
-| 8 | Exact metric algorithm per metric | `T0_2b…` §2 | ⏳ **pending** — the `t_first_detection` scope-out rested on a search the detector structurally could not perform. **Provisional** until re-derived against the new net |
+| 7 | Claim inventory — **declared coverage**, not "exhaustive" | `T0_2a…` | ✅ — **three** detector nets (`r_and_n` 249 · `r_without_n` 132 · `word_only` 46) = **427 candidates**, gate **exits 0**. The original single net saw **58%** of this. The word "exhaustive" is retired: no net can prove it, so the tool now claims declared coverage with each detector's blind spot named |
+| 8 | Exact metric algorithm per metric | `T0_2b…` §2 | ✅ — re-derived against the new nets: across the whole corpus there is **exactly one** unnumbered detection-language candidate (`01t` cell 6), and the three originally cited hits were all already-numbered. The `t_first_detection` scope-out stands, now on evidence that can see the claims |
 | 9 | Sequences + stopping rules | `T0_2b…` §3 | ✅ — now with exact cardinality |
 | 10 | Predeclared **causal-support rule** | `T0_2b…` §4 | ✅ |
 | 11 | Vocabulary crosswalk + precedence | `T0_3…` §1, §4.1b | ✅ |
 | 12 | Artifact schema | **`T0_2b…` §5.1** | ✅ — v1 pointed at T0.0 §2, which freezes the *demo result payload*, a different object from the **T2 evidence artifact**. The evidence-artifact schema is now frozen, including the mandatory `run_role` |
 | 13 | Named, dated approval | §6 below | ⬜ outstanding |
 
-**8 complete · 3 pending · 1 outstanding.** No item is asserted complete on a pointer alone.
+**12 complete · 1 outstanding (the signature).** No item is asserted complete on a pointer alone.
+
+**Claim inventory, final:** 427 candidates · 458 assignments · **30 compound spans** ·
+`not_a_claim` 223 · `causal` **131** · `numeric` 61 · `threshold-decision` 34 · `illustrative` 9.
+Every candidate judged by **two independent raters** (84% / 65% / 74% agreement across the three passes),
+with the residue resolved by the recorded rules R0–R4 rather than case by case.
+
+⚠️ **The causal set tripled — 42 → 131.** That is the honest measure of the T3 rewrite surface, and it was
+invisible while one detector net was doing the work.
 
 ## 3. Evidence, not assertions
 

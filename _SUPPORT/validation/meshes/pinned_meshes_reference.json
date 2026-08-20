@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "description": "Trust-anchor reference for the per-group PINNED FLOW MESHES (M2b). These meshes are refined around each group's geothermal doublet in the 05f-calibrated MF6/DISV mother model and shipped as a download bundle (config 'pinned_meshes'). A downloaded group<N>_flow.npz must (a) verify against its own bundle manifest via case_artifact_lock.verify_artifact AND (b) have an aggregate_hash matching the entry here (this file is git-tracked and is the tamper-resistant source of truth). Regenerate with _SUPPORT/src/scripts/jupyterhub_refine_reliability_gen.py on JupyterHub-Linux; update this file + bump the bundle version when the meshes change.",
+  "generated": {
+    "node": "jupyter-martib-40ethz-2ech",
+    "date": "2026-07-13",
+    "reruns_per_group": 5,
+    "versions": {
+      "python": "3.12.9",
+      "flopy": "3.9.3",
+      "numpy": "2.1.3",
+      "geos": "3.13.1",
+      "mf6": "mf6: 6.6.3 09/29/2025"
+    }
+  },
+  "groups": {
+    "0": {"aggregate_hash": "8d2ad346645451c7936d7b4cd3fe4a225b94e068dc60746b981014b04d8f41fa", "refine_radius_used": 62.0, "first_radius_fallback": true},
+    "1": {"aggregate_hash": "109707e050ddfc2a4e24244023ac471702775760f347cf71822edf3b9216f964", "refine_radius_used": 70.0, "first_radius_fallback": false},
+    "2": {"aggregate_hash": "c7599e00a264cd93886d17d0041b0ed2a1fa8cc06b6c84b20eedb2271c290073", "refine_radius_used": 70.0, "first_radius_fallback": false},
+    "3": {"aggregate_hash": "e8a97c9a8bc0f43db0814bf3a93fc76925616a457deea92766eb550631390d5c", "refine_radius_used": 70.0, "first_radius_fallback": false},
+    "4": {"aggregate_hash": "7224eaf1aeb90f0995eb8c1aa1d0aa5a928f1d6af6e3d8fa8f1cf391df6520a6", "refine_radius_used": 62.0, "first_radius_fallback": true},
+    "5": {"aggregate_hash": "037bcc5344eeddfd49127b626a17af0b1f049cfdd585090b11987f18f841703f", "refine_radius_used": 70.0, "first_radius_fallback": false},
+    "6": {"aggregate_hash": "3d8bd06ec48aa302d72fd09e7c44dac5501b85ab80c660c01f40e7e154d9462c", "refine_radius_used": 70.0, "first_radius_fallback": false},
+    "7": {"aggregate_hash": "c3b8c827507a4a01aba5a68fae64b557866e8d638f993418100a9747a6a01afa", "refine_radius_used": 78.0, "first_radius_fallback": true},
+    "8": {"aggregate_hash": "2141875715be12425a8482490640465e27c796a67266fc8c5193b15960ffe5d1", "refine_radius_used": 70.0, "first_radius_fallback": false}
+  }
+}

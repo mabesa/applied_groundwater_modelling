@@ -40,7 +40,7 @@
 
 010ba581cfd8:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[2] id=2
   detector: r_without_n
@@ -48,7 +48,7 @@
     it does not (below).'
 032ed5cdfd4f:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[6] id=6
   detector: r_without_n
@@ -67,7 +67,7 @@
   snippet: '"task_t04_checkpoint_3": "A) The well breakthrough & threshold timing",'
 04463005dd6d:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -81,14 +81,14 @@
   snippet: assert reactive_demo.peak_mgL == pytest.approx(3.39, rel=0.08)
 05d9eac558d9:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_4']
   detector: r_without_n
   snippet: ("D) Yes, fully captured, which proves exceedance",
 05ef08be625b:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t04_checkpoint_3']
   detector: r_without_n
@@ -108,7 +108,7 @@
   snippet: flow field's analytic asymptote ``Q / (2 q b) ~= 71.6 m``.
 06f842b4b9cb:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[7] id=idx-7
   detector: r_without_n
@@ -122,7 +122,7 @@
   snippet: '# -- at 2,160 m³/d the zone narrowed (asymptote 108->72 m) so a captured point at'
 092c3201f76f:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t08_checkpoint_2']
   detector: r_without_n
@@ -136,7 +136,7 @@
   snippet: print( " (it GROWS with the probe radius -- compare r=120/160/200). NOT a half-width.")
 0a2ef8e736e9:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[8] id=idx-8
   detector: r_without_n
@@ -163,7 +163,7 @@
   snippet: '# and cannot exceed the theoretical capture half-width asymptote (+10% slack for'
 0bc68d59c6e9:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -171,7 +171,7 @@
     the MODFLOW 6 TVD scheme stays stable above the Peclet l...'
 0cc76c63609c:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[18] id=18
   detector: word_only
@@ -185,7 +185,7 @@
   snippet: 'assert cse.Pe_T >= 5.0 and fine.Pe_T <= 2.0 # sanity on the two grids'
 0d5f48906ba7:
   claim_type:
-  - unclassified
+  - illustrative
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[6] id=6
   detector: r_without_n
@@ -199,7 +199,7 @@
   snippet: out["asymptotic_halfwidth_m"] = float(DOUBLET_Q / (2.0 * qb["qb_m2d"]))
 0e3b9dd4faad:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[10] id=idx-10
   detector: r_without_n
@@ -219,7 +219,7 @@
   snippet: assert demo.arrival_day == pytest.approx(38.8, abs=5.0)
 1002c31bf3e3:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[5] id=idx-5
   detector: word_only
@@ -247,7 +247,7 @@
   snippet: arrival = (float(times[int(np.argmax(bt))]) if (bt.size and peak > 0.0)
 122191c08dba:
   claim_type:
-  - unclassified
+  - numeric
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[27] id=idx-27
   detector: r_without_n
@@ -280,7 +280,8 @@
     6.3 at 1,080)'
 15bbf92b2904:
   claim_type:
-  - unclassified
+  - numeric
+  - threshold-decision
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[32] id=32
   detector: r_without_n
@@ -300,7 +301,8 @@
   snippet: 'K = 2.31e-3 # hydraulic conductivity [m/s] (≈ 200 m/d, calibrated value)'
 17a9f9b9437a:
   claim_type:
-  - unclassified
+  - threshold-decision
+  - causal
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[14] id=14
   detector: word_only
@@ -314,14 +316,14 @@
   snippet: (peak ≈5.3 mg/L at day 39).
 17ce8b0eefb9:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t08_checkpoint_4']
   detector: word_only
   snippet: '## Solution — Is the spill footprint captured?'
 181ebe6d5085:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_3']
   detector: r_without_n
@@ -335,7 +337,7 @@
     with the flow, MODFLOW 6''s TVD scheme adds essentially **no** tra...'
 19917b7bdaaa:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[11] id=idx-11
   detector: word_only
@@ -351,7 +353,7 @@
     is **fully captured** (capture fraction 1.000, 200/200; median adve...'
 1a37c772008a:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -371,7 +373,7 @@
   snippet: '# (spill 53.1 -> far 67.5 m = +14.4 m, vs +33 m at 1,080), because the asymptote'
 1bc870af60dc:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[1] id=1
   detector: r_without_n
@@ -379,7 +381,7 @@
     spill'
 1c3e0c289269:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[1] id=1
   detector: word_only
@@ -393,7 +395,7 @@
   snippet: assert r.peak_conc_err < 0.10
 1e1272d569b9:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t04_checkpoint_3']
   detector: r_without_n
@@ -401,7 +403,7 @@
     and the convergent flow is **oblique to the grid** (cross-wi...'
 1e80b9812442:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[38] id=38
   detector: word_only
@@ -409,7 +411,7 @@
     solution, and confronted the core trade-off of transport modell...
 1f6b9a5b7676:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[2] id=2
   detector: word_only
@@ -422,7 +424,7 @@
   snippet: end-to-end transport verification is 04t Section 8's 2-D analytical benchmark.
 20b1f3ff70d0:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[38] id=38
   detector: r_without_n
@@ -436,7 +438,7 @@
   snippet: 'c_src: float = 1.0, # spill source concentration [mg/L]'
 218978c50573:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_2']
   detector: r_without_n
@@ -464,7 +466,7 @@
     into MODFLOW 6 language — the advection-dispersion-reaction equat...'
 2272f32c327a:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[1] id=1
   detector: r_without_n
@@ -492,7 +494,7 @@
     a property of the **probe disc**, not of the doublet — it is "the f...'
 24cc975dd8a3:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[7] id=idx-7
   detector: r_without_n
@@ -514,7 +516,7 @@
   snippet: 90 m axis and the equivalent path-averaged velocity ``L / T``.
 27f182030c1d:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[3] id=idx-3
   detector: r_without_n
@@ -528,7 +530,7 @@
   snippet: 'assert r.Pe_L <= 2.0 and r.Pe_T <= 2.0 # grid Peclet OK for advection'
 285af6b54032:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[7] id=idx-7
   detector: r_without_n
@@ -536,7 +538,7 @@
     the monitoring well or clearly bypasses it |'
 2874bdc284f7:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[22] id=idx-22
   detector: word_only
@@ -551,7 +553,7 @@
     mg/L')
 28bae04f4d1f:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_4']
   detector: r_without_n
@@ -559,7 +561,8 @@
     says the water arrives, not that concentration exceeds a threshold"),'
 29a3212aa9c8:
   claim_type:
-  - unclassified
+  - numeric
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t04_checkpoint_predict']
   detector: r_without_n
@@ -567,7 +570,7 @@
     the arrival out that far"),'
 2a89fb006d66:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[7] id=idx-7
   detector: r_without_n
@@ -583,14 +586,15 @@
     in 04t: for the default conservative spill — 3×10⁵ g released over...'
 2b7b64e126ac:
   claim_type:
-  - unclassified
+  - numeric
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_3']
   detector: r_without_n
   snippet: ("A) Earlier toe, broader front, lower peak",
 2b83260e8dc7:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[11] id=idx-11
   detector: r_without_n
@@ -623,7 +627,7 @@
     model |'
 2c74fe1b0d09:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -631,7 +635,7 @@
     q/(\phi_e + \rho_b K_d)$, and the retardation factor $R = 1 + \rho_...'
 2cab46ef88ab:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t04_checkpoint_3']
   detector: r_without_n
@@ -678,14 +682,14 @@
     m spill footprint terminates in the extraction well''s cell — cap...'
 315b50ee041a:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[1] id=1
   detector: r_without_n
   snippet: '- **§5** — Summary'
 33743e1f664e:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t04_checkpoint_predict']
   detector: word_only
@@ -710,7 +714,7 @@
   snippet: print(f" bisected half-width 300 m UPGRADIENT of the spill = {hw_up['halfwidth_m']:.1f} m "
 34d1478bcc89:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: questions_markdown['task_t08_checkpoint_4']
   detector: word_only
@@ -724,7 +728,7 @@
   snippet: 'u_m_per_day = u * 86400 # convert to m/day'
 365a1cac5d98:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[18] id=18
   detector: r_without_n
@@ -744,7 +748,7 @@
   snippet: '"task_t08_checkpoint_3": "A) Earlier toe, broader front, lower peak",'
 37a8f9bd0695:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: word_only
@@ -765,7 +769,7 @@
   snippet: 'assert r.peak_conc_err < 0.10 # peak concentration < 10%'
 39b211c3dc68:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[14] id=14
   detector: word_only
@@ -779,7 +783,7 @@
   snippet: '# centroid moved along the +45 deg diagonal (both x and y increased)'
 3c5c4694d609:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[18] id=18
   detector: r_without_n
@@ -793,7 +797,7 @@
   snippet: axt.set_title('Transverse profile through the peak'); axt.legend(); axt.grid(alpha=0.3)
 3d7e964fdaa9:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t08_checkpoint_2']
   detector: r_without_n
@@ -808,14 +812,14 @@
     \cdot u \approx 23$ m²/d.'
 3e038aaf7146:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[36] id=36
   detector: r_without_n
   snippet: '### Checkpoint 3 — defensible threshold claims'
 3e4454af5461:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: word_only
@@ -841,7 +845,7 @@
   snippet: '# Bound is 1.5x the ANALYTIC asymptote (not 1.1): max_captured_offset is a'
 3fb88eeeb231:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_1']
   detector: r_without_n
@@ -857,7 +861,8 @@
     built the spill→capture SRC-pulse model on the Limmat doublet, veri...'
 423f1171e9ad:
   claim_type:
-  - unclassified
+  - numeric
+  - threshold-decision
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t04_checkpoint_predict']
   detector: r_without_n
@@ -877,7 +882,7 @@
     grid that is adequate for flow is *not* adequate for transport (th...'
 4379c0d1e4f5:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[26] id=idx-26
   detector: r_without_n
@@ -891,7 +896,7 @@
   snippet: '# arrival. Guard (1) with `peak <= 0.0` -> NaN; flag (2) via'
 4604a985ff0f:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_3']
   detector: r_without_n
@@ -899,7 +904,7 @@
     doubles"),'
 46797c72d3c5:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[38] id=38
   detector: r_without_n
@@ -907,7 +912,7 @@
     |'
 46f5f941717f:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -915,7 +920,7 @@
     capture-zone half-width versus the spill''s lateral offset decid...'
 4816f6d82564:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: word_only
@@ -956,7 +961,7 @@
     convergent, non-uniform field will *not* match them cleanly, s...'
 4d3022f8b1b7:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_1']
   detector: r_without_n
@@ -964,7 +969,7 @@
     strong enough attenuation pulls the peak below the threshold and ...'
 4dd22a783b02:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[8] id=idx-8
   detector: r_without_n
@@ -985,7 +990,7 @@
   snippet: a path-averaged v of 4.15 m/d (median arc length 84.4 m / median travel time
 51b96f20750e:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[11] id=idx-11
   detector: r_without_n
@@ -999,7 +1004,7 @@
   snippet: assert hit.peak_mgL == pytest.approx(1.0)
 520676a3505a:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -1013,7 +1018,7 @@
   snippet: '# 1,080 m³/d — stronger throughflow shortens travel time).'
 52b0eab8ad36:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_2']
   detector: r_without_n
@@ -1040,7 +1045,7 @@
   snippet: half = 0.5 * d.breakthrough.max()
 5500885ff0e2:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[1] id=1
   detector: r_without_n
@@ -1059,7 +1064,7 @@
   snippet: '"""Coarse transverse grid delc=10 m (Pe_T=10), otherwise conservative."""'
 56a0a0c9904b:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[8] id=idx-8
   detector: r_without_n
@@ -1067,14 +1072,15 @@
     study the "observation" is the simulated breakthrough at the...'
 56acc94d0c70:
   claim_type:
-  - unclassified
+  - numeric
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_2']
   detector: r_without_n
   snippet: ("A) Later and lower peak",
 570603719d40:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t05_checkpoint_1']
   detector: r_without_n
@@ -1082,14 +1088,14 @@
     mimics lower $\phi_e$ |'
 578717cc9c92:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_1']
   detector: word_only
   snippet: ("B) Capture geometry (Rung D) decides the compliance verdict",
 5807a992e209:
   claim_type:
-  - unclassified
+  - illustrative
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[8] id=8
   detector: r_without_n
@@ -1097,7 +1103,7 @@
     more, so the breakthrough arrives **earlier** (earlier first ar...'
 59af41a931d4:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[0] id=0
   detector: word_only
@@ -1117,7 +1123,7 @@
     — still far above `THRESHOLD_MGL = 1.0` mg/L, so the **verdict i...'
 5a9f16d4889f:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t08_checkpoint_1']
   detector: r_without_n
@@ -1144,7 +1150,7 @@
     ≈5.3 mg/L @ day 39) — earlier and lower, with both grid Péclet numbe...'
 5bbdb33d9b9a:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[13] id=idx-13
   detector: word_only
@@ -1171,7 +1177,7 @@
   snippet: '"task_t02_checkpoint_1": "m/d",'
 5ce3ff217ee9:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t04_checkpoint_3']
   detector: r_without_n
@@ -1179,7 +1185,7 @@
     refining the source→well corridor **recovers the longitudinal ...
 5d7d4422c159:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_4']
   detector: word_only
@@ -1230,7 +1236,7 @@
   snippet: label=f'decay only, half-life 30 d (peak {res_decay.peak_mgL:.2f} mg/L @ day {res_decay.arrival_day:.0f})')
 6267dc59de76:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t05_checkpoint_1']
   detector: r_without_n
@@ -1238,7 +1244,7 @@
     and phi_e separately, and they trade off against each other (e.g. ...'
 62a4f6da9d86:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[3] id=idx-3
   detector: word_only
@@ -1284,7 +1290,7 @@
     2)'
 6bda97627863:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_1']
   detector: r_without_n
@@ -1298,7 +1304,7 @@
   snippet: '# ~89 m Euclidean offset now exceeds 1.1x but not 1.5x. This is exactly why the'
 6d476a0fd6d1:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -1306,7 +1312,7 @@
     doublet''s forced-gradient streamlines that converge on the well, so ...'
 6d4ad5a2d0bc:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[16] id=16
   detector: r_without_n
@@ -1314,7 +1320,7 @@
     the flow model from §4 into one coupled simulation — `build_srcpul...
 6d8641ee9514:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t04_checkpoint_predict']
   detector: r_without_n
@@ -1334,7 +1340,7 @@
     timescale (~20 d) and a concentration peak are different quanti...'
 '702165328551':
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[8] id=idx-8
   detector: r_without_n
@@ -1342,7 +1348,7 @@
     it directly controls arrival time.'
 704bc86387ad:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[10] id=idx-10
   detector: r_without_n
@@ -1356,7 +1362,7 @@
   snippet: assert reactive_demo.peak_mgL > 0.0
 70e878d63052:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[2] id=2
   detector: r_without_n
@@ -1379,7 +1385,8 @@
     clearly bypassing plume it changes only shape and timing. This is ...
 71c659be1260:
   claim_type:
-  - unclassified
+  - numeric
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t08_checkpoint_3']
   detector: r_without_n
@@ -1437,7 +1444,7 @@
   snippet: assert far["halfwidth_m"] > base["halfwidth_m"] + 10.0, (
 76df2de4e173:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[8] id=idx-8
   detector: r_without_n
@@ -1445,7 +1452,7 @@
     and over what duration. In this teaching study the spill is *d...'
 785184d8dbdb:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[2] id=2
   detector: r_without_n
@@ -1471,7 +1478,7 @@
   snippet: fig.colorbar(cm, ax=axes, label='c [mg/L]', shrink=0.85)
 7abd4ccbe090:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -1479,7 +1486,7 @@
     with $y_{\max} = Q/(2Ti)$ – a larger pumping rate $Q$ widens th...'
 7b3f2f4f5d43:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[0] id=0
   detector: word_only
@@ -1487,7 +1494,7 @@
     s compute)* | +10–15 min |'
 7b4acaeac261:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[10] id=idx-10
   detector: word_only
@@ -1536,7 +1543,7 @@
     TVD advection scheme adds essentially **no transverse numerical dis...'
 8036a850c811:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: questions_markdown['task_t08_checkpoint_1']
   detector: r_without_n
@@ -1550,7 +1557,7 @@
   snippet: assert 0.0 < wide.max_captured_offset_m <= wide.asymptotic_halfwidth_m * 1.1
 80d99a547e00:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[38] id=38
   detector: r_without_n
@@ -1564,7 +1571,7 @@
   snippet: same 200/200 capture and identical travel times.
 814adb575aa8:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[14] id=14
   detector: word_only
@@ -1592,7 +1599,7 @@
   snippet: 'assert r.peak_pos_err < 0.05 # peak position < 5%'
 839c21e66350:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[3] id=3
   detector: r_without_n
@@ -1638,7 +1645,7 @@
     (MF6 PRT particle tracking on the actual doublet f...'
 85d3861e1e30:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[26] id=idx-26
   detector: r_without_n
@@ -1646,7 +1653,7 @@
     in path and travel time missed |'
 868092fc3a88:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[12] id=12
   detector: r_without_n
@@ -1667,7 +1674,7 @@
   snippet: f"-> {100*r.peak_conc_err:.2f}%")
 871a8b5c33d7:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[8] id=idx-8
   detector: r_without_n
@@ -1682,7 +1689,7 @@
   snippet: '# The bisected half-width is severely platform-variable (~24% macOS<->hub), so no'
 884900e9cf86:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[1] id=1
   detector: r_without_n
@@ -1715,7 +1722,7 @@
   snippet: Mirrors the exact guard used in build_srcpulse_demo (`peak > 0.0` gates
 8c5bbc9b9fe2:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t04_checkpoint_3']
   detector: r_without_n
@@ -1742,7 +1749,7 @@
     front spreading; peak concentration and arrival shift |'
 8f746af1d653:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[19] id=19
   detector: r_without_n
@@ -1750,7 +1757,7 @@
     window, longitudinal reach, and mass balance are all resolve...'
 90e17229583f:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t05_checkpoint_1']
   detector: r_without_n
@@ -1758,7 +1765,7 @@
     arrival |'
 91f112e62a90:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[14] id=14
   detector: word_only
@@ -1784,7 +1791,7 @@
   snippet: '# meshes solve to demo peaks that differ by up to ~5.4%. Arrival keeps abs=5.0,'
 934ce783d958:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: word_only
@@ -1792,7 +1799,7 @@
     dispersive plume straddles it, so a source just outside the line ca...'
 93a6e4e6987f:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[1] id=idx-1
   detector: r_without_n
@@ -1800,7 +1807,8 @@
     or first-order decay — and how each reshapes the breakthrough
 942ae0b05277:
   claim_type:
-  - unclassified
+  - threshold-decision
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t04_checkpoint_3']
   detector: r_without_n
@@ -1814,14 +1822,14 @@
   snippet: of the doublet. That asymptote is the same screening formula 01t uses as
 96137cc0e1ac:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_3']
   detector: r_without_n
   snippet: '"B) The toe arrives later, the front is sharper, and the peak is higher"),'
 96a75d50c566:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t08_checkpoint_1']
   detector: r_without_n
@@ -1829,7 +1837,7 @@
     tracks *which advective particles are captured* — arrival and timin...'
 972da6db2804:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[4] id=idx-4
   detector: r_without_n
@@ -1849,7 +1857,7 @@
   snippet: '# broader breakthrough curve: width at half max is larger for alpha_L=20.'
 99b93b4c1a19:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[9] id=idx-9
   detector: r_without_n
@@ -1877,7 +1885,7 @@
     advection implicitly (IMS), so it stays stable for $Cr > 1$; the p...
 9c45c231fcf6:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: questions_markdown['task_t08_checkpoint_2']
   detector: r_without_n
@@ -1885,7 +1893,7 @@
     to compare to the conservative one at the compliance well?'
 9c713871a2d4:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[5] id=idx-5
   detector: word_only
@@ -1900,7 +1908,7 @@
     converts from flux to velocity because water only moves thro...'
 9cc5caeeee5c:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[26] id=26
   detector: r_without_n
@@ -1927,7 +1935,7 @@
     mesh.'
 9f409c1b103d:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: questions_markdown['task_t08_checkpoint_3']
   detector: r_without_n
@@ -1942,7 +1950,7 @@
     flow, verifies **arrival timing** (toe, $t_{50}$, front sharpness):'
 a004afc1431f:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: questions_markdown['task_t08_checkpoint_4']
   detector: word_only
@@ -1950,7 +1958,7 @@ a004afc1431f:
     well, and what would that capture verdict tell you (and *not* ...'
 a04430227647:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: word_only
@@ -1971,7 +1979,7 @@ a115aa361a34:
     flow, TVD adds *almost no* transverse numerical dispersi...
 a1193a802aac:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_4']
   detector: word_only
@@ -1997,7 +2005,7 @@ a4c7af7c3a74:
   snippet: 'print(f" peak concentration : {ver.peak_conc_err*100:5.2f}% error")'
 a51ddfb9360e:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -2012,7 +2020,7 @@ a6e32e4df1ca:
     $\alpha_L$, effective porosity $\phi_e$, retardation $R$, and ...'
 a7a4d114f9d8:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[5] id=idx-5
   detector: r_without_n
@@ -2028,7 +2036,7 @@ a85b395ce913:
     fraction 1.000 (200/200), median advective travel time ≈20 d — ...'
 a8c919e89849:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[38] id=38
   detector: r_without_n
@@ -2042,7 +2050,7 @@ a8f7a4af0f31:
   snippet: 4. Coarse-grid transverse smearing (delc=10 -> Pe_T=10) vs the fine grid.
 aa8fd0667c19:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[2] id=2
   detector: r_without_n
@@ -2056,7 +2064,7 @@ ac52663cce6a:
   snippet: assert demo.peak_mgL == pytest.approx(5.28, rel=0.08)
 ac8bd60a1183:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[9] id=idx-9
   detector: r_without_n
@@ -2064,7 +2072,8 @@ ac8bd60a1183:
     (m/day model ⇒ mg/L = g/m³) | **The spill:** a known contaminant m...'
 ada2525365eb:
   claim_type:
-  - unclassified
+  - numeric
+  - threshold-decision
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t04_checkpoint_predict']
   detector: r_without_n
@@ -2085,7 +2094,7 @@ b071440c2cd0:
     m, $\alpha_L = 10$ m). Is it resolved?'
 b0fd7e271cfa:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t08_checkpoint_3']
   detector: r_without_n
@@ -2099,7 +2108,7 @@ b18c6f61f07e:
   snippet: ax.plot(res_decay.times, res_decay.breakthrough, color='seagreen', lw=2.0,
 b2d266374b17:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[32] id=32
   detector: word_only
@@ -2114,7 +2123,7 @@ b2f0ffac6766:
   snippet: 'footprint). Measured: capture fraction 1.000 -- the entire footprint sits'
 b30e2550e32d:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[6] id=6
   detector: r_without_n
@@ -2122,7 +2131,7 @@ b30e2550e32d:
     distance, how does *increasing* $\alpha_L$ change the breakthroug...'
 b338fba8f514:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -2130,7 +2139,7 @@ b338fba8f514:
     regional streamlines past the well and escapes downgradient – litt...'
 b33eddb9964a:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[8] id=idx-8
   detector: word_only
@@ -2145,7 +2154,7 @@ b357c4497053:
     mg/L')
 b45df77c745e:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_1']
   detector: r_without_n
@@ -2166,7 +2175,7 @@ b4af63d7dafd:
     travel time and a dispersive concentration peak are different qu...'
 b548b5f83def:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[0] id=0
   detector: word_only
@@ -2194,7 +2203,7 @@ b69852834ace:
     mg/L')
 b6d9dce102d5:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t08_checkpoint_4']
   detector: r_without_n
@@ -2208,7 +2217,7 @@ b76567e960f3:
   snippet: 'print("The corridor is refined to ~10 m so Pe_L <= 2: the LONGITUDINAL breakthrough at the")'
 b84307e5040a:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: word_only
@@ -2223,14 +2232,15 @@ b887df52e8a8:
   snippet: '# `halfwidth_plus_m` is severely platform-variable (~24% macOS<->hub observed),'
 b9c9a5da1b8a:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_4']
   detector: r_without_n
   snippet: ("A) Yes, fully captured — capture is not exceedance",
 ba353859534f:
   claim_type:
-  - unclassified
+  - numeric
+  - causal
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[31] id=31
   detector: r_without_n
@@ -2244,7 +2254,8 @@ ba6c0e960434:
   snippet: ax.plot(res_R.times, res_R.breakthrough, color='darkorange', lw=2.0,
 bab78e077389:
   claim_type:
-  - unclassified
+  - numeric
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t08_checkpoint_2']
   detector: r_without_n
@@ -2263,7 +2274,7 @@ bc067bb50905:
   snippet: assert 0.0 < capture.meta["halfwidth_plus_m"] < capture.asymptotic_halfwidth_m
 bc0c12bd03be:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[19] id=19
   detector: r_without_n
@@ -2277,7 +2288,8 @@ bc174232b04b:
   snippet: 'the asymptote is only sharp to about +-10%: it is a SCREEN, not a measurement.'
 bc5379c63ef6:
   claim_type:
-  - unclassified
+  - numeric
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_3']
   detector: r_without_n
@@ -2305,7 +2317,7 @@ be18c404f9dc:
   snippet: '"task_t04_checkpoint_predict": "A) Yes, exceeds within ~1-2 months",'
 bef28f712746:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t08_checkpoint_4']
   detector: r_without_n
@@ -2318,7 +2330,7 @@ bfbdee6effc7:
   snippet: '# peak 3.39 mg/L @ day 54.5 (was 3.16 @ 59.1 at 1,080 m³/d). Pins the'
 bfe707fee167:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: questions_markdown['task_t08_checkpoint_1']
   detector: word_only
@@ -2338,14 +2350,14 @@ c1ecaec30091:
     Because the model runs in **days**, convert before use: $D_m^*...'
 c1efc855f829:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_3']
   detector: r_without_n
   snippet: ("B) Later toe, sharper peak, higher peak",
 c2aff7478431:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[14] id=14
   detector: word_only
@@ -2391,7 +2403,7 @@ c6ff5eb74a74:
   snippet: peak_c=0.0, mass_g=0.0)
 c7d29a2cfcf1:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[19] id=idx-19
   detector: word_only
@@ -2399,14 +2411,14 @@ c7d29a2cfcf1:
     exchange (GWHE)** — **injection–extraction doublet wells** that...
 c7e94102340e:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: questions_markdown['task_t04_checkpoint_1']
   detector: r_without_n
   snippet: $$Pe_L = \frac{\Delta x}{\alpha_L}$$
 c80b3502807f:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[12] id=idx-12
   detector: r_without_n
@@ -2414,7 +2426,7 @@ c80b3502807f:
     well** for an upgradient spill. Two framing decisions carry ...
 c8ae81edf5a4:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[1] id=1
   detector: r_without_n
@@ -2422,7 +2434,7 @@ c8ae81edf5a4:
     reshapes a breakthrough curve.
 c9f97e7cb8ab:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[26] id=idx-26
   detector: r_without_n
@@ -2451,14 +2463,14 @@ cc709a28d9d8:
     and capture geometry only move the timing or shape of the br...'
 cd2ac3a8eb5d:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: questions_markdown['task_t05_tt_checkpoint_1']
   detector: r_without_n
   snippet: '- **What is the estimated seepage velocity (m/d)?**'
 cd7a16f7d66d:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[15] id=15
   detector: r_without_n
@@ -2466,7 +2478,7 @@ cd7a16f7d66d:
     assembles the same kind of coupled flow + transport model...'
 cd7ef2bee3c0:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t04_checkpoint_3']
   detector: r_without_n
@@ -2474,7 +2486,7 @@ cd7ef2bee3c0:
     timing).'
 cdcb56e9d73d:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[11] id=idx-11
   detector: r_without_n
@@ -2494,7 +2506,7 @@ ce7a73a273d0:
   snippet: 'print(f" peak position : {ver.peak_pos_err*100:5.2f}% error")'
 cf5ce7dde82c:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[0] id=0
   detector: word_only
@@ -2502,7 +2514,7 @@ cf5ce7dde82c:
     built the coupled flow-and-transport spill→capture model, met the g...'
 cfe3db7faac1:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[21] id=21
   detector: r_without_n
@@ -2516,7 +2528,7 @@ d040b34d1ff1:
   snippet: threshold = 0.01 * demo.peak_mgL
 d0c23cc270ae:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[17] id=idx-17
   detector: r_without_n
@@ -2537,7 +2549,7 @@ d114fb7bc4cd:
     of **weeks-to-a-couple-of-months** is expected, and because a la...
 d4745b9662db:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[21] id=21
   detector: r_without_n
@@ -2550,7 +2562,7 @@ d4b6a6ae3cfd:
   snippet: 'assert far["halfwidth_m"] == pytest.approx(67.5, rel=0.10) # Phase-4 (was 112 at 1,080)'
 d5ebe229411d:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[26] id=idx-26
   detector: word_only
@@ -2558,7 +2570,7 @@ d5ebe229411d:
     Why?**'
 d60b4babbfa9:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[9] id=idx-9
   detector: word_only
@@ -2566,7 +2578,7 @@ d60b4babbfa9:
     water flux; no diffusive exchange at zero net flow. |'
 d62cfd40876c:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[4] id=idx-4
   detector: r_without_n
@@ -2574,7 +2586,7 @@ d62cfd40876c:
     the mean water velocity, $\mathbf{D}$ the hydrodynamic dispe...
 d6ba47520d66:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/05t_calibration.ipynb
   location: cell[6] id=6
   detector: r_without_n
@@ -2595,7 +2607,7 @@ d81c7b7190c0:
   snippet: ax.plot(res_aL.times, res_aL.breakthrough, color='steelblue', lw=2.0,
 d82f1cb6ae01:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: word_only
@@ -2615,7 +2627,7 @@ d858a4bbc93e:
   snippet: '``ath1 = alpha_L / 10.0``. Feeds the DSP package and the Pe_L / Pe_T'
 d8b7d6aeb454:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[1] id=1
   detector: word_only
@@ -2662,7 +2674,7 @@ db2750d25432:
   snippet: 'print(" NOTE: PRT''s advective timescale and the ADE''s day-39 CONCENTRATION peak "'
 db742d1b0313:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_2']
   detector: r_without_n
@@ -2675,7 +2687,7 @@ dc03e04d913f:
   snippet: '# quietly from the already-verified 04t model. NO figure here: the full breakthrough-vs-'
 df7e1408ae3e:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[3] id=idx-3
   detector: r_without_n
@@ -2683,7 +2695,7 @@ df7e1408ae3e:
     at the monitoring well.
 e062f57f9551:
   claim_type:
-  - unclassified
+  - threshold-decision
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[1] id=1
   detector: r_without_n
@@ -2697,7 +2709,7 @@ e100e9492850:
   snippet: 'peak_mgL=1.0, arrival_day=1.0, mass_balance={"a": 1.0}, solubility_ok=True,'
 e29c334b4aa4:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: questions_markdown['task_t08_checkpoint_4']
   detector: word_only
@@ -2749,7 +2761,7 @@ ea17cc64ea64:
   snippet: assert decay_demo.peak_mgL == pytest.approx(3.20, rel=0.08)
 eaff9891a636:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/03t_modflow_transport.ipynb
   location: cell[7] id=idx-7
   detector: r_without_n
@@ -2757,7 +2769,7 @@ eaff9891a636:
     a *resolution* check — is the physical dispersion length $\alpha...
 eb0e9df1b6f5:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_4']
   detector: word_only
@@ -2778,7 +2790,7 @@ ebaf9c2a87e7:
   snippet: arrival = (float(times[int(np.argmax(bt))]) if (bt.size and peak > 0.0)
 ebc59faeace7:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t04_checkpoint_predict']
   detector: r_without_n
@@ -2786,7 +2798,7 @@ ebc59faeace7:
     the simulation"),'
 ebf119bfe249:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/04t_model_implementation.ipynb
   location: cell[29] id=29
   detector: r_without_n
@@ -2794,7 +2806,7 @@ ebf119bfe249:
     **first-order decay** (mass falls as $e^{-\lambda t}$). Turning...
 ebf4d056c108:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/08t_model_application.ipynb
   location: cell[18] id=18
   detector: r_without_n
@@ -2827,14 +2839,14 @@ eddb21659b9b:
   snippet: '(u / R) * t_cmp, 0.0, t_cmp, M, phi_e, m, R, DL, DT, u, lam)) # at moving peak'
 eed195b5d77f:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: questions_markdown['task_t02_checkpoint_1']
   detector: r_without_n
   snippet: '**Calculate the mean water velocity $u$ in m/day.**'
 f01e7c0cc591:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_2']
   detector: r_without_n
@@ -2842,7 +2854,7 @@ f01e7c0cc591:
     moves through the matrix faster even as its peak concentration d...'
 f0ab802e9602:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[0] id=idx-0
   detector: r_without_n
@@ -2870,7 +2882,7 @@ f17f589ff611:
     report how arrival, peak and tail move; sensitivity stands in for ...'
 f2cb5719bb22:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[11] id=idx-11
   detector: r_without_n
@@ -2898,7 +2910,7 @@ f4188e803345:
     it, and the full breakthrough-vs-threshold figure lives there. Two...
 f5bca3f86e0f:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[9] id=idx-9
   detector: r_without_n
@@ -2906,7 +2918,7 @@ f5bca3f86e0f:
     arrival time. These are the parameters you will deliberately stres...
 f66ba1418f0d:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_4']
   detector: word_only
@@ -2919,7 +2931,8 @@ f70e887c8a25:
   snippet: alt = tpc.capture_halfwidth_at(0.0, case_ws=case_ws, **kw)
 f84e61bf44bf:
   claim_type:
-  - unclassified
+  - numeric
+  - causal
   path: PROJECT/transport/02t_perceptual_model.ipynb
   location: cell[14] id=idx-14
   detector: r_without_n
@@ -2927,7 +2940,7 @@ f84e61bf44bf:
     advection scheme this would cause spurious o...
 f8c153e41be4:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_4']
   detector: r_without_n
@@ -2942,7 +2955,7 @@ f91559570d50:
     envelope, and a real, dispersive plume straddles it: a s...'
 f95a6a2d3cd3:
   claim_type:
-  - unclassified
+  - causal
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[6] id=idx-6
   detector: r_without_n
@@ -2963,14 +2976,14 @@ f98ea3094ed1:
     ~50 m* grid to be *above* or *below* the $Pe_L \le 2$ accuracy...'
 fb8f6d9c408e:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: multiple_choice_options['task_t08_checkpoint_2']
   detector: r_without_n
   snippet: ("B) Earlier and lower peak",
 fc1e78857aeb:
   claim_type:
-  - unclassified
+  - causal
   path: _SUPPORT/src/scripts/scripts_exercises/tasks_data.py
   location: solutions_markdown['task_t02_checkpoint_3']
   detector: word_only
@@ -2998,7 +3011,7 @@ fc8c78b9aeef:
     rate [M/T] — in **grams/day** (m/day ⇒ mg/L = g/m³; kg/d is a 1...'
 fcbe750fe873:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[3] id=idx-3
   detector: word_only
@@ -3006,7 +3019,7 @@ fcbe750fe873:
     doublets** – paired wells that pump groundwater up, use it for b...'
 fdceb9c4259f:
   claim_type:
-  - unclassified
+  - not_a_claim
   path: PROJECT/transport/01t_model_goal.ipynb
   location: cell[1] id=idx-1
   detector: r_without_n
