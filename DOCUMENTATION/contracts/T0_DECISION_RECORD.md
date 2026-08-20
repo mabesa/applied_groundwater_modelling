@@ -3,7 +3,7 @@
 **Milestone:** T0 (Contract closure) of `transport_notebook_milestones.md` (READY v7).
 **Status:** ✅ **SIGNED v3 — 2026-08-20, Beatrice Marti.**
 All twelve substantive exit items closed (§2). **T0 is CLOSED and T1 source edits are unblocked**, within
-the C1 allow-list (A1–A9) and subject to §5's limits.
+the C1 allow-list (**A1–A14**, as amended) and subject to §5's limits.
 The codex consolidated review returned **DO-NOT-SIGN** on v2; its findings were folded in and §7 records
 what changed.
 
@@ -18,7 +18,7 @@ planning. It **assembles** them, checks completeness item by item, and carries t
 | Doc | Version | What it freezes |
 |---|---|---|
 | `T0_0_canonical_contract.md` | **v3** | The canonical default-preservation gate: exact invocation · cold-workspace policy · the payload (the **entire** public `SrcPulseDemo` surface, with the 9 `mass_balance` / 17 `meta` / 9 `locked` keys enumerated) · the normalisation · the two-process harness · the §5.1 qualification · the Hub thresholds |
-| `T0_1_C1_v2.md` | **v3** (amended) | C1 v2: enumerated surfaces (**generated**) · invariant gates with per-milestone scoping · the versioned change allow-list (A1–A9) · the numeric-rebaseline table |
+| `T0_1_C1_v2.md` | **v4** (amended 1–2) | C1 v2: enumerated surfaces (**generated**) · invariant gates with per-milestone scoping · the versioned change allow-list (A1–A9) · the numeric-rebaseline table |
 | `T0_1_pinned_surfaces.md` | generated | The **32** result-derived pins in tests and modules — input to C1 §4 |
 | `T0_2a_claim_inventory.json` / `.md` | schema **v3** | **427** candidates / **458** typed assignments over **three** detector nets; **gate exits 0** |
 | `T0_2b_metrics_and_causal_rule.md` | **v4** | Metric algorithms + interpolation · sequences and stopping rules · the three tolerances · the causal-support rule and the `causal-physics` / `causal-numerical` split · both matrices · the claim-typing rules R0–R4 |
@@ -86,7 +86,7 @@ invisible while one detector net was doing the work.
 
 ## 5. What signing does — and does not — do
 
-**Does:** unblocks T1 source edits within the C1 allow-list (A1–A9) — `GridSpec`, the `courant_nstp`
+**Does:** unblocks T1 source edits within the C1 allow-list (**A1–A14**, as amended) — `GridSpec`, the `courant_nstp`
 canonicalisation, the B-control arm, the artifact, the `_src_sha` fix, the pre-authorised payload fields.
 
 **Does not:**
@@ -150,6 +150,7 @@ never silently different from what was signed.
 | # | Date | Document | Change | Re-signed? |
 |---|---|---|---|---|
 | **1** | 2026-08-20 | `T0_1_C1_v2.md` → **v3** | Added allow-list entries **A10–A14** — content-addressed workspaces · fixed source footprint · operator A · GWF-grid sensitivity arm · `claim_support_state` evaluator | **No** — lecturer decision; bounded by C1 §3.1 |
+| **2** | 2026-08-20 | `T0_1_C1_v2.md` → **v4** | **A8 extended to `transport_prt_capture.py`**, which carries its own `_src_sha()` with the identical three-file hole; plus **Appendix B**, the tracked and hashed T1 build-list snapshot that amendments must now cite | **No** — same path; the bound is now checkable |
 
 **What happened.** The T1 plan review found that C1's A1–A9, though signed, **omitted five changes the T1
 build list requires**. Because C1 §3 makes an unlisted change a defect, **no implementation could satisfy
@@ -157,9 +158,15 @@ both the frozen contract and T1's required build list** — T1 was unstartable. 
 READY milestone plan's T1 build list before the signature, so this corrected an **enumeration error**, not
 the scope.
 
-**The bound.** C1 **§3.1** now limits amendments to exactly that: adding entries already required by the
-READY plan at signature time. Anything genuinely new, and any removal or narrowing, still needs a
-signature.
+**The bound, and the hole in it that round 2 found.** C1 §3.1 limits amendments to entries already required
+by pre-existing scope — but v3 pointed that rule at the **gitignored** milestone plan, from which no
+signature-time text can ever be recovered, making the bound unverifiable. **C1 §0/Appendix B (amendment 2)
+closes it**: the T1 build list is now copied into the contract, tracked and SHA-256'd, and amendments cite
+**it**. This is the same defect C1 had already fixed once for the vision document in Appendix A.
+
+⚠️ **Amendment 1 predates Appendix B**, so its authority rests on two independent readings of the milestone
+plan — the assistant's and the reviewer's — rather than on a hash. Amendment 2 onward are anchored. The
+lecturer declined to re-sign.
 
 ⚠️ **Recorded dissent.** The assistant recommended taking the failure edge and re-signing, on the ground
 that an allow-list able to grow without a signature weakens what the signature attests. The lecturer chose
