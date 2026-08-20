@@ -1,98 +1,114 @@
 # T0.5 — The feasibility probe: identity, protocol, ownership
 
 **Milestone:** T0.5 of `transport_notebook_milestones.md` (READY v7).
-**Status:** **DRAFT v1 (2026-08-20)** — signs as part of the single T0 decision record.
+**Status:** **DRAFT v2 (2026-08-20)** — §1 probe rule CORRECTED after the codex consolidated review — signs as part of the single T0 decision record.
 **Thresholds live in `T0_0_canonical_contract.md` §6** (`HUB_FINE_TARGET_S` 600 · `HUB_FINE_CEILING_S` 900 ·
 `HUB_SAFETY_MARGIN` 2.0). This document does **not** restate them; it says **what gets timed, how, and by
 whom**. Codex flagged that §6 referred to a *"named feasibility-probe identity"* that was never named.
 
 ---
 
-## 1. 🔴 The named probe: **G0 / concession `b010210`** — not the notebook demo
+## 1. 🔴 The probe rule — CORRECTED v2: separation was the wrong variable
 
-The refined corridor spans **spill → extraction**, plus the injection well
-(`transport_srcpulse_demo.py:369–371`), so its extent — and therefore the cell count and the runtime —
-is driven mainly by the **doublet separation**. Computed from the shipped roster
-(`_SUPPORT/casestudy_scenarios/doublet_table.csv`, 9 rows):
+**v1 of this document ranked the roster by injection↔extraction separation and named G0 / `b010210`.
+That was wrong**, and the codex consolidated review caught it. The refined corridor is built
+**spill → extraction** (`transport_srcpulse_demo.py:149`, `_corridor_points`), and the timestep count is
+driven by `total_time × max(v/ds)` (`_courant_nstp`, `:188`). **Neither is the well spacing.**
 
-| group | concession | inj↔ext separation | Q (m³/d) |
-|---|---|---|---|
-| **G0** | **b010210** | **240.3 m** ← largest | 4320 |
-| G2 | b010201 | 235.2 m | 4320 |
-| G8 | b010207 | 141.6 m | 4320 |
-| G4 | b010120 | 127.5 m | 4320 |
-| G6 | b010227 | 124.3 m | 4320 |
-| G1 | b010219 | 119.1 m | 4320 |
-| G3 | b010236 | 114.0 m | 4320 |
-| G7 | b010213 | 49.5 m | 4320 |
-| G5 | b010223 | 34.2 m | 4320 |
-| *(demo)* | *b010191* | *200.5 m* | **1370** |
+Recomputed from the shipped per-group scenarios (`PROJECT/workspace/template/case_config_transport.yaml`,
+where the spill is an offset **from the extraction well** and each case carries its own horizon):
 
-🔴 **The probe is defined by a RULE, not by a fixed name** — because the roster is going to grow (§5):
+| concession | spill→ext | inj↔ext | horizon (d) | Q (m³/d) | spill × horizon |
+|---|---|---|---|---|---|
+| **b010227** | **250.3 m** | 124.3 | **1095** | 4320 | **274,126** |
+| b010213 | 136.5 m | 49.5 | 730 | 4320 | 99,615 |
+| b010236 | 130.0 m | 114.0 | 730 | 4320 | 94,869 |
+| b010120 | 92.7 m | 127.5 | 730 | 4320 | 67,638 |
+| b010201 | 113.6 m | 235.2 | 60 | 4320 | 6,816 |
+| b010207 | 97.6 m | 141.6 | 60 | 4320 | 5,858 |
+| **b010210** *(v1's probe)* | 92.4 m | **240.3** | 60 | 4320 | **5,541** |
+| b010219 | 179.3 m | 119.1 | 30 | 4320 | 5,380 |
+| b010223 | 73.3 m | 34.2 | 30 | 4320 | 2,200 |
 
-> **The feasibility probe is the identity with the LARGEST doublet separation in the final release
-> roster.** As of 2026-08-20 that is **G0 / `b010210` (240.3 m)**.
+🔴 **`b010210` is the second-CHEAPEST identity, not the most expensive** — it topped v1's table only because
+it has the widest well spacing, which sets neither corridor length nor step count. v1 would have bounded
+the most expensive case with nearly the cheapest one: **the same failure as the demo-as-proxy trap it was
+written to avoid, in a worse form.** Recorded rather than quietly rewritten, because the reasoning error
+matters more than the wrong name.
 
-**Why the rule and not just the name.** The lecturer requires **at least ten cases** and the roster holds
-nine, so a tenth is still to be built. **If that tenth case has a separation above 240.3 m, G0 stops
-bounding the set and the probe changes with it.** Naming G0 alone would have quietly created a stale bound
-the moment case ten landed — the same failure mode as the demo-as-proxy trap below, one step later.
+### 1.1 The rule, frozen
 
-**Adding or replacing a case therefore requires re-evaluating this table**, and a new maximum is a
-**failure edge to T0.5**, not a silent substitution. It is not a proxy either way: the probe is always one
-of the identities the case study must actually run.
+> **The feasibility probe is the identity that maximises the static cost proxy
+> `spill_to_extraction_distance × simulation_horizon_days` over the final release roster.**
+> As of 2026-08-20 that is **`b010227` — 250.3 m × 1095 d = 274,126, 2.75× the runner-up.**
 
-### 1.1 🔴 Why the notebook demo identity is DISQUALIFIED as a proxy
+**Why a static proxy is legitimate here** *(lecturer decision, 2026-08-20)*: both factors enter the cost
+directly — corridor length sets the refined cell count, and the horizon multiplies the step count at a
+given Courant target — and the margin over the runner-up is wide enough that no plausible weighting
+reorders the top. Pumping rate `Q` is uniform at 4320 m³/d across all nine, so it cannot discriminate.
 
-It would have been the convenient choice, and it under-prices the real work on **two independent axes**:
+### 1.2 The pilot confirms it — and may overturn it
 
-1. **Separation** — the demo is 200.5 m; **G0 (240.3 m) and G2 (235.2 m) are larger**, so the demo's
-   refined corridor is smaller than two real cases.
-2. **Pumping rate** — the demo runs `DOUBLET_Q = 1370` m³/d (`transport_srcpulse_demo.py:79`), while
-   **every group runs 4320 m³/d — 3.15×**. Higher Q means higher cell velocities, a tighter Courant limit,
-   and therefore **more timesteps for the same grid**.
+🔴 **The proxy selects; it does not measure.** **T2's first act is a same-code pilot** over the roster,
+ranking by **measured `ncpl × required_uncapped_nstp`** — the two quantities that actually determine cost,
+with the step demand computed **uncapped** so a cap cannot mask it.
 
-A proxy that is smaller on both axes cannot bound anything. Had T2 timed the demo and reported "fine run
-feasible", the first real group run would have refuted it.
+- If the pilot confirms `b010227`, the timing run proceeds against it.
+- **If the pilot ranks a different identity first, that identity becomes the probe** and this section takes
+  a **failure edge to T0.5**. It is not a silent substitution.
+- The pilot's ranking is recorded with the roster hash, so adding the tenth case re-opens the question
+  explicitly rather than leaving a stale bound.
 
----
+⚠️ **Adding or replacing a case requires re-evaluating both the proxy and the pilot.** The roster is going
+from nine to ten (§5).
 
-## 2. 🔴 Predeclared feasibility risk — the mandatory fine run may already be infeasible
+## 2. 🔴 Predeclared feasibility risk
 
 Recorded **before** T2 measures anything, so the outcome cannot be renegotiated afterwards.
 
-**What is measured, not extrapolated:**
-- The corrected-Courant 2 m corridor for the **demo** identity needs **`nstp = 2000` and ~316 s** on a fast
-  Mac (`transport_notebook_regrid_vision.md:97–101`).
-- `nstp_cap = 2000` (`transport_srcpulse_demo.py:544`). **So that run sat exactly ON the cap** — meaning
-  `cr_target = 0.9` may not have been reached and `cr_capped` would be true.
-- Every group runs **3.15× the demo's pumping rate**.
+**Measured facts:**
+- The corrected-Courant 2 m corridor needs **`nstp = 2000` and ~316 s** for the **notebook demo** identity
+  on a fast Mac (`transport_notebook_regrid_vision.md:97–101`), and the demo's `nstp_cap` **is** 2000
+  (`transport_srcpulse_demo.py:544`) — so that run sat **on the cap**, meaning `cr_target = 0.9` may not
+  have been reached.
+- The demo runs a **60-day-equivalent** exposure at `DOUBLET_Q = 1370` m³/d. The probe case `b010227` runs
+  **1095 days at 4320 m³/d over a 250 m corridor** (§1).
 
-**What follows (EXTRAPOLATION — flagged as such, to be replaced by T2's measurement):** timestep demand
-scales roughly with velocity, so a group fine identity would want **~6,300 steps** against a cap of 2,000,
-and its runtime on the same fast Mac would be of order **~1,200 s** — **already past
-`HUB_FINE_CEILING_S = 900 s` before any Hub multiplier is applied.**
+**The risk, stated without a false-precision multiplier:** the probe's horizon is **18× the demo's**, its
+corridor **~2.8× longer**, and its pumping rate **3.15× higher** — each of which pushes step count or cell
+count the same way. **A fine-grid run of `b010227` is therefore very likely to exceed both the step cap and
+`HUB_FINE_CEILING_S = 900 s`.**
+⚠️ *v1 of this document multiplied a single 3.15× factor onto the demo runtime. That was too crude — step
+demand follows `max(v/ds)` over the mesh, not the pumping rate alone — and it also used the wrong case.
+**The pilot of §1.2 replaces this reasoning with a measurement**; the risk is recorded, the number is not.*
 
-**The predeclared consequences, in force order:**
-1. T1's step-cap rule already says hitting `nstp_cap` **fails loudly**; it may never pass as "honest
-   time-stepping". A capped fine run is **not** a feasible fine run.
-2. If the G0 probe exceeds the ceiling, **T2 fails and takes its declared failure edge** — to T1 for a
-   cheaper `GridSpec`, or to T0 for a revised threshold or a revised requirement. It may **not** be
-   reclassified as a "feasibility stop" (`T0_2b…` §3, stopping rule 2 — that applies to the spatial series,
-   never to the probe).
-3. Raising `nstp_cap` is itself a **T0 decision**, not a T1 convenience: it changes what "resolved in time"
-   means for every claim in the track.
+### 2.1 Resolution criterion vs resource guard — do not conflate them
 
-⚠️ **This is the single most likely way the mandatory per-group fine run turns out to be unaffordable**, and
-it is now on the record before the measurement rather than after it.
+*(codex consolidated review #6.)* v1 said raising `nstp_cap` is a T0 decision. **That was wrong**:
 
----
+- **`cr_target` is the RESOLUTION criterion.** Relaxing it changes what "resolved in time" means for every
+  claim in the track → **a genuine T0 failure edge.**
+- **`nstp_cap` is a RESOURCE GUARD** (`transport_srcpulse_demo.py:544` = 2000;
+  `transport_base_model.py:147,210` = 1000). Raising it to *measure* uncapped demand is **engineering, not
+  a contract change** — and §1.2's pilot needs exactly that freedom.
+
+**What does NOT change:** a run that hits the cap **fails loudly** and may never pass as "honest
+time-stepping" (T1 exit). A capped run is not a feasible run, whatever the cap is set to.
+
+### 2.2 Consequences if the probe exceeds the ceiling
+
+1. **T2 fails and takes its declared failure edge** — to T1 for a cheaper `GridSpec`, or to T0 for a revised
+   threshold or requirement.
+2. It may **not** be reclassified as a "feasibility stop" (`T0_2b…` §3 rule 2 governs the *spatial series*,
+   never the probe).
+3. Reducing a case's **horizon** to fit is a **case-study scenario change**, not a T2 convenience — the
+   horizons in `case_config_transport.yaml` were chosen to capture rise-peak-decline.
 
 ## 3. The timing protocol
 
 | Item | Frozen |
 |---|---|
-| **Identity** | G0 / `b010210`, the finest `GridSpec` in the T0.2b §3 spatial series that the case study requires |
+| **Identity** | **the §1 rule's current selection — `b010227`** — at the finest `GridSpec` in the T0.2b §3 spatial series that the case study requires. Named by rule, confirmed by the §1.2 pilot, recorded with the roster hash |
 | **Executions** | **two COLD runs** (fresh workspace, no warm cache, one process each) **plus one WARM run** |
 | **Gating statistic** | 🔴 **the MAXIMUM of the two cold runs** — not the mean, not the best. A student meets the wall on a bad run, not on an average one |
 | **Warm run** | **recorded, never gating.** It measures cache benefit, and a student's first run is always cold |
@@ -107,7 +123,7 @@ it is now on the record before the measurement rather than after it.
 
 | Who | Does what |
 |---|---|
-| **T2** | Runs the **G0 probe** on the Hub, applies T0.0 §6's threshold as a **pass/fail**, and either meets it or takes the failure edge. Also derives the Hub multiplier `H` from it. **T2 does not run the other eight.** |
+| **T2** | Runs the **§1.2 pilot** over the roster, confirms or corrects the probe, then runs the probe on the Hub and applies T0.0 §6's threshold as a **pass/fail** — meeting it or taking the failure edge. Also derives the Hub multiplier `H`. **T2 does not run the full fine matrix.** |
 | **Case-study M3/M6** | Applies the **same frozen threshold** to **every actual fine identity**. This is where a per-case infeasibility surfaces. |
 | **T5** | Verifies the decided default on a clean Hub. Does not re-decide it. |
 
@@ -146,34 +162,34 @@ the lecturer rather than "corrected" in the contracts.
    cell, not in a river, within the `SPREAD_LIMIT_M = 50 m` pairwise limit for each role — and then
    re-running the pipeline and the group validation.
 
-### 5.1 There is ample supply — and it does NOT move the probe
+### 5.1 Supply is ample — but the tenth case's COST is a design choice, not a roster property
 
 A scan of `Wasserfassungen_-OGD.gpkg` (layer `GS_GRUNDWASSERFASSUNGEN_OGD_P`, LV95) finds **36 in-domain
 geothermal (`WPG`) concessions carrying both an *Entnahme* and a *Rückgabe* well**. Nine are in use, and
-**21 of the remainder also satisfy the 50 m per-role spread limit**. The largest by doublet separation:
+**21 of the remainder also satisfy the 50 m per-role spread limit** — `b010202`, `b010228`, `b010204`,
+`b010224`, `b010212`, `b010230`, `b010214`, `b010200`, `b010220`, `b010232`, `b010211`, `b010231`,
+`b010226`, `b010222`, `b010229`, `b010215`, `b010233`, `b010205`, `b010216`, `b010194`, `b010237`.
 
-| concession | sep (m) | n_ext | n_inj | max spread (m) |
-|---|---|---|---|---|
-| `b010202` | 131.1 | 1 | 1 | 0.0 |
-| `b010228` | 127.8 | 2 | 1 | 8.9 |
-| `b010204` | 117.8 | 2 | 2 | 23.8 |
-| `b010224` | 115.8 | 4 | 6 | 32.1 |
-| `b010212` | 114.8 | 2 | 2 | 24.8 |
-| `b010230` | 114.2 | 1 | 2 | 36.9 |
-| `b010214` | 101.5 | 2 | 2 | 22.0 |
-| `b010200` | 99.8 | 2 | 1 | 10.0 |
+🔴 **A note v1 of this document got wrong.** v1 concluded "no candidate exceeds G0's 240.3 m, so the probe
+is unaffected" — reasoning from **well separation**, the variable §1 has since retired. The correct
+statement is sharper and less comfortable:
 
-🔴 **The largest candidate is 131.1 m, far below G0's 240.3 m — so whichever tenth case is chosen from this
-pool, the §1 rule does not fire and the probe REMAINS G0.** The feasibility work in §2 is therefore not
-blocked on case ten and can proceed now.
+> **The cost of case ten is not a property of the concession.** It is set by the **spill offset** and the
+> **simulation horizon** assigned to that case when its scenario is designed — both of which are authored
+> in `case_config_transport.yaml`, not read from the registry. A tenth case given a long corridor and a
+> multi-year horizon **would become the probe**.
 
-⚠️ **This is a SHORTLIST, not a selection.** The scan applies the boundary polygon, `NUTZART == WPG`, the
-`Entnahme`/`Rückgabe` role split and the spread limit. It does **not** apply the active-cell (`idomain`)
-test, the 20 m river buffer, the both-role ambiguity guards, or the `Ertrag` parsing that sets `Q_m3d`.
-**Only the real pipeline selects a case** — `casestudy_doublet_roster.py` must be re-run, which regenerates
-all five instructor artifacts together (consequence 4 above).
+**Therefore, a constraint on building case ten:** when its scenario is authored, compute
+`spill_to_extraction_distance × horizon_days` and compare against **`b010227`'s 274,126**. If it exceeds
+that, §1's rule fires, the probe changes, and this document takes a **failure edge to T0.5**. Designing the
+tenth case to sit *below* the current maximum keeps the frozen probe valid and is the cheaper path — but
+that is a **scenario-design decision for the lecturer**, not something T0 may impose on pedagogy.
 
----
+⚠️ **The concession list above is a SHORTLIST, not a selection.** The scan applies the boundary polygon,
+`NUTZART == WPG`, the `Entnahme`/`Rückgabe` role split and the spread limit. It does **not** apply the
+active-cell (`idomain`) test, the 20 m river buffer, the both-role ambiguity guards, or the `Ertrag`
+parsing that sets `Q_m3d`. **Only `casestudy_doublet_roster.py` selects a case**, and running it
+regenerates all five instructor artifacts together.
 
 ## 6. Open items
 

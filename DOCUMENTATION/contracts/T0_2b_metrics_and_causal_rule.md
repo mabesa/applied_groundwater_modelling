@@ -1,7 +1,7 @@
 # T0.2b — Metric algorithms, sequences, tolerances and the causal-support rule
 
 **Milestone:** T0.2 of `transport_notebook_milestones.md` (READY v7).
-**Status:** **DRAFT v3 (2026-08-20)** — §2.7 tolerances accepted; codex sign-decision review folded in
+**Status:** **DRAFT v4 (2026-08-20)** — §2.7 tolerances accepted; codex sign-decision review folded in
 (`DESIGN_DOCS/codex_reviews/T0/sign_decision_out.md`, verdict SIGN-WITH-CHANGES). — signs as part of the single T0 decision record.
 **Companion:** `T0_3_claim_support_state.md` owns the vocabulary and the gate order; **this document owns
 the numbers**. Neither restates the other.
@@ -87,7 +87,9 @@ signed.
 - **Tie-break** if two samples share the maximum to within `1e-12` relative, take the **earlier** index and
   record `tie_broken = true` in the evidence. A tie that changes the reported value by more than
   `TOL_TIME_REL` is a **failure edge**, not a silent choice.
-- **T1 obligation** today's `times[argmax(bt)]` (`:732`) is the un-interpolated form and must be replaced.
+- **T1 obligation** today's `times[argmax(bt)]` (`:732`) is the un-interpolated form and **must be replaced
+  ONLY in `exp/vN`; the default path stays unchanged until the JAG** (§2.0). *(The bare phrase "must be
+  replaced" was quotable out of context — codex consolidated review #2a.)*
 - **Tolerance** `TOL_TIME_REL = 2%` relative. ⚠️ **Not an absolute day count** — an absolute tolerance of
   ~1 day would be larger than the lattice step and would absorb the very effect being measured.
 
@@ -116,11 +118,21 @@ signed.
   T0.2's exit explicitly permits a claim to be *"deliberately removed from teaching scope by a recorded
   decision"*, and this is that record.
 
-  **Evidence:** the claim inventory contains **no transport-notebook claim that uses a detection floor**.
-  Searching all 249 candidates for detection language returns three hits, all the ordinary verb *"detect"*
-  in unrelated contexts (PRT verification; error detection in a test docstring). The single occurrence in
-  `01t_model_goal.ipynb` cell 6 — *"a marginal bypass becomes a small detection"* — is prose with no
-  metric, threshold or number attached.
+  🔴 **THE EVIDENCE FOR THIS DECISION WAS CIRCULAR AND IS BEING RE-DERIVED** *(codex consolidated review,
+  exit-item 8)*. The original basis was *"searching all 249 candidates for detection language returns three
+  hits, all the ordinary verb"*. But the inventory's detector required a result word **AND a number on the
+  same line**, so it **structurally cannot find unnumbered detection language** — including the very line
+  cited as harmless, `01t_model_goal.ipynb` cell 6: *"a plume whose centerline would just bypass can clip
+  the well at low concentration (a marginal bypass becomes a small detection)"*, which carries no digits.
+  Searching a corpus that excludes what you are looking for is not evidence.
+
+  **Status: the scope-out is PROVISIONAL and does not discharge exit item 8 until re-derived** against the
+  word-only detector net now being added to the inventory. Two outcomes:
+  - **No notebook claim depends on a detection floor** → the scope-out stands, on evidence that can
+    actually see the claims.
+  - **A claim does depend on one** → `t_first_detection` returns to scope, its algorithm must be frozen
+    here, and the floor is inherited from M0 (`M0_contract_freeze_plan.md:90–97`) — which is itself
+    unfrozen, making M0 a T0 dependency again.
 
   **Consequence:** the floor stays where it is genuinely needed — **M0**, for the case study's
   bypass-versus-arrival-below distinction (`M0_contract_freeze_plan.md:90–97`) — and **M0's unfrozen floor
@@ -154,8 +166,26 @@ absorb over half of the 14.5% effect and is exactly why T1 needs the canonical d
 ## 3. Sequences and stopping rules — predeclared
 
 **Spatial series** — corridor cell size, coarse → fine, each a separate identity:
-`50 m (native) → 20 m → 10 m (current default) → 5 m → 2 m`.
+`50 m (native) → 20 m → 10 m (current default) → 5 m → 2 m`. **5 identities.**
+
 **Temporal series** — `cr_target` tightened at **fixed grid**: `0.9 → 0.45 → 0.225`.
+🔴 **NOT a full factorial** *(codex consolidated review, exit-item 5)*. The governing plan requires temporal
+convergence *"at coarse AND finest grids"* — **not at every spatial point**. "5 × 3" in v3 read as 15
+identities and overstated the matrix.
+
+**The exact `notebook_evidence_matrix` cardinality, frozen:**
+
+| Arm | Identities |
+|---|---|
+| Spatial series (at `cr_target = 0.9`) | **5** |
+| Temporal refinement at the **coarse** grid (50 m), 2 further `cr_target` values | **2** |
+| Temporal refinement at the **finest** grid (2 m), 2 further `cr_target` values | **2** |
+| Operator **A** diagnostic | post-processing only — **0 additional solves** |
+| **B-control** arm, matched coarse + fine | **2** |
+| **TOTAL** | **11 identities** |
+
+The two temporal endpoints reuse their `cr_target = 0.9` runs from the spatial series, so each adds two
+identities rather than three.
 
 **Stopping rules, in force order:**
 1. **Tolerance reached** — two successive refinements move the metric by less than its §2.7 tolerance.
@@ -257,6 +287,36 @@ below, which are recorded **so the same question is never re-litigated candidate
 | **`case_study_release_matrix`** | **40 rough + 10 fine = 50 identities** (≥100 cold/warm executions), with `grid_role` and `counterpart_run_id`. 🔴 **The requirement is ≥10 cases (lecturer, 2026-08-20); the shipped roster has only 9** — the tenth is a BUILD GAP, not an arithmetic error. See `T0_5_feasibility_probe.md` §5. | **case-study M3/M6 — NOT T2** |
 
 Recorded here so T2 is never read as owing 50 identities for cases that do not yet exist. Not reopened.
+
+---
+
+## 5.1 🔴 The evidence-artifact schema, frozen
+
+*(codex consolidated review, exit-item 12: T0.0 §2 freezes the canonical **demo result payload**, which is
+a different object from the **T2 evidence artifact**. The producer, loader and schema tests are T1 work,
+but the SCHEMA itself is a T0 obligation and was missing.)*
+
+Every record in the evidence artifact carries, at minimum:
+
+| Group | Fields |
+|---|---|
+| **Schema** | `schema_version` · `producer` (module + version) |
+| **Run identity** | `run_id` · `grid_spec` (the full parameterisation, not a label) · `cr_target` · `case_id` · `nstp_cap` |
+| **Fingerprints** | `src_sha` (**transitive** module closure, per C1 A8) · `flow_fingerprint` · `gis_hashes` (boundary + rivers) · `locked_params` snapshot · `roster_hash` |
+| **Environment** | OS/arch · MF6 realpath + SHA-256 · `triangle` realpath + SHA-256 · FloPy · NumPy · Python · thread pinning |
+| **Run health** | `solver_status` · `provenance_valid` · `horizon_censored` (from `meta["peak_at_last_step"]`) · `cr_capped` · `nstp`, `Cr`, `ncpl` |
+| **Metrics** | each §2 metric: `value` · `units` · `algorithm_id` (which frozen algorithm produced it) · `interpolated` (bool) · `censored` (bool) · `tie_broken` (bool) |
+| **Support** | `claim_support_state` · `reason_code` · **and the T0.3 §4.7 envelope**: the grid and timestep series, the stopping rule, the tolerance, the `threshold_record_id` |
+| 🔴 **Role** | `run_role` (`spatial_series` / `temporal_series` / `b_control` / `pilot` / `feasibility_probe`) · `is_feasibility_probe` (bool) · `grid_role` · `counterpart_run_id` |
+
+**Why `run_role` is mandatory** *(codex consolidated review #2d)*: the finest run of the probe case can
+occupy **two roles at once** — a point in the spatial series *and* the feasibility probe — and those roles
+have **opposite consequences** when the run exceeds `HUB_FINE_CEILING_S`: a spatial-series point may stop
+legitimately (`§3` rule 2), while the probe **fails** (`T0_5…` §2.2). Without a recorded role the artifact
+cannot tell which rule applies, and the distinction collapses into whichever reading is convenient.
+
+**A record missing any field above is `provenance_valid = false`** and cannot support a claim
+(`T0_3…` §4.1).
 
 ---
 

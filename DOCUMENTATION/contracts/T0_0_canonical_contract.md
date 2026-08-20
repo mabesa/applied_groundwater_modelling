@@ -430,16 +430,20 @@ remains the cheapest outstanding action in the project.**
 
 ---
 
-## 7. Approval
+## 7. Approval — DELEGATED to the single T0 decision record
 
-T0.0 takes effect only when this section is completed. Until then, **no T1 source edit may begin.**
+🔴 **There is ONE signature for all of T0, and it is not here.** *(codex consolidated review #1.)* v2 kept
+its own approval table, so signing the decision record would not have activated this document and signing
+both would have created two dates that could drift apart.
+
+> **T0.0 takes effect when `T0_DECISION_RECORD.md` §6 is signed.** Until then, **no T1 source edit may
+> begin.** This document has no separate signature.
 
 | | |
 |---|---|
-| **Document version** | v2 |
+| **Document version** | **v3** |
 | **Prepared** | 2026-08-20 |
-| **Approved by** | *(name)* |
-| **Approval date** | *(date)* |
+| **Approval** | via `T0_DECISION_RECORD.md` §6 |
 
 **Open items at approval:**
 
