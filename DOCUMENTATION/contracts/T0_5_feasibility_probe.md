@@ -28,8 +28,19 @@ is driven mainly by the **doublet separation**. Computed from the shipped roster
 | G5 | b010223 | 34.2 m | 4320 |
 | *(demo)* | *b010191* | *200.5 m* | **1370** |
 
-**The probe is G0 — the largest real identity — and it is NOT a proxy.** It is one of the nine identities
-the case study must actually run, so it needs no bounding argument beyond the table above.
+🔴 **The probe is defined by a RULE, not by a fixed name** — because the roster is going to grow (§5):
+
+> **The feasibility probe is the identity with the LARGEST doublet separation in the final release
+> roster.** As of 2026-08-20 that is **G0 / `b010210` (240.3 m)**.
+
+**Why the rule and not just the name.** The lecturer requires **at least ten cases** and the roster holds
+nine, so a tenth is still to be built. **If that tenth case has a separation above 240.3 m, G0 stops
+bounding the set and the probe changes with it.** Naming G0 alone would have quietly created a stale bound
+the moment case ten landed — the same failure mode as the demo-as-proxy trap below, one step later.
+
+**Adding or replacing a case therefore requires re-evaluating this table**, and a new maximum is a
+**failure edge to T0.5**, not a silent substitution. It is not a proxy either way: the probe is always one
+of the identities the case study must actually run.
 
 ### 1.1 🔴 Why the notebook demo identity is DISQUALIFIED as a proxy
 
@@ -105,29 +116,68 @@ different obligations sharing one threshold.
 
 ---
 
-## 5. 🔴 Case count: the roster says NINE, the plans say TEN
+## 5. 🔴 RESOLVED: ten cases are REQUIRED; the roster has nine — a build gap
 
-Every shipped instructor artifact agrees on **nine** groups, G0–G8:
+**Lecturer decision, 2026-08-20:** *"We ultimately need at least 10 cases. We currently only have 9 cases.
+That needs an update."*
+
+So the plans were right and the **roster is short by one**. The discrepancy was surfaced by this document
+and resolved in the direction opposite to my own initial reading — which is exactly why it was flagged for
+the lecturer rather than "corrected" in the contracts.
+
+**Current state, verified:** nine groups, G0–G8, everywhere —
 `casestudy_doublet_roster.py:128` (`CONCESSIONS`, 9 entries) · `doublet_table.csv` (9 rows) ·
-`canonical_mapping.csv` (9) · `coherence_ledger.csv` (9) · `threshold_sanity.csv` (9). Repo memory records
-*"all 9 student-group scenarios validated on JupyterHub"*.
+`canonical_mapping.csv` (9) · `coherence_ledger.csv` (9) · `threshold_sanity.csv` (9).
 
-But the parked case-study plan says **"ten cases"** (`casestudy_milestones.md:114,170,214`), and that ten
-propagated into the frozen matrix cardinality as **40 rough + 10 fine = 50 identities** — a number codex
-round 2 declared "settled by arithmetic", where the arithmetic was done against a case count the roster
-contradicts.
+**Consequences, recorded here so nothing silently assumes nine:**
 
-**Against the shipped roster the correct figures are `4 × 9 = 36` rough + **9** fine = **45 identities**.**
+1. **`case_study_release_matrix` stays at 40 rough + 10 fine = 50 identities** (`T0_2b…` §5). It is a
+   requirement, not an observation, and the roster must rise to meet it.
+2. **The probe is defined by the rule in §1**, so the tenth case cannot silently invalidate the bound. If
+   its separation exceeds **240.3 m**, the probe becomes that case.
+3. **Building case ten is CASE-STUDY work, not T0.** It belongs with the parked plan (roster generation →
+   `doublet_table` → `canonical_mapping` → ledgers → validation), and it is **not** a T0 blocker: T0 freezes
+   the contract, and the contract already says ten.
+4. ⚠️ **Every instructor artifact must be regenerated together**, not patched. The five files above are
+   produced by one pipeline and carry cross-referencing shas; hand-adding a row to one of them would
+   desynchronise the set.
+5. ⚠️ **`CONCESSIONS` is a hand-picked tuple** (`casestudy_doublet_roster.py:128`), so adding a case means
+   **choosing a tenth concession** that satisfies the existing roster criteria — in domain, in an active
+   cell, not in a river, within the `SPREAD_LIMIT_M = 50 m` pairwise limit for each role — and then
+   re-running the pipeline and the group validation.
 
-**Recorded, not unilaterally applied.** `T0_2b…` §5 is amended to state the roster-derived numbers with
-this discrepancy flagged, because the authoritative fix belongs to the **parked case-study plan**, and
-resolving it there is the lecturer's call: either a tenth case exists and is unbuilt, or "ten" has been an
-error since M0.
+### 5.1 There is ample supply — and it does NOT move the probe
+
+A scan of `Wasserfassungen_-OGD.gpkg` (layer `GS_GRUNDWASSERFASSUNGEN_OGD_P`, LV95) finds **36 in-domain
+geothermal (`WPG`) concessions carrying both an *Entnahme* and a *Rückgabe* well**. Nine are in use, and
+**21 of the remainder also satisfy the 50 m per-role spread limit**. The largest by doublet separation:
+
+| concession | sep (m) | n_ext | n_inj | max spread (m) |
+|---|---|---|---|---|
+| `b010202` | 131.1 | 1 | 1 | 0.0 |
+| `b010228` | 127.8 | 2 | 1 | 8.9 |
+| `b010204` | 117.8 | 2 | 2 | 23.8 |
+| `b010224` | 115.8 | 4 | 6 | 32.1 |
+| `b010212` | 114.8 | 2 | 2 | 24.8 |
+| `b010230` | 114.2 | 1 | 2 | 36.9 |
+| `b010214` | 101.5 | 2 | 2 | 22.0 |
+| `b010200` | 99.8 | 2 | 1 | 10.0 |
+
+🔴 **The largest candidate is 131.1 m, far below G0's 240.3 m — so whichever tenth case is chosen from this
+pool, the §1 rule does not fire and the probe REMAINS G0.** The feasibility work in §2 is therefore not
+blocked on case ten and can proceed now.
+
+⚠️ **This is a SHORTLIST, not a selection.** The scan applies the boundary polygon, `NUTZART == WPG`, the
+`Entnahme`/`Rückgabe` role split and the spread limit. It does **not** apply the active-cell (`idomain`)
+test, the 20 m river buffer, the both-role ambiguity guards, or the `Ertrag` parsing that sets `Q_m3d`.
+**Only the real pipeline selects a case** — `casestudy_doublet_roster.py` must be re-run, which regenerates
+all five instructor artifacts together (consequence 4 above).
 
 ---
 
 ## 6. Open items
 
-1. **Confirm the case count** (§5) — 9 per the roster, or 10 with a tenth case yet to be built.
+1. ✅ **Case count RESOLVED** (§5): **ten required**, nine built. Selecting and building the tenth is
+   case-study work, tracked there, and does not block T0.
 2. **The extrapolation in §2 is not a measurement.** T2's probe replaces it. If the probe lands under the
    ceiling, §2's risk simply did not materialise — the record stays as evidence that it was predeclared.

@@ -254,7 +254,7 @@ below, which are recorded **so the same question is never re-litigated candidate
 | Matrix | Cardinality | Executed by |
 |---|---|---|
 | **`notebook_evidence_matrix`** | the §3 series: **5 spatial × 3 temporal**, plus the A diagnostic and the matched **B-control** arm at coarse and fine | **T2** |
-| **`case_study_release_matrix`** | 🔴 **36 rough + 9 fine = 45 identities** per the **shipped roster** (9 groups, G0–G8), with `grid_role` and `counterpart_run_id`. *(The parked plan says "40 + 10 = 50"; see `T0_5_feasibility_probe.md` §5 — the case count is flagged for the lecturer, not silently changed.)* | **case-study M3/M6 — NOT T2** |
+| **`case_study_release_matrix`** | **40 rough + 10 fine = 50 identities** (≥100 cold/warm executions), with `grid_role` and `counterpart_run_id`. 🔴 **The requirement is ≥10 cases (lecturer, 2026-08-20); the shipped roster has only 9** — the tenth is a BUILD GAP, not an arithmetic error. See `T0_5_feasibility_probe.md` §5. | **case-study M3/M6 — NOT T2** |
 
 Recorded here so T2 is never read as owing 50 identities for cases that do not yet exist. Not reopened.
 
