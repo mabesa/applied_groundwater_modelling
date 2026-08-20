@@ -1,6 +1,6 @@
 """T0.2a claim inventory: enumerator + coverage gate for the transport track.
 
-Relationship to ``DESIGN_DOCS/transport_stale_number_audit.sh``:
+Relationship to ``_SUPPORT/src/scripts/transport_stale_number_audit.sh``:
     That script and this one do a **different job** but share **the same net**.
     The audit script is a one-shot, human-run `grep` sweep for a fixed list of
     superseded numeric values (Tier 1) plus an independent context sweep of
@@ -189,7 +189,7 @@ import yaml
 
 # ---------------------------------------------------------------------------
 # Scope: the fixed enumerated surface (T0_2a plan S3), restricted from the
-# frozen PATHS list in DESIGN_DOCS/transport_stale_number_audit.sh.
+# frozen PATHS list in _SUPPORT/src/scripts/transport_stale_number_audit.sh.
 # ---------------------------------------------------------------------------
 
 SCOPE_RELATIVE_PATHS: tuple[str, ...] = (
@@ -231,7 +231,7 @@ TASKS_DATA_EXCLUDED_REASON = "registry of task-key -> callable; carries no claim
 TRANSPORT_KEY_PATTERN = re.compile(r"^task_t[0-9]+_")
 FLOW_KEY_PATTERN = re.compile(r"^task[0-9]+_")
 
-AUDIT_SCRIPT_RELATIVE_PATH = "DESIGN_DOCS/transport_stale_number_audit.sh"
+AUDIT_SCRIPT_RELATIVE_PATH = "_SUPPORT/src/scripts/transport_stale_number_audit.sh"
 
 # The third, independent "word_only" net (T0_2a coverage-hole fix; see the
 # module docstring's "Three independent candidate nets" section). This
@@ -1239,7 +1239,7 @@ def render_markdown(report: dict) -> str:
         lines.append("|---|---|---|---|")
         for c in rejected_rows:
             location = _row_location(c)
-            snippet = c["matched_text"].replace("|", "\\|")
+            snippet = _escape_table_snippet(c["matched_text"])
             lines.append(f"| {c['path']} | {location} | {c['detector']} | {snippet} |")
         lines.append("")
 
@@ -1258,11 +1258,29 @@ def render_markdown(report: dict) -> str:
         location = _row_location(c)
         key = c["checkpoint_key"] or ""
         claim_type = ", ".join(c["claim_type"])
-        snippet = c["matched_text"].replace("|", "\\|")
+        snippet = _escape_table_snippet(c["matched_text"])
         lines.append(f"| {location} | {key} | {c['detector']} | {claim_type} | {snippet} |")
     lines.append("")
 
     return "\n".join(lines) + "\n"
+
+
+def _escape_table_snippet(text: str) -> str:
+    """Render quoted source prose inert inside a Markdown table cell.
+
+    Quoted notebook prose is evidence, not navigation: its relative links point at
+    PROJECT/, not at this file's directory, so emitting them live makes the
+    check-internal-links gate red (correctly). Neutralise the link-forming
+    SEQUENCES only -- not the bare characters -- so $math$, `code spans` and
+    <details>/<summary> markup in the quoted text stay byte-identical.
+
+    NOTE: escaping "[" alone is NOT sufficient. MARKDOWN_LINK_RE in
+    check_internal_links.py is not backslash-escape-aware; r"\\[a](b)" still
+    matches. The load-bearing escape is on "](", not on "[".
+    """
+    text = text.replace("|", "\\|")
+    text = text.replace("](", "]\\(")
+    return re.sub(r"<(?=\s*/?\s*(?:a|img)\b)", "&lt;", text, flags=re.IGNORECASE)
 
 
 def _row_location(c: dict) -> str:
