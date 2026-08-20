@@ -1,10 +1,11 @@
 # T0 — The single decision record
 
 **Milestone:** T0 (Contract closure) of `transport_notebook_milestones.md` (READY v7).
-**Status:** **DRAFT v3 (2026-08-20) — SIGNABLE.** All twelve substantive exit items are closed (§2); only the signature remains.
-The codex consolidated review returned **DO-NOT-SIGN**; its findings are folded in and §7 records what
-changed.
-**Until §6 is signed, no T1 source edit may begin.**
+**Status:** ✅ **SIGNED v3 — 2026-08-20, Beatrice Marti.**
+All twelve substantive exit items closed (§2). **T0 is CLOSED and T1 source edits are unblocked**, within
+the C1 allow-list (A1–A9) and subject to §5's limits.
+The codex consolidated review returned **DO-NOT-SIGN** on v2; its findings were folded in and §7 records
+what changed.
 
 This is the one record the milestone's T0 exit requires. It does **not** restate the contracts — each is
 frozen in its own file, and restating them is exactly how a narrower duplicate got adopted twice during
@@ -17,12 +18,12 @@ planning. It **assembles** them, checks completeness item by item, and carries t
 | Doc | Version | What it freezes |
 |---|---|---|
 | `T0_0_canonical_contract.md` | **v3** | The canonical default-preservation gate: exact invocation · cold-workspace policy · the payload (the **entire** public `SrcPulseDemo` surface, with the 9 `mass_balance` / 17 `meta` / 9 `locked` keys enumerated) · the normalisation · the two-process harness · the §5.1 qualification · the Hub thresholds |
-| `T0_1_C1_v2.md` | **v1** | C1 v2: enumerated surfaces (**generated**) · invariant gates with per-milestone scoping · the versioned change allow-list (A1–A9) · the numeric-rebaseline table |
+| `T0_1_C1_v2.md` | **v2** | C1 v2: enumerated surfaces (**generated**) · invariant gates with per-milestone scoping · the versioned change allow-list (A1–A9) · the numeric-rebaseline table |
 | `T0_1_pinned_surfaces.md` | generated | The **32** result-derived pins in tests and modules — input to C1 §4 |
-| `T0_2a_claim_inventory.json` / `.md` | schema v2 | **249** candidates / **267** typed assignments; **gate exits 0** |
-| `T0_2b_metrics_and_causal_rule.md` | **v3** | Metric algorithms + interpolation · sequences and stopping rules · the three tolerances · the causal-support rule and the `causal-physics` / `causal-numerical` split · both matrices · the claim-typing rules R0–R4 |
+| `T0_2a_claim_inventory.json` / `.md` | schema **v3** | **427** candidates / **458** typed assignments over **three** detector nets; **gate exits 0** |
+| `T0_2b_metrics_and_causal_rule.md` | **v4** | Metric algorithms + interpolation · sequences and stopping rules · the three tolerances · the causal-support rule and the `causal-physics` / `causal-numerical` split · both matrices · the claim-typing rules R0–R4 |
 | `T0_3_claim_support_state.md` | **v2** | `claim_support_state`: three states · thirteen reason codes · the ordered gate pipeline · the total compute truth table |
-| `T0_5_feasibility_probe.md` | **v1** | The probe **rule** (largest separation in the final roster → currently **G0 / b010210**) · the cold/warm protocol and gating statistic · the T2 / M3–M6 division of labour · the predeclared feasibility risk |
+| `T0_5_feasibility_probe.md` | **v2** | The probe **rule** — max `spill_distance × horizon` over the release roster, currently **`b010227`**, confirmed by a T2 pilot · the cold/warm protocol and gating statistic · the T2 / M3–M6 division of labour · the predeclared feasibility risk. *(v1 ranked by well separation and named `b010210` — retracted, §7)* |
 
 ---
 
@@ -105,11 +106,12 @@ canonicalisation, the B-control arm, the artifact, the `_src_sha` fix, the pre-a
 
 | | |
 |---|---|
-| **Record version** | v1 |
+| **Record version** | **v3** |
 | **Prepared** | 2026-08-20 |
-| **Constituent versions** | T0.0 v3 · C1 v2 v1 · T0.2a schema v2 · T0.2b v3 · T0.3 v2 · T0.5 v1 |
-| **Approved by** | *(name)* |
-| **Approval date** | *(date)* |
+| **Constituent versions** | T0.0 **v3** · C1 v2 **v2** (incl. Appendix A) · T0.2a schema **v3** (three detector nets) · T0.2b **v4** · T0.3 **v2** · T0.5 **v2** |
+| **Approved by** | **Beatrice Marti** |
+| **Approval date** | **2026-08-20** |
+| **Evidence at signature** | 6/6 qualification pairs PASS, 0 mismatches (`evidence/t0_qualification/`, SHA256SUMS verified) · claim gate exits 0 at **427/427** · **127** tests green |
 
 **By signing, the lecturer confirms:** the tolerances (`TOL_CONC_REL` 2% · `TOL_TIME_REL` 2% ·
 `TOL_WIDTH_REL` 5%) · the Hub thresholds (`600` / `900` / `2.0`) · the receptor decision (A + B-control,

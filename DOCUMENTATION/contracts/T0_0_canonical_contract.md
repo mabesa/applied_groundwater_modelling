@@ -1,7 +1,7 @@
 # T0.0 — Canonical Default Contract Freeze
 
 **Milestone:** T0.0 of `transport_notebook_milestones.md` (READY v7).
-**Status:** **DRAFT v3 — awaiting the named, dated lecturer approval in §7.**
+**Status:** ✅ **SIGNED v3 — via `T0_DECISION_RECORD.md` §6, 2026-08-20, Beatrice Marti.**
 v3 folds the codex **sign-decision review** (`DESIGN_DOCS/codex_reviews/T0/sign_decision_out.md`, verdict
 **SIGN-WITH-CHANGES — do not sign v2**).
 v2 folds all nine findings of codex review round 1 (**BLOCK**, 2026-08-20) —
@@ -436,8 +436,9 @@ remains the cheapest outstanding action in the project.**
 its own approval table, so signing the decision record would not have activated this document and signing
 both would have created two dates that could drift apart.
 
-> **T0.0 takes effect when `T0_DECISION_RECORD.md` §6 is signed.** Until then, **no T1 source edit may
-> begin.** This document has no separate signature.
+> **T0.0 took effect when `T0_DECISION_RECORD.md` §6 was signed — 2026-08-20, Beatrice Marti.**
+> This document has no separate signature. **T1 source edits are now permitted**, within the C1 allow-list.
+> 🔴 **Changing anything frozen here is now a FAILURE EDGE to T0, not an edit.**
 
 | | |
 |---|---|
