@@ -25,8 +25,11 @@ Run with:  uv run pytest _SUPPORT/tests/test_transport_prt_capture.py
 Use `-m "not slow"` for only the fast, solve-free tests.
 """
 import dataclasses
+import json
 import math
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -202,45 +205,73 @@ def test_src_sha_runs_for_real_and_tracks_every_model_source(tmp_path):
     `test_module_source_change_busts_cache` below stands in for an edit by replacing
     `_src_sha` with a lambda, which means rewriting `_src_sha` as `return "constant"`
     would keep that test green while every warm cache silently served a stale model.
-    So run the REAL `_src_sha()` here and require it to move when EITHER of the three
-    source files the model is built from is edited on disk:
+    So run the REAL `_src_sha()` here and require it to move when ANY member of the
+    TRANSITIVE `_SUPPORT/src` closure (T1 S1; DESIGN_DOCS/T1_S1_brief.md) is edited on
+    disk -- not merely the three files this test used to hand-pick:
 
-      * transport_prt_capture   -- the PRT model itself
-      * transport_srcpulse_demo -- the doublet, the spill rule, the corridor refinement
-      * model_io_utils          -- it BUILDS the refined grid (mio.build_refined_gwf_model);
-                                   this one was MISSING, so an edit to grid generation
-                                   left every warm cache valid while the grid moved.
+      * transport_prt_capture, transport_srcpulse_demo, model_io_utils -- the original
+        three (model_io_utils BUILDS the refined grid via
+        `mio.build_refined_gwf_model`; missing it left an edit to grid generation
+        silently invisible to every warm cache), PLUS
+      * disv_grid_utils, grid_utils, data_utils, casestudy_refine_riv,
+        case_artifact_lock -- model_io_utils's own deferred (function-body) local
+        imports, which S1 closes the same gap for.
 
-    The same fingerprint gap existed in the ADE demo, so its `_src_sha` is checked here
-    too.  Solve-free.  Each file is restored in a `finally`, and the digests are
-    re-asserted equal to the baseline afterwards, so a failure cannot leave the working
-    tree dirty unnoticed.
+    The same closure gap existed in the ADE demo, so its `_src_sha` is checked here
+    too.  Solve-free.
+
+    Isolation (S5.1): the closure is copied into a temp `_SUPPORT/src/`, and the
+    resolver runs against THAT COPY in a subprocess (`_probe`) -- never the live
+    working tree. A crash, SIGINT, or parallel workers therefore cannot leave the
+    repository modified, unlike the old in-place `write` / `finally: restore` pattern
+    this test used to follow.
     """
-    import model_io_utils as mio
-    import transport_srcpulse_demo as tsd
+    prt_expected = {
+        "case_artifact_lock", "casestudy_refine_riv", "data_utils",
+        "disv_grid_utils", "grid_utils", "model_io_utils",
+        "transport_srcpulse_demo", "transport_prt_capture",
+    }
+    src_dir = tmp_path / "_SUPPORT" / "src"
+    src_dir.mkdir(parents=True)
+    real_src_dir = Path(tpc.__file__).resolve().parent
+    for name in prt_expected:
+        shutil.copy2(real_src_dir / f"{name}.py", src_dir / f"{name}.py")
 
-    base_prt = tpc._src_sha()
-    base_ade = tsd._src_sha()
-    assert len(base_prt) == 16 and len(base_ade) == 16
+    def _probe(code: str) -> subprocess.CompletedProcess:
+        preamble = f"import sys; sys.path.insert(0, {str(src_dir)!r})\n"
+        return subprocess.run([sys.executable, "-c", preamble + code],
+                              capture_output=True, text=True, timeout=180)
 
-    for mod in (tpc, tsd, mio):
-        p = Path(mod.__file__)
-        original = p.read_bytes()
-        (tmp_path / p.name).write_bytes(original)          # belt-and-braces backup
+    def _digests() -> dict:
+        proc = _probe(
+            "import json\n"
+            "import transport_prt_capture as tpc\n"
+            "import transport_srcpulse_demo as tsd\n"
+            'print(json.dumps({"prt": tpc._src_sha(), "ade": tsd._src_sha()}))\n')
+        assert proc.returncode == 0, proc.stderr
+        return json.loads(proc.stdout)
+
+    baseline = _digests()
+    assert len(baseline["prt"]) == 16 and len(baseline["ade"]) == 16
+
+    demo_members = prt_expected - {"transport_prt_capture"}
+    for name in sorted(prt_expected):
+        member = src_dir / f"{name}.py"
+        original = member.read_bytes()
         try:
-            p.write_bytes(original + b"\n# a model-changing edit\n")
-            assert tpc._src_sha() != base_prt, (
-                f"editing {p.name} did NOT change transport_prt_capture's _src_sha(): "
-                "an edited model would keep serving stale cached results")
-            if mod is not tpc:
-                assert tsd._src_sha() != base_ade, (
-                    f"editing {p.name} did NOT change transport_srcpulse_demo's "
+            member.write_bytes(original + b"\n# a model-changing edit\n")
+            edited = _digests()
+            assert edited["prt"] != baseline["prt"], (
+                f"editing {name}.py did NOT change transport_prt_capture's "
+                "_src_sha(): an edited model would keep serving stale cached results")
+            if name in demo_members:
+                assert edited["ade"] != baseline["ade"], (
+                    f"editing {name}.py did NOT change transport_srcpulse_demo's "
                     "_src_sha(): same bug, other module")
         finally:
-            p.write_bytes(original)
+            member.write_bytes(original)
 
-    assert tpc._src_sha() == base_prt
-    assert tsd._src_sha() == base_ade
+    assert _digests() == baseline
 
 
 def test_release_z_stays_below_the_water_table():

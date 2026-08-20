@@ -32,6 +32,7 @@ Author: Applied Groundwater Modelling Course (transport track, M2 SRC demo)
 """
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import math
@@ -299,19 +300,155 @@ def _default_case_ws() -> Path:
     return Path(get_default_data_folder()) / "transport_srcpulse_demo"
 
 
+# ---------------------------------------------------------------------------
+# Transitive `_SUPPORT/src` source-closure fingerprint (T1 S1;
+# DESIGN_DOCS/T1_S1_brief.md). Shared by this module's ``_src_sha()`` and
+# ``transport_prt_capture``'s -- ONE implementation so the two cannot drift.
+#
+# The scan is AST-based over the ENTIRE module, at any nesting depth: local
+# dependencies deferred inside a function (e.g. ``model_io_utils`` importing
+# ``disv_grid_utils`` only inside ``build_refined_gwf_model``) must still be
+# discovered, or a source edit there would leave every warm cache valid while
+# the grid moved underneath it -- the exact bug class this repo has already
+# shipped once. Static on source TEXT: never import a candidate module to see
+# its imports -- importing executes module-level code and drags in FloPy.
+# ---------------------------------------------------------------------------
+def _closure_import_names(path: Path) -> set[str]:
+    """First-dotted-segment import names ``path`` references, at any AST depth.
+
+    ``Import`` -> each ``alias.name``'s first dotted segment. ``ImportFrom`` ->
+    ``node.module``'s first segment. Aliases (``as y``) and imported symbols do
+    not change the edge.
+
+    Raises ``ValueError`` on a relative import (``node.level > 0``) or a
+    dynamic import (``__import__`` / ``importlib``) -- neither occurs in this
+    closure today, and guessing at their target would be worse than refusing.
+    """
+    try:
+        source = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"cannot read source-closure member {path}: {exc}") from exc
+    try:
+        tree = ast.parse(source, filename=str(path))
+    except SyntaxError as exc:
+        raise ValueError(f"cannot parse source-closure member {path}: {exc}") from exc
+
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id == "__import__":
+            raise ValueError(
+                f"{path}: dynamic import via '__import__' is not supported by "
+                "the source-closure scan (refusing to guess its target)")
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                top = alias.name.split(".")[0]
+                if top == "importlib":
+                    raise ValueError(
+                        f"{path}: dynamic import via 'importlib' is not "
+                        "supported by the source-closure scan (refusing to "
+                        "guess its target)")
+                names.add(top)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level and node.level > 0:
+                raise ValueError(
+                    f"{path}: relative import (level={node.level}) is not "
+                    "supported by the source-closure scan (refusing to guess "
+                    "its target)")
+            if node.module:
+                top = node.module.split(".")[0]
+                if top == "importlib":
+                    raise ValueError(
+                        f"{path}: dynamic import via 'importlib' is not "
+                        "supported by the source-closure scan (refusing to "
+                        "guess its target)")
+                names.add(top)
+    return names
+
+
+def _resolve_src_closure(root_path: Union[str, Path]) -> dict[str, Path]:
+    """Transitive ``_SUPPORT/src`` closure of ``root_path``, as ``{name: Path}``.
+
+    A name is IN the closure iff it resolves to ``_SUPPORT/src/<name>.py``;
+    stdlib and third-party names are out of scope. Transitive, with a
+    ``visited`` set so a cycle among local modules terminates instead of
+    recursing forever -- a cycle is not itself an error.
+    """
+    src_dir = Path(__file__).resolve().parent
+    root = Path(root_path).resolve()
+    visited: dict[str, Path] = {}
+    stack = [root]
+    while stack:
+        current = stack.pop()
+        stem = current.stem
+        if stem in visited:
+            continue
+        visited[stem] = current
+        for name in _closure_import_names(current):
+            candidate = src_dir / f"{name}.py"
+            if candidate.is_file() and candidate.stem not in visited:
+                stack.append(candidate)
+    return visited
+
+
+def _framed_closure_digest(members) -> str:
+    """SHA1 (first 16 hex chars) of a length-framed, sorted record sequence.
+
+    Each record is ``(repo-relative POSIX path, sha256 of that file's bytes)``,
+    sorted by path, with every field length-prefixed. FRAMED, not concatenated:
+    plain concatenation of path-bytes + file-bytes has no boundary marker, so a
+    byte moved from the end of one member's content to the start of the next's
+    would leave the concatenated stream -- and the digest -- unchanged.
+    """
+    repo_root = Path(__file__).resolve().parents[2]
+    records: list[tuple[str, bytes]] = []
+    for member in members:
+        path = Path(member).resolve()
+        try:
+            rel = path.relative_to(repo_root).as_posix()
+        except ValueError as exc:
+            raise ValueError(
+                f"source-closure member {path} is outside repo root "
+                f"{repo_root}") from exc
+        try:
+            content = path.read_bytes()
+        except OSError as exc:
+            raise ValueError(
+                f"cannot read source-closure member {path}: {exc}") from exc
+        records.append((rel, hashlib.sha256(content).digest()))
+    records.sort(key=lambda r: r[0])
+
+    h = hashlib.sha1()
+    for rel, digest in records:
+        rel_b = rel.encode("utf-8")
+        h.update(len(rel_b).to_bytes(4, "big"))
+        h.update(rel_b)
+        h.update(len(digest).to_bytes(4, "big"))
+        h.update(digest)
+    return h.hexdigest()[:16]
+
+
+def _src_closure_digest(root_path: Union[str, Path]) -> str:
+    """Framed digest (see ``_framed_closure_digest``) of the transitive
+    ``_SUPPORT/src`` closure of ``root_path`` (see ``_resolve_src_closure``)."""
+    closure = _resolve_src_closure(root_path)
+    return _framed_closure_digest(closure.values())
+
+
 def _src_sha() -> str:
     """SHA of every module SOURCE this model is built from.
 
-    THIS module (the doublet, the spill rule, the SRC/MST wiring, the Courant sizing)
-    AND ``model_io_utils``, which BUILDS the refined grid (``mio.build_refined_gwf_model``).
-    An edit to grid generation changes this model just as surely as an edit here does,
-    and without it that edit would leave every warm cache valid while the grid moved
-    underneath it -- the exact bug class this repo has already shipped once.
+    The TRANSITIVE ``_SUPPORT/src`` closure of this module -- not a hand-picked
+    file list. Covers THIS module (the doublet, the spill rule, the SRC/MST
+    wiring, the Courant sizing) and every local module it imports, directly or
+    indirectly, at ANY nesting depth -- including deferred imports inside
+    functions, e.g. ``model_io_utils`` deferring ``disv_grid_utils`` (which
+    BUILDS the refined grid) inside ``build_refined_gwf_model``. An edit
+    anywhere in that closure changes this model just as surely as an edit here
+    does, and without covering it that edit would leave every warm cache valid
+    while the grid moved underneath it -- the exact bug class this repo has
+    already shipped once. See ``_resolve_src_closure`` / ``_framed_closure_digest``.
     """
-    h = hashlib.sha1()
-    for p in (Path(__file__), Path(mio.__file__)):
-        h.update(p.read_bytes())
-    return h.hexdigest()[:16]
+    return _src_closure_digest(Path(__file__))
 
 
 # ---------------------------------------------------------------------------

@@ -182,6 +182,10 @@ from transport_srcpulse_demo import (  # noqa: F401  (re-exported on purpose)
     _load_calibrated_flow,
     _refine_with_retry,
     _run_failure_tail,
+    # T1 S1: the ONE shared transitive-source-closure fingerprint helper --
+    # this module's `_src_sha()` reuses it rather than re-implementing the
+    # AST scan, so the two `_src_sha()`s cannot drift.
+    _src_closure_digest,
 )
 
 # Solver policy for the steady flow model (same as the ADE demo's GWF).
@@ -364,25 +368,29 @@ def _strong_sink_check(gwf, cell: int) -> Tuple[float, float]:
 def _src_sha() -> str:
     """SHA of every module SOURCE this model is built from.
 
+    The TRANSITIVE ``_SUPPORT/src`` closure of this module (T1 S1; see
+    ``transport_srcpulse_demo._resolve_src_closure`` / ``_framed_closure_digest``,
+    the ONE shared implementation both ``_src_sha()``s use) -- not a hand-picked
+    file list. That closure covers, at minimum:
+
     * THIS module -- the doublet GWF, the FMI wiring, the release layout, the fate
       classification.
     * ``transport_srcpulse_demo`` -- the doublet coordinates, the pumping rate, the
       spill-offset rule and the corridor-refinement retry guard all live there.
-    * ``model_io_utils`` -- it BUILDS the refined grid (``mio.build_refined_gwf_model``).
-      Editing grid generation changes the model, and without this the edit would leave
-      every warm cache valid while the grid moved underneath it.  This repo has already
-      shipped that exact bug class once.
+    * ``model_io_utils`` -- it BUILDS the refined grid (``mio.build_refined_gwf_model``),
+      itself deferring to ``disv_grid_utils``, ``grid_utils``, ``data_utils``,
+      ``casestudy_refine_riv`` and ``case_artifact_lock`` inside its functions. The
+      scan is AST-based at any nesting depth, so those deferred imports are covered
+      too. Editing grid generation changes the model, and without this the edit
+      would leave every warm cache valid while the grid moved underneath it.  This
+      repo has already shipped that exact bug class once.
 
     NOTE: this function is deliberately NOT monkeypatched in the test that proves it
-    works (`test_src_sha_tracks_every_model_source`) -- that test rewrites a byte of
-    each real file on disk and requires the digest to move.
+    works (`test_src_sha_runs_for_real_and_tracks_every_model_source`) -- that test
+    rewrites a byte of each real closure member on disk and requires the digest to
+    move.
     """
-    import model_io_utils as _mio
-    import transport_srcpulse_demo as _tsd
-    h = hashlib.sha1()
-    for p in (Path(__file__), Path(_tsd.__file__), Path(_mio.__file__)):
-        h.update(p.read_bytes())
-    return h.hexdigest()[:16]
+    return _src_closure_digest(Path(__file__))
 
 
 def _flow_fp() -> str:
