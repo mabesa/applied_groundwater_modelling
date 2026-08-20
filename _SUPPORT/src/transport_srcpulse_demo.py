@@ -116,8 +116,31 @@ class SrcPulseDemo:
     rho_b: float                            # dry bulk density [kg/m^3]
     Kd: float                               # distribution coefficient [m^3/kg] (0.0 when R==1)
     lam: float                              # first-order decay rate [1/d] (0.0 = no decay)
+    # ---- T1 S2 (DESIGN_DOCS/T1_S2_brief.md v2): pre-authorised payload fields,
+    # placed AFTER lam (the last non-default field) -- a defaulted, init-enabled
+    # field inserted earlier would raise "non-default argument follows default
+    # argument" (brief Section 3.2). No behaviour change: both sit at their
+    # identity default until a later milestone (S9b/S9c) makes them real.
+    sink_support_m: float = 0.0             # [m] extraction-support disc radius;
+                                             # 0.0 == today's behaviour exactly (the
+                                             # whole rate on one nearest-centroid cell)
+    # `t_peak` is the T1/T2 lattice alias of `arrival_day` (contract A7). It is
+    # declared `init=False` and derived in `__post_init__` -- NOT assigned at a
+    # call site and NOT a `@property` (the T0 gate harness enumerates the payload
+    # via `dataclasses.fields()`, which a property is invisible to). Passing
+    # `t_peak=` to the constructor therefore raises TypeError rather than being
+    # silently accepted/corrected: a silent override would mask a missed JAG
+    # transition later, when `t_peak` legitimately diverges from `arrival_day`
+    # (brief Section 3.1, codex S2 review #2).
+    t_peak: float = field(init=False)
     meta: Dict[str, Any] = field(default_factory=dict)
     locked: Dict[str, Any] = field(default_factory=lambda: dict(LOCKED_PARAMS))
+
+    def __post_init__(self) -> None:
+        # The lattice alias: exactly `arrival_day`, cast to `float` (a no-op for
+        # an already-float value, and NaN-preserving when arrival_day is NaN --
+        # see the "never arrives" guard in build_srcpulse_demo).
+        self.t_peak = float(self.arrival_day)
 
 
 # ---------------------------------------------------------------------------
@@ -903,12 +926,22 @@ def build_srcpulse_demo(
             f"(Cr_actual={cr_act:.3f}). Diagnostics/results may be under-resolved "
             "in time -- consider raising nstp_cap.", RuntimeWarning, stacklevel=2)
 
+    # T1 S2 (brief Section 3.3): the apportionment ACTUALLY applied by the WEL
+    # construction in `add_flow_model` -- the whole doublet rate on the single
+    # nearest-centroid extraction cell. `extc`/`DOUBLET_Q` are read off THIS
+    # run, never hardcoded a second time. Sorted by cell index (trivial with
+    # one entry, but written now so a future multi-cell apportionment -- S9c --
+    # inherits an already-sorted invariant).
+    sink_support_cells = sorted(
+        [(int(extc), -abs(float(DOUBLET_Q)))], key=lambda pair: pair[0])
+
     meta = dict(ncpl=ncpl, nstp=nstp, dt=dt, Cr=cr_act, n_src=n_src,
                 q_src_darcy=q_src, b_src=b_src, ds_src=ds_src, q_cell=q_cell,
                 v_bind=cdiag["v_bind"], ds_bind=cdiag["ds_bind"],
                 ds_true_min=cdiag["ds_true_min"], courant_floor=cdiag["floor"],
                 refine_radius_used=refine_radius_used, u_reg=tuple(u_reg),
-                cr_capped=cr_capped, peak_at_last_step=peak_at_last_step)
+                cr_capped=cr_capped, peak_at_last_step=peak_at_last_step,
+                sink_support_cells=sink_support_cells)
 
     result = SrcPulseDemo(
         times=times, breakthrough=bt, peak_mgL=peak, arrival_day=arrival,
@@ -919,7 +952,11 @@ def build_srcpulse_demo(
         smassrate_gpd=smassrate, src_cells=src_cells, ext_cell=extc, inj_cell=injc,
         spill_xy=(float(spill_xy[0]), float(spill_xy[1])),
         alpha_L=alpha_L_eff, alpha_T=alpha_T_eff, R=float(R), rho_b=float(rho_b),
-        Kd=float(Kd), lam=float(lam), meta=meta)
+        Kd=float(Kd), lam=float(lam),
+        # T1 S2: identity default (brief Section 3.2). No builder parameter in
+        # S2 -- constant until S9b makes it real. `t_peak` is NOT passed here
+        # (init=False; derived in __post_init__ from arrival_day above).
+        sink_support_m=0.0, meta=meta)
 
     _save_cache(cache, result, params)
     return result
@@ -1062,6 +1099,10 @@ def _save_cache(path: Path, r: SrcPulseDemo, params: Dict[str, Any]) -> None:
              smassrate_gpd=r.smassrate_gpd, src_cells=np.array(r.src_cells),
              ext_cell=r.ext_cell, inj_cell=r.inj_cell, spill_xy=np.array(r.spill_xy),
              alpha_L=r.alpha_L, alpha_T=r.alpha_T, R=r.R, rho_b=r.rho_b, Kd=r.Kd, lam=r.lam,
+             # T1 S2: the two new top-level fields must round-trip too -- an
+             # existing test (test_cache_round_trip_fidelity) asserts every
+             # CURRENT dataclass field has a matching npz key.
+             sink_support_m=r.sink_support_m, t_peak=r.t_peak,
              meta=r.meta, locked=r.locked, params=params, allow_pickle=True)
 
 
@@ -1106,6 +1147,21 @@ def _load_cache(path: Path, params: Dict[str, Any]) -> Optional[SrcPulseDemo]:
             else:
                 if abs(float(sv) - float(v)) > 1e-9:
                     return None              # params changed -> rebuild
+
+        # T1 S2 (brief Section 3.1): `t_peak` is `init=False`, so it cannot be
+        # passed to the SrcPulseDemo constructor below -- instead the STORED
+        # value is read and VALIDATED against the STORED `arrival_day`,
+        # NaN-aware (arrival_day is legitimately NaN when the plume never
+        # arrives; see the guard in build_srcpulse_demo). A mismatch means the
+        # cached alias is corrupt or stale relative to the value it aliases --
+        # that is a CACHE MISS, never a silent repair (an override here would
+        # mask a genuine JAG-era divergence between t_peak and arrival_day).
+        stored_t_peak = float(z["t_peak"])
+        stored_arrival = float(z["arrival_day"])
+        both_nan = math.isnan(stored_t_peak) and math.isnan(stored_arrival)
+        if not both_nan and stored_t_peak != stored_arrival:
+            return None                      # stored alias mismatch -> rebuild
+
         return SrcPulseDemo(
             times=z["times"], breakthrough=z["breakthrough"],
             peak_mgL=float(z["peak_mgL"]), arrival_day=float(z["arrival_day"]),
@@ -1126,6 +1182,9 @@ def _load_cache(path: Path, params: Dict[str, Any]) -> Optional[SrcPulseDemo]:
             spill_xy=(float(z["spill_xy"][0]), float(z["spill_xy"][1])),
             alpha_L=float(z["alpha_L"]), alpha_T=float(z["alpha_T"]),
             R=float(z["R"]), rho_b=float(z["rho_b"]), Kd=float(z["Kd"]), lam=float(z["lam"]),
+            # T1 S2: sink_support_m IS init-enabled (unlike t_peak) -- pass the
+            # stored value through so it round-trips like every other field.
+            sink_support_m=float(z["sink_support_m"]),
             meta=dict(z["meta"].item()), locked=dict(z["locked"].item()))
     except Exception:
         return None
