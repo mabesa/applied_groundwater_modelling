@@ -1,7 +1,8 @@
 # T0 — The single decision record
 
 **Milestone:** T0 (Contract closure) of `transport_notebook_milestones.md` (READY v7).
-**Status:** ✅ **SIGNED v3 — 2026-08-20, Beatrice Marti.**
+**Status:** ✅ **SIGNED v3, RE-SIGNED v4 — 2026-08-20, Beatrice Marti** (re-signature covers C1 v5,
+amendments 1–3; see §8).
 All twelve substantive exit items closed (§2). **T0 is CLOSED and T1 source edits are unblocked**, within
 the C1 allow-list (**A1–A14**, as amended) and subject to §5's limits.
 The codex consolidated review returned **DO-NOT-SIGN** on v2; its findings were folded in and §7 records
@@ -18,7 +19,7 @@ planning. It **assembles** them, checks completeness item by item, and carries t
 | Doc | Version | What it freezes |
 |---|---|---|
 | `T0_0_canonical_contract.md` | **v3** | The canonical default-preservation gate: exact invocation · cold-workspace policy · the payload (the **entire** public `SrcPulseDemo` surface, with the 9 `mass_balance` / 17 `meta` / 9 `locked` keys enumerated) · the normalisation · the two-process harness · the §5.1 qualification · the Hub thresholds |
-| `T0_1_C1_v2.md` | **v4** (amended 1–2) | C1 v2: enumerated surfaces (**generated**) · invariant gates with per-milestone scoping · the versioned change allow-list (**A1–A14**, as amended) · the numeric-rebaseline table |
+| `T0_1_C1_v2.md` | **v5** (re-signed; amendments 1–3) | C1 v2: enumerated surfaces (**generated**) · invariant gates with per-milestone scoping · the versioned change allow-list (**A1–A14**, as amended) · the numeric-rebaseline table |
 | `T0_1_pinned_surfaces.md` | generated | The **32** result-derived pins in tests and modules — input to C1 §4 |
 | `T0_2a_claim_inventory.json` / `.md` | schema **v3** | **427** candidates / **458** typed assignments over **three** detector nets; **gate exits 0** |
 | `T0_2b_metrics_and_causal_rule.md` | **v4** | Metric algorithms + interpolation · sequences and stopping rules · the three tolerances · the causal-support rule and the `causal-physics` / `causal-numerical` split · both matrices · the claim-typing rules R0–R4 |
@@ -106,11 +107,11 @@ canonicalisation, the B-control arm, the artifact, the `_src_sha` fix, the pre-a
 
 | | |
 |---|---|
-| **Record version** | **v3** |
+| **Record version** | **v4** (re-signed) |
 | **Prepared** | 2026-08-20 |
-| **Constituent versions** | T0.0 **v3** · C1 v2 **v2** (incl. Appendix A) · T0.2a schema **v3** (three detector nets) · T0.2b **v4** · T0.3 **v2** · T0.5 **v2** |
+| **Constituent versions** | T0.0 **v3** · C1 **v5** (Appendices A + B, amendments 1–3) · T0.2a schema **v3** · T0.2b **v4** · T0.3 **v2** · T0.5 **v2** |
 | **Approved by** | **Beatrice Marti** |
-| **Approval date** | **2026-08-20** |
+| **Approval date** | **2026-08-20** (original) · **2026-08-20** (re-signature covering C1 v5) |
 | **Evidence at signature** | 6/6 qualification pairs PASS, 0 mismatches (`evidence/t0_qualification/`, SHA256SUMS verified) · claim gate exits 0 at **427/427** · **127** tests green |
 
 **By signing, the lecturer confirms:** the tolerances (`TOL_CONC_REL` 2% · `TOL_TIME_REL` 2% ·
@@ -150,7 +151,8 @@ never silently different from what was signed.
 | # | Date | Document | Change | Re-signed? |
 |---|---|---|---|---|
 | **1** | 2026-08-20 | `T0_1_C1_v2.md` → **v3** | Added allow-list entries **A10–A14** — content-addressed workspaces · fixed source footprint · operator A · GWF-grid sensitivity arm · `claim_support_state` evaluator | **No** — lecturer decision; bounded by C1 §3.1 |
-| **2** | 2026-08-20 | `T0_1_C1_v2.md` → **v4** | **A8 extended to `transport_prt_capture.py`**, which carries its own `_src_sha()` with the identical three-file hole; plus **Appendix B**, the tracked and hashed T1 build-list snapshot that amendments must now cite | **No** — same path; the bound is now checkable |
+| **2** | 2026-08-20 | `T0_1_C1_v2.md` → **v4** | **A8 extended to `transport_prt_capture.py`**, which carries its own `_src_sha()` with the identical three-file hole; plus **Appendix B**, the tracked and hashed T1 build-list snapshot | **Yes, retrospectively** — see amendment 3 |
+| **3** | 2026-08-20 | `T0_1_C1_v2.md` → **v5**, **RE-SIGNED** | **A7's surface widened** to a new `exp`-only metrics module; **amendments 1–3 re-based on the signature** rather than on derivation from Appendix B | **YES** |
 
 **What happened.** The T1 plan review found that C1's A1–A9, though signed, **omitted five changes the T1
 build list requires**. Because C1 §3 makes an unlisted change a defect, **no implementation could satisfy
@@ -177,3 +179,18 @@ before the pre-authorised payload fields exist (`t0_gate_harness.py` validates t
 `CANDIDATE_TOP_LEVEL_FIELDS` unconditionally), and the six passing runs recorded in §3 were **`qualify`**,
 not `compare` — `compare --candidate b685f24` would fail candidate-schema validation. The T1 plan is being
 reworked accordingly.
+
+### 8.1 🔴 Why the re-signature happened — the unsigned path failed its first test
+
+The amendment rule permitted unsigned amendments only for changes already required by Appendix B.
+**Amendment 2 exceeded that bound the first time it was used**: Appendix B requires PRT to *consume* the
+same `GridSpec`; it says nothing about extending PRT's `_src_sha()`. That derivation was an **inference,
+not an entry** *(codex T1 review round 3, §2)*. The same applied to the new metrics module S11 needs, which
+A7's single-file surface did not cover.
+
+The bound could not be repaired by widening Appendix B — **changing the authorising source is exactly what
+the bound forbids**. So the lecturer re-signed on 2026-08-20, and amendments 1–3 now rest on that signature.
+**§3.1 remains in force for future amendments**: cite Appendix B, or be signed.
+
+**What this cost:** one signature. **What it caught:** two allow-list entries that would have been used as
+authority for source edits without ever having been authorised — found before any code was written.
