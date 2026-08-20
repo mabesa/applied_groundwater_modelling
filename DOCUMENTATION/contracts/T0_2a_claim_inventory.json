@@ -6,7 +6,7 @@
       "cell_index": 3,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "84f8e642813d",
@@ -22,7 +22,7 @@
       "cell_index": 4,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "b5634ca92158",
@@ -54,7 +54,7 @@
       "cell_index": 6,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "85c05b6b5be4",
@@ -70,7 +70,7 @@
       "cell_index": 7,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "75d4a7529cee",
@@ -86,7 +86,7 @@
       "cell_index": 9,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "42f7e265b974",
@@ -102,7 +102,7 @@
       "cell_index": 7,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "0ea99787eb57",
@@ -118,7 +118,7 @@
       "cell_index": 7,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "1736790869d0",
@@ -134,7 +134,7 @@
       "cell_index": 7,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "35cf77a0f1d0",
@@ -150,7 +150,7 @@
       "cell_index": 8,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "4b9ecbc02414",
@@ -166,7 +166,7 @@
       "cell_index": 14,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "f1284820286c",
@@ -182,7 +182,7 @@
       "cell_index": 17,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "53c8a4af5ae3",
@@ -198,7 +198,7 @@
       "cell_index": 17,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "86a8cc4069d1",
@@ -214,7 +214,7 @@
       "cell_index": 26,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "6090136ec141",
@@ -230,7 +230,7 @@
       "cell_index": 26,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "8f559eebad14",
@@ -246,7 +246,7 @@
       "cell_index": 26,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "e5fd0ef19ae3",
@@ -262,7 +262,7 @@
       "cell_index": 26,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "ec34c4c892a2",
@@ -278,7 +278,7 @@
       "cell_index": 27,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "1394ec82579a",
@@ -294,7 +294,7 @@
       "cell_index": 27,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "2c6ea28b0bae",
@@ -310,7 +310,7 @@
       "cell_index": 0,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "65b127d2a27d",
@@ -326,7 +326,7 @@
       "cell_index": 4,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "4cba36a78c28",
@@ -342,7 +342,7 @@
       "cell_index": 4,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "illustrative"
       ],
       "dict_name": null,
       "id": "9fa5a8e407fa",
@@ -358,7 +358,7 @@
       "cell_index": 6,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "3dbad2d6cefe",
@@ -390,7 +390,8 @@
       "cell_index": 6,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "causal"
       ],
       "dict_name": null,
       "id": "d8ea0db74677",
@@ -422,7 +423,7 @@
       "cell_index": 13,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "illustrative"
       ],
       "dict_name": null,
       "id": "4830c8acf155",
@@ -438,7 +439,7 @@
       "cell_index": 0,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "2244a9c06634",
@@ -454,7 +455,7 @@
       "cell_index": 1,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "be10a2a1541c",
@@ -470,7 +471,7 @@
       "cell_index": 4,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "fc7b027ae939",
@@ -486,7 +487,7 @@
       "cell_index": 5,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "921c1519ae20",
@@ -502,7 +503,7 @@
       "cell_index": 5,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "9f38022aba95",
@@ -518,7 +519,7 @@
       "cell_index": 6,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "threshold-decision"
       ],
       "dict_name": null,
       "id": "391ddcdddffe",
@@ -534,7 +535,7 @@
       "cell_index": 8,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "e3d74869e6a8",
@@ -550,7 +551,7 @@
       "cell_index": 9,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "b76567e960f3",
@@ -566,7 +567,7 @@
       "cell_index": 12,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "81f6999c2519",
@@ -598,7 +599,7 @@
       "cell_index": 23,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "5f80549f3817",
@@ -614,7 +615,7 @@
       "cell_index": 23,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "b69852834ace",
@@ -630,7 +631,7 @@
       "cell_index": 27,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "3d36bffc47c3",
@@ -646,7 +647,7 @@
       "cell_index": 27,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "a4c7af7c3a74",
@@ -662,7 +663,7 @@
       "cell_index": 27,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "ce7a73a273d0",
@@ -678,7 +679,7 @@
       "cell_index": 28,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "2eb8a7facbe2",
@@ -694,7 +695,7 @@
       "cell_index": 30,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "f10dc23057e4",
@@ -710,7 +711,7 @@
       "cell_index": 32,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "a115aa361a34",
@@ -726,7 +727,7 @@
       "cell_index": 32,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "f2d9fb955acb",
@@ -742,7 +743,7 @@
       "cell_index": 35,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "7a279a001f8c",
@@ -758,7 +759,7 @@
       "cell_index": 2,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "f17f589ff611",
@@ -774,7 +775,7 @@
       "cell_index": 3,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "18cdc0462632",
@@ -790,7 +791,7 @@
       "cell_index": 6,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "illustrative"
       ],
       "dict_name": null,
       "id": "834093f3ec58",
@@ -806,7 +807,7 @@
       "cell_index": 7,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "49dd5cf3dff1",
@@ -822,7 +823,7 @@
       "cell_index": 7,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "856aac028d27",
@@ -838,7 +839,7 @@
       "cell_index": 7,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "e3747ac09f5c",
@@ -854,7 +855,7 @@
       "cell_index": 8,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "illustrative"
       ],
       "dict_name": null,
       "id": "4e56757be4b1",
@@ -870,7 +871,7 @@
       "cell_index": 10,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "a6e32e4df1ca",
@@ -886,7 +887,7 @@
       "cell_index": 10,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "cc26e8fd147a",
@@ -902,7 +903,8 @@
       "cell_index": 0,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "threshold-decision"
       ],
       "dict_name": null,
       "id": "3fbed8ea5f54",
@@ -918,7 +920,7 @@
       "cell_index": 1,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "7e1664057297",
@@ -934,7 +936,7 @@
       "cell_index": 1,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "threshold-decision"
       ],
       "dict_name": null,
       "id": "ae428ccdc171",
@@ -966,7 +968,7 @@
       "cell_index": 3,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "2c0808505b85",
@@ -982,7 +984,7 @@
       "cell_index": 3,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "c0c12f795bb9",
@@ -998,7 +1000,7 @@
       "cell_index": 3,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "dc03e04d913f",
@@ -1014,7 +1016,7 @@
       "cell_index": 4,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "f4188e803345",
@@ -1030,7 +1032,7 @@
       "cell_index": 8,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "61960857345d",
@@ -1046,7 +1048,7 @@
       "cell_index": 8,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "79b0c6537a21",
@@ -1062,7 +1064,7 @@
       "cell_index": 8,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "b18c6f61f07e",
@@ -1078,7 +1080,7 @@
       "cell_index": 8,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "b357c4497053",
@@ -1094,7 +1096,7 @@
       "cell_index": 8,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "ba6c0e960434",
@@ -1110,7 +1112,7 @@
       "cell_index": 9,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "8be54fa89aab",
@@ -1126,7 +1128,7 @@
       "cell_index": 10,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "21a7b953710d",
@@ -1142,7 +1144,7 @@
       "cell_index": 12,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "0b82b16f0f4d",
@@ -1158,7 +1160,7 @@
       "cell_index": 12,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "247742051c0f",
@@ -1174,7 +1176,7 @@
       "cell_index": 12,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "289aa1c6fb73",
@@ -1190,7 +1192,7 @@
       "cell_index": 12,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "2cfcdbbc23a0",
@@ -1206,7 +1208,7 @@
       "cell_index": 12,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "74a110eb764f",
@@ -1222,7 +1224,7 @@
       "cell_index": 12,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "d81c7b7190c0",
@@ -1238,7 +1240,7 @@
       "cell_index": 13,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "5a6411c9919d",
@@ -1254,7 +1256,7 @@
       "cell_index": 14,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "4a5039c92eb0",
@@ -1270,7 +1272,7 @@
       "cell_index": 14,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "769ebbef352a",
@@ -1286,7 +1288,7 @@
       "cell_index": 14,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "d832f747a850",
@@ -1302,7 +1304,7 @@
       "cell_index": 14,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "da177b5546b5",
@@ -1318,7 +1320,7 @@
       "cell_index": 16,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "09d33bd12d56",
@@ -1334,7 +1336,7 @@
       "cell_index": 16,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "33d848c94e6a",
@@ -1350,7 +1352,7 @@
       "cell_index": 16,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "34aa14d18895",
@@ -1366,7 +1368,7 @@
       "cell_index": 16,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "366971673e66",
@@ -1382,7 +1384,7 @@
       "cell_index": 16,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "5b25f3ecfd5f",
@@ -1398,7 +1400,7 @@
       "cell_index": 16,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "7c55168e54a3",
@@ -1414,7 +1416,7 @@
       "cell_index": 17,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "24af3d3688ff",
@@ -1430,7 +1432,7 @@
       "cell_index": 17,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "6fcd2a63ffb1",
@@ -1446,7 +1448,8 @@
       "cell_index": 17,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "threshold-decision"
       ],
       "dict_name": null,
       "id": "a85b395ce913",
@@ -1462,7 +1465,7 @@
       "cell_index": 17,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "caa7f150d729",
@@ -1478,7 +1481,7 @@
       "cell_index": 17,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "f91559570d50",
@@ -1494,7 +1497,8 @@
       "cell_index": 19,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "threshold-decision"
       ],
       "dict_name": null,
       "id": "1a1c1eb941f3",
@@ -1510,7 +1514,8 @@
       "cell_index": 19,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "threshold-decision"
       ],
       "dict_name": null,
       "id": "2b4bf3863381",
@@ -1526,7 +1531,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t02_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": "questions_markdown",
       "id": "607ebccee9eb",
@@ -1542,7 +1547,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": "questions_markdown",
       "id": "b071440c2cd0",
@@ -1558,7 +1563,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": "questions_markdown",
       "id": "f98ea3094ed1",
@@ -1590,7 +1595,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_3",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "questions_markdown",
       "id": "e8ee83f3ef6b",
@@ -1606,7 +1611,8 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "threshold-decision"
       ],
       "dict_name": "questions_markdown",
       "id": "714229b12fbe",
@@ -1622,7 +1628,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t02_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": "solutions",
       "id": "bd30712aec55",
@@ -1638,7 +1644,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": "solutions",
       "id": "6ab55e8c683f",
@@ -1654,7 +1660,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t05_tt_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": "solutions",
       "id": "d91a9f40f755",
@@ -1686,7 +1692,8 @@
       "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_predict",
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "threshold-decision"
       ],
       "dict_name": "solutions_exact",
       "id": "be18c404f9dc",
@@ -1702,7 +1709,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_2",
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": "solutions_exact",
       "id": "062469685d96",
@@ -1718,7 +1725,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_3",
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": "solutions_exact",
       "id": "377d264e4a62",
@@ -1734,7 +1741,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_4",
       "claim_type": [
-        "unclassified"
+        "threshold-decision"
       ],
       "dict_name": "solutions_exact",
       "id": "2bf1e64f6976",
@@ -1750,7 +1757,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t02_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": "solution_unit",
       "id": "5cd76eb52306",
@@ -1766,7 +1773,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t05_tt_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": "solution_unit",
       "id": "f98d0b81e4a7",
@@ -1830,7 +1837,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t02_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "9c86f0077c51",
@@ -1846,7 +1853,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t02_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "illustrative"
       ],
       "dict_name": "solutions_markdown",
       "id": "a23a750e51f5",
@@ -1862,7 +1869,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": "solutions_markdown",
       "id": "5c7e9553a30d",
@@ -1878,7 +1885,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "9a6c5e0bdb2d",
@@ -1894,7 +1901,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_2",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "9b2fb54ba6df",
@@ -1910,7 +1917,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t04_checkpoint_predict",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "d114fb7bc4cd",
@@ -1942,7 +1949,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t05_tt_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": "solutions_markdown",
       "id": "5aa62fe542ee",
@@ -1974,7 +1981,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "73aea7022525",
@@ -1990,7 +1997,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_1",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "c59cbc914f79",
@@ -2006,7 +2013,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_2",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "10cdd2d9419a",
@@ -2022,7 +2029,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_2",
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": "solutions_markdown",
       "id": "24269054ac95",
@@ -2038,7 +2045,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_2",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "d78cc4ff676e",
@@ -2054,7 +2061,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_3",
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": "solutions_markdown",
       "id": "5b80f2d90c29",
@@ -2070,7 +2077,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_3",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "7dc16f9a2a38",
@@ -2086,7 +2093,8 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_4",
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "threshold-decision"
       ],
       "dict_name": "solutions_markdown",
       "id": "30c19473b919",
@@ -2102,7 +2110,8 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_4",
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "threshold-decision"
       ],
       "dict_name": "solutions_markdown",
       "id": "30d63c89fcff",
@@ -2118,7 +2127,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_4",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "541264e761a9",
@@ -2134,7 +2143,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_4",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "b4af63d7dafd",
@@ -2150,7 +2159,7 @@
       "cell_index": null,
       "checkpoint_key": "task_t08_checkpoint_4",
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": "solutions_markdown",
       "id": "b68ce0f1e9fb",
@@ -2166,7 +2175,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "8c6f485ec43c",
@@ -2182,7 +2191,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "20ed82269e3f",
@@ -2198,7 +2207,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "5f5b2e8a45ee",
@@ -2214,7 +2223,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "163af80aac37",
@@ -2230,7 +2239,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "17afefa098af",
@@ -2246,7 +2255,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "6ee0c143f535",
@@ -2262,7 +2271,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "7bf863fafe8d",
@@ -2278,7 +2287,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "ce49b6462eeb",
@@ -2294,7 +2303,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "59c3cc1b0cf8",
@@ -2310,7 +2319,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "1fe6627f2432",
@@ -2326,7 +2335,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "d979a65ee1f6",
@@ -2342,7 +2351,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "943d7c3c29ea",
@@ -2358,7 +2367,8 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "threshold-decision"
       ],
       "dict_name": null,
       "id": "80f6d07ed747",
@@ -2374,7 +2384,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "6755341d1a07",
@@ -2390,7 +2400,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "a0fe2ca6a22c",
@@ -2406,7 +2416,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "0649509ffcfe",
@@ -2422,7 +2432,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "0e06ae399699",
@@ -2438,7 +2448,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "26772e8e90d7",
@@ -2454,7 +2464,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "c2eb8a6b1eaf",
@@ -2470,7 +2480,8 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "causal"
       ],
       "dict_name": null,
       "id": "bc174232b04b",
@@ -2486,7 +2497,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "34775325bb0c",
@@ -2502,7 +2513,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "a2bf4583cfa7",
@@ -2518,7 +2529,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "d0faaf057a51",
@@ -2534,7 +2545,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "8c63dcabddde",
@@ -2566,7 +2577,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "d858a4bbc93e",
@@ -2582,7 +2593,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "45006a4b2886",
@@ -2598,7 +2609,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "1141fe8729b2",
@@ -2614,7 +2625,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "c6ff5eb74a74",
@@ -2630,7 +2641,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "eddb21659b9b",
@@ -2646,7 +2657,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "559ca00c8b00",
@@ -2662,7 +2673,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "86f74ed51315",
@@ -2678,7 +2689,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "67e81521f283",
@@ -2694,7 +2705,8 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "threshold-decision"
       ],
       "dict_name": null,
       "id": "b2f0ffac6766",
@@ -2726,7 +2738,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "10de9a3ebd2c",
@@ -2742,7 +2754,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "f2ee87e0739d",
@@ -2758,7 +2770,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "8c223283cb9c",
@@ -2774,7 +2786,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "14aab78ea719",
@@ -2790,7 +2802,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "1b175ab00325",
@@ -2806,7 +2818,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "849e951f8343",
@@ -2822,7 +2834,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "50dfe668edcb",
@@ -2838,7 +2850,8 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "causal"
       ],
       "dict_name": null,
       "id": "b4a8f82e0e03",
@@ -2854,7 +2867,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "21e4f543c818",
@@ -2886,7 +2899,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "89be056155f3",
@@ -2902,7 +2915,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "fedf60c7a7ea",
@@ -2918,7 +2931,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "5249cbc5ccc5",
@@ -2934,7 +2947,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "9a7354ff1515",
@@ -2982,7 +2995,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "13e17c023b6e",
@@ -2998,7 +3011,8 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "causal"
       ],
       "dict_name": null,
       "id": "87ec3ff0c528",
@@ -3046,7 +3060,8 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric",
+        "causal"
       ],
       "dict_name": null,
       "id": "b887df52e8a8",
@@ -3094,7 +3109,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "3f8b723e1bc6",
@@ -3110,7 +3125,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "07a364a72779",
@@ -3126,7 +3141,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "threshold-decision"
       ],
       "dict_name": null,
       "id": "6caa16b226b6",
@@ -3158,7 +3173,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "threshold-decision"
       ],
       "dict_name": null,
       "id": "66c40f677564",
@@ -3174,7 +3189,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "ed5c4c7fd833",
@@ -3206,7 +3221,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "f70e887c8a25",
@@ -3238,7 +3253,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "2eb06f9e903f",
@@ -3254,7 +3269,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "1b2dc36323ad",
@@ -3302,7 +3317,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "5fb10ef26197",
@@ -3382,7 +3397,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "931178b6badc",
@@ -3430,7 +3445,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "7868d89c8b2d",
@@ -3510,7 +3525,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "bfbdee6effc7",
@@ -3558,7 +3573,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "d040b34d1ff1",
@@ -3574,7 +3589,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "97d409e02961",
@@ -3590,7 +3605,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "54e8f0e76135",
@@ -3606,7 +3621,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "fc4077f8d385",
@@ -3622,7 +3637,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "numeric"
       ],
       "dict_name": null,
       "id": "2bf22b59904e",
@@ -3670,7 +3685,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "8c3cc1dff9b7",
@@ -3686,7 +3701,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "ebaf9c2a87e7",
@@ -3702,7 +3717,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "42a942837b0f",
@@ -3718,7 +3733,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "ed586aa83bca",
@@ -3734,7 +3749,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "e100e9492850",
@@ -3750,7 +3765,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "51e7332a5eda",
@@ -3766,7 +3781,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "e96711943890",
@@ -3782,7 +3797,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "9d3657663822",
@@ -3814,7 +3829,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "849752d66e9e",
@@ -3830,7 +3845,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "not_a_claim"
       ],
       "dict_name": null,
       "id": "55b61609b424",
@@ -3926,7 +3941,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "62b252cf4b7e",
@@ -3942,7 +3957,7 @@
       "cell_index": null,
       "checkpoint_key": null,
       "claim_type": [
-        "unclassified"
+        "causal"
       ],
       "dict_name": null,
       "id": "e4168e54d7b8",
@@ -3987,18 +4002,18 @@
   ],
   "coverage": {
     "by_claim_type": {
-      "causal": 0,
-      "illustrative": 0,
-      "not_a_claim": 0,
-      "numeric": 0,
-      "threshold-decision": 0,
-      "unclassified": 249
+      "causal": 60,
+      "illustrative": 5,
+      "not_a_claim": 91,
+      "numeric": 45,
+      "threshold-decision": 15,
+      "unclassified": 48
     },
-    "candidates_classified": 0,
+    "candidates_classified": 201,
     "candidates_found": 249,
-    "candidates_rejected": 0,
-    "candidates_unclassified": 249,
-    "claim_assignments_found": 249,
+    "candidates_rejected": 91,
+    "candidates_unclassified": 48,
+    "claim_assignments_found": 264,
     "files_visited": 14,
     "notebook_cells_visited": 127,
     "python_module_files_visited": 7,
@@ -4024,251 +4039,50 @@
       "035062e82bdc",
       "041d2b7d79cb",
       "0568dd562a16",
-      "062469685d96",
-      "0649509ffcfe",
-      "07a364a72779",
-      "09d33bd12d56",
       "0afdf1da4651",
-      "0b82b16f0f4d",
       "0b98527d9946",
       "0d52985c12c2",
-      "0e06ae399699",
-      "0ea99787eb57",
       "0fcb94e2d22e",
-      "10cdd2d9419a",
-      "10de9a3ebd2c",
-      "1141fe8729b2",
-      "1394ec82579a",
-      "13e17c023b6e",
-      "14aab78ea719",
       "14d09b80aaed",
-      "163af80aac37",
-      "1736790869d0",
-      "17afefa098af",
-      "18cdc0462632",
-      "1a1c1eb941f3",
-      "1b175ab00325",
-      "1b2dc36323ad",
       "1df5e7fac155",
-      "1fe6627f2432",
-      "20ed82269e3f",
-      "21a7b953710d",
-      "21e4f543c818",
-      "2244a9c06634",
-      "24269054ac95",
-      "247742051c0f",
-      "24af3d3688ff",
       "25fe24206ff1",
-      "26772e8e90d7",
       "2802c929c949",
-      "289aa1c6fb73",
-      "2b4bf3863381",
-      "2bf1e64f6976",
-      "2bf22b59904e",
-      "2c0808505b85",
-      "2c6ea28b0bae",
-      "2cfcdbbc23a0",
       "2e15bbd86c1b",
-      "2eb06f9e903f",
-      "2eb8a7facbe2",
-      "30c19473b919",
-      "30d63c89fcff",
-      "33d848c94e6a",
-      "34775325bb0c",
-      "34aa14d18895",
-      "35cf77a0f1d0",
-      "366971673e66",
-      "377d264e4a62",
-      "391ddcdddffe",
       "391eca719b5d",
       "3ab5bc845829",
-      "3d36bffc47c3",
-      "3dbad2d6cefe",
       "3e98d97bc922",
       "3e9d506fa083",
-      "3f8b723e1bc6",
-      "3fbed8ea5f54",
-      "42a942837b0f",
-      "42f7e265b974",
-      "45006a4b2886",
-      "4830c8acf155",
-      "49dd5cf3dff1",
-      "4a5039c92eb0",
-      "4b9ecbc02414",
-      "4cba36a78c28",
-      "4e56757be4b1",
-      "50dfe668edcb",
-      "51e7332a5eda",
-      "5249cbc5ccc5",
-      "53c8a4af5ae3",
-      "541264e761a9",
-      "54e8f0e76135",
-      "559ca00c8b00",
-      "55b61609b424",
-      "59c3cc1b0cf8",
-      "5a6411c9919d",
-      "5aa62fe542ee",
-      "5b25f3ecfd5f",
-      "5b80f2d90c29",
       "5c5eee8d09da",
-      "5c7e9553a30d",
-      "5cd76eb52306",
       "5deb03c42e94",
-      "5f5b2e8a45ee",
-      "5f80549f3817",
-      "5fb10ef26197",
-      "607ebccee9eb",
-      "6090136ec141",
-      "61960857345d",
-      "62b252cf4b7e",
-      "65b127d2a27d",
-      "66c40f677564",
-      "6755341d1a07",
-      "67e81521f283",
-      "6ab55e8c683f",
-      "6caa16b226b6",
-      "6ee0c143f535",
-      "6fcd2a63ffb1",
       "7054b9c51ef4",
-      "714229b12fbe",
       "71bdc7fbcd23",
       "726853728054",
       "73806ad825cc",
-      "73aea7022525",
-      "74a110eb764f",
-      "75d4a7529cee",
       "765282001389",
-      "769ebbef352a",
       "76c3816fe0c6",
-      "7868d89c8b2d",
-      "79b0c6537a21",
-      "7a279a001f8c",
       "7bed406a174c",
-      "7bf863fafe8d",
-      "7c55168e54a3",
       "7d8f6f31616c",
-      "7dc16f9a2a38",
-      "7e1664057297",
       "80d330b200b0",
-      "80f6d07ed747",
-      "81f6999c2519",
-      "834093f3ec58",
       "83999ab705ac",
       "841f354b1d60",
-      "849752d66e9e",
-      "849e951f8343",
-      "84f8e642813d",
-      "856aac028d27",
-      "85c05b6b5be4",
-      "86a8cc4069d1",
-      "86f74ed51315",
-      "87ec3ff0c528",
-      "89be056155f3",
-      "8be54fa89aab",
-      "8c223283cb9c",
-      "8c3cc1dff9b7",
-      "8c63dcabddde",
-      "8c6f485ec43c",
-      "8f559eebad14",
-      "921c1519ae20",
       "93099eb1cdb5",
-      "931178b6badc",
-      "943d7c3c29ea",
       "97a32a00cd02",
-      "97d409e02961",
-      "9a6c5e0bdb2d",
-      "9a7354ff1515",
-      "9b2fb54ba6df",
-      "9c86f0077c51",
       "9d1a1be3a4e6",
-      "9d3657663822",
-      "9f38022aba95",
-      "9fa5a8e407fa",
-      "a0fe2ca6a22c",
-      "a115aa361a34",
-      "a23a750e51f5",
-      "a2bf4583cfa7",
-      "a4c7af7c3a74",
-      "a6e32e4df1ca",
-      "a85b395ce913",
       "a8f7a4af0f31",
       "ac52663cce6a",
-      "ae428ccdc171",
-      "b071440c2cd0",
-      "b18c6f61f07e",
-      "b2f0ffac6766",
-      "b357c4497053",
-      "b4a8f82e0e03",
-      "b4af63d7dafd",
-      "b5634ca92158",
-      "b68ce0f1e9fb",
-      "b69852834ace",
-      "b76567e960f3",
-      "b887df52e8a8",
-      "ba6c0e960434",
       "bb571e17fee5",
       "bc067bb50905",
-      "bc174232b04b",
-      "bd30712aec55",
-      "be10a2a1541c",
-      "be18c404f9dc",
-      "bfbdee6effc7",
-      "c0c12f795bb9",
       "c1ecaec30091",
-      "c2eb8a6b1eaf",
       "c43ef8bbd01b",
       "c4dcc829a28b",
       "c59af8b434e4",
-      "c59cbc914f79",
-      "c6ff5eb74a74",
-      "caa7f150d729",
-      "cc26e8fd147a",
       "cc709a28d9d8",
-      "ce49b6462eeb",
-      "ce7a73a273d0",
-      "d040b34d1ff1",
-      "d0faaf057a51",
-      "d114fb7bc4cd",
       "d4b6a6ae3cfd",
-      "d78cc4ff676e",
-      "d81c7b7190c0",
-      "d832f747a850",
-      "d858a4bbc93e",
-      "d8ea0db74677",
-      "d91a9f40f755",
       "d927be6a82d1",
-      "d979a65ee1f6",
-      "da177b5546b5",
       "db2750d25432",
-      "dc03e04d913f",
-      "e100e9492850",
-      "e3747ac09f5c",
-      "e3d74869e6a8",
-      "e4168e54d7b8",
-      "e5fd0ef19ae3",
-      "e8ee83f3ef6b",
-      "e96711943890",
       "ea17cc64ea64",
       "eb895cb45a73",
-      "ebaf9c2a87e7",
-      "ec34c4c892a2",
-      "ed586aa83bca",
-      "ed5c4c7fd833",
-      "eddb21659b9b",
-      "f10dc23057e4",
-      "f1284820286c",
-      "f17f589ff611",
-      "f2d9fb955acb",
-      "f2ee87e0739d",
-      "f4188e803345",
-      "f70e887c8a25",
-      "f91559570d50",
-      "f98d0b81e4a7",
-      "f98ea3094ed1",
-      "fc4077f8d385",
-      "fc7b027ae939",
       "fc8c78b9aeef",
-      "fedf60c7a7ea",
       "fef2c8c458dc"
     ]
   },
