@@ -332,14 +332,28 @@ environment control. Those choices decide the answer, so they are frozen here.
 
 ### 5.1 🔴 QUALIFICATION — the gate must first pass against ITSELF
 
-> ✅ **FIRST QUALIFICATION PASSED, 2026-08-20** (`scratchpad/t0_qual/qualification_report.json`).
+> ✅ **QUALIFICATION PASSED — 6 PAIRS, 12 COLD SIDE-RUNS, 2026-08-20.**
+> `b685f24` vs `b685f24`, two worktrees, two cold processes, threads pinned, six independent repetitions.
+> **6/6 pairs exact-equal; 0 field diffs anywhere**, across all 29 fields including the 122-point
+> `times`/`breakthrough` series and the 9/17/9 nested keysets. `peak_mgL = 5.27695440327` and
+> `arrival_day = 38.8043478261` were identical **across all twelve runs**, not merely within each pair.
+> **`refine_radius_used = 70.0` on 12/12 — the retry ladder never advanced. `ncpl = 4408` on 12/12.**
+> **SIGILL rate 0/12.** This is the first measurement bearing on the repo-memory claim of a historical
+> ~40% SIGILL rate on macOS-arm64: 12 samples cannot rule out a small non-zero rate, but they do rule out
+> anything close to 40%. Wall clock **min 14.35 s, max 15.00 s, mean 14.61 s** per side.
+> ⚠️ **This qualifies the gate on THIS environment only** — macOS-arm64, this MF6/Triangle/FloPy/Python.
+> The gate is same-environment by construction (§1.3), so that is exactly what it needs to prove; it makes
+> **no** claim about the Hub, and a Hub-side T1 gate would need its own qualification.
+>
+> *(Superseded detail — the first single pair, 2026-08-20)*
+> **FIRST QUALIFICATION PASSED, 2026-08-20** (`scratchpad/t0_qual/qualification_report.json`).
 > `b685f24` vs `b685f24`, two worktrees, two cold processes, threads pinned. **Exact normalised equality
 > on all 29 fields** — including the 122-point `times`/`breakthrough` series and the 9/17/9 nested
 > keysets. `refine_radius_used = 70.0` and `ncpl = 4408` on both sides; no SIGILL.
 > **Wall clock ≈ 14.8 s per side** — the first recorded timing of this identity anywhere in the project.
-> ⚠️ **One pair is not statistical confidence.** The retry ladder only advances when an attempt *fails*,
-> so determinism holds exactly as long as radius 70.0 keeps succeeding. Repeats are running to measure
-> that rate; §7 is signed against the **distribution**, not against a single pass.
+> ⚠️ *(At the time: one pair is not statistical confidence — the retry ladder only advances when an
+> attempt fails, so determinism holds exactly as long as radius 70.0 keeps succeeding.)* **Resolved by the
+> six-pair distribution above: 12/12 first-attempt successes, no retry, no divergence.**
 
 *(codex r1 #2 / its "single most important remaining fix".)* Before the gate is used to judge anything, and
 **before §7 is signed**, run it **`b685f24` versus `b685f24`** — two cold runs of the *same* commit through
@@ -416,9 +430,9 @@ T0.0 takes effect only when this section is completed. Until then, **no T1 sourc
 
 **Open items at approval:**
 
-1. 🔴 **§5.1 qualification must have PASSED** — `b685f24` vs `b685f24`, cold, through the frozen harness,
-   exact normalised equality. A precondition of signature, not a T1 task: an unproven gate must not be
-   frozen.
+1. ✅ **§5.1 qualification has PASSED** — 6 pairs / 12 cold runs, exact normalised equality every time,
+   0/12 SIGILLs, retry ladder never advanced. **This precondition of signature is now met on this
+   environment.** It remains a per-environment claim: a Hub-side gate needs its own qualification.
 2. **The three constants in §6** are proposed policy, not a measurement. `HUB_FINE_CEILING_S = 900` (half
    the 1800 s wall) is the value to accept or change; changing it *after* T2 measures the Hub is a failure
    edge, not an edit.

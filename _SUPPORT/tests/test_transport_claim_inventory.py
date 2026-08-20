@@ -224,7 +224,7 @@ class TestAC1UnclassifiedGate:
         report = json.loads(json_out.read_text())
         cand_id = report["candidates"][0]["id"]
         (tmp_path / "cls.yaml").write_text(
-            yaml.safe_dump({cand_id: {"classification": "numeric"}}),
+            yaml.safe_dump({cand_id: {"claim_type": ["numeric"]}}),
             encoding="utf-8",
         )
         result = run_cli(
@@ -251,7 +251,7 @@ class TestAC2Orphan:
         )
         cls_path = tmp_path / "cls.yaml"
         cls_path.write_text(
-            yaml.safe_dump({"deadbeef0000": {"classification": "numeric"}}),
+            yaml.safe_dump({"deadbeef0000": {"claim_type": ["numeric"]}}),
             encoding="utf-8",
         )
         result = run_cli(
@@ -263,6 +263,221 @@ class TestAC2Orphan:
         )
         assert result.returncode != 0
         assert "deadbeef0000" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# Multi-type claim_type (2026-08-20 lecturer decision, post two-rater
+# classification: a candidate is a text span and a span can assert more than
+# one kind of claim -- e.g. "peak ~5.3 mg/L ... still above the 1.0 mg/L
+# threshold" is both `numeric` and `threshold-decision`). claim_type is now a
+# LIST; `unclassified`/`not_a_claim` stay exclusive sentinels enforced as a
+# validation error, never a warning.
+# ---------------------------------------------------------------------------
+
+
+class TestMultiTypeClaimType:
+    def _discover_single_candidate_id(self, tmp_path, root):
+        json_out = tmp_path / "discover.json"
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(tmp_path / "unused_cls.yaml"),
+            "--json-out", str(json_out),
+            "--md-out", str(tmp_path / "discover.md"),
+        )
+        report = json.loads(json_out.read_text())
+        assert len(report["candidates"]) == 1
+        return report["candidates"][0]["id"]
+
+    def test_multitype_candidate_round_trips(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_md_cell("c1", CLAIM_LINE)],
+        )
+        cand_id = self._discover_single_candidate_id(tmp_path, root)
+
+        cls_path = tmp_path / "cls.yaml"
+        # Deliberately out-of-canonical-order on the way in, to also prove
+        # sort_claim_types() normalises the emitted order (AC3 relies on
+        # this: two lecturers typing the same set in different order must
+        # not perturb byte-identical output).
+        cls_path.write_text(
+            yaml.safe_dump({cand_id: {"claim_type": ["threshold-decision", "numeric"]}}),
+            encoding="utf-8",
+        )
+        json_out = tmp_path / "out.json"
+        result = run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(json_out),
+            "--md-out", str(tmp_path / "out.md"),
+        )
+        assert result.returncode == 0, result.stderr
+        report = json.loads(json_out.read_text())
+        candidate = report["candidates"][0]
+        assert candidate["id"] == cand_id
+        # Canonical order per CLAIM_TYPE_VALUES: numeric before
+        # threshold-decision, regardless of input order.
+        assert candidate["claim_type"] == ["numeric", "threshold-decision"]
+        cov = report["coverage"]
+        assert cov["candidates_found"] == 1
+        assert cov["claim_assignments_found"] == 2
+        assert cov["candidates_classified"] == 1
+        assert cov["candidates_unclassified"] == 0
+        assert cov["by_claim_type"]["numeric"] == 1
+        assert cov["by_claim_type"]["threshold-decision"] == 1
+
+    def test_not_a_claim_combined_with_another_type_is_rejected(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_md_cell("c1", CLAIM_LINE)],
+        )
+        cand_id = self._discover_single_candidate_id(tmp_path, root)
+        cls_path = tmp_path / "cls.yaml"
+        cls_path.write_text(
+            yaml.safe_dump({cand_id: {"claim_type": ["not_a_claim", "numeric"]}}),
+            encoding="utf-8",
+        )
+        result = run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(tmp_path / "out.json"),
+            "--md-out", str(tmp_path / "out.md"),
+        )
+        assert result.returncode != 0
+        assert not (tmp_path / "out.json").exists()
+        assert "not_a_claim" in result.stderr
+        assert "exclusive" in result.stderr.lower()
+
+    def test_unclassified_combined_with_another_type_is_rejected(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_md_cell("c1", CLAIM_LINE)],
+        )
+        cand_id = self._discover_single_candidate_id(tmp_path, root)
+        cls_path = tmp_path / "cls.yaml"
+        cls_path.write_text(
+            yaml.safe_dump({cand_id: {"claim_type": ["unclassified", "causal"]}}),
+            encoding="utf-8",
+        )
+        result = run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(tmp_path / "out.json"),
+            "--md-out", str(tmp_path / "out.md"),
+        )
+        assert result.returncode != 0
+        assert not (tmp_path / "out.json").exists()
+        assert "unclassified" in result.stderr
+        assert "exclusive" in result.stderr.lower()
+
+    def test_duplicate_entries_in_claim_type_are_rejected(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_md_cell("c1", CLAIM_LINE)],
+        )
+        cand_id = self._discover_single_candidate_id(tmp_path, root)
+        cls_path = tmp_path / "cls.yaml"
+        cls_path.write_text(
+            yaml.safe_dump({cand_id: {"claim_type": ["numeric", "numeric"]}}),
+            encoding="utf-8",
+        )
+        result = run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(tmp_path / "out.json"),
+            "--md-out", str(tmp_path / "out.md"),
+        )
+        assert result.returncode != 0
+        assert not (tmp_path / "out.json").exists()
+
+    def test_empty_claim_type_list_is_rejected(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [_md_cell("c1", CLAIM_LINE)],
+        )
+        cand_id = self._discover_single_candidate_id(tmp_path, root)
+        cls_path = tmp_path / "cls.yaml"
+        cls_path.write_text(
+            yaml.safe_dump({cand_id: {"claim_type": []}}),
+            encoding="utf-8",
+        )
+        result = run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(tmp_path / "out.json"),
+            "--md-out", str(tmp_path / "out.md"),
+        )
+        assert result.returncode != 0
+        assert not (tmp_path / "out.json").exists()
+
+    def test_summary_counts_differ_when_multitype_present(self, tmp_path):
+        root = build_scope_dir(tmp_path)
+        write_notebook(
+            root / "PROJECT/transport/01t_model_goal.ipynb",
+            [
+                _md_cell("c1", CLAIM_LINE),
+                _code_cell("c2", f"# {CLAIM_LINE_2}"),
+            ],
+        )
+        json_out = tmp_path / "discover.json"
+        run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(tmp_path / "unused_cls.yaml"),
+            "--json-out", str(json_out),
+            "--md-out", str(tmp_path / "discover.md"),
+        )
+        report = json.loads(json_out.read_text())
+        assert len(report["candidates"]) == 2
+        single_id, multi_id = (c["id"] for c in report["candidates"])
+
+        cls_path = tmp_path / "cls.yaml"
+        cls_path.write_text(
+            yaml.safe_dump(
+                {
+                    single_id: {"claim_type": ["numeric"]},
+                    multi_id: {"claim_type": ["causal", "illustrative"]},
+                }
+            ),
+            encoding="utf-8",
+        )
+        result = run_cli(
+            "--repo-root", str(root),
+            "--scope", "PROJECT/transport/01t_model_goal.ipynb",
+            "--classifications", str(cls_path),
+            "--json-out", str(json_out),
+            "--md-out", str(tmp_path / "out.md"),
+        )
+        assert result.returncode == 0, result.stderr
+        report = json.loads(json_out.read_text())
+        cov = report["coverage"]
+        assert cov["candidates_found"] == 2
+        assert cov["claim_assignments_found"] == 3
+        assert cov["claim_assignments_found"] != cov["candidates_found"]
+        assert cov["candidates_classified"] == 2
+        assert cov["candidates_unclassified"] == 0
+
+    def test_sort_claim_types_is_canonical_and_stable(self):
+        assert tci.sort_claim_types(["threshold-decision", "numeric"]) == [
+            "numeric",
+            "threshold-decision",
+        ]
+        assert tci.sort_claim_types(["illustrative", "causal", "numeric"]) == [
+            "numeric",
+            "causal",
+            "illustrative",
+        ]
 
 
 # ---------------------------------------------------------------------------

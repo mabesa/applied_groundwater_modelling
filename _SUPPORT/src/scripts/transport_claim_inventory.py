@@ -65,6 +65,15 @@ Design constraints (T0_2a_claim_inventory_plan.md, S4):
     - Static only: source files are read and parsed (ast.parse, json.load),
       never imported, never executed. No MODFLOW runs, no network.
     - Read-only with respect to every inventoried (scope) file.
+    - `claim_type` is a LIST of one or more of `numeric`, `threshold-decision`,
+      `causal`, `illustrative` -- a single text span can assert more than one
+      kind of claim (e.g. "peak is 5.3 mg/L ... still above the 1.0 mg/L
+      threshold" is both `numeric` and `threshold-decision`), and each type is
+      evaluated differently downstream, so collapsing a span to one type can
+      silently drop a claim. `unclassified` and `not_a_claim` are EXCLUSIVE
+      sentinels: never combined with each other or with a real claim type.
+      Emitted in a stable sorted order (`sort_claim_types`) so determinism
+      (AC3) holds regardless of the order a human typed the list in.
 """
 
 from __future__ import annotations
@@ -126,7 +135,7 @@ FLOW_KEY_PATTERN = re.compile(r"^task[0-9]+_")
 
 AUDIT_SCRIPT_RELATIVE_PATH = "DESIGN_DOCS/transport_stale_number_audit.sh"
 
-CLASSIFICATION_VALUES: tuple[str, ...] = (
+CLAIM_TYPE_VALUES: tuple[str, ...] = (
     "unclassified",
     "numeric",
     "threshold-decision",
@@ -136,6 +145,25 @@ CLASSIFICATION_VALUES: tuple[str, ...] = (
 )
 UNCLASSIFIED = "unclassified"
 REJECTED_VALUE = "not_a_claim"
+
+# A candidate's `claim_type` is a SET (emitted as a sorted list), because one
+# text span can assert more than one kind of claim -- e.g. "peak is 5.3 mg/L
+# ... still above the 1.0 mg/L threshold" is both `numeric` and
+# `threshold-decision`, and losing either half silently drops a claim that
+# may be judged differently downstream. `unclassified` and `not_a_claim` are
+# the two EXCLUSIVE sentinels: a candidate is either not-yet-judged, or noise,
+# or one-or-more real claim types -- never a mix. Enforced in
+# load_classifications() as a hard validation error, not a warning.
+EXCLUSIVE_CLAIM_TYPES: tuple[str, ...] = (UNCLASSIFIED, REJECTED_VALUE)
+
+_CLAIM_TYPE_ORDER = {value: index for index, value in enumerate(CLAIM_TYPE_VALUES)}
+
+
+def sort_claim_types(values) -> list[str]:
+    """Stable canonical ordering (CLAIM_TYPE_VALUES order), for determinism
+    (AC3): the same set of types must always serialise to the same list."""
+    return sorted(values, key=lambda v: _CLAIM_TYPE_ORDER.get(v, len(_CLAIM_TYPE_ORDER)))
+
 
 DEFAULT_CLASSIFICATIONS_RELATIVE = (
     "_SUPPORT/src/scripts/transport_claim_classifications.yaml"
@@ -555,6 +583,41 @@ def _safe_rel(path: Path, repo_root: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _validate_claim_type_list(cand_id: str, value, path: Path) -> list[str]:
+    """Validate one entry's `claim_type` field and return it in canonical
+    sorted order. Fails closed (raises) rather than warning -- an invalid
+    entry is a build failure, per the lecturer's decision that exclusivity
+    is enforced, not merely encouraged."""
+    if not isinstance(value, list) or not value:
+        raise ClaimInventoryError(
+            f"classification file {path}: entry '{cand_id}' has claim_type "
+            f"{value!r}; must be a non-empty list"
+        )
+    if len(value) != len(set(value)):
+        raise ClaimInventoryError(
+            f"classification file {path}: entry '{cand_id}' has duplicate "
+            f"claim_type entries: {value!r}"
+        )
+    for item in value:
+        if item not in CLAIM_TYPE_VALUES:
+            raise ClaimInventoryError(
+                f"classification file {path}: entry '{cand_id}' has an "
+                f"unrecognised claim_type value {item!r}; must be one of "
+                f"{CLAIM_TYPE_VALUES}"
+            )
+    for exclusive_value in EXCLUSIVE_CLAIM_TYPES:
+        if exclusive_value in value and len(value) != 1:
+            raise ClaimInventoryError(
+                f"classification file {path}: entry '{cand_id}' combines "
+                f"exclusive claim_type {exclusive_value!r} with other "
+                f"type(s) {sorted(set(value) - {exclusive_value})!r}; "
+                f"{exclusive_value!r} may never appear alongside another "
+                "type -- a candidate is either not-yet-judged, or noise, "
+                "or one-or-more real claim types, never a mix"
+            )
+    return sort_claim_types(value)
+
+
 def load_classifications(path: Path) -> dict[str, dict]:
     if not path.is_file():
         return {}
@@ -573,18 +636,12 @@ def load_classifications(path: Path) -> dict[str, dict]:
             f"classification file {path} must be a mapping of id -> entry"
         )
     for cand_id, entry in data.items():
-        if not isinstance(entry, dict) or "classification" not in entry:
+        if not isinstance(entry, dict) or "claim_type" not in entry:
             raise ClaimInventoryError(
                 f"classification file {path}: entry '{cand_id}' must be a "
-                "mapping with a 'classification' key"
+                "mapping with a 'claim_type' key"
             )
-        value = entry["classification"]
-        if value not in CLASSIFICATION_VALUES:
-            raise ClaimInventoryError(
-                f"classification file {path}: entry '{cand_id}' has an "
-                f"unrecognised classification value {value!r}; must be one "
-                f"of {CLASSIFICATION_VALUES}"
-            )
+        entry["claim_type"] = _validate_claim_type_list(cand_id, entry["claim_type"], path)
     return data
 
 
@@ -595,11 +652,17 @@ def write_classifications(path: Path, entries: dict[str, dict]) -> None:
             "#",
             "# Generated by _SUPPORT/src/scripts/transport_claim_inventory.py "
             "--init-classifications.",
-            "# Only the `classification` field is read by the coverage gate; the",
+            "# Only the `claim_type` field is read by the coverage gate; the",
             "# other fields are informational context for the human doing the",
             "# judging and are refreshed on every --init-classifications run.",
             "#",
-            f"# classification must be one of: {', '.join(CLASSIFICATION_VALUES)}",
+            "# claim_type is a LIST, not a single value: one text span can assert",
+            "# more than one kind of claim (e.g. \"peak is 5.3 mg/L ... still above",
+            "# the 1.0 mg/L threshold\" is both numeric AND threshold-decision).",
+            "# A single-element list is the normal case; list two or more entries",
+            "# when a span genuinely asserts more than one claim type.",
+            "#",
+            f"# each entry must be one of: {', '.join(CLAIM_TYPE_VALUES)}",
             "#   unclassified        -- not yet judged (fails the gate)",
             "#   numeric              -- a specific number/range is asserted",
             "#   threshold-decision   -- a claim that a value crosses/misses a "
@@ -609,6 +672,11 @@ def write_classifications(path: Path, entries: dict[str, dict]) -> None:
             "claim",
             "#   not_a_claim           -- net noise (code, axis label, etc.), "
             "not a claim at all",
+            "#",
+            "# unclassified and not_a_claim are EXCLUSIVE: a candidate is either",
+            "# not-yet-judged, or noise, or one-or-more real claim types -- never a",
+            "# mix. claim_type: [unclassified, numeric] or [not_a_claim, causal] is",
+            "# a validation error, not a warning.",
             "",
         ]
     )
@@ -620,7 +688,7 @@ def write_classifications(path: Path, entries: dict[str, dict]) -> None:
     ordered: dict[str, dict] = {}
     for cand_id in sorted(entries):
         entry = entries[cand_id]
-        row = {"classification": entry["classification"]}
+        row = {"claim_type": sort_claim_types(entry["claim_type"])}
         for key in ("path", "location", "snippet"):
             if key in entry and entry[key] is not None:
                 row[key] = str(entry[key]).replace("\n", " ")
@@ -647,7 +715,7 @@ def build_classification_context(candidate: Candidate) -> dict:
     if len(snippet) > 160:
         snippet = snippet[:157] + "..."
     return {
-        "classification": UNCLASSIFIED,
+        "claim_type": [UNCLASSIFIED],
         "path": candidate.path,
         "location": location,
         "snippet": snippet,
@@ -696,12 +764,21 @@ def join_candidates_and_classifications(
     candidate_ids = {c.id for c in candidates}
 
     unclassified_ids = []
-    by_type: dict[str, int] = {value: 0 for value in CLASSIFICATION_VALUES}
+    # by_type is an ASSIGNMENT count, not a candidate count: a multi-type
+    # candidate is counted once per type it carries (requirement 6), so
+    # sum(by_type.values()) is the "(candidate, type) claim assignments"
+    # total, which is >= candidates_found and differs from it exactly when a
+    # multi-type candidate exists. unclassified/not_a_claim are exclusive
+    # (enforced at load time), so by_type[UNCLASSIFIED] and
+    # by_type[REJECTED_VALUE] are still exact candidate counts for those two
+    # sentinel states.
+    by_type: dict[str, int] = {value: 0 for value in CLAIM_TYPE_VALUES}
     for candidate in candidates:
         entry = classifications.get(candidate.id)
-        value = entry["classification"] if entry is not None else UNCLASSIFIED
-        by_type[value] = by_type.get(value, 0) + 1
-        if value == UNCLASSIFIED:
+        claim_types = entry["claim_type"] if entry is not None else [UNCLASSIFIED]
+        for claim_type in claim_types:
+            by_type[claim_type] = by_type.get(claim_type, 0) + 1
+        if claim_types == [UNCLASSIFIED]:
             unclassified_ids.append(candidate.id)
 
     orphan_ids = sorted(cid for cid in classifications if cid not in candidate_ids)
@@ -725,16 +802,21 @@ def build_report(
     join_result: JoinResult,
     scope_relative_paths: tuple[str, ...],
 ) -> dict:
-    classified_count = sum(
-        n for value, n in join_result.by_type.items() if value != UNCLASSIFIED
-    )
-    rejected_count = join_result.by_type.get(REJECTED_VALUE, 0)
+    # unclassified/not_a_claim are exclusive singleton lists (enforced at
+    # load time), so these two buckets of the ASSIGNMENT-count dict are also
+    # exact CANDIDATE counts. classified_count must NOT be "sum of the other
+    # buckets" -- a multi-type candidate would then be counted more than
+    # once; it is candidate-level, so it is candidates_found minus the
+    # (also-candidate-level) unclassified count.
     unclassified_count = join_result.by_type.get(UNCLASSIFIED, 0)
+    rejected_count = join_result.by_type.get(REJECTED_VALUE, 0)
+    classified_count = coverage.candidates_found - unclassified_count
+    claim_assignments_found = sum(join_result.by_type.values())
 
     candidate_rows = []
     for candidate in candidates:
         entry = classifications.get(candidate.id)
-        classification = entry["classification"] if entry is not None else UNCLASSIFIED
+        claim_type = entry["claim_type"] if entry is not None else [UNCLASSIFIED]
         candidate_rows.append(
             {
                 "id": candidate.id,
@@ -748,12 +830,12 @@ def build_report(
                 "scope_symbol": candidate.scope_symbol,
                 "line_number": candidate.line_number,
                 "matched_text": candidate.matched_text,
-                "classification": classification,
+                "claim_type": list(claim_type),
             }
         )
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "scope_files": list(scope_relative_paths),
         "excluded_dicts": [
             {"path": e.path, "name": e.name, "reason": e.reason} for e in excluded
@@ -766,11 +848,15 @@ def build_report(
                 coverage.tasks_data_dict_entries_skipped_non_transport
             ),
             "python_module_files_visited": coverage.python_module_files_visited,
+            # candidates_found: unique text spans. claim_assignments_found:
+            # (candidate, type) pairs -- >= candidates_found, and strictly
+            # greater exactly when a multi-type candidate exists (req. 6).
             "candidates_found": coverage.candidates_found,
+            "claim_assignments_found": claim_assignments_found,
             "candidates_classified": classified_count,
             "candidates_rejected": rejected_count,
             "candidates_unclassified": unclassified_count,
-            "by_classification": dict(sorted(join_result.by_type.items())),
+            "by_claim_type": dict(sorted(join_result.by_type.items())),
         },
         "gate": {
             "ok": join_result.ok,
@@ -810,16 +896,26 @@ def render_markdown(report: dict) -> str:
         f"| Python module files visited | {cov['python_module_files_visited']} |"
     )
     lines.append(f"| Candidates found | {cov['candidates_found']} |")
+    lines.append(
+        f"| Claim-type assignments (candidate, type) pairs | "
+        f"{cov['claim_assignments_found']} |"
+    )
     lines.append(f"| Candidates classified | {cov['candidates_classified']} |")
     lines.append(f"| Candidates rejected (not_a_claim) | {cov['candidates_rejected']} |")
     lines.append(f"| Candidates unclassified | {cov['candidates_unclassified']} |")
     lines.append("")
 
-    lines.append("### By classification")
+    lines.append("### By claim type")
     lines.append("")
-    lines.append("| Classification | Count |")
+    lines.append(
+        "Assignment counts: a candidate with more than one `claim_type` is "
+        "counted once per type it carries, so this can sum to more than "
+        "`candidates_found`."
+    )
+    lines.append("")
+    lines.append("| Claim type | Count |")
     lines.append("|---|---|")
-    for value, count in sorted(cov["by_classification"].items()):
+    for value, count in sorted(cov["by_claim_type"].items()):
         lines.append(f"| {value} | {count} |")
     lines.append("")
 
@@ -850,7 +946,7 @@ def render_markdown(report: dict) -> str:
             lines.append(f"- `{cand_id}`")
         lines.append("")
 
-    rejected_rows = [c for c in report["candidates"] if c["classification"] == REJECTED_VALUE]
+    rejected_rows = [c for c in report["candidates"] if c["claim_type"] == [REJECTED_VALUE]]
     if rejected_rows:
         lines.append("## Rejected (not_a_claim) candidates")
         lines.append("")
@@ -870,12 +966,13 @@ def render_markdown(report: dict) -> str:
             current_path = c["path"]
             lines.append(f"### {current_path}")
             lines.append("")
-            lines.append("| Location | Checkpoint key | Classification | Matched text |")
+            lines.append("| Location | Checkpoint key | Claim type(s) | Matched text |")
             lines.append("|---|---|---|---|")
         location = _row_location(c)
         key = c["checkpoint_key"] or ""
+        claim_type = ", ".join(c["claim_type"])
         snippet = c["matched_text"].replace("|", "\\|")
-        lines.append(f"| {location} | {key} | {c['classification']} | {snippet} |")
+        lines.append(f"| {location} | {key} | {claim_type} | {snippet} |")
     lines.append("")
 
     return "\n".join(lines) + "\n"
@@ -1022,7 +1119,8 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         f"transport_claim_inventory: {coverage.files_visited} files, "
-        f"{coverage.candidates_found} candidates "
+        f"{coverage.candidates_found} candidates / "
+        f"{report['coverage']['claim_assignments_found']} claim-type assignments "
         f"({report['coverage']['candidates_classified']} classified, "
         f"{report['coverage']['candidates_rejected']} rejected, "
         f"{report['coverage']['candidates_unclassified']} unclassified)"
