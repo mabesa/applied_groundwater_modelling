@@ -50,7 +50,7 @@ algorithm. Those choices are frozen HERE, as follows.
    attribute <-> JSON-path mapping is `_FIELD_MAP` below, plus the two
    nested collections (`metrics`, `support.envelope`) handled explicitly.
 
-2. SCHEMA VERSION: `SCHEMA_VERSION = "2.0.0"`, a plain string, stored at
+2. SCHEMA VERSION: `SCHEMA_VERSION = "3.0.0"`, a plain string, stored at
    `schema.schema_version`. The loader's schema-version check is an EXACT
    string match against the currently-imported module's `SCHEMA_VERSION`
    (no semver range matching) -- any drift, including a patch bump, must be
@@ -69,6 +69,21 @@ algorithm. Those choices are frozen HERE, as follows.
    entirely must fail closed at the version gate, exactly like any other
    incompatible schema change, not be quietly reinterpreted under the new
    version.
+
+   🔴 BUMPED 2.0.0 -> 3.0.0 here (T1 S5 prerequisite -- `DESIGN_DOCS/T1_S5_brief.md`
+   v2 Sec 6, "BLOCKED -- the footprint needs its own artifact record"): this
+   revision adds a new structured `run_identity.source_footprint` subtree
+   (SCHEMA DECISIONS #16-#19 below) carrying S5's fixed physical
+   source-footprint apportionment -- the per-cell area-weighted mass rates
+   that give the SRC source a mesh-independent support. Exactly like the
+   2.0.0 bump, this is ADDITIVE (no existing field changes meaning or
+   shape) but the exact-string-match version gate means a 2.0.0 record is
+   now REFUSED outright rather than silently read as "a record with the
+   default zero-radius footprint" -- a 2.0.0 producer was never asked what
+   footprint it applied (S5 did not exist yet), so inventing an answer on
+   its behalf would be a fabricated fact, not a recovered one. A record
+   from any schema version prior to this one must fail closed at the
+   version gate, exactly like every other incompatible schema change.
 
 3. `producer`: split into two on-disk leaves, `schema.producer_module`
    (str) and `schema.producer_version` (str), rather than one combined
@@ -303,6 +318,80 @@ algorithm. Those choices are frozen HERE, as follows.
     (e.g. a `temporal_series` or `b_control` run may carry none); an empty
     mapping is a complete, valid record.
 
+16. `run_identity.source_footprint` (SCHEMA_VERSION 3.0.0 addition): T1 step
+    S5 (`T1_S5_brief.md` v2, C1 A11) gives the SRC source a fixed physical
+    footprint -- a disc of a declared radius, apportioned across the cells
+    it intersects by area, so the applied source becomes a SET OF CELLS
+    with PER-CELL mass rates rather than one scalar broadcast across a
+    mesh-dependent cell set. `T0_0_canonical_contract.md` Sec 2.5 makes
+    adding a dataclass field or a `meta` key to the model payload a FAILURE
+    EDGE, so this configuration cannot live there -- S5 Sec 3 is explicit
+    that it belongs in the evidence artifact instead. It is placed under
+    `run_identity`, a SIBLING of `grid_spec` (already "the full
+    parameterisation, not a label" per T0_2b Sec 5.1), rather than under
+    `support` or `metrics`, for the reason stated in the task brief that
+    authorised this addition: *the footprint is part of what identifies the
+    run -- a fixed input the run was configured with -- not an observation
+    OF the run*. This is the same distinction decision #12 draws for
+    `DiagnosticRecord` in the opposite direction: a diagnostic is what was
+    *measured* about an already-produced run's output and lives under
+    `support`; a footprint is what was *applied* to produce that output in
+    the first place and lives under `run_identity`, next to the other
+    fields that pin down what configuration ran. *** Placement under
+    `run_identity` rather than a new top-level group is this module's own
+    reading of the task brief's instruction, not restated verbatim from any
+    contract -- flagged per the task brief rather than decided silently. ***
+
+17. `SourceFootprintRecord.entries` -- the sorted `(cell,
+    intersection_area_m2, rate_g_per_day)` triples (`FootprintEntry`) --
+    MUST be ordered strictly ascending by `cell`, ties/duplicates
+    forbidden, per S5 Sec 3.3's frozen rule "cells emitted sorted by cell
+    index". Order is ENFORCED ON LOAD: `record_from_raw_dict` raises
+    `MalformedEvidenceRecordError` for an out-of-order or duplicate-cell
+    entry list, exactly like the closed-enum violations decision #6
+    describes -- a present-but-invalid value, not a missing one. `entries`
+    must also be non-empty (mirrors decision #11/#15's stance that the
+    *presence* of the structure is required even where a mapping's
+    *content* is producer policy; here the content itself -- at least one
+    cell carries mass -- is not optional, since a footprint with zero
+    entries could not have delivered the source's mass at all).
+
+18. `SourceFootprintRecord.total_rate_g_per_day` -- S5 Sec 3.3's frozen
+    "Rate-sum assertion" (`|Sum(rate_i) - M/T| <= 1e-9 * M/T`) is re-applied
+    HERE, verbatim, as a load-time audit of the same invariant, because the
+    whole point of area-weighting is that mass is conserved across the
+    apportionment: `_FOOTPRINT_RATE_SUM_TOL_REL = 1e-9` (relative) with a
+    matching absolute floor `_FOOTPRINT_RATE_SUM_TOL_ABS = 1e-9` for the
+    zero-total sentinel case (a bare relative tolerance is undefined at
+    `total == 0`). A record whose entries do not sum to its declared total
+    within tolerance is treated as a present-but-invalid value and raises
+    `MalformedEvidenceRecordError` -- the task brief's "rejected", read as
+    the same raise used for every other present-but-wrong value in this
+    schema (decision #6), not a softer `provenance_valid=False` downgrade.
+
+19. `SourceFootprintRecord.coverage` (`FootprintCoverage`: `disc_area_m2`,
+    `covered_area_m2`) -- S5 Sec 3.3's frozen "Coverage failure" rule
+    (`area(disc - union(eligible cells)) > 1e-6 * area(disc)` -> raise) is
+    likewise re-applied here as a load-time audit:
+    `_FOOTPRINT_COVERAGE_TOL_REL = 1e-6`. Recording the two areas rather
+    than a single boolean or ratio is deliberate -- it lets a reviewer see
+    *how* fully the disc was covered, not just a pass/fail bit, echoing
+    Sec 3.3's own emphasis that incomplete coverage is an error in S5's
+    contract, never a silent renormalisation. *** The exact two-field shape
+    of `FootprintCoverage` is this module's own resolution of the task
+    brief's "enough to show the disc was fully covered" -- not dictated by
+    any contract -- flagged here rather than decided silently. ***
+
+    THE SENTINEL: a zero-radius footprint (`radius_m == 0.0`) is S5's
+    explicit branch -- the disc degenerates to a point, `disc_area_m2 ==
+    covered_area_m2 == 0.0` (trivially fully covered), and `entries` is a
+    single `FootprintEntry` whose one cell carries the WHOLE
+    `total_rate_g_per_day` (S5 Sec 1: "the same `argmin` selection, the
+    same `src_cells = [nearest]`"). It round-trips through the identical
+    code path as any positive-radius footprint -- no separate sentinel
+    branch exists anywhere in this module -- because, per the task brief,
+    it is the DEFAULT configuration, not a special case.
+
 Fail-closed contract, restated precisely: `load_record()` raises
 `SchemaVersionMismatchError` or `ContentHashMismatchError` and returns
 NOTHING on those two failures -- it never falls back to a stale or default
@@ -325,7 +414,7 @@ from typing import Any, Mapping, MutableMapping, Optional, Sequence, Tuple, Unio
 # Frozen constants
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION = "2.0.0"
+SCHEMA_VERSION = "3.0.0"
 
 #: T0_2b_metrics_and_causal_rule.md Sec 5.1 "Role" row -- closed, exhaustive.
 RUN_ROLES: Tuple[str, ...] = (
@@ -421,6 +510,33 @@ _ENVELOPE_SUBFIELDS: Tuple[str, ...] = (
     "threshold_record_id",
 )
 
+#: Required sub-fields of every `run_identity.source_footprint.entries` item
+#: -- T1_S5_brief.md v2 Sec 3.3's frozen `(cell, intersection_area_m2,
+#: rate_g_per_day)` triple. SCHEMA DECISIONS #16-#17.
+_FOOTPRINT_ENTRY_SUBFIELDS: Tuple[str, ...] = (
+    "cell",
+    "intersection_area_m2",
+    "rate_g_per_day",
+)
+
+#: Required sub-fields of `run_identity.source_footprint.coverage`.
+#: SCHEMA DECISIONS #19.
+_FOOTPRINT_COVERAGE_SUBFIELDS: Tuple[str, ...] = (
+    "disc_area_m2",
+    "covered_area_m2",
+)
+
+#: S5 brief Sec 3.3 "Rate-sum assertion": |Sum(rate_i) - M/T| <= 1e-9 * M/T,
+#: reused verbatim here as the artifact's own load-time audit of the same
+#: invariant. The absolute floor covers the `total_rate_g_per_day == 0`
+#: case, where a bare relative tolerance is undefined. SCHEMA DECISIONS #18.
+_FOOTPRINT_RATE_SUM_TOL_REL = 1e-9
+_FOOTPRINT_RATE_SUM_TOL_ABS = 1e-9
+
+#: S5 brief Sec 3.3 "Coverage failure": area(disc - union(eligible cells)) >
+#: 1e-6 * area(disc) -> raise, reused verbatim here. SCHEMA DECISIONS #19.
+_FOOTPRINT_COVERAGE_TOL_REL = 1e-6
+
 _HASH_KEY = "content_hash"
 
 
@@ -510,6 +626,76 @@ class DiagnosticRecord:
     reason: Optional[str]
 
 
+@dataclass(frozen=True)
+class FootprintEntry:
+    """One area-weighted apportionment entry from T1 S5's frozen rule
+    (`DESIGN_DOCS/T1_S5_brief.md` v2 Sec 3.3): the intersection of the
+    fixed-radius source disc with one eligible cell, and the mass rate that
+    intersection carries.
+
+    `SourceFootprintRecord.entries` must be a tuple of these SORTED BY
+    `cell` ascending, strictly (no ties, no duplicate cells) -- S5's own
+    words are "cells emitted sorted by cell index". Order is a schema
+    invariant enforced on load (SCHEMA DECISIONS #17), not a display
+    convention a reader may re-sort away.
+    """
+
+    cell: int
+    intersection_area_m2: float
+    rate_g_per_day: float
+
+
+@dataclass(frozen=True)
+class FootprintCoverage:
+    """Evidence that the source disc was fully covered by eligible cells --
+    T1 S5's frozen coverage rule (`T1_S5_brief.md` v2 Sec 3.3): a coverage
+    failure (the disc is not fully covered by the mesh) is an ERROR in S5's
+    own contract, never a silent renormalisation. This is the artifact's
+    own, redundant, load-time record that the same check held for this
+    specific run (SCHEMA DECISIONS #19).
+    """
+
+    disc_area_m2: float
+    covered_area_m2: float
+
+
+@dataclass(frozen=True)
+class SourceFootprintRecord:
+    """The APPLIED fixed physical source footprint -- T1 S5, C1 A11 -- NOT
+    a diagnostic (see module docstring SCHEMA DECISIONS #16): a per-cell
+    mass-rate apportionment applied to configure the model's SRC package,
+    not a post-processing observation of an already-produced run. Lives at
+    `run_identity.source_footprint` because it identifies what ran, not
+    what was measured about it.
+
+    `entries` is the sorted `(cell, intersection_area_m2, rate_g_per_day)`
+    triple list (`FootprintEntry`), non-empty, strictly ascending by `cell`
+    (SCHEMA DECISIONS #17). `total_rate_g_per_day` must equal the sum of
+    `entries[*].rate_g_per_day` within `_FOOTPRINT_RATE_SUM_TOL_REL` /
+    `_FOOTPRINT_RATE_SUM_TOL_ABS` (SCHEMA DECISIONS #18) -- mass
+    conservation is the entire point of area-weighting. `coverage` records
+    that the disc was fully covered by eligible cells, within
+    `_FOOTPRINT_COVERAGE_TOL_REL` (SCHEMA DECISIONS #19). `algorithm_id`,
+    `radius_m` and `centre_xy_m` describe the fixed support that defines
+    the footprint.
+
+    THE SENTINEL: `radius_m == 0.0` is S5's explicit zero-radius branch --
+    one cell carrying the WHOLE `total_rate_g_per_day`, `disc_area_m2 ==
+    covered_area_m2 == 0.0`. It is represented and validated by exactly the
+    same fields and the same rules as any positive-radius footprint; there
+    is no separate sentinel code path anywhere in this module (SCHEMA
+    DECISIONS #19, closing paragraph) -- per the task brief it is the
+    DEFAULT configuration, not a special case.
+    """
+
+    algorithm_id: str
+    radius_m: float
+    centre_xy_m: Tuple[float, float]
+    entries: Tuple[FootprintEntry, ...]
+    total_rate_g_per_day: float
+    coverage: FootprintCoverage
+
+
 # ---------------------------------------------------------------------------
 # The record
 # ---------------------------------------------------------------------------
@@ -538,6 +724,7 @@ class EvidenceRecord:
     cr_target: Optional[float]
     case_id: Optional[str]
     nstp_cap: Optional[int]
+    source_footprint: Optional[SourceFootprintRecord]
 
     # -- fingerprints ---------------------------------------------------------
     src_sha: Optional[str]
@@ -645,6 +832,15 @@ REQUIRED_FIELD_PATHS: Tuple[Tuple[str, ...], ...] = tuple(
     ("support", "envelope", "tolerance"),
     ("support", "envelope", "threshold_record_id"),
     ("support", "diagnostics"),
+    ("run_identity", "source_footprint"),
+    ("run_identity", "source_footprint", "algorithm_id"),
+    ("run_identity", "source_footprint", "radius_m"),
+    ("run_identity", "source_footprint", "centre_xy_m"),
+    ("run_identity", "source_footprint", "entries"),
+    ("run_identity", "source_footprint", "total_rate_g_per_day"),
+    ("run_identity", "source_footprint", "coverage"),
+    ("run_identity", "source_footprint", "coverage", "disc_area_m2"),
+    ("run_identity", "source_footprint", "coverage", "covered_area_m2"),
 )
 
 #: The one field this module deliberately excludes from content-hash
@@ -787,6 +983,39 @@ def _diagnostics_to_json(
     return out
 
 
+def _footprint_entries_to_json(entries: Tuple[FootprintEntry, ...]) -> list:
+    return [
+        {
+            "cell": e.cell,
+            "intersection_area_m2": e.intersection_area_m2,
+            "rate_g_per_day": e.rate_g_per_day,
+        }
+        for e in entries
+    ]
+
+
+def _footprint_coverage_to_json(coverage: Optional[FootprintCoverage]) -> Optional[dict]:
+    if coverage is None:
+        return None
+    return {
+        "disc_area_m2": coverage.disc_area_m2,
+        "covered_area_m2": coverage.covered_area_m2,
+    }
+
+
+def _footprint_to_json(footprint: Optional[SourceFootprintRecord]) -> Optional[dict]:
+    if footprint is None:
+        return None
+    return {
+        "algorithm_id": footprint.algorithm_id,
+        "radius_m": footprint.radius_m,
+        "centre_xy_m": list(footprint.centre_xy_m) if footprint.centre_xy_m is not None else None,
+        "entries": _footprint_entries_to_json(footprint.entries),
+        "total_rate_g_per_day": footprint.total_rate_g_per_day,
+        "coverage": _footprint_coverage_to_json(footprint.coverage),
+    }
+
+
 def record_to_raw_dict(record: EvidenceRecord) -> dict:
     """Convert an `EvidenceRecord` into the nested, JSON-ready dict shape
     (without `content_hash` -- callers that want the hash-stamped version
@@ -803,6 +1032,9 @@ def record_to_raw_dict(record: EvidenceRecord) -> dict:
     diagnostics_json = _diagnostics_to_json(record.diagnostics)
     if diagnostics_json is not None:
         _set_path(raw, ("support", "diagnostics"), diagnostics_json)
+    footprint_json = _footprint_to_json(record.source_footprint)
+    if footprint_json is not None:
+        _set_path(raw, ("run_identity", "source_footprint"), footprint_json)
     return raw
 
 
@@ -986,6 +1218,140 @@ def _validate_enums_and_types(raw: Mapping[str, Any]) -> None:
                             f"support.diagnostics.{key}: computed status must not carry a reason"
                         )
 
+    if _has_path(raw, ("run_identity", "source_footprint")):
+        fp = _get_path(raw, ("run_identity", "source_footprint"))
+        if not isinstance(fp, Mapping):
+            errors.append("run_identity.source_footprint: expected object")
+        else:
+            if "radius_m" in fp:
+                r = fp["radius_m"]
+                if isinstance(r, bool) or not isinstance(r, (int, float)):
+                    errors.append("run_identity.source_footprint.radius_m: expected float")
+                elif not math.isfinite(float(r)) or float(r) < 0:
+                    errors.append(
+                        f"run_identity.source_footprint.radius_m: must be finite and >= 0, "
+                        f"got {r!r}"
+                    )
+
+            if "centre_xy_m" in fp:
+                c = fp["centre_xy_m"]
+                if not (isinstance(c, (list, tuple)) and len(c) == 2):
+                    errors.append(
+                        "run_identity.source_footprint.centre_xy_m: expected a 2-element array"
+                    )
+
+            entries_ok = True
+            rate_sum = 0.0
+            if "entries" in fp:
+                entries = fp["entries"]
+                if not isinstance(entries, (list, tuple)):
+                    errors.append("run_identity.source_footprint.entries: expected array")
+                    entries_ok = False
+                elif len(entries) == 0:
+                    errors.append(
+                        "run_identity.source_footprint.entries: must be non-empty "
+                        "(SCHEMA DECISIONS #17)"
+                    )
+                    entries_ok = False
+                else:
+                    prev_cell = None
+                    for i, item in enumerate(entries):
+                        if not isinstance(item, Mapping):
+                            errors.append(
+                                f"run_identity.source_footprint.entries[{i}]: expected object"
+                            )
+                            entries_ok = False
+                            continue
+                        item_ok = True
+                        for esub in _FOOTPRINT_ENTRY_SUBFIELDS:
+                            if esub not in item:
+                                errors.append(
+                                    f"run_identity.source_footprint.entries[{i}].{esub}: missing"
+                                )
+                                item_ok = False
+                        if not item_ok:
+                            entries_ok = False
+                            continue
+                        cell = item["cell"]
+                        cell_is_int = not isinstance(cell, bool) and isinstance(cell, int)
+                        if not cell_is_int:
+                            errors.append(
+                                f"run_identity.source_footprint.entries[{i}].cell: expected int"
+                            )
+                            entries_ok = False
+                        else:
+                            if prev_cell is not None and cell <= prev_cell:
+                                errors.append(
+                                    "run_identity.source_footprint.entries: not sorted strictly "
+                                    f"ascending by cell index at index {i} (cell {cell!r} "
+                                    f"follows {prev_cell!r})"
+                                )
+                                entries_ok = False
+                            prev_cell = cell
+                        area = item["intersection_area_m2"]
+                        if isinstance(area, bool) or not isinstance(area, (int, float)):
+                            errors.append(
+                                f"run_identity.source_footprint.entries[{i}]."
+                                "intersection_area_m2: expected float"
+                            )
+                            entries_ok = False
+                        rate = item["rate_g_per_day"]
+                        if isinstance(rate, bool) or not isinstance(rate, (int, float)):
+                            errors.append(
+                                f"run_identity.source_footprint.entries[{i}].rate_g_per_day: "
+                                "expected float"
+                            )
+                            entries_ok = False
+                        else:
+                            rate_sum += float(rate)
+
+            if entries_ok and "total_rate_g_per_day" in fp:
+                total = fp["total_rate_g_per_day"]
+                if isinstance(total, bool) or not isinstance(total, (int, float)):
+                    errors.append(
+                        "run_identity.source_footprint.total_rate_g_per_day: expected float"
+                    )
+                else:
+                    total = float(total)
+                    tol = _FOOTPRINT_RATE_SUM_TOL_ABS + _FOOTPRINT_RATE_SUM_TOL_REL * abs(total)
+                    if abs(rate_sum - total) > tol:
+                        errors.append(
+                            "run_identity.source_footprint: entries rate sum "
+                            f"{rate_sum!r} does not match total_rate_g_per_day {total!r} "
+                            f"within tolerance {tol!r}"
+                        )
+
+            if "coverage" in fp:
+                cov = fp["coverage"]
+                if not isinstance(cov, Mapping):
+                    errors.append("run_identity.source_footprint.coverage: expected object")
+                else:
+                    for csub in _FOOTPRINT_COVERAGE_SUBFIELDS:
+                        if csub in cov:
+                            v = cov[csub]
+                            if isinstance(v, bool) or not isinstance(v, (int, float)):
+                                errors.append(
+                                    f"run_identity.source_footprint.coverage.{csub}: "
+                                    "expected float"
+                                )
+                    if "disc_area_m2" in cov and "covered_area_m2" in cov:
+                        disc = cov["disc_area_m2"]
+                        covered = cov["covered_area_m2"]
+                        disc_ok = not isinstance(disc, bool) and isinstance(disc, (int, float))
+                        covered_ok = not isinstance(covered, bool) and isinstance(
+                            covered, (int, float)
+                        )
+                        if disc_ok and covered_ok:
+                            disc = float(disc)
+                            covered = float(covered)
+                            uncovered = disc - covered
+                            if uncovered > _FOOTPRINT_COVERAGE_TOL_REL * max(disc, 0.0) + 1e-12:
+                                errors.append(
+                                    "run_identity.source_footprint.coverage: disc not fully "
+                                    f"covered (disc_area_m2={disc!r}, covered_area_m2="
+                                    f"{covered!r})"
+                                )
+
     if errors:
         raise MalformedEvidenceRecordError(
             "evidence record fails schema validation: " + "; ".join(errors)
@@ -1039,6 +1405,42 @@ def _diagnostics_from_json(raw_diagnostics: Any) -> Optional[Mapping[str, Diagno
     return out
 
 
+def _footprint_entries_from_json(raw_entries: Any) -> Tuple[FootprintEntry, ...]:
+    entries = []
+    for item in raw_entries or ():
+        entries.append(
+            FootprintEntry(
+                cell=item.get("cell"),
+                intersection_area_m2=item.get("intersection_area_m2"),
+                rate_g_per_day=item.get("rate_g_per_day"),
+            )
+        )
+    return tuple(entries)
+
+
+def _footprint_coverage_from_json(raw_cov: Any) -> Optional[FootprintCoverage]:
+    if raw_cov is None:
+        return None
+    return FootprintCoverage(
+        disc_area_m2=raw_cov.get("disc_area_m2"),
+        covered_area_m2=raw_cov.get("covered_area_m2"),
+    )
+
+
+def _footprint_from_json(raw_footprint: Any) -> Optional[SourceFootprintRecord]:
+    if raw_footprint is None:
+        return None
+    centre = raw_footprint.get("centre_xy_m")
+    return SourceFootprintRecord(
+        algorithm_id=raw_footprint.get("algorithm_id"),
+        radius_m=raw_footprint.get("radius_m"),
+        centre_xy_m=tuple(centre) if centre is not None else None,
+        entries=_footprint_entries_from_json(raw_footprint.get("entries")),
+        total_rate_g_per_day=raw_footprint.get("total_rate_g_per_day"),
+        coverage=_footprint_coverage_from_json(raw_footprint.get("coverage")),
+    )
+
+
 def record_from_raw_dict(raw: Mapping[str, Any]) -> EvidenceRecord:
     """Build an `EvidenceRecord` from a nested raw dict (already past the
     schema-version / content-hash gates, or being built fresh by a
@@ -1057,6 +1459,10 @@ def record_from_raw_dict(raw: Mapping[str, Any]) -> EvidenceRecord:
     kwargs["envelope"] = _envelope_from_json(support_raw.get("envelope") if support_raw else None)
     kwargs["diagnostics"] = _diagnostics_from_json(
         support_raw.get("diagnostics") if support_raw else None
+    )
+    run_identity_raw = raw.get("run_identity") if isinstance(raw.get("run_identity"), Mapping) else None
+    kwargs["source_footprint"] = _footprint_from_json(
+        run_identity_raw.get("source_footprint") if run_identity_raw else None
     )
 
     is_complete, _missing = _structural_completeness(raw)
@@ -1154,6 +1560,7 @@ def build_fixture_record(
     metrics: Optional[Mapping[str, MetricRecord]] = None,
     envelope: Optional[SupportEnvelope] = None,
     diagnostics: Optional[Mapping[str, DiagnosticRecord]] = None,
+    source_footprint: Optional[SourceFootprintRecord] = None,
     **overrides: Any,
 ) -> EvidenceRecord:
     """Build a synthetic, well-formed `EvidenceRecord` for tests/dev use.
@@ -1216,6 +1623,25 @@ def build_fixture_record(
             )
         }
 
+    if source_footprint is None:
+        # The zero-radius SENTINEL (SCHEMA DECISIONS #19): S5's default
+        # configuration, one cell carrying the whole rate -- not a special
+        # case, so it is the default here too, not an omitted field.
+        source_footprint = SourceFootprintRecord(
+            algorithm_id="area_weighted_disc_v1",
+            radius_m=0.0,
+            centre_xy_m=(2683450.0, 1248230.0),
+            entries=(
+                FootprintEntry(
+                    cell=3120,
+                    intersection_area_m2=0.0,
+                    rate_g_per_day=5.277,
+                ),
+            ),
+            total_rate_g_per_day=5.277,
+            coverage=FootprintCoverage(disc_area_m2=0.0, covered_area_m2=0.0),
+        )
+
     fields: dict = dict(
         schema_version=SCHEMA_VERSION,
         producer_module="t1_evidence_artifact",
@@ -1225,6 +1651,7 @@ def build_fixture_record(
         cr_target=0.9,
         case_id=case_id,
         nstp_cap=5000,
+        source_footprint=source_footprint,
         src_sha="0" * 64,
         flow_fingerprint="1" * 64,
         gis_hashes={"model_boundary": "2" * 64, "rivers": "3" * 64},

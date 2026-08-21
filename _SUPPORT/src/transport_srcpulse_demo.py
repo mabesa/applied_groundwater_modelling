@@ -817,10 +817,216 @@ def load_limmat_flow():
     return _load_calibrated_flow()
 
 
+# ---------------------------------------------------------------------------
+# T1 S5 (DESIGN_DOCS/T1_S5_brief.md v3, C1 A11): fixed physical source
+# footprint. Replaces the single nearest-centroid `src_cells` selection with
+# an AREA-WEIGHTED DISC apportioned across every active layer-0 cell it
+# intersects, so the applied source's support is a fixed PHYSICAL region
+# (radius `footprint_radius_m`, centred on the spill point) rather than one
+# mesh-dependent cell.
+#
+# `footprint_radius_m == 0.0` is the frozen SENTINEL and the default
+# everywhere in this module: it takes an explicit branch reproducing pre-S5
+# behaviour byte-for-byte -- the same `argmin` nearest-cell selection, the
+# same single-cell `src_cells`, the same
+# `smassrate = mass_g / (1 * pulse_days)`. No disc geometry is built at the
+# sentinel; `_disc_footprint_areas` below is never called for it.
+#
+# The frozen rule (brief Sec 1/2/3.3), for a positive radius:
+#   a_i    = area(cell_i INTERSECT disc)
+#   rate_i = (M / T) * a_i / sum(a)
+#   cells emitted SORTED ASCENDING by cell index
+#   sum(rate_i) == M/T, asserted to 1e-9 relative
+#   an incomplete disc (not fully covered by eligible cells) RAISES -- never
+#   a silent renormalisation
+#
+# Geometry is computed ONCE, in `refine_corridor` (which has the mesh but
+# not mass_g/pulse_days), and stored in the returned grid bundle
+# (`footprint_areas_m2`, aligned with `src_cells`). `_footprint_rates`
+# (called once mass_g/pulse_days are known, by `add_transport_model` and
+# `build_srcpulse_demo`) apportions the mass across that ALREADY-COMPUTED
+# geometry -- it never re-solves the disc-cell intersection.
+#
+# `smassrate_gpd` (the SrcPulseDemo payload field) keeps its pre-S5
+# expression VERBATIM: `mass_g / (n_src * pulse_days)`. With unequal
+# per-cell rates this is the ARITHMETIC MEAN per-cell rate -- true by
+# construction, since `sum(rate_i) == M/T` -- and it is NEVER used to build
+# a positive-radius SRC record; only `_footprint_rates`'s per-cell rates
+# are. T0_0's Sec 2.5 makes a new payload field or `meta` key a failure
+# edge, so the per-cell apportionment itself is recorded nowhere in this
+# module -- it belongs in the evidence artifact (S13's
+# `t1_evidence_artifact.SourceFootprintRecord`), built by a CALLER from the
+# plain data this module returns. This module does not import
+# `t1_evidence_artifact`: doing so would grow `_src_sha()`'s transitive
+# `_SUPPORT/src` closure (`test_t1_src_closure.py::DEMO_EXPECTED`, frozen).
+# ---------------------------------------------------------------------------
+_FOOTPRINT_ALGORITHM_ID = "area_weighted_disc_v1"
+_FOOTPRINT_QUAD_SEGS = 64
+#: Brief Sec 3.3 "Coverage failure": area(disc - union(eligible cells)) >
+#: 1e-6 * area(disc) -> raise.
+_FOOTPRINT_COVERAGE_TOL_REL = 1e-6
+#: Brief Sec 3.3 "Rate-sum assertion": |sum(rate_i) - M/T| <= 1e-9 * M/T.
+_FOOTPRINT_RATE_SUM_TOL_REL = 1e-9
+
+
+def _validate_footprint_radius(radius_m: float) -> None:
+    """Brief Sec 3.3 'Radius validation': negative or non-finite -> raise."""
+    if not math.isfinite(radius_m):
+        raise ValueError(f"footprint_radius_m must be finite (got {radius_m!r})")
+    if radius_m < 0.0:
+        raise ValueError(f"footprint_radius_m must be >= 0 (got {radius_m!r})")
+
+
+def _footprint_cell_polygons(mg, ncpl: int,
+                             idomain: Optional[np.ndarray]) -> List[Optional[Polygon]]:
+    """Layer-0 DISV cell polygons, `None` for an inactive cell (`idomain <=
+    0`) -- brief Sec 3.3 'Eligible cells: the active layer-0 DISV cell
+    polygons'. Same `Polygon(mg.get_cell_vertices(i))` convention as
+    `_cellsize` (`:363`)."""
+    polys: List[Optional[Polygon]] = []
+    for i in range(int(ncpl)):
+        if idomain is not None and int(idomain[i]) <= 0:
+            polys.append(None)
+            continue
+        polys.append(Polygon(mg.get_cell_vertices(i)))
+    return polys
+
+
+def _disc_footprint_areas(mg, ncpl: int, idomain: Optional[np.ndarray],
+                          centre_xy: Tuple[float, float], radius_m: float,
+                          ) -> Tuple[List[int], List[float], float, float]:
+    """T1 S5's frozen area-weighted footprint geometry (brief Sec 3.3):
+    intersect a disc of `radius_m` centred on `centre_xy` -- Shapely
+    `Point(...).buffer(radius_m, quad_segs=64)` -- with every active
+    layer-0 DISV cell polygon.
+
+    Returns `(cells, areas_m2, disc_area_m2, covered_area_m2)`. `cells` is
+    SORTED ASCENDING by cell index (guaranteed by iterating cells 0..ncpl-1
+    in order) with `areas_m2` the matching NONZERO intersection areas -- a
+    tangent/zero-area touch contributes nothing and is EXCLUDED from
+    `cells` (brief Sec 3.3 'Zero-area touch'). Raises `ValueError` if the
+    disc is not, within `_FOOTPRINT_COVERAGE_TOL_REL`, fully covered by the
+    eligible cells -- a disc extending outside the domain is an error,
+    never a silent renormalisation (brief Sec 3.3 'Coverage failure').
+
+    Callers must validate `radius_m` (`_validate_footprint_radius`) and
+    must not call this at the `radius_m == 0.0` sentinel -- see the module
+    section banner above.
+    """
+    disc = Point(float(centre_xy[0]), float(centre_xy[1])).buffer(
+        float(radius_m), quad_segs=_FOOTPRINT_QUAD_SEGS)
+    disc_area = float(disc.area)
+    bx0, by0, bx1, by1 = disc.bounds
+    polys = _footprint_cell_polygons(mg, ncpl, idomain)
+
+    cells: List[int] = []
+    areas: List[float] = []
+    covered_area = 0.0
+    for i, poly in enumerate(polys):
+        if poly is None or poly.is_empty:
+            continue
+        px0, py0, px1, py1 = poly.bounds
+        if px1 < bx0 or px0 > bx1 or py1 < by0 or py0 > by1:
+            continue  # bounding boxes disjoint -> polygons cannot overlap
+        a = float(poly.intersection(disc).area)
+        covered_area += a
+        if a <= 0.0:
+            continue  # tangent / zero-area touch: contributes nothing (Sec 3.3)
+        cells.append(i)
+        areas.append(a)
+    assert cells == sorted(cells)  # ascending by construction (iterated 0..ncpl-1)
+
+    if disc_area - covered_area > _FOOTPRINT_COVERAGE_TOL_REL * disc_area:
+        missing = disc_area - covered_area
+        raise ValueError(
+            f"source footprint disc (radius_m={radius_m!r}, centre_xy={centre_xy!r}) "
+            f"is not fully covered by the mesh's active layer-0 cells: "
+            f"{missing:.6g} m^2 of {disc_area:.6g} m^2 uncovered "
+            f"({(missing / disc_area if disc_area else float('nan')):.3%}) -- a disc "
+            "extending outside the domain is an error, never a silent "
+            "renormalisation (DESIGN_DOCS/T1_S5_brief.md Sec 3.3)")
+
+    return cells, areas, disc_area, covered_area
+
+
+def _apportion_rates(areas: Sequence[float], total_rate: float) -> List[float]:
+    """T1 S5's frozen apportionment (brief Sec 1/3.3): `rate_i = (M / T) *
+    area_i / sum(area)`. Raises `ValueError` if the total intersection area
+    is not positive (nothing to apportion across), and `AssertionError` if
+    the resulting per-cell rates do not sum back to `total_rate` within
+    `_FOOTPRINT_RATE_SUM_TOL_REL` (brief Sec 3.3's rate-sum assertion).
+    """
+    total_area = float(math.fsum(areas))
+    if not (total_area > 0.0):
+        raise ValueError(
+            f"source footprint has non-positive total intersection area "
+            f"(got {total_area!r}); cannot apportion {total_rate!r} across it")
+    rates = [total_rate * a / total_area for a in areas]
+    rate_sum = float(math.fsum(rates))
+    tol = _FOOTPRINT_RATE_SUM_TOL_REL * abs(total_rate)
+    if abs(rate_sum - total_rate) > tol:
+        raise AssertionError(
+            f"area-weighted per-cell rates sum to {rate_sum!r}, expected "
+            f"{total_rate!r} within {tol!r} "
+            "(DESIGN_DOCS/T1_S5_brief.md Sec 3.3 rate-sum assertion)")
+    return rates
+
+
+def _footprint_rates(grid: Dict[str, Any], mass_g: float, pulse_days: float,
+                     ) -> Tuple[List[int], List[float], float]:
+    """The per-cell SRC loading for `grid["src_cells"]` -- T1 S5 (brief Sec
+    1-3). `grid["footprint_radius_m"] == 0.0` is the frozen SENTINEL: the
+    single `src_cells[0]` carries the WHOLE `M/T`, exactly reproducing
+    today's `smassrate = mass_g / (1 * pulse_days)`. A positive radius
+    apportions `M/T` across `grid["src_cells"]` by `grid["footprint_areas_m2"]`
+    via `_apportion_rates`, using geometry `refine_corridor` already
+    computed (no re-solve here).
+
+    Also returns `smassrate` -- the FROZEN payload expression `mass_g /
+    (n_src * pulse_days)` (brief Sec 3.1). By construction this is exactly
+    the arithmetic MEAN of the returned per-cell rates (`sum(rate_i) ==
+    M/T`, so `mean(rate_i) == (M/T) / n_src == smassrate`); it must NEVER be
+    used by a caller to build a positive-radius SRC record -- use the
+    per-cell rates this function returns instead.
+    """
+    src_cells = list(grid["src_cells"])
+    n_src = len(src_cells)
+    smassrate = float(mass_g) / (n_src * float(pulse_days))
+    radius_m = float(grid.get("footprint_radius_m", 0.0))
+    if radius_m == 0.0:
+        per_cell_rates = [smassrate for _ in src_cells]
+    else:
+        total_rate = float(mass_g) / float(pulse_days)
+        per_cell_rates = _apportion_rates(grid["footprint_areas_m2"], total_rate)
+    return src_cells, per_cell_rates, smassrate
+
+
+def _binding_cell(cells: Sequence[int], rates: Sequence[float],
+                  q_cells: Sequence[float]) -> int:
+    """T1 S5's frozen binding-cell rule (brief Sec 3.2): the cell maximising
+    `rate_i / q_cell_i` -- the highest emergent concentration, where a
+    solubility limit actually binds. Ties break to the LOWEST cell index.
+    At a single-cell footprint (the sentinel) the maximum over one cell is
+    that cell, so the default is untouched.
+    """
+    best_ratio = -math.inf
+    best_cell: Optional[int] = None
+    for c, r, q in zip(cells, rates, q_cells):
+        ratio = r / q
+        if ratio > best_ratio or (ratio == best_ratio
+                                  and (best_cell is None or c < best_cell)):
+            best_ratio = ratio
+            best_cell = c
+    if best_cell is None:
+        raise ValueError("_binding_cell: cells must be non-empty")
+    return best_cell
+
+
 def refine_corridor(cgwf, boundary, rivers, spill_xy=None, *,
                     refine_radii: Any = _UNSET,
                     mesh_spec: Optional["MeshSpec"] = None,
-                    case_ws: Optional[Union[str, Path]] = None) -> Dict[str, Any]:
+                    case_ws: Optional[Union[str, Path]] = None,
+                    footprint_radius_m: float = 0.0) -> Dict[str, Any]:
     """Refine the spill->extraction corridor and return a **GridBundle** dict.
 
     Computes the local regional-flow direction at the extraction well (to place
@@ -833,6 +1039,17 @@ def refine_corridor(cgwf, boundary, rivers, spill_xy=None, *,
     ``mesh_spec`` with more than one ``MeshLevel`` raises ``NotImplementedError``
     (S3b, not built here).
 
+    ``footprint_radius_m`` (T1 S5, default ``0.0``) is the fixed physical
+    source footprint's radius. At ``0.0`` (the sentinel) ``src_cells`` is the
+    single nearest-centroid cell, exactly as before S5. At a positive radius
+    it is every active layer-0 cell the disc (centred on the spill point)
+    intersects, sorted ascending by cell index; negative or non-finite
+    raises ``ValueError``. The returned dict also carries the footprint's
+    GEOMETRY (``footprint_areas_m2``, aligned with ``src_cells``,
+    ``footprint_disc_area_m2``, ``footprint_covered_area_m2``) -- not rates,
+    which need ``mass_g``/``pulse_days`` and are apportioned later by
+    ``_footprint_rates``.
+
     The returned dict carries everything the sim builders need -- modelgrid,
     gridprops, cell arrays, boundary stress data, and the injection / extraction /
     source cell indices -- so nothing downstream reaches back into the coarse or
@@ -842,6 +1059,7 @@ def refine_corridor(cgwf, boundary, rivers, spill_xy=None, *,
     """
     spec = _resolve_mesh_spec(refine_radii=refine_radii, mesh_spec=mesh_spec)
     _require_single_level(spec)   # NotImplementedError for >1 level, before any I/O
+    _validate_footprint_radius(footprint_radius_m)   # before any I/O (T1 S5 brief Sec 3.3)
 
     heads_array = cgwf.output.head().get_data().flatten()
 
@@ -877,7 +1095,23 @@ def refine_corridor(cgwf, boundary, rivers, spill_xy=None, *,
 
     injc = int(np.argmin((xc - INJ_XY[0]) ** 2 + (yc - INJ_XY[1]) ** 2))
     extc = int(np.argmin((xc - ABS_XY[0]) ** 2 + (yc - ABS_XY[1]) ** 2))
-    src_cells = [int(np.argmin((xc - spill_xy[0]) ** 2 + (yc - spill_xy[1]) ** 2))]
+
+    # ---- T1 S5 (DESIGN_DOCS/T1_S5_brief.md v3): fixed physical source
+    # footprint. footprint_radius_m == 0.0 is the frozen SENTINEL -- the
+    # SAME argmin single-cell selection as always, no disc geometry built at
+    # all, so this branch is byte-for-byte identical to pre-S5 code. A
+    # positive radius apportions the disc across every active layer-0 cell
+    # it intersects (Sec 3.3); geometry only -- rates are apportioned later,
+    # once mass_g/pulse_days are known (see `_footprint_rates`).
+    if footprint_radius_m == 0.0:
+        src_cells = [int(np.argmin((xc - spill_xy[0]) ** 2 + (yc - spill_xy[1]) ** 2))]
+        footprint_areas = [0.0]
+        footprint_disc_area = 0.0
+        footprint_covered_area = 0.0
+    else:
+        idomain = np.asarray(rgwf.disv.idomain.array, dtype=int).reshape(-1)
+        src_cells, footprint_areas, footprint_disc_area, footprint_covered_area = \
+            _disc_footprint_areas(mg, ncpl, idomain, spill_xy, footprint_radius_m)
 
     line = LineString([tuple(spill_xy), tuple(ABS_XY)])
     corridor_mask = np.array([line.distance(Point(xc[i], yc[i])) < refine_radius_used
@@ -892,7 +1126,16 @@ def refine_corridor(cgwf, boundary, rivers, spill_xy=None, *,
         corridor_mask=corridor_mask, u_reg=tuple(u_reg),
         refine_radius_used=refine_radius_used, rgwf=rgwf,
         mesh_spec=spec, mesh_spec_hash=mesh_spec_hash(spec), mesh_hash=refgrid_hash,
-        boundary_path=boundary_path, rivers_path=rivers_path)
+        boundary_path=boundary_path, rivers_path=rivers_path,
+        # T1 S5: the fixed physical source footprint's GEOMETRY (brief Sec
+        # 1-3.3) -- not rates yet (those need mass_g/pulse_days; see
+        # `_footprint_rates`). `footprint_areas_m2` is aligned entry-for-entry
+        # with `src_cells`.
+        footprint_radius_m=float(footprint_radius_m),
+        footprint_centre_xy=(float(spill_xy[0]), float(spill_xy[1])),
+        footprint_areas_m2=footprint_areas,
+        footprint_disc_area_m2=footprint_disc_area,
+        footprint_covered_area_m2=footprint_covered_area)
 
 
 def new_sim(case_ws: Union[str, Path], *, pulse_days: float, total_days: float,
@@ -958,22 +1201,30 @@ def add_transport_model(sim, gwf, grid: Dict[str, Any], *, mass_g: float,
     """Add the GWT solute-transport model (DISV, IC, MST, ADV/TVD, DSP, SSM, SRC,
     OC) + the GWT IMS solver to ``sim`` and return it.
 
-    The spill enters via the SRC package as a per-cell mass loading
-    ``smassrate = mass_g / (n_src_cells * pulse_days)`` [g/d], ON in period 0 and
-    OFF in period 1.  ``alpha_L`` defaults to the LOCKED longitudinal dispersivity;
+    The spill enters via the SRC package as a per-cell mass loading, ON in
+    period 0 and OFF in period 1.  At the T1 S5 sentinel
+    (``grid["footprint_radius_m"] == 0.0``, the default) this is one cell
+    carrying ``smassrate = mass_g / (1 * pulse_days)`` [g/d] -- exactly as
+    before S5.  At a positive footprint radius each cell in
+    ``grid["src_cells"]`` carries its own AREA-WEIGHTED rate (see
+    ``_footprint_rates`` / ``_apportion_rates``), not an equal split.
+    ``alpha_L`` defaults to the LOCKED longitudinal dispersivity;
     ``alpha_T`` is derived from the LOCKED 10:1 ratio.  MST sorption is gated on
     ``R > 1`` (``Kd = (R-1)*porosity/rho_b``) and first-order decay on ``lam > 0``.
     """
     ncpl = grid["ncpl"]; gp = grid["gridprops"]
     top_ref = grid["top"]; botm_ref = grid["botm"]
-    src_cells = grid["src_cells"]
 
     alpha_L_eff = float(LOCKED_PARAMS["alh"]) if alpha_L is None else float(alpha_L)
     alpha_T_eff = alpha_L_eff * (float(LOCKED_PARAMS["ath1"]) / float(LOCKED_PARAMS["alh"]))
     porosity = float(LOCKED_PARAMS["porosity"])
     Kd = (float(R) - 1.0) * porosity / float(rho_b) if R > 1.0 else 0.0
-    n_src = len(src_cells)
-    smassrate = float(mass_g) / (n_src * float(pulse_days))   # per-cell SRC loading [g/d]
+    # T1 S5 (brief Sec 1-3): per-cell SRC loading. `smassrate` is kept ONLY
+    # as the frozen payload expression (brief Sec 3.1, arithmetic mean of
+    # `per_cell_rates` by construction) -- `src_spd` below is built from
+    # `per_cell_rates`, never from `smassrate` broadcast, except at the
+    # sentinel where they are (by construction) identical.
+    src_cells, per_cell_rates, smassrate = _footprint_rates(grid, mass_g, pulse_days)
 
     gwt = flopy.mf6.ModflowGwt(sim, modelname="gwt", save_flows=True)
     flopy.mf6.ModflowGwtdisv(gwt, nlay=1, ncpl=ncpl, nvert=gp["nvert"], top=top_ref,
@@ -995,8 +1246,11 @@ def add_transport_model(sim, gwf, grid: Dict[str, Any], *, mass_g: float,
                             diffc=LOCKED_PARAMS["diffc"], xt3d_off=LOCKED_PARAMS["xt3d_off"])
     # bare SSM: CHD/RIV/RCHA/WEL flows carry default (0 inflow / cell-conc outflow)
     flopy.mf6.ModflowGwtssm(gwt)
-    # SRC finite pulse: mass loading [g/d] in period 0, OFF in period 1
-    src_spd = {0: [[(0, c), smassrate] for c in src_cells], 1: []}
+    # SRC finite pulse: PER-CELL mass loading [g/d] in period 0, OFF in period 1
+    # (T1 S5: `per_cell_rates` is the area-weighted apportionment, not one
+    # scalar broadcast across cells -- an equal split would make the support
+    # mesh-dependent again in a subtler way).
+    src_spd = {0: [[(0, c), r] for c, r in zip(src_cells, per_cell_rates)], 1: []}
     flopy.mf6.ModflowGwtsrc(gwt, stress_period_data=src_spd)
     flopy.mf6.ModflowGwtoc(gwt, concentration_filerecord="gwt.ucn",
                            budget_filerecord="gwt.cbc",
@@ -1039,6 +1293,7 @@ def build_srcpulse_demo(
     nstp_cap: int = 2000,
     refine_radii: Any = _UNSET,
     mesh_spec: Optional["MeshSpec"] = None,
+    footprint_radius_m: float = 0.0,
     force: bool = False,
 ) -> SrcPulseDemo:
     """Build + run the SRC finite-pulse spill -> capture demo; return diagnostics.
@@ -1088,6 +1343,18 @@ def build_srcpulse_demo(
         it is folded in instead.  A ``levels`` tuple with more than one
         ``MeshLevel`` raises ``NotImplementedError`` (multi-level
         construction is milestone S3b, not built here).
+    footprint_radius_m : float
+        T1 S5 fixed physical source footprint radius [m].  ``0.0`` (default)
+        is the frozen SENTINEL -- byte-for-byte the pre-S5 behaviour: the
+        single nearest-centroid ``src_cells`` cell carries the whole
+        ``mass_g / pulse_days``.  A positive radius apportions that rate,
+        AREA-WEIGHTED, across every active layer-0 cell a disc of this
+        radius (centred on the spill point) intersects.  Negative or
+        non-finite raises ``ValueError``.  The per-cell apportionment is not
+        part of this return value (T0_0 Sec 2.5 makes an added payload/``meta``
+        field a failure edge) -- it belongs in the evidence artifact; see
+        ``DESIGN_DOCS/T1_S5_brief.md`` Sec 3.  Not wired into any default
+        call -- a later milestone (T2) uses a positive value.
     force : bool
         Rebuild even if a matching cache exists.
 
@@ -1102,11 +1369,16 @@ def build_srcpulse_demo(
     for _name, _val in (("mass_g", mass_g), ("pulse_days", pulse_days),
                          ("total_days", total_days), ("solubility_mgL", solubility_mgL),
                          ("R", R), ("rho_b", rho_b), ("lam", lam),
-                         ("cr_target", cr_target)):
+                         ("cr_target", cr_target), ("footprint_radius_m", footprint_radius_m)):
         if not math.isfinite(_val):
             raise ValueError(f"{_name} must be finite (got {_val!r})")
     if alpha_L is not None and not math.isfinite(alpha_L):
         raise ValueError(f"alpha_L must be finite (got {alpha_L!r})")
+
+    # T1 S5 (brief Sec 3.3 "Radius validation"): negative or non-finite ->
+    # raise, checked up front (before any GIS/MF6 work) like every other
+    # parameter guard in this block.
+    _validate_footprint_radius(footprint_radius_m)
 
     if R < 1.0:
         raise ValueError(f"R must be >= 1.0 (got {R!r})")
@@ -1159,6 +1431,11 @@ def build_srcpulse_demo(
     params = dict(mass_g=float(mass_g), pulse_days=float(pulse_days),
                   total_days=float(total_days), solubility_mgL=float(solubility_mgL),
                   alpha_L=alpha_L_eff, R=float(R), rho_b=float(rho_b), lam=float(lam),
+                  # T1 S5 (brief Sec 4 exit criterion 7): the footprint radius
+                  # must be part of the cache identity -- the cache digest is
+                  # embedded in the filename, so a run at one radius must
+                  # never resolve to a cache file a different radius wrote.
+                  footprint_radius_m=float(footprint_radius_m),
                   cr_target=float(cr_target), nstp_cap=int(nstp_cap),
                   # T1 S3a: the DECLARED mesh identity (brief Section 2.1) --
                   # every MeshSpec field (base_cell_size, levels, retry_radii)
@@ -1202,17 +1479,21 @@ def build_srcpulse_demo(
 
     # ---- load + refine (the visible builders; SIGILL retry stays inside) ----
     cgwf, boundary, rivers, exe = load_limmat_flow()
-    grid = refine_corridor(cgwf, boundary, rivers, mesh_spec=spec, case_ws=case_ws)
+    grid = refine_corridor(cgwf, boundary, rivers, mesh_spec=spec, case_ws=case_ws,
+                           footprint_radius_m=footprint_radius_m)
     ncpl = grid["ncpl"]
     csz = grid["cellsize"]
     heads_ref = grid["heads"]; botm_ref = grid["botm"]
-    injc = grid["inj_cell"]; extc = grid["ext_cell"]; src_cells = grid["src_cells"]
+    injc = grid["inj_cell"]; extc = grid["ext_cell"]
     corridor_mask = grid["corridor_mask"]
     refine_radius_used = grid["refine_radius_used"]
     u_reg = np.array(grid["u_reg"], float)
     spill_xy = grid["spill_xy"]
+    # T1 S5 (brief Sec 1-3): area-weighted per-cell rates, not an equal
+    # split -- see `_footprint_rates`'s docstring for the sentinel/positive-
+    # radius distinction and what `smassrate` means with unequal rates.
+    src_cells, per_cell_rates, smassrate = _footprint_rates(grid, mass_g, pulse_days)
     n_src = len(src_cells)
-    smassrate = float(mass_g) / (n_src * float(pulse_days))   # per-cell SRC loading [g/d]
 
     # T1 S3a (brief Section 3, location "demo coupled sim"): the coupled sim's
     # workspace is content-addressed by `run_hash` -- `params` (the pre-solve
@@ -1277,11 +1558,24 @@ def build_srcpulse_demo(
                else float("nan"))
 
     # ---- emergent source-cell concentration vs solubility ----
-    q_src = float(np.hypot(spd["qx"][src_cells[0]], spd["qy"][src_cells[0]]))  # Darcy [m/d]
-    b_src = float(max(heads_ref[src_cells[0]] - botm_ref[0][src_cells[0]], 0.1))
-    ds_src = float(csz[src_cells[0]])
-    q_cell = max(q_src * ds_src * b_src, 1e-6)                # advective throughflow [m^3/d]
-    emergent_C = smassrate / q_cell                          # [g/m^3] == [mg/L]
+    # T1 S5 (brief Sec 3.2): with unequal per-cell rates, `src_cells[0]` is
+    # merely the lowest cell index -- physically arbitrary. The BINDING cell
+    # is the one maximising rate_i / q_cell_i (the highest emergent
+    # concentration, where a solubility limit actually binds); ties break to
+    # the lowest cell index. Each per-candidate formula below is UNCHANGED
+    # from pre-S5 -- only generalised from a hardcoded `src_cells[0]` to
+    # every candidate -- so at the sentinel (one cell) the max over one cell
+    # IS that cell and every quantity below is byte-identical to before.
+    q_src_all = [float(np.hypot(spd["qx"][c], spd["qy"][c])) for c in src_cells]  # Darcy [m/d]
+    b_src_all = [float(max(heads_ref[c] - botm_ref[0][c], 0.1)) for c in src_cells]
+    ds_src_all = [float(csz[c]) for c in src_cells]
+    q_cell_all = [max(q * ds * b, 1e-6)                       # throughflow [m^3/d]
+                 for q, ds, b in zip(q_src_all, ds_src_all, b_src_all)]
+    bcell = _binding_cell(src_cells, per_cell_rates, q_cell_all)
+    bidx = src_cells.index(bcell)
+    q_src = q_src_all[bidx]; b_src = b_src_all[bidx]; ds_src = ds_src_all[bidx]
+    q_cell = q_cell_all[bidx]
+    emergent_C = per_cell_rates[bidx] / q_cell                # [g/m^3] == [mg/L]
     solubility_ok = bool(emergent_C < solubility_mgL)
     sol_margin = float(solubility_mgL / emergent_C) if emergent_C > 0 else float("inf")
 

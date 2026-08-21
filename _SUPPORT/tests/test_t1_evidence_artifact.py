@@ -286,6 +286,9 @@ _REMOVABLE_PATHS = [
     ("support", "diagnostics"),
     ("role", "run_role"),
     ("role", "grid_role"),
+    ("run_identity", "source_footprint"),
+    ("run_identity", "source_footprint", "total_rate_g_per_day"),
+    ("run_identity", "source_footprint", "coverage"),
 ]
 
 
@@ -832,8 +835,21 @@ class TestOldSchemaVersionFailsClosedForDiagnostics:
         with pytest.raises(t1.SchemaVersionMismatchError):
             t1.load_record(path)
 
-    def test_current_schema_version_is_2_0_0(self):
-        assert t1.SCHEMA_VERSION == "2.0.0"
+    def test_previous_schema_version_2_0_0_now_fails_closed(self, tmp_path):
+        """Same regression, one schema bump later: a 2.0.0 record (the
+        version immediately before the S5 source_footprint addition) must
+        also be refused outright, not silently accepted as '2.0.0 plus a
+        default footprint' -- a 2.0.0 producer never declared a footprint
+        at all (S5 did not exist yet)."""
+        raw = _fixture_raw()
+        raw["schema"]["schema_version"] = "2.0.0"
+        path = tmp_path / "prev_version.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.SchemaVersionMismatchError):
+            t1.load_record(path)
+
+    def test_current_schema_version_is_3_0_0(self):
+        assert t1.SCHEMA_VERSION == "3.0.0"
 
 
 # ---------------------------------------------------------------------------
@@ -855,3 +871,189 @@ class TestDiagnosticCausalSupportEligibility:
         )
         diag = wire["observation_support_robustness"]
         assert diag["causal_support_eligible"] is False
+
+
+# ---------------------------------------------------------------------------
+# source_footprint (T1 S5 -- SCHEMA_VERSION 3.0.0 addition)
+# ---------------------------------------------------------------------------
+
+
+def _zero_radius_footprint(**overrides) -> t1.SourceFootprintRecord:
+    """The S5 sentinel: one cell carries the whole rate, disc area is zero
+    and trivially fully covered -- the DEFAULT configuration, not a
+    special case (module docstring SCHEMA DECISIONS #19)."""
+    fields = dict(
+        algorithm_id="area_weighted_disc_v1",
+        radius_m=0.0,
+        centre_xy_m=(2683450.0, 1248230.0),
+        entries=(
+            t1.FootprintEntry(cell=3120, intersection_area_m2=0.0, rate_g_per_day=5.277),
+        ),
+        total_rate_g_per_day=5.277,
+        coverage=t1.FootprintCoverage(disc_area_m2=0.0, covered_area_m2=0.0),
+    )
+    fields.update(overrides)
+    return t1.SourceFootprintRecord(**fields)
+
+
+def _multi_cell_footprint(**overrides) -> t1.SourceFootprintRecord:
+    """A positive-radius footprint spanning three cells, area-weighted,
+    sorted ascending by cell index, rates summing exactly to the total."""
+    fields = dict(
+        algorithm_id="area_weighted_disc_v1",
+        radius_m=25.0,
+        centre_xy_m=(2683450.0, 1248230.0),
+        entries=(
+            t1.FootprintEntry(cell=101, intersection_area_m2=125.0, rate_g_per_day=1.25),
+            t1.FootprintEntry(cell=105, intersection_area_m2=375.0, rate_g_per_day=3.75),
+            t1.FootprintEntry(cell=240, intersection_area_m2=500.0, rate_g_per_day=5.0),
+        ),
+        total_rate_g_per_day=10.0,
+        coverage=t1.FootprintCoverage(disc_area_m2=1000.0, covered_area_m2=1000.0),
+    )
+    fields.update(overrides)
+    return t1.SourceFootprintRecord(**fields)
+
+
+class TestSourceFootprintRoundTrip:
+    def test_multi_cell_footprint_round_trips_exactly_order_preserved(self, tmp_path):
+        fp = _multi_cell_footprint()
+        record = t1.build_fixture_record(run_role="spatial_series", source_footprint=fp)
+        path = tmp_path / "footprint.json"
+        raw = t1.write_record(record, path)
+
+        wire_entries = raw["run_identity"]["source_footprint"]["entries"]
+        assert [e["cell"] for e in wire_entries] == [101, 105, 240]
+
+        loaded = t1.load_record(path)
+        assert loaded == record
+        assert loaded.source_footprint == fp
+        assert [e.cell for e in loaded.source_footprint.entries] == [101, 105, 240]
+        assert loaded.provenance_valid is True
+
+    def test_zero_radius_single_cell_footprint_round_trips(self, tmp_path):
+        fp = _zero_radius_footprint()
+        record = t1.build_fixture_record(run_role="pilot", source_footprint=fp)
+        path = tmp_path / "zero_radius.json"
+        t1.write_record(record, path)
+        loaded = t1.load_record(path)
+        assert loaded.source_footprint == fp
+        assert loaded.source_footprint.radius_m == 0.0
+        assert len(loaded.source_footprint.entries) == 1
+        assert loaded.source_footprint.entries[0].rate_g_per_day == fp.total_rate_g_per_day
+        assert loaded.source_footprint.coverage.disc_area_m2 == 0.0
+        assert loaded.source_footprint.coverage.covered_area_m2 == 0.0
+        assert loaded.provenance_valid is True
+
+    def test_default_fixture_footprint_is_the_zero_radius_sentinel(self):
+        """build_fixture_record's own default -- unforced -- is the
+        sentinel, not an omitted/None field, matching the brief: the
+        zero-radius case is the default configuration."""
+        record = t1.build_fixture_record(run_role="temporal_series")
+        assert record.source_footprint is not None
+        assert record.source_footprint.radius_m == 0.0
+        assert len(record.source_footprint.entries) == 1
+
+
+class TestSourceFootprintEntryOrdering:
+    def test_entries_not_sorted_by_cell_index_are_rejected(self, tmp_path):
+        raw = _fixture_raw(source_footprint=_multi_cell_footprint())
+        entries = raw["run_identity"]["source_footprint"]["entries"]
+        # swap the first two entries out of ascending order
+        entries[0], entries[1] = entries[1], entries[0]
+        _refresh_hash(raw)
+        path = tmp_path / "unsorted.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+    def test_duplicate_cell_index_is_rejected(self, tmp_path):
+        raw = _fixture_raw(source_footprint=_multi_cell_footprint())
+        entries = raw["run_identity"]["source_footprint"]["entries"]
+        entries[1]["cell"] = entries[0]["cell"]
+        _refresh_hash(raw)
+        path = tmp_path / "duplicate_cell.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+
+class TestSourceFootprintRateSum:
+    def test_entries_not_summing_to_total_are_rejected(self, tmp_path):
+        raw = _fixture_raw(source_footprint=_multi_cell_footprint())
+        raw["run_identity"]["source_footprint"]["total_rate_g_per_day"] = 999.0
+        _refresh_hash(raw)
+        path = tmp_path / "bad_sum.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+    def test_zero_radius_single_entry_trivially_satisfies_the_sum_check(self):
+        """Sanity check on the mechanism: the sentinel's one entry equals
+        the total exactly, so it must NOT be flagged as a mismatch."""
+        record = t1.build_fixture_record(
+            run_role="pilot", source_footprint=_zero_radius_footprint()
+        )
+        raw = t1.dump_record(record)  # must not raise
+        assert raw["run_identity"]["source_footprint"]["total_rate_g_per_day"] == 5.277
+
+
+class TestSourceFootprintCoverage:
+    def test_incomplete_coverage_is_rejected(self, tmp_path):
+        raw = _fixture_raw(source_footprint=_multi_cell_footprint())
+        raw["run_identity"]["source_footprint"]["coverage"]["covered_area_m2"] = 500.0
+        _refresh_hash(raw)
+        path = tmp_path / "incomplete_coverage.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+    def test_zero_radius_disc_is_trivially_fully_covered(self):
+        record = t1.build_fixture_record(
+            run_role="pilot", source_footprint=_zero_radius_footprint()
+        )
+        raw = t1.dump_record(record)  # must not raise
+        cov = raw["run_identity"]["source_footprint"]["coverage"]
+        assert cov["disc_area_m2"] == cov["covered_area_m2"] == 0.0
+
+
+class TestSourceFootprintContentHashCoverage:
+    @pytest.mark.parametrize(
+        "mutator",
+        [
+            lambda fp: fp.__setitem__("algorithm_id", "area_weighted_disc_v2"),
+            lambda fp: fp.__setitem__("radius_m", 30.0),
+            lambda fp: fp.__setitem__("centre_xy_m", [1.0, 2.0]),
+            lambda fp: fp.__setitem__("total_rate_g_per_day", 10.0000001),
+        ],
+        ids=["algorithm_id", "radius_m", "centre_xy_m", "total_rate_g_per_day"],
+    )
+    def test_hash_changes_for_each_top_level_footprint_field(self, mutator):
+        raw = _fixture_raw(source_footprint=_multi_cell_footprint())
+        base_hash = t1.compute_content_hash(raw)
+        mutated = copy.deepcopy(raw)
+        mutator(mutated["run_identity"]["source_footprint"])
+        assert t1.compute_content_hash(mutated) != base_hash
+
+    def test_hash_changes_for_an_entry_field(self):
+        raw = _fixture_raw(source_footprint=_multi_cell_footprint())
+        base_hash = t1.compute_content_hash(raw)
+        mutated = copy.deepcopy(raw)
+        mutated["run_identity"]["source_footprint"]["entries"][0]["rate_g_per_day"] = 999.0
+        assert t1.compute_content_hash(mutated) != base_hash
+
+    def test_hash_changes_for_a_coverage_field(self):
+        raw = _fixture_raw(source_footprint=_multi_cell_footprint())
+        base_hash = t1.compute_content_hash(raw)
+        mutated = copy.deepcopy(raw)
+        mutated["run_identity"]["source_footprint"]["coverage"]["disc_area_m2"] = 1234.0
+        assert t1.compute_content_hash(mutated) != base_hash
+
+    def test_hash_changes_for_the_zero_radius_sentinel_too(self):
+        """The sentinel is not exempt from hash coverage either."""
+        raw = _fixture_raw(source_footprint=_zero_radius_footprint())
+        base_hash = t1.compute_content_hash(raw)
+        mutated = copy.deepcopy(raw)
+        mutated["run_identity"]["source_footprint"]["radius_m"] = 0.0
+        mutated["run_identity"]["source_footprint"]["entries"][0]["cell"] = 9999
+        assert t1.compute_content_hash(mutated) != base_hash
