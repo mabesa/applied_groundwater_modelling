@@ -25,8 +25,13 @@ storage, % imbalance), a solubility guardrail (emergent source-cell concentratio
 vs a stated solubility), and the grid Peclet numbers Pe_L / Pe_T on the corridor.
 
 OWNERSHIP: this module imports the shared grid utility ``model_io_utils`` only.
-It does NOT import ``transport_base_model`` -- the corridor radius-walk retry,
-Courant sizing and helpers are re-implemented inline here.
+It does NOT import ``transport_base_model`` -- the corridor radius-walk retry
+and other helpers are re-implemented inline here. The one exception (T1 S4,
+``DESIGN_DOCS/T1_S4_brief.md`` v2) is Courant sizing: this module now owns the
+CANONICAL ``courant_nstp`` calculator (``_courant_nstp_canonical``, below),
+and ``transport_base_model.courant_nstp`` imports and delegates to it (never
+the other way -- an import edge in that direction would grow this module's
+own frozen source-closure fingerprint, ``test_t1_src_closure.py::DEMO_EXPECTED``).
 
 Author: Applied Groundwater Modelling Course (transport track, M2 SRC demo)
 """
@@ -72,8 +77,11 @@ LOCKED_PARAMS: Dict[str, Any] = {
 # ---------------------------------------------------------------------------
 # T1 S3a (DESIGN_DOCS/T1_S3_brief.md v3): mesh identity + content-addressed
 # workspaces. `MeshSpec` parameterises the grid; `CourantSpec` is DECLARED
-# ONLY (brief Section 2) -- S4/S8 own Courant behaviour, so `_courant_nstp`
-# below is left untouched, still reading LOCKED_PARAMS directly.
+# ONLY (brief Section 2) -- S4 (below, `_courant_nstp_canonical`) canonicalises
+# the two legacy `courant_nstp` bodies behind explicit `legacy_base` /
+# `legacy_srcpulse` profiles but does not wire `CourantSpec` in; S8 does, as
+# `exp_v1`. `_courant_nstp_canonical` itself reads no `LOCKED_PARAMS` -- each
+# caller passes its own floor reference explicitly.
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class MeshLevel:
@@ -428,37 +436,131 @@ def _refine_with_retry(coarse_gwf, boundary_gdf, river_gdf, refine_points, head_
         f"last error: {last_exc!r}")
 
 
+# ---------------------------------------------------------------------------
+# T1 S4 (DESIGN_DOCS/T1_S4_brief.md v2): canonical `courant_nstp` calculator.
+#
+# Collapses the two pre-S4 duplicates -- this module's own private
+# `_courant_nstp` (below) and `transport_base_model.courant_nstp` -- into ONE
+# implementation, selected by `profile`. It lives HERE (not in
+# `transport_base_model`) because this module already owns `CourantSpec`
+# (declared above, for S4/S8) and its exact source is pinned byte-for-byte by
+# `test_t1_src_closure.py::DEMO_EXPECTED` -- an import edge FROM here TO
+# `transport_base_model` would grow that frozen closure. The reverse edge
+# (`transport_base_model` importing this module) does not, since nothing pins
+# `transport_base_model`'s own import set.
+#
+# `profile` admits ONLY the two legacy IDs in S4. `exp_v1` -- the corrected
+# policy: floor keyed off the finest *intended* cell size, source/wells
+# included, global max Courant reported -- does not exist yet; that is S8,
+# gated on the T1 JAG. This function never warns and never reports a cap
+# flag: both stay caller-owned exactly as today (`build_doublet_base` has no
+# cap flag; `build_spill_scenario` sets `cr_capped` from `Cr > 1.001` without
+# warning; this module's own wrapper sets `cr_capped = nstp >= nstp_cap` and
+# warns -- all unchanged, at the call sites, not here).
+# ---------------------------------------------------------------------------
+_COURANT_LEGACY_PROFILES = ("legacy_base", "legacy_srcpulse")
+
+
+def _courant_nstp_canonical(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
+                            total_time: float, *, exclusions: Sequence[int] = (),
+                            cr_target: float = 0.9, nstp_cap: int,
+                            sliver_floor_frac: float = 0.4, refined_cell_size: float,
+                            profile: str) -> Tuple[int, float, float, Dict[str, float]]:
+    """Size fixed time steps from a per-cell Courant number Cr_i = v_i*dt/ds_i.
+
+    Takes the ORIGINAL (unmasked) corridor `mask` plus `exclusions` (cell ids
+    to drop -- source and/or well cells, per caller) rather than a pre-masked
+    array: a pre-masked array cannot be inverted, and S8 needs to know what was
+    excluded so it can stop excluding it. `mask` is copied, never mutated; the
+    legacy (excluded) mask is reconstructed as `mask` minus `exclusions`, and
+    BOTH the floor-filtered selection and `diag["ds_true_min"]` are computed
+    from that reconstructed mask -- reproducing each pre-S4 call site exactly.
+
+    `refined_cell_size` is the CALLER's own floor reference (each module reads
+    its own `LOCKED_PARAMS["refined_cell_size"]` and passes it in): this
+    function owns no `LOCKED_PARAMS` read, so the two modules' locked-parameter
+    copies (a divergence hazard on record, C1 S0.2) stay decoupled even though
+    the calculator itself is now shared.
+
+    Profile behaviour (verified byte-for-byte against both pre-S4 bodies):
+
+    * `legacy_base` -- mirrors `transport_base_model.py`'s pre-S4 body. No
+      empty-selection fallback (`ratio.max()` on an empty selection raises); no
+      zero/negative-critical fallback (`critical == 0` raises at division; a
+      negative `critical` can yield a negative `nstp`, or a zero `nstp` that
+      raises at `dt = total_time / nstp`); `nstp` is NOT clamped to >= 1.
+    * `legacy_srcpulse` -- mirrors this module's pre-S4 private body. An empty
+      floor-filtered selection falls back to the whole (reconstructed) mask;
+      `critical <= 0` (zero OR negative) returns the cap with
+      `Cr = critical * dt` instead of raising; `nstp` is clamped to >= 1.
+    """
+    if profile not in _COURANT_LEGACY_PROFILES:
+        raise ValueError(
+            f"unknown courant_nstp profile {profile!r}; expected one of "
+            f"{_COURANT_LEGACY_PROFILES}")
+
+    # Copy, never mutate, the caller's mask; reconstruct the legacy
+    # (pre-S4 pre-masked) selection as mask-minus-exclusions.
+    legacy_mask = np.array(mask, dtype=bool, copy=True)
+    for cell in exclusions:
+        legacy_mask[int(cell)] = False
+
+    floor = sliver_floor_frac * refined_cell_size
+    sel = legacy_mask & (size_cells >= floor)
+
+    if profile == "legacy_srcpulse":
+        if not sel.any():                       # degenerate: fall back to whole mask
+            sel = legacy_mask
+        ratio = v_cells[sel] / size_cells[sel]
+        critical = float(ratio.max())
+        j = np.where(sel)[0][int(np.argmax(ratio))]
+        if critical <= 0.0:
+            # degenerate zero/negative-velocity field on the selected cells:
+            # cr_target / critical would ZeroDivisionError (or size dt off a
+            # backwards signal). Fall back to the step cap -- there is no
+            # forward advective signal to size dt against.
+            nstp = max(nstp_cap, 1)
+            dt = total_time / nstp
+            diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
+                        ds_true_min=float(size_cells[legacy_mask].min()), floor=floor)
+            return nstp, dt, critical * dt, diag
+        dt_need = cr_target / critical
+        nstp = min(int(np.ceil(total_time / dt_need)), nstp_cap)
+        nstp = max(nstp, 1)
+        dt = total_time / nstp
+        diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
+                    ds_true_min=float(size_cells[legacy_mask].min()), floor=floor)
+        return nstp, dt, critical * dt, diag
+
+    # profile == "legacy_base": no empty-selection fallback, no zero/negative
+    # fallback, no >= 1 clamp -- preserve the raises exactly.
+    ratio = v_cells[sel] / size_cells[sel]
+    critical = float(ratio.max())
+    dt_need = cr_target / critical
+    nstp = min(int(np.ceil(total_time / dt_need)), nstp_cap)
+    dt = total_time / nstp
+    j = np.where(sel)[0][int(np.argmax(ratio))]
+    diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
+                ds_true_min=float(size_cells[legacy_mask].min()), floor=floor)
+    return nstp, dt, critical * dt, diag
+
+
 def _courant_nstp(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
                   total_time: float, cr_target: float = 0.9, nstp_cap: int = 2000,
-                  sliver_floor_frac: float = 0.4) -> Tuple[int, float, float, Dict[str, float]]:
-    """Size fixed time steps from a per-cell Courant number Cr_i = v_i*dt/ds_i.
+                  sliver_floor_frac: float = 0.4, *,
+                  exclusions: Sequence[int] = ()) -> Tuple[int, float, float, Dict[str, float]]:
+    """Thin wrapper (T1 S4): delegates to `_courant_nstp_canonical` with
+    `profile='legacy_srcpulse'`. `mask` is the ORIGINAL (unmasked) corridor
+    mask; pass excluded cell ids (source + well cells) via `exclusions`.
 
     Slivers below sliver_floor_frac * refined_cell_size are excluded (they carry
     negligible pore volume but would force an impractically tiny dt).
     """
-    floor = sliver_floor_frac * LOCKED_PARAMS["refined_cell_size"]
-    sel = mask & (size_cells >= floor)
-    if not sel.any():                       # degenerate: fall back to whole mask
-        sel = mask
-    ratio = v_cells[sel] / size_cells[sel]
-    critical = float(ratio.max())
-    j = np.where(sel)[0][int(np.argmax(ratio))]
-    if critical <= 0.0:
-        # degenerate zero-velocity field on the selected cells: cr_target /
-        # critical would ZeroDivisionError.  Fall back to the step cap -- there
-        # is no advective signal to size dt against.
-        nstp = max(nstp_cap, 1)
-        dt = total_time / nstp
-        diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
-                    ds_true_min=float(size_cells[mask].min()), floor=floor)
-        return nstp, dt, critical * dt, diag
-    dt_need = cr_target / critical
-    nstp = min(int(np.ceil(total_time / dt_need)), nstp_cap)
-    nstp = max(nstp, 1)
-    dt = total_time / nstp
-    diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
-                ds_true_min=float(size_cells[mask].min()), floor=floor)
-    return nstp, dt, critical * dt, diag
+    return _courant_nstp_canonical(
+        v_cells, size_cells, mask, total_time, exclusions=exclusions,
+        cr_target=cr_target, nstp_cap=nstp_cap, sliver_floor_frac=sliver_floor_frac,
+        refined_cell_size=float(LOCKED_PARAMS["refined_cell_size"]),
+        profile="legacy_srcpulse")
 
 
 def _budget_has_spdis(cgwf) -> bool:
@@ -1146,12 +1248,12 @@ def build_srcpulse_demo(
                            + _run_failure_tail(run_ws / "sim", buf))
     spd = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
     vmag = np.sqrt(spd["qx"] ** 2 + spd["qy"] ** 2) / LOCKED_PARAMS["porosity"]
-    # exclude BOTH doublet wells (inj + ext) AND the source cells from Courant binding
-    corr_no_wells = corridor_mask.copy()
-    for c in src_cells + [injc, extc]:
-        corr_no_wells[c] = False
-    nstp, dt, cr_act, cdiag = _courant_nstp(vmag, csz, corr_no_wells, float(total_days),
-                                            cr_target, nstp_cap)
+    # T1 S4: pass the ORIGINAL corridor mask + excluded cell ids (source +
+    # BOTH doublet wells, inj + ext) rather than a pre-masked array -- see
+    # `_courant_nstp_canonical`.
+    nstp, dt, cr_act, cdiag = _courant_nstp(vmag, csz, corridor_mask, float(total_days),
+                                            cr_target, nstp_cap,
+                                            exclusions=src_cells + [injc, extc])
 
     sim, gwf, gwt, ok, buf = _make_sim(nstp)
     if not ok:
