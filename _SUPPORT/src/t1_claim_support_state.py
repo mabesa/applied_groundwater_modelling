@@ -396,6 +396,46 @@ def _validate_inputs(claim: Claim, series: Sequence[RunRecord]) -> None:
 # ---------------------------------------------------------------------------
 
 
+def canonical_trend_predicate(claim: "Claim", series: Sequence["RunRecord"]) -> bool:
+    """The ADOPTED convergence/stabilisation predicate.
+
+    Definition and reasoning: `DOCUMENTATION/contracts/T1_open_definitions.md` Section 1
+    (adopted 2026-08-21). It is NOT a contract amendment -- T0.3 Section 4.6 references the
+    predicate without defining it, and this fills that gap.
+
+    It is still passed EXPLICITLY at every call site rather than defaulted, so a
+    caller always states which predicate it evaluated under; a future revision
+    then shows up as a call-site change rather than as silently different output.
+
+    Runs only after the deterministic within-tolerance check has failed, so the
+    series is known NOT to be within tolerance.
+    """
+    tolerance = claim.tolerance
+    for axis in (AXIS_SPATIAL, AXIS_TEMPORAL):
+        xs = [v for v in _axis_metric_sequence(series, axis) if v is not None]
+        if len(xs) < 2:
+            continue                                  # nothing to judge on this axis
+        r = []
+        for prev, cur in zip(xs, xs[1:]):
+            denom = abs(cur) if cur != 0 else abs(prev)
+            r.append(0.0 if denom == 0 else abs(cur - prev) / denom)
+        if r[-1] <= tolerance:
+            continue                                  # this axis is already stable -- neutral
+        if len(xs) < 3:
+            return False                              # no trend inferable from two points
+        n_comparisons = len(r) - 1
+        shrinking = sum(1 for j in range(1, len(r)) if r[j] < r[j - 1])
+        convergence = r[-1] < r[0] and shrinking > n_comparisons / 2
+        y = xs[-3:]
+        scale = max(abs(v) for v in y)
+        band = 0.0 if scale == 0.0 else (max(y) - min(y)) / scale
+        reversal = (y[1] - y[0]) * (y[2] - y[1]) < 0.0
+        stabilisation = reversal and band <= 2.0 * tolerance
+        if not (convergence or stabilisation):
+            return False
+    return True
+
+
 def claim_support_state(
     claim: Claim,
     series: Sequence[RunRecord],
