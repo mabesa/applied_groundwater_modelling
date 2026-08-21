@@ -527,3 +527,42 @@ def test_causal_and_illustrative_need_no_metric_or_tolerance():
         )
         assert out["state"] is None, f"{ct} must be null"
         assert out["reason_code"] == expected_reason
+
+
+# ---------------------------------------------------------------------------
+# canonical_trend_predicate -- the ADOPTED definition (T1_open_definitions.md S1)
+# ---------------------------------------------------------------------------
+def _axis_series(vals, axis):
+    return [run(f"r{i}", axis, metric_value=v) for i, v in enumerate(vals)]
+
+
+def test_canonical_predicate_needs_three_points():
+    """Two points carry no trend information -- the definition says so explicitly."""
+    claim = numeric_claim(tolerance=0.02)
+    assert css.canonical_trend_predicate(claim, _axis_series([1.0, 2.0], css.AXIS_SPATIAL)) is False
+
+
+def test_canonical_predicate_fires_on_shrinking_steps():
+    claim = numeric_claim(tolerance=0.02)
+    # steps shrink markedly but stay over tolerance
+    assert css.canonical_trend_predicate(claim, _axis_series([1.0, 1.5, 1.65, 1.70], css.AXIS_SPATIAL)) is True
+
+
+def test_canonical_predicate_rejects_fixed_amplitude_oscillation():
+    """A wide fixed oscillation is uncontrolled movement, not stabilisation."""
+    claim = numeric_claim(tolerance=0.02)
+    assert css.canonical_trend_predicate(claim, _axis_series([1.0, 2.0, 1.0, 2.0], css.AXIS_SPATIAL)) is False
+
+
+def test_canonical_predicate_accepts_reversal_inside_two_tau_band():
+    claim = numeric_claim(tolerance=0.02)
+    # final three reverse direction inside a 2*tau peak-to-peak band, last step > tau
+    assert css.canonical_trend_predicate(claim, _axis_series([2.0, 1.0, 1.03, 1.0], css.AXIS_SPATIAL)) is True
+
+
+def test_canonical_predicate_one_axis_cannot_conceal_another():
+    """A converging spatial series must not hide an erratic temporal one."""
+    claim = numeric_claim(tolerance=0.02)
+    series = _axis_series([1.0, 1.5, 1.65, 1.70], css.AXIS_SPATIAL) + \
+             _axis_series([1.0, 5.0, 1.0], css.AXIS_TEMPORAL)
+    assert css.canonical_trend_predicate(claim, series) is False

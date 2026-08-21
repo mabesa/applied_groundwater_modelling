@@ -283,6 +283,7 @@ _REMOVABLE_PATHS = [
     ("support", "claim_id"),
     ("support", "envelope"),
     ("support", "envelope", "tolerance"),
+    ("support", "diagnostics"),
     ("role", "run_role"),
     ("role", "grid_role"),
 ]
@@ -534,3 +535,323 @@ class TestLoadsRecordParity:
         raw["run_identity"]["case_id"] = "tampered"
         with pytest.raises(t1.ContentHashMismatchError):
             t1.loads_record(json.dumps(raw))
+
+
+# ---------------------------------------------------------------------------
+# diagnostics (T1 S6 operator A -- SCHEMA_VERSION 2.0.0 addition)
+# ---------------------------------------------------------------------------
+
+
+def _computed_diagnostic(**overrides) -> t1.DiagnosticRecord:
+    fields = dict(
+        label="observation_support_robustness",
+        status="computed",
+        algorithm_id="operator_a_disc_v1",
+        radius_m=25.0,
+        centre_xy_m=(2683450.0, 1248230.0),
+        times=(10.0, 20.0, 30.0),
+        values=(0.12, 0.34, 0.29),
+        reason=None,
+    )
+    fields.update(overrides)
+    return t1.DiagnosticRecord(**fields)
+
+
+def _not_applicable_diagnostic(**overrides) -> t1.DiagnosticRecord:
+    fields = dict(
+        label="observation_support_robustness",
+        status="not_applicable",
+        algorithm_id="operator_a_disc_v1",
+        radius_m=25.0,
+        centre_xy_m=(2683450.0, 1248230.0),
+        times=(),
+        values=(),
+        reason="disc diameter (50 m) is not smaller than the native cell (50 m)",
+    )
+    fields.update(overrides)
+    return t1.DiagnosticRecord(**fields)
+
+
+class TestDiagnosticRoundTrip:
+    def test_computed_diagnostic_round_trips_exactly_series_intact(self, tmp_path):
+        diag = _computed_diagnostic()
+        record = t1.build_fixture_record(
+            run_role="spatial_series",
+            diagnostics={"observation_support_robustness": diag},
+        )
+        path = tmp_path / "diag.json"
+        raw = t1.write_record(record, path)
+        assert raw["support"]["diagnostics"]["observation_support_robustness"]["times"] == [
+            10.0,
+            20.0,
+            30.0,
+        ]
+        assert raw["support"]["diagnostics"]["observation_support_robustness"]["values"] == [
+            0.12,
+            0.34,
+            0.29,
+        ]
+        loaded = t1.load_record(path)
+        assert loaded == record
+        assert loaded.diagnostics["observation_support_robustness"] == diag
+        assert loaded.diagnostics["observation_support_robustness"].times == (10.0, 20.0, 30.0)
+        assert loaded.diagnostics["observation_support_robustness"].values == (0.12, 0.34, 0.29)
+        assert loaded.provenance_valid is True
+
+    def test_empty_diagnostics_mapping_round_trips_and_is_complete(self, tmp_path):
+        record = t1.build_fixture_record(run_role="temporal_series", diagnostics={})
+        path = tmp_path / "no_diag.json"
+        t1.write_record(record, path)
+        loaded = t1.load_record(path)
+        assert loaded.diagnostics == {}
+        assert loaded.provenance_valid is True
+
+
+class TestDiagnosticLabel:
+    def test_unknown_label_is_rejected_not_stored(self, tmp_path):
+        raw = _fixture_raw()
+        raw["support"]["diagnostics"] = {
+            "not_a_real_diagnostic": {
+                "label": "not_a_real_diagnostic",
+                "status": "computed",
+                "algorithm_id": "operator_a_disc_v1",
+                "radius_m": 25.0,
+                "centre_xy_m": [2683450.0, 1248230.0],
+                "times": [1.0],
+                "values": [0.5],
+                "reason": None,
+            }
+        }
+        _refresh_hash(raw)
+        path = tmp_path / "bad_label.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+    def test_dict_key_disagreeing_with_label_field_is_rejected(self, tmp_path):
+        raw = _fixture_raw()
+        raw["support"]["diagnostics"] = {
+            "observation_support_robustness": {
+                "label": "observation_support_robustness",
+                "status": "computed",
+                "algorithm_id": "operator_a_disc_v1",
+                "radius_m": 25.0,
+                "centre_xy_m": [2683450.0, 1248230.0],
+                "times": [1.0],
+                "values": [0.5],
+                "reason": None,
+            }
+        }
+        # now desync the dict key from the record's own label
+        raw["support"]["diagnostics"]["mismatched_key"] = raw["support"]["diagnostics"].pop(
+            "observation_support_robustness"
+        )
+        _refresh_hash(raw)
+        path = tmp_path / "mismatched_key.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+    def test_build_fixture_record_accepts_the_one_known_label(self):
+        record = t1.build_fixture_record(
+            run_role="pilot",
+            diagnostics={"observation_support_robustness": _computed_diagnostic()},
+        )
+        assert "observation_support_robustness" in record.diagnostics
+
+
+class TestDiagnosticApplicabilityStatus:
+    def test_not_applicable_round_trips_with_reason_and_no_values(self, tmp_path):
+        diag = _not_applicable_diagnostic()
+        record = t1.build_fixture_record(
+            run_role="spatial_series",
+            grid_role="native",
+            diagnostics={"observation_support_robustness": diag},
+        )
+        path = tmp_path / "not_applicable.json"
+        t1.write_record(record, path)
+        loaded = t1.load_record(path)
+        d = loaded.diagnostics["observation_support_robustness"]
+        assert d.status == "not_applicable"
+        assert d.times == ()
+        assert d.values == ()
+        assert d.reason
+        assert loaded.provenance_valid is True
+
+    def test_not_applicable_is_distinguishable_from_a_computed_zero(self, tmp_path):
+        """A computed diagnostic whose only sample happens to be 0.0 must
+        NOT be confusable with 'not applicable' -- status is the
+        discriminator, not the presence/absence of a zero value."""
+        computed_zero = _computed_diagnostic(times=(10.0,), values=(0.0,))
+        not_applicable = _not_applicable_diagnostic()
+
+        rec_computed = t1.build_fixture_record(
+            run_role="spatial_series",
+            diagnostics={"observation_support_robustness": computed_zero},
+        )
+        rec_na = t1.build_fixture_record(
+            run_role="spatial_series",
+            diagnostics={"observation_support_robustness": not_applicable},
+        )
+
+        loaded_computed = t1.record_from_raw_dict_fail_closed(t1.dump_record(rec_computed))
+        loaded_na = t1.record_from_raw_dict_fail_closed(t1.dump_record(rec_na))
+
+        d_computed = loaded_computed.diagnostics["observation_support_robustness"]
+        d_na = loaded_na.diagnostics["observation_support_robustness"]
+
+        assert d_computed.status == "computed"
+        assert d_computed.values == (0.0,)
+        assert d_computed.reason is None
+
+        assert d_na.status == "not_applicable"
+        assert d_na.values == ()
+        assert d_na.reason
+
+        assert d_computed != d_na
+
+    def test_not_applicable_with_values_present_is_rejected(self, tmp_path):
+        raw = _fixture_raw(
+            diagnostics={
+                "observation_support_robustness": _not_applicable_diagnostic(
+                    times=(1.0,), values=(0.0,)
+                )
+            }
+        )
+        # bypass the fixture-builder validation path by writing raw JSON directly
+        raw["support"]["diagnostics"]["observation_support_robustness"]["times"] = [1.0]
+        raw["support"]["diagnostics"]["observation_support_robustness"]["values"] = [0.0]
+        _refresh_hash(raw)
+        path = tmp_path / "na_with_values.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+    def test_not_applicable_without_reason_is_rejected(self, tmp_path):
+        raw = _fixture_raw(
+            diagnostics={"observation_support_robustness": _not_applicable_diagnostic()}
+        )
+        raw["support"]["diagnostics"]["observation_support_robustness"]["reason"] = None
+        _refresh_hash(raw)
+        path = tmp_path / "na_no_reason.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+    def test_computed_with_a_reason_is_rejected(self, tmp_path):
+        raw = _fixture_raw(
+            diagnostics={"observation_support_robustness": _computed_diagnostic()}
+        )
+        raw["support"]["diagnostics"]["observation_support_robustness"][
+            "reason"
+        ] = "should not be here"
+        _refresh_hash(raw)
+        path = tmp_path / "computed_with_reason.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+    def test_unknown_status_is_rejected(self, tmp_path):
+        raw = _fixture_raw(
+            diagnostics={"observation_support_robustness": _computed_diagnostic()}
+        )
+        raw["support"]["diagnostics"]["observation_support_robustness"][
+            "status"
+        ] = "definitely_not_a_status"
+        _refresh_hash(raw)
+        path = tmp_path / "bad_status.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+
+class TestDiagnosticSeriesLength:
+    def test_mismatched_times_values_lengths_are_rejected(self, tmp_path):
+        raw = _fixture_raw(
+            diagnostics={"observation_support_robustness": _computed_diagnostic()}
+        )
+        raw["support"]["diagnostics"]["observation_support_robustness"]["times"] = [
+            10.0,
+            20.0,
+            30.0,
+        ]
+        raw["support"]["diagnostics"]["observation_support_robustness"]["values"] = [0.12, 0.34]
+        _refresh_hash(raw)
+        path = tmp_path / "mismatched_lengths.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.MalformedEvidenceRecordError):
+            t1.load_record(path)
+
+
+class TestDiagnosticContentHashCoverage:
+    def test_hash_changes_when_diagnostic_values_change(self):
+        raw = _fixture_raw(
+            diagnostics={"observation_support_robustness": _computed_diagnostic()}
+        )
+        base_hash = raw["content_hash"]
+        mutated = copy.deepcopy(raw)
+        mutated["support"]["diagnostics"]["observation_support_robustness"]["values"] = [
+            9.9,
+            9.9,
+            9.9,
+        ]
+        assert t1.compute_content_hash(mutated) != base_hash
+
+    @pytest.mark.parametrize(
+        "field,new_value",
+        [
+            ("status", "not_applicable"),
+            ("radius_m", 30.0),
+            ("centre_xy_m", [1.0, 2.0]),
+            ("algorithm_id", "operator_a_disc_v2"),
+            ("times", [1.0, 2.0, 3.0]),
+        ],
+    )
+    def test_hash_changes_for_each_diagnostic_field(self, field, new_value):
+        raw = _fixture_raw(
+            diagnostics={"observation_support_robustness": _computed_diagnostic()}
+        )
+        base_hash = t1.compute_content_hash(raw)
+        mutated = copy.deepcopy(raw)
+        mutated["support"]["diagnostics"]["observation_support_robustness"][field] = new_value
+        assert t1.compute_content_hash(mutated) != base_hash
+
+
+class TestOldSchemaVersionFailsClosedForDiagnostics:
+    def test_pre_diagnostics_schema_version_now_fails_closed(self, tmp_path):
+        """A record built under the OLD 1.0.0 schema (no diagnostics
+        concept at all) must be refused outright by today's loader -- not
+        silently accepted as 'a valid 2.0.0 record with zero diagnostics'.
+        """
+        raw = _fixture_raw()
+        raw["schema"]["schema_version"] = "1.0.0"
+        # deliberately do not touch content_hash: schema_version is excluded
+        # from hash coverage, so the version gate alone must catch this.
+        path = tmp_path / "old_version.json"
+        path.write_text(json.dumps(raw))
+        with pytest.raises(t1.SchemaVersionMismatchError):
+            t1.load_record(path)
+
+    def test_current_schema_version_is_2_0_0(self):
+        assert t1.SCHEMA_VERSION == "2.0.0"
+
+
+# ---------------------------------------------------------------------------
+# The causal-support prohibition is stated IN the record, not left to the reader
+# ---------------------------------------------------------------------------
+class TestDiagnosticCausalSupportEligibility:
+    def test_every_known_label_is_barred_from_causal_support(self):
+        """T0_2b Section 4.2 names operator A insufficient BY CONSTRUCTION. No
+        current diagnostic label may ever be cited as causal support."""
+        assert set(t1.DIAGNOSTIC_CAUSAL_SUPPORT_ELIGIBLE) == set(t1.DIAGNOSTIC_LABELS)
+        assert all(v is False for v in t1.DIAGNOSTIC_CAUSAL_SUPPORT_ELIGIBLE.values())
+
+    def test_emitted_record_states_the_prohibition(self):
+        """These records sit under `support`, next to claim_support_state -- a
+        reader could infer the opposite from position alone, so the wire form
+        says it outright."""
+        wire = t1._diagnostics_to_json(
+            {"observation_support_robustness": _computed_diagnostic()}
+        )
+        diag = wire["observation_support_robustness"]
+        assert diag["causal_support_eligible"] is False
