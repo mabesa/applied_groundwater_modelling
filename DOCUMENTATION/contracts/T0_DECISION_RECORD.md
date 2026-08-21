@@ -153,7 +153,7 @@ never silently different from what was signed.
 | **1** | 2026-08-20 | `T0_1_C1_v2.md` → **v3** | Added allow-list entries **A10–A14** — content-addressed workspaces · fixed source footprint · operator A · GWF-grid sensitivity arm · `claim_support_state` evaluator | **No** — lecturer decision; bounded by C1 §3.1 |
 | **2** | 2026-08-20 | `T0_1_C1_v2.md` → **v4** | **A8 extended to `transport_prt_capture.py`**, which carries its own `_src_sha()` with the identical three-file hole; plus **Appendix B**, the tracked and hashed T1 build-list snapshot | **Yes, retrospectively** — see amendment 3 |
 | **3** | 2026-08-20 | `T0_1_C1_v2.md` → **v5**, **RE-SIGNED** | **A7's surface widened** to a new `exp`-only metrics module; **amendments 1–3 re-based on the signature** rather than on derivation from Appendix B | **YES** |
-| **4** | 2026-08-21 | `T0_1_C1_v2.md` → **v6** | **A15 proposed, refuted, then WITHDRAWN as unnecessary.** Three linked decisions — see §8.3 | 🔴 **ONE SIGNATURE OUTSTANDING** (the §3.1 change only) |
+| **4** | 2026-08-21 | `T0_1_C1_v2.md` → **v6** | **A15 proposed, refuted, then WITHDRAWN as unnecessary**; S3b deferred; **§3.1 re-gated**. Three linked decisions — see §8.3 | **YES** — §3.1 signed 2026-08-21; (a) and (b) needed none |
 
 **What happened.** The T1 plan review found that C1's A1–A9, though signed, **omitted five changes the T1
 build list requires**. Because C1 §3 makes an unlisted change a defect, **no implementation could satisfy
@@ -334,7 +334,7 @@ brief, never in signed text, and it is **relaxed back to Appendix B's wording**.
 case-study group meshes** and the parked pinned-meshes bundle, so S3b would have had to carry regression
 evidence far beyond the transport track. Revisit only if T3/T4 genuinely need a graded mesh to *build*.
 
-#### (c) C1 §3.1 — the unsigned path KEPT, gated by a verbatim-quotation test · 🔴 **NEEDS THE SIGNATURE BELOW**
+#### (c) C1 §3.1 — the unsigned path KEPT, gated by a verbatim-quotation test · ✅ **SIGNED 2026-08-21**
 
 The first proposal was to retire the unsigned path outright on a 0-for-3 record. **Adversarial review
 argued against it and was persuasive**, so the decision was changed before signing.
@@ -374,5 +374,5 @@ overstated, and both are withdrawn.
 | Field | Value |
 |---|---|
 | **Change** | C1 §3.1: the unsigned path survives, gated by a one-bullet verbatim-quotation test, independent review before force, and a bar on curing missing authority by rewording |
-| **Approved by** | *(pending)* |
-| **Date** | *(pending)* |
+| **Approved by** | **Beatrice Marti** |
+| **Date** | **2026-08-21** |
