@@ -50,12 +50,25 @@ algorithm. Those choices are frozen HERE, as follows.
    attribute <-> JSON-path mapping is `_FIELD_MAP` below, plus the two
    nested collections (`metrics`, `support.envelope`) handled explicitly.
 
-2. SCHEMA VERSION: `SCHEMA_VERSION = "1.0.0"`, a plain string, stored at
+2. SCHEMA VERSION: `SCHEMA_VERSION = "2.0.0"`, a plain string, stored at
    `schema.schema_version`. The loader's schema-version check is an EXACT
    string match against the currently-imported module's `SCHEMA_VERSION`
    (no semver range matching) -- any drift, including a patch bump, must be
    handled by a new module version or an explicit migration, never by the
    loader silently accepting a close-enough version.
+
+   🔴 BUMPED 1.0.0 -> 2.0.0 here (T1 S6/S13 follow-up): this revision adds a
+   new structured `support.diagnostics` subtree (SCHEMA DECISIONS #12-#15
+   below) carrying operator A's result -- a labelled time series with an
+   applicability status, not a scalar `MetricRecord`. This is ADDITIVE (no
+   existing field's meaning or shape changes), but the exact-string-match
+   gate means a 1.0.0 record on disk is now REFUSED, not silently accepted
+   as "a record with no diagnostics" -- an old record was never asked
+   whether it carries a diagnostic, so treating its absence as a meaningful
+   answer would be a fabricated fact. A record that predates diagnostics
+   entirely must fail closed at the version gate, exactly like any other
+   incompatible schema change, not be quietly reinterpreted under the new
+   version.
 
 3. `producer`: split into two on-disk leaves, `schema.producer_module`
    (str) and `schema.producer_version` (str), rather than one combined
@@ -207,6 +220,89 @@ algorithm. Those choices are frozen HERE, as follows.
     (S14) policy question this schema does not settle. Flagged rather than
     guessed.
 
+12. `support.diagnostics` (SCHEMA_VERSION 2.0.0 addition): T1 step S6
+    implements operator A (`T1_open_definitions.md` Sec 2 / `T0_1_C1_v2.md`
+    entry A12) -- a fixed-support post-processing diagnostic whose result is
+    a TIME SERIES with a label and an applicability status, computed from
+    an already-produced run's output. It is NOT one of the T0_2b Sec 2
+    metrics (it is explicitly "diagnostic-only", never causal isolation --
+    `T0_1_C1_v2.md` Sec 4.2 item 1) and it does NOT fit `MetricRecord`
+    (scalar `value`, no label, no applicability state, no series). Per the
+    task brief this must not become a NINTH top-level group alongside
+    Section 5.1's eight, so it is added as a new nested subtree,
+    `support.diagnostics`, inside the EXISTING `support` top-level JSON
+    object -- a mapping of closed-vocabulary label -> `DiagnosticRecord`,
+    structurally the same "named-entries mapping" pattern `metrics` already
+    uses. *** Placing it under `support` rather than `metrics` is THIS
+    MODULE'S OWN CHOICE, not settled by any contract, and is flagged here
+    per the task brief rather than decided silently: `metrics`'s top-level
+    JSON key is currently the bare name->`MetricRecord` mapping itself (no
+    wrapper object), so nesting a sibling `diagnostics` key inside it would
+    require reshaping every existing metrics record on disk -- a needless
+    breaking change to an unrelated field for a schema bump that is
+    otherwise purely additive. `support` is already a wrapper object
+    (`claim_id`, `claim_support_state`, `reason_code`, `envelope`) with a
+    precedent for exactly this kind of purely-additive extension (#10
+    above, `claim_id`). The one thing to watch: `support` is also where
+    `claim_support_state` lives, and a diagnostic is explicitly barred from
+    ever counting as causal support (`T0_1_C1_v2.md` Sec 4.2 item 1) -- nesting
+    a diagnostic in the same JSON object as the support-state verdict is a
+    plain container choice, NOT a claim that diagnostics feed that verdict;
+    no code path here or in the S12 evaluator reads `support.diagnostics` to
+    compute `claim_support_state`, and the closed `label` vocabulary
+    (#13 below) exists precisely to stop a diagnostic being cited as
+    something stronger than it is, in this location or any other. If a
+    future reviewer prefers a dedicated top-level group instead, that is a
+    live, revisitable choice, not a frozen one.
+
+13. `DiagnosticRecord.label` is a CLOSED enumeration, `DIAGNOSTIC_LABELS`
+    below -- currently the single value `observation_support_robustness`
+    (`T1_open_definitions.md` Sec 2, `T0_1_C1_v2.md` entries A12/Sec 4.2).
+    The label exists so a diagnostic can never be silently cited as
+    something stronger than "observation-support robustness only"; per the
+    task brief an unknown label is a `MalformedEvidenceRecordError` (the
+    same "present but violates a closed enum" raise used for `run_role` /
+    `claim_support_state` / `reason_code`), never stored. The dict key a
+    diagnostic is filed under in `support.diagnostics` must equal its own
+    `label` field -- storing "operator A's result" under a key that
+    disagrees with its self-declared label is treated as the same defect
+    class, and also raises.
+
+14. `DiagnosticRecord.status` is a CLOSED enumeration, `DIAGNOSTIC_STATUSES`
+    below: `computed` / `not_applicable` (task brief: "at minimum" these
+    two; this module freezes exactly these two, adding a third later is a
+    decision to record, not a silent edit). `not_applicable` is what
+    `T1_open_definitions.md` Sec 2.1 requires be representable: operator A
+    is "not meaningful on the 50 m identity" because its 25 m disc is
+    comparable to a whole native cell there. The two states are enforced to
+    be structurally distinguishable, never collapsible into each other or
+    into a computed zero:
+      - `not_applicable` REQUIRES a non-empty `reason` string and FORBIDS
+        any values -- `times` and `values` must both be empty tuples (the
+        pre-existing `times`/`values` equal-length rule already forces
+        `times` empty once `values` is forced empty, so no separate rule is
+        needed for `times`).
+      - `computed` REQUIRES `reason` to be `None` -- a computed diagnostic
+        does not also carry a leftover inapplicability reason. *** This
+        directional requirement (not the status enum itself, which the
+        brief asks for) is this module's own tightening, flagged here
+        rather than decided silently; the brief did not say a computed
+        record's `reason` must be null, only that a not_applicable record's
+        must be populated. ***
+      - `algorithm_id`, `radius_m` and `centre_xy_m` -- the parameters that
+        define operator A's support (T0_1_C1_v2.md's frozen 25.0 m disc
+        centred on `ABS_XY`, `T1_open_definitions.md` Sec 2) -- are required
+        in BOTH states: they describe what was (or would have been)
+        computed, independent of whether a value resulted.
+
+15. `support.diagnostics` CARDINALITY: the key itself must be PRESENT (an
+    object, possibly `{}`) for structural completeness, but which labels it
+    contains -- if any -- is producer-side policy this schema does not fix,
+    mirroring decision #11's identical stance on `metrics` cardinality. Not
+    every evidence record is expected to carry an operator-A diagnostic
+    (e.g. a `temporal_series` or `b_control` run may carry none); an empty
+    mapping is a complete, valid record.
+
 Fail-closed contract, restated precisely: `load_record()` raises
 `SchemaVersionMismatchError` or `ContentHashMismatchError` and returns
 NOTHING on those two failures -- it never falls back to a stale or default
@@ -229,7 +325,7 @@ from typing import Any, Mapping, MutableMapping, Optional, Sequence, Tuple, Unio
 # Frozen constants
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "2.0.0"
 
 #: T0_2b_metrics_and_causal_rule.md Sec 5.1 "Role" row -- closed, exhaustive.
 RUN_ROLES: Tuple[str, ...] = (
@@ -279,6 +375,40 @@ _METRIC_SUBFIELDS: Tuple[str, ...] = (
     "interpolated",
     "censored",
     "tie_broken",
+)
+
+#: `T1_open_definitions.md` Sec 2 / `T0_1_C1_v2.md` entries A12, Sec 4.2 --
+#: closed, currently one member. SCHEMA DECISIONS #13.
+DIAGNOSTIC_LABELS: Tuple[str, ...] = ("observation_support_robustness",)
+
+# Whether a diagnostic may EVER be cited as causal support. Frozen FALSE for
+# every current label, and written into each emitted record rather than left to
+# a reader's knowledge of the contract.
+#
+# T0_2b Section 4.2 names operator A insufficient BY CONSTRUCTION for the
+# causal-support rule: a disappearance of the grid effect under A is AMBIGUOUS,
+# because A changed the estimand and spatially smoothed the plume. Because these
+# records are nested under `support` -- alongside `claim_support_state` -- a
+# reader could otherwise reasonably infer the opposite from their position.
+# Encoding the prohibition removes the inference.
+DIAGNOSTIC_CAUSAL_SUPPORT_ELIGIBLE: Mapping[str, bool] = {
+    "observation_support_robustness": False,
+}
+
+#: This module's own closed vocabulary (task brief: "at minimum computed /
+#: not_applicable" -- frozen at exactly these two). SCHEMA DECISIONS #14.
+DIAGNOSTIC_STATUSES: Tuple[str, ...] = ("computed", "not_applicable")
+
+#: Required sub-fields of every `support.diagnostics` entry.
+_DIAGNOSTIC_SUBFIELDS: Tuple[str, ...] = (
+    "label",
+    "status",
+    "algorithm_id",
+    "radius_m",
+    "centre_xy_m",
+    "times",
+    "values",
+    "reason",
 )
 
 #: Required sub-fields of `support.envelope` -- T0.3 Sec 4.7's envelope,
@@ -355,6 +485,31 @@ class SupportEnvelope:
     threshold_record_id: Optional[str]
 
 
+@dataclass(frozen=True)
+class DiagnosticRecord:
+    """A structured, fixed-support post-processing diagnostic result --
+    T1 step S6 (operator A), per SCHEMA DECISIONS #12-#15 above.
+
+    `label` and `status` are each closed enumerations (`DIAGNOSTIC_LABELS`,
+    `DIAGNOSTIC_STATUSES`). `times`/`values` are the paired series, equal
+    length always; when `status == "not_applicable"` both are empty and
+    `reason` carries a non-empty explanation (T1_open_definitions.md Sec
+    2.1's "not meaningful on the 50 m identity" case); when
+    `status == "computed"`, `reason` is `None`. `algorithm_id`, `radius_m`
+    and `centre_xy_m` describe the fixed support that defines the
+    diagnostic and are required in BOTH states.
+    """
+
+    label: str
+    status: str
+    algorithm_id: str
+    radius_m: float
+    centre_xy_m: Tuple[float, float]
+    times: Tuple[float, ...]
+    values: Tuple[float, ...]
+    reason: Optional[str]
+
+
 # ---------------------------------------------------------------------------
 # The record
 # ---------------------------------------------------------------------------
@@ -418,6 +573,7 @@ class EvidenceRecord:
     claim_support_state: Optional[str]
     reason_code: Optional[str]
     envelope: Optional[SupportEnvelope]
+    diagnostics: Optional[Mapping[str, DiagnosticRecord]]
 
     # -- role -----------------------------------------------------------------
     run_role: Optional[str]
@@ -488,6 +644,7 @@ REQUIRED_FIELD_PATHS: Tuple[Tuple[str, ...], ...] = tuple(
     ("support", "envelope", "stopping_rule"),
     ("support", "envelope", "tolerance"),
     ("support", "envelope", "threshold_record_id"),
+    ("support", "diagnostics"),
 )
 
 #: The one field this module deliberately excludes from content-hash
@@ -606,6 +763,30 @@ def _envelope_to_json(env: Optional[SupportEnvelope]) -> Optional[dict]:
     }
 
 
+def _diagnostics_to_json(
+    diagnostics: Optional[Mapping[str, DiagnosticRecord]]
+) -> Optional[dict]:
+    if diagnostics is None:
+        return None
+    out: dict = {}
+    for label, d in diagnostics.items():
+        out[label] = {
+            "label": d.label,
+            "status": d.status,
+            "algorithm_id": d.algorithm_id,
+            "radius_m": d.radius_m,
+            "centre_xy_m": list(d.centre_xy_m) if d.centre_xy_m is not None else None,
+            "times": list(d.times),
+            "values": list(d.values),
+            "reason": d.reason,
+            # Frozen False -- see DIAGNOSTIC_CAUSAL_SUPPORT_ELIGIBLE. Emitted so
+            # the artifact states the prohibition instead of implying the
+            # opposite by sitting next to `claim_support_state`.
+            "causal_support_eligible": DIAGNOSTIC_CAUSAL_SUPPORT_ELIGIBLE[d.label],
+        }
+    return out
+
+
 def record_to_raw_dict(record: EvidenceRecord) -> dict:
     """Convert an `EvidenceRecord` into the nested, JSON-ready dict shape
     (without `content_hash` -- callers that want the hash-stamped version
@@ -619,6 +800,9 @@ def record_to_raw_dict(record: EvidenceRecord) -> dict:
     envelope_json = _envelope_to_json(record.envelope)
     if envelope_json is not None:
         _set_path(raw, ("support", "envelope"), envelope_json)
+    diagnostics_json = _diagnostics_to_json(record.diagnostics)
+    if diagnostics_json is not None:
+        _set_path(raw, ("support", "diagnostics"), diagnostics_json)
     return raw
 
 
@@ -746,6 +930,62 @@ def _validate_enums_and_types(raw: Mapping[str, Any]) -> None:
                 if sub in env and not isinstance(env[sub], (list, tuple)):
                     errors.append(f"support.envelope.{sub}: expected array")
 
+    if _has_path(raw, ("support", "diagnostics")):
+        diagnostics = _get_path(raw, ("support", "diagnostics"))
+        if not isinstance(diagnostics, Mapping):
+            errors.append("support.diagnostics: expected object")
+        else:
+            for key, d in diagnostics.items():
+                if not isinstance(d, Mapping):
+                    errors.append(f"support.diagnostics.{key}: expected object")
+                    continue
+                for sub in _DIAGNOSTIC_SUBFIELDS:
+                    if sub not in d:
+                        errors.append(f"support.diagnostics.{key}.{sub}: missing")
+                if "label" in d:
+                    label = d["label"]
+                    if label not in DIAGNOSTIC_LABELS:
+                        errors.append(
+                            f"support.diagnostics.{key}.label: {label!r} is not one of "
+                            f"{DIAGNOSTIC_LABELS!r}"
+                        )
+                    elif label != key:
+                        errors.append(
+                            f"support.diagnostics.{key}: dict key {key!r} does not match "
+                            f"its own label {label!r}"
+                        )
+                status = d.get("status") if "status" in d else None
+                if "status" in d and status not in DIAGNOSTIC_STATUSES:
+                    errors.append(
+                        f"support.diagnostics.{key}.status: {status!r} is not one of "
+                        f"{DIAGNOSTIC_STATUSES!r}"
+                    )
+                times = d.get("times")
+                values = d.get("values")
+                if isinstance(times, (list, tuple)) and isinstance(values, (list, tuple)):
+                    if len(times) != len(values):
+                        errors.append(
+                            f"support.diagnostics.{key}: times/values length mismatch "
+                            f"({len(times)} vs {len(values)})"
+                        )
+                elif "times" in d or "values" in d:
+                    errors.append(f"support.diagnostics.{key}: times/values expected arrays")
+                if status == "not_applicable":
+                    if values:
+                        errors.append(
+                            f"support.diagnostics.{key}: not_applicable status must carry no values"
+                        )
+                    if not d.get("reason"):
+                        errors.append(
+                            f"support.diagnostics.{key}: not_applicable status requires a "
+                            "non-empty reason"
+                        )
+                elif status == "computed":
+                    if d.get("reason") is not None:
+                        errors.append(
+                            f"support.diagnostics.{key}: computed status must not carry a reason"
+                        )
+
     if errors:
         raise MalformedEvidenceRecordError(
             "evidence record fails schema validation: " + "; ".join(errors)
@@ -780,6 +1020,25 @@ def _envelope_from_json(raw_env: Any) -> Optional[SupportEnvelope]:
     )
 
 
+def _diagnostics_from_json(raw_diagnostics: Any) -> Optional[Mapping[str, DiagnosticRecord]]:
+    if raw_diagnostics is None:
+        return None
+    out = {}
+    for key, d in raw_diagnostics.items():
+        centre = d.get("centre_xy_m")
+        out[key] = DiagnosticRecord(
+            label=d.get("label"),
+            status=d.get("status"),
+            algorithm_id=d.get("algorithm_id"),
+            radius_m=d.get("radius_m"),
+            centre_xy_m=tuple(centre) if centre is not None else None,
+            times=tuple(d.get("times") or ()),
+            values=tuple(d.get("values") or ()),
+            reason=d.get("reason"),
+        )
+    return out
+
+
 def record_from_raw_dict(raw: Mapping[str, Any]) -> EvidenceRecord:
     """Build an `EvidenceRecord` from a nested raw dict (already past the
     schema-version / content-hash gates, or being built fresh by a
@@ -794,8 +1053,10 @@ def record_from_raw_dict(raw: Mapping[str, Any]) -> EvidenceRecord:
     for path, attr in _FIELD_MAP:
         kwargs[attr] = _get_path(raw, path) if _has_path(raw, path) else None
     kwargs["metrics"] = _metrics_from_json(raw.get("metrics"))
-    kwargs["envelope"] = _envelope_from_json(
-        raw.get("support", {}).get("envelope") if isinstance(raw.get("support"), Mapping) else None
+    support_raw = raw.get("support") if isinstance(raw.get("support"), Mapping) else None
+    kwargs["envelope"] = _envelope_from_json(support_raw.get("envelope") if support_raw else None)
+    kwargs["diagnostics"] = _diagnostics_from_json(
+        support_raw.get("diagnostics") if support_raw else None
     )
 
     is_complete, _missing = _structural_completeness(raw)
@@ -892,6 +1153,7 @@ def build_fixture_record(
     provenance_valid: bool = True,
     metrics: Optional[Mapping[str, MetricRecord]] = None,
     envelope: Optional[SupportEnvelope] = None,
+    diagnostics: Optional[Mapping[str, DiagnosticRecord]] = None,
     **overrides: Any,
 ) -> EvidenceRecord:
     """Build a synthetic, well-formed `EvidenceRecord` for tests/dev use.
@@ -940,6 +1202,20 @@ def build_fixture_record(
             threshold_record_id="thr_pfoa_1ugL",
         )
 
+    if diagnostics is None:
+        diagnostics = {
+            "observation_support_robustness": DiagnosticRecord(
+                label="observation_support_robustness",
+                status="computed",
+                algorithm_id="operator_a_disc_v1",
+                radius_m=25.0,
+                centre_xy_m=(2683450.0, 1248230.0),
+                times=(10.0, 20.0, 30.0),
+                values=(0.12, 0.34, 0.29),
+                reason=None,
+            )
+        }
+
     fields: dict = dict(
         schema_version=SCHEMA_VERSION,
         producer_module="t1_evidence_artifact",
@@ -975,6 +1251,7 @@ def build_fixture_record(
         claim_support_state=claim_support_state,
         reason_code=reason_code,
         envelope=envelope,
+        diagnostics=diagnostics,
         run_role=run_role,
         is_feasibility_probe=is_feasibility_probe,
         grid_role=grid_role,
