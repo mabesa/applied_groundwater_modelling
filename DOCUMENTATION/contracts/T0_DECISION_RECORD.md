@@ -284,6 +284,43 @@ make it worse. **But nothing now forces an implementer to look at PRT**, so it i
 single-cell-sink only, and **B-control arms do not claim one**. Making PRT match the demo module would
 need PRT surface authority for a WEL change, which no current entry grants — do not infer it.
 
+---
+
+#### 🔴 Independent review of this decision: **DROP IS UNSAFE for T2** *(2026-08-21)*
+
+The drop was reviewed after the fact. It returned **UNSAFE**, with one finding that goes beyond the WEL
+duplication above. **It does not endanger anything shipped**: through T1 every sentinel sits at its
+default and nothing experimental runs. The control below is required **before the first experimental arm
+runs**, which is T2.
+
+**What was checked and CLOSED:** the cache hash is SHA-1 truncated to 64 bits and the cache lives in a
+caller-supplied directory, but `_load_cache` compares the **full stored key-set and every value**, so a
+collision causes rejection or rebuild — **not** cross-configuration serving.
+
+🔴 **What survives — PRT's identity cannot see the other module's runtime arguments.** PRT's `src_sha`
+notices *source* changes in the imported module, but **not different argument values passed to unchanged
+code**. `footprint_radius_m`, the future `sink_support_m` and the Courant profile all live in the demo
+module's params dict, not PRT's. Consequently **two distinct experimental arms can receive the same PRT
+identity and the same capture result, with no machine-checkable indication that their flow semantics
+differ.** Re-exporting names between the modules does not cure this — it changes neither data flow nor
+identity propagation. For standalone PRT use this is harmless; **at S10's join, where a flow solve is
+paired with a capture fingerprint, it is both a provenance and a correctness risk.**
+
+🔴 **The hidden assumption in "each step carries its own sentinel", now stated explicitly.** It assumes a
+**closed, complete dependency inventory**: every present *and future* behaviour-changing value is
+identified, correctly defaulted, and propagated into every direct **and composed** identity before any
+cache, workspace, metric, fingerprint or artifact is reused. The metrics module and the sensitivity-arm
+join are exactly where that can fail. An `exp/vN` **label** supplies description, not isolation.
+
+> **MANDATORY CONTROL, binding on T2 — and it needs NO new module authority.** The experiment runner
+> derives **one canonical full-configuration digest** and passes **digest-specific `case_ws` directories
+> to both modules**, with a **separate fixed directory for teaching defaults**. `case_ws` is already a
+> public parameter of both, so this is caller-side work — which is why A15 stays withdrawn: the control
+> that was actually needed never required threading a parameter through either module.
+
+⚠️ **This is not a reinstatement of S7.** S7 proposed changing the modules; this changes only the caller.
+The distinction is the whole reason the authority question dissolved.
+
 #### (b) S3b (graded mesh construction) — DEFERRED out of T1 · **no signature needed**
 
 Appendix B requires graded refinement to be **"expressible"**, which **S3a already delivers**
