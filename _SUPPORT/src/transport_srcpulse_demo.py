@@ -25,14 +25,20 @@ storage, % imbalance), a solubility guardrail (emergent source-cell concentratio
 vs a stated solubility), and the grid Peclet numbers Pe_L / Pe_T on the corridor.
 
 OWNERSHIP: this module imports the shared grid utility ``model_io_utils`` only.
-It does NOT import ``transport_base_model`` -- the corridor radius-walk retry,
-Courant sizing and helpers are re-implemented inline here.
+It does NOT import ``transport_base_model`` -- the corridor radius-walk retry
+and other helpers are re-implemented inline here. The one exception (T1 S4,
+``DESIGN_DOCS/T1_S4_brief.md`` v2) is Courant sizing: this module now owns the
+CANONICAL ``courant_nstp`` calculator (``_courant_nstp_canonical``, below),
+and ``transport_base_model.courant_nstp`` imports and delegates to it (never
+the other way -- an import edge in that direction would grow this module's
+own frozen source-closure fingerprint, ``test_t1_src_closure.py::DEMO_EXPECTED``).
 
 Author: Applied Groundwater Modelling Course (transport track, M2 SRC demo)
 """
 from __future__ import annotations
 
 import ast
+import dataclasses
 import hashlib
 import json
 import math
@@ -66,6 +72,212 @@ LOCKED_PARAMS: Dict[str, Any] = {
     "base_cell_size": 50.0,
     "time_units": "DAYS",
 }
+
+
+# ---------------------------------------------------------------------------
+# T1 S3a (DESIGN_DOCS/T1_S3_brief.md v3): mesh identity + content-addressed
+# workspaces. `MeshSpec` parameterises the grid; `CourantSpec` is DECLARED
+# ONLY (brief Section 2) -- S4 (below, `_courant_nstp_canonical`) canonicalises
+# the two legacy `courant_nstp` bodies behind explicit `legacy_base` /
+# `legacy_srcpulse` profiles but does not wire `CourantSpec` in; S8 does, as
+# `exp_v1`. `_courant_nstp_canonical` itself reads no `LOCKED_PARAMS` -- each
+# caller passes its own floor reference explicitly.
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class MeshLevel:
+    """One refinement level: a target cell size and (for an inner level) the
+    radius it applies within. ``radius_m=None`` means "the outermost level,
+    scoped by the retry ladder" -- today's single-level default."""
+    cell_size: float
+    radius_m: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class MeshSpec:
+    """What the GRID is (declared). Today is exactly ``MeshSpec()`` -- see
+    ``_resolve_mesh_spec`` for how the legacy ``refine_radii=`` argument
+    folds into this default, and ``mesh_spec_hash`` / ``mesh_hash`` below for
+    the two identities this spec feeds (brief Section 2.1).
+
+    ``levels`` is order-significant (outer -> inner) and a tuple so a graded
+    (multi-level) spec is EXPRESSIBLE -- but S3a only BUILDS a single level;
+    see ``_require_single_level``. Building more than one level is S3b, which
+    needs a signature extending contract A4 to ``model_io_utils.py`` /
+    ``disv_grid_utils.py`` (brief Section 7) -- neither is authorised here.
+    """
+    base_cell_size: float = 50.0
+    levels: Tuple[MeshLevel, ...] = (MeshLevel(cell_size=10.0),)
+    retry_radii: Tuple[float, ...] = (70.0, 62.0, 78.0, 56.0, 84.0)
+
+
+@dataclass(frozen=True)
+class CourantSpec:
+    """What the TIME STEPPING is -- owned by S4/S8. Declared here only, so
+    those milestones have somewhere to put the sliver floor; S3a does not
+    read or wire this in (no Courant behaviour change in this step, per the
+    brief's explicit constraint)."""
+    sliver_floor_frac: float = 0.4
+    cr_target: float = 0.9
+    nstp_cap: int = 2000
+
+
+# Sentinel: distinguishes "refine_radii not passed" from "refine_radii passed
+# its own default value" for the mesh_spec/refine_radii ValueError rule
+# (brief Section 3.1) -- a concrete default tuple could not be told apart
+# from an explicit call carrying that same tuple.
+_UNSET = object()
+
+
+def _resolve_mesh_spec(*, refine_radii: Any = _UNSET,
+                       mesh_spec: Optional["MeshSpec"] = None) -> "MeshSpec":
+    """The ONE authoritative ``MeshSpec`` default/resolution factory (brief
+    Section 3.1), living beside ``LOCKED_PARAMS``.
+
+    ``refine_radii=`` predates ``MeshSpec`` and remains accepted on both
+    public builders (``build_srcpulse_demo``, ``build_prt_capture``) as well
+    as ``refine_corridor``; it folds into the default ``MeshSpec`` (only
+    ``retry_radii`` is overridden -- ``base_cell_size`` and ``levels`` stay
+    at their defaults). Supplying BOTH ``refine_radii`` and ``mesh_spec`` is
+    a ``ValueError``, never a silent precedence rule.
+    """
+    refine_radii_given = refine_radii is not _UNSET
+    if refine_radii_given and mesh_spec is not None:
+        raise ValueError(
+            "pass either refine_radii= or mesh_spec=, not both: refine_radii "
+            "predates MeshSpec and folds into its default retry_radii, so "
+            "supplying both would leave precedence silently undefined "
+            "(DESIGN_DOCS/T1_S3_brief.md Section 3.1)")
+    if mesh_spec is not None:
+        return mesh_spec
+    if refine_radii_given:
+        return MeshSpec(retry_radii=tuple(float(r) for r in refine_radii))
+    return MeshSpec()
+
+
+def _require_single_level(spec: "MeshSpec") -> "MeshLevel":
+    """S3a validates but does not BUILD more than one level (brief Section
+    7: S3a scope). A graded (multi-level) ``MeshSpec`` is expressible -- the
+    shape already admits it -- but constructing it needs per-level
+    ``targets=`` scoping and changes inside ``model_io_utils.py`` /
+    ``disv_grid_utils.py``, neither authorised by contract A4. That is S3b,
+    which needs its own signature; this never silently builds one level."""
+    if len(spec.levels) != 1:
+        raise NotImplementedError(
+            f"MeshSpec.levels carries {len(spec.levels)} levels; this build "
+            "only supports a single level. Multi-level mesh CONSTRUCTION is "
+            "milestone S3b (DESIGN_DOCS/T1_S3_brief.md Section 7) -- it "
+            "needs a signature extending contract A4 to model_io_utils.py "
+            "and disv_grid_utils.py, which S3a does not have.")
+    return spec.levels[0]
+
+
+# ---------------------------------------------------------------------------
+# Canonical, LOSSLESS serialisation for the mesh identities (brief Section
+# 2.2). Deliberately NOT T0.0 Section 4's FLOAT_FORMAT: that formatter is a
+# 12-significant-digit LOSSY quantisation built to make a COMPARISON
+# tolerant of last-bit solver noise -- an IDENTITY needs the opposite (two
+# distinct cell sizes must never collide), so this uses ``float.hex()``
+# (exact IEEE-754) instead. Sorted keys, order-significant sequences,
+# non-finite values REJECTED, digest sha256, first 32 hex chars.
+# ---------------------------------------------------------------------------
+def _canonical_float(x: float) -> str:
+    if not math.isfinite(x):
+        raise ValueError(
+            f"non-finite value is not allowed in an identity payload: {x!r} "
+            "(brief Section 2.2: non-finite values REJECTED)")
+    return float(x).hex()
+
+
+def _canonical_value(v: Any) -> Any:
+    """Recursively convert ``v`` into a JSON-safe canonical form: floats
+    become ``float.hex()`` strings, dataclasses become
+    ``{field: canonical(value)}``, tuples/lists stay ORDER-preserving JSON
+    arrays, dict values are canonicalised (key SORTING is
+    ``json.dumps(..., sort_keys=True)``'s job at serialisation time, not
+    this function's)."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, float):
+        return _canonical_float(v)
+    if isinstance(v, (int, str)):
+        return v
+    if v is None:
+        return None
+    if dataclasses.is_dataclass(v) and not isinstance(v, type):
+        return {f.name: _canonical_value(getattr(v, f.name))
+                for f in dataclasses.fields(v)}
+    if isinstance(v, (tuple, list)):
+        return [_canonical_value(x) for x in v]
+    if isinstance(v, dict):
+        return {str(k): _canonical_value(x) for k, x in v.items()}
+    raise TypeError(f"cannot canonicalise value of type {type(v)!r}: {v!r}")
+
+
+def _canonical_json(obj: Any) -> str:
+    return json.dumps(_canonical_value(obj), sort_keys=True, separators=(",", ":"))
+
+
+def _identity_digest(obj: Any) -> str:
+    """sha256 of the canonical JSON form, first 32 hex chars (brief
+    Section 2.2)."""
+    return hashlib.sha256(_canonical_json(obj).encode("utf-8")).hexdigest()[:32]
+
+
+def mesh_spec_hash(spec: "MeshSpec") -> str:
+    """The DECLARED identity: the ``MeshSpec`` fields as written (brief
+    Section 2.1). For provenance / artifact records -- NOT for keying a
+    workspace or cache (the retry ladder means a declared spec does not
+    determine the resulting mesh; see ``mesh_hash``)."""
+    return _identity_digest(spec)
+
+
+def _file_content_hash(path: Union[str, Path]) -> str:
+    """sha256 hex digest of a file's raw bytes -- the GIS content identity
+    (brief Section 2.1: ``mesh_hash`` folds in ``model_boundary`` and
+    ``rivers``). Content, not path: a byte-identical file at a different
+    location hashes the same; an edited file at the SAME path hashes
+    differently."""
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _gis_source_paths() -> Tuple[Path, Path]:
+    """Local file paths for the two GIS layers that shape the mesh: the
+    model boundary (sets the domain) and the rivers (change refined RIV
+    allocation, hence velocity and Courant sizing) -- content-hashed into
+    ``mesh_hash`` so an edit to either file changes the effective mesh
+    identity even though it changes no source byte. ``download_named_file``
+    is a cache hit whenever the files are already local (both layers are
+    also fetched by ``_load_calibrated_flow``), so this is a cheap local
+    path lookup, not an extra download in the common case."""
+    from data_utils import download_named_file
+    boundary_path = Path(download_named_file(name="model_boundary", data_type="gis"))
+    rivers_path = Path(download_named_file(name="rivers", data_type="gis"))
+    return boundary_path, rivers_path
+
+
+def mesh_hash(spec: "MeshSpec", *, winning_radius: float,
+             boundary_path: Union[str, Path],
+             rivers_path: Union[str, Path]) -> str:
+    """The EFFECTIVE identity (brief Section 2.1): the declared spec PLUS
+    the winning retry radius PLUS the GIS content hashes. This -- not
+    ``mesh_spec_hash`` -- is what keys every workspace and cache: the retry
+    ladder means a declared spec does not by itself determine the resulting
+    mesh, and the boundary/river geometry shape it too."""
+    if not math.isfinite(winning_radius):
+        raise ValueError(f"winning_radius must be finite (got {winning_radius!r})")
+    payload = {
+        "mesh_spec": spec,
+        "winning_radius_m": float(winning_radius),
+        "gis": {
+            "model_boundary_sha256": _file_content_hash(boundary_path),
+            "rivers_sha256": _file_content_hash(rivers_path),
+        },
+    }
+    return _identity_digest(payload)
 
 # Solver policy (replicated from transport_base_model)
 _GWF_NEWTON = "NEWTON"
@@ -180,66 +392,175 @@ def _corridor_points(a_xy, b_xy, step: float = 40.0, pad: float = 40.0):
 
 
 def _refine_with_retry(coarse_gwf, boundary_gdf, river_gdf, refine_points, head_array,
-                       workspace: Union[str, Path], *,
-                       refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
-                       base_cell_size: float = 50.0, refined_cell_size: float = 10.0,
-                       sim_name: str = "rg") -> Tuple[Dict[str, Any], float]:
-    """Corridor refine, walking the refine radius to dodge the cs=10 SIGILL /
-    Triangle-precision abort (macOS arm64 / mf6 6.7.0).
+                       case_ws: Union[str, Path], *,
+                       mesh_spec: "MeshSpec",
+                       boundary_path: Union[str, Path],
+                       rivers_path: Union[str, Path],
+                       sim_name: str = "rg") -> Tuple[Dict[str, Any], float, str]:
+    """Corridor refine, walking ``mesh_spec.retry_radii`` to dodge the cs=10
+    SIGILL / Triangle-precision abort (macOS arm64 / mf6 6.7.0).
 
-    Re-implemented inline (charter constraint: do NOT import transport_base_model).
-    Returns (build_refined_gwf_model result dict, radius actually used).
+    T1 S3a (brief Section 2.1/3): each candidate radius is tried directly in
+    its OWN content-addressed workspace, ``case_ws / f"refgrid_{candidate}"``,
+    where ``candidate`` is ``mesh_hash(mesh_spec, winning_radius=<this
+    radius>, ...)`` computed FOR THAT radius -- so the winning build lands
+    exactly at the path its effective identity names (no rename step), and a
+    failed candidate's SIGILL debris is left in its own directory, never
+    colliding with anything else.
+
+    Re-implemented inline (charter constraint: do NOT import
+    transport_base_model). Returns (build_refined_gwf_model result dict, the
+    radius actually used, and its mesh_hash).
     """
-    workspace = Path(workspace)
+    level = _require_single_level(mesh_spec)
+    case_ws = Path(case_ws)
     last_exc: Optional[Exception] = None
-    for k, rr in enumerate(refine_radii):
+    for rr in mesh_spec.retry_radii:
+        candidate_hash = mesh_hash(mesh_spec, winning_radius=float(rr),
+                                   boundary_path=boundary_path, rivers_path=rivers_path)
+        ws = case_ws / f"refgrid_{candidate_hash}"
         try:
             res = mio.build_refined_gwf_model(
                 coarse_gwf, boundary_gdf=boundary_gdf, river_gdf=river_gdf,
                 refine_points=refine_points, head_array=head_array,
-                workspace=str(workspace / f"rg{k}"), refine_radius=float(rr),
-                base_cell_size=base_cell_size, refined_cell_size=refined_cell_size,
+                workspace=str(ws), refine_radius=float(rr),
+                base_cell_size=mesh_spec.base_cell_size,
+                refined_cell_size=level.cell_size,
                 sim_name=sim_name)
-            return res, float(rr)
+            return res, float(rr), candidate_hash
         except Exception as e:  # SIGILL / Triangle abort surfaces here
             last_exc = e
             continue
     raise RuntimeError(
-        f"corridor refinement failed at all radii {tuple(refine_radii)}; "
+        f"corridor refinement failed at all radii {tuple(mesh_spec.retry_radii)}; "
         f"last error: {last_exc!r}")
+
+
+# ---------------------------------------------------------------------------
+# T1 S4 (DESIGN_DOCS/T1_S4_brief.md v2): canonical `courant_nstp` calculator.
+#
+# Collapses the two pre-S4 duplicates -- this module's own private
+# `_courant_nstp` (below) and `transport_base_model.courant_nstp` -- into ONE
+# implementation, selected by `profile`. It lives HERE (not in
+# `transport_base_model`) because this module already owns `CourantSpec`
+# (declared above, for S4/S8) and its exact source is pinned byte-for-byte by
+# `test_t1_src_closure.py::DEMO_EXPECTED` -- an import edge FROM here TO
+# `transport_base_model` would grow that frozen closure. The reverse edge
+# (`transport_base_model` importing this module) does not, since nothing pins
+# `transport_base_model`'s own import set.
+#
+# `profile` admits ONLY the two legacy IDs in S4. `exp_v1` -- the corrected
+# policy: floor keyed off the finest *intended* cell size, source/wells
+# included, global max Courant reported -- does not exist yet; that is S8,
+# gated on the T1 JAG. This function never warns and never reports a cap
+# flag: both stay caller-owned exactly as today (`build_doublet_base` has no
+# cap flag; `build_spill_scenario` sets `cr_capped` from `Cr > 1.001` without
+# warning; this module's own wrapper sets `cr_capped = nstp >= nstp_cap` and
+# warns -- all unchanged, at the call sites, not here).
+# ---------------------------------------------------------------------------
+_COURANT_LEGACY_PROFILES = ("legacy_base", "legacy_srcpulse")
+
+
+def _courant_nstp_canonical(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
+                            total_time: float, *, exclusions: Sequence[int] = (),
+                            cr_target: float = 0.9, nstp_cap: int,
+                            sliver_floor_frac: float = 0.4, refined_cell_size: float,
+                            profile: str) -> Tuple[int, float, float, Dict[str, float]]:
+    """Size fixed time steps from a per-cell Courant number Cr_i = v_i*dt/ds_i.
+
+    Takes the ORIGINAL (unmasked) corridor `mask` plus `exclusions` (cell ids
+    to drop -- source and/or well cells, per caller) rather than a pre-masked
+    array: a pre-masked array cannot be inverted, and S8 needs to know what was
+    excluded so it can stop excluding it. `mask` is copied, never mutated; the
+    legacy (excluded) mask is reconstructed as `mask` minus `exclusions`, and
+    BOTH the floor-filtered selection and `diag["ds_true_min"]` are computed
+    from that reconstructed mask -- reproducing each pre-S4 call site exactly.
+
+    `refined_cell_size` is the CALLER's own floor reference (each module reads
+    its own `LOCKED_PARAMS["refined_cell_size"]` and passes it in): this
+    function owns no `LOCKED_PARAMS` read, so the two modules' locked-parameter
+    copies (a divergence hazard on record, C1 S0.2) stay decoupled even though
+    the calculator itself is now shared.
+
+    Profile behaviour (verified byte-for-byte against both pre-S4 bodies):
+
+    * `legacy_base` -- mirrors `transport_base_model.py`'s pre-S4 body. No
+      empty-selection fallback (`ratio.max()` on an empty selection raises); no
+      zero/negative-critical fallback (`critical == 0` raises at division; a
+      negative `critical` can yield a negative `nstp`, or a zero `nstp` that
+      raises at `dt = total_time / nstp`); `nstp` is NOT clamped to >= 1.
+    * `legacy_srcpulse` -- mirrors this module's pre-S4 private body. An empty
+      floor-filtered selection falls back to the whole (reconstructed) mask;
+      `critical <= 0` (zero OR negative) returns the cap with
+      `Cr = critical * dt` instead of raising; `nstp` is clamped to >= 1.
+    """
+    if profile not in _COURANT_LEGACY_PROFILES:
+        raise ValueError(
+            f"unknown courant_nstp profile {profile!r}; expected one of "
+            f"{_COURANT_LEGACY_PROFILES}")
+
+    # Copy, never mutate, the caller's mask; reconstruct the legacy
+    # (pre-S4 pre-masked) selection as mask-minus-exclusions.
+    legacy_mask = np.array(mask, dtype=bool, copy=True)
+    for cell in exclusions:
+        legacy_mask[int(cell)] = False
+
+    floor = sliver_floor_frac * refined_cell_size
+    sel = legacy_mask & (size_cells >= floor)
+
+    if profile == "legacy_srcpulse":
+        if not sel.any():                       # degenerate: fall back to whole mask
+            sel = legacy_mask
+        ratio = v_cells[sel] / size_cells[sel]
+        critical = float(ratio.max())
+        j = np.where(sel)[0][int(np.argmax(ratio))]
+        if critical <= 0.0:
+            # degenerate zero/negative-velocity field on the selected cells:
+            # cr_target / critical would ZeroDivisionError (or size dt off a
+            # backwards signal). Fall back to the step cap -- there is no
+            # forward advective signal to size dt against.
+            nstp = max(nstp_cap, 1)
+            dt = total_time / nstp
+            diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
+                        ds_true_min=float(size_cells[legacy_mask].min()), floor=floor)
+            return nstp, dt, critical * dt, diag
+        dt_need = cr_target / critical
+        nstp = min(int(np.ceil(total_time / dt_need)), nstp_cap)
+        nstp = max(nstp, 1)
+        dt = total_time / nstp
+        diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
+                    ds_true_min=float(size_cells[legacy_mask].min()), floor=floor)
+        return nstp, dt, critical * dt, diag
+
+    # profile == "legacy_base": no empty-selection fallback, no zero/negative
+    # fallback, no >= 1 clamp -- preserve the raises exactly.
+    ratio = v_cells[sel] / size_cells[sel]
+    critical = float(ratio.max())
+    dt_need = cr_target / critical
+    nstp = min(int(np.ceil(total_time / dt_need)), nstp_cap)
+    dt = total_time / nstp
+    j = np.where(sel)[0][int(np.argmax(ratio))]
+    diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
+                ds_true_min=float(size_cells[legacy_mask].min()), floor=floor)
+    return nstp, dt, critical * dt, diag
 
 
 def _courant_nstp(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
                   total_time: float, cr_target: float = 0.9, nstp_cap: int = 2000,
-                  sliver_floor_frac: float = 0.4) -> Tuple[int, float, float, Dict[str, float]]:
-    """Size fixed time steps from a per-cell Courant number Cr_i = v_i*dt/ds_i.
+                  sliver_floor_frac: float = 0.4, *,
+                  exclusions: Sequence[int] = ()) -> Tuple[int, float, float, Dict[str, float]]:
+    """Thin wrapper (T1 S4): delegates to `_courant_nstp_canonical` with
+    `profile='legacy_srcpulse'`. `mask` is the ORIGINAL (unmasked) corridor
+    mask; pass excluded cell ids (source + well cells) via `exclusions`.
 
     Slivers below sliver_floor_frac * refined_cell_size are excluded (they carry
     negligible pore volume but would force an impractically tiny dt).
     """
-    floor = sliver_floor_frac * LOCKED_PARAMS["refined_cell_size"]
-    sel = mask & (size_cells >= floor)
-    if not sel.any():                       # degenerate: fall back to whole mask
-        sel = mask
-    ratio = v_cells[sel] / size_cells[sel]
-    critical = float(ratio.max())
-    j = np.where(sel)[0][int(np.argmax(ratio))]
-    if critical <= 0.0:
-        # degenerate zero-velocity field on the selected cells: cr_target /
-        # critical would ZeroDivisionError.  Fall back to the step cap -- there
-        # is no advective signal to size dt against.
-        nstp = max(nstp_cap, 1)
-        dt = total_time / nstp
-        diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
-                    ds_true_min=float(size_cells[mask].min()), floor=floor)
-        return nstp, dt, critical * dt, diag
-    dt_need = cr_target / critical
-    nstp = min(int(np.ceil(total_time / dt_need)), nstp_cap)
-    nstp = max(nstp, 1)
-    dt = total_time / nstp
-    diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
-                ds_true_min=float(size_cells[mask].min()), floor=floor)
-    return nstp, dt, critical * dt, diag
+    return _courant_nstp_canonical(
+        v_cells, size_cells, mask, total_time, exclusions=exclusions,
+        cr_target=cr_target, nstp_cap=nstp_cap, sliver_floor_frac=sliver_floor_frac,
+        refined_cell_size=float(LOCKED_PARAMS["refined_cell_size"]),
+        profile="legacy_srcpulse")
 
 
 def _budget_has_spdis(cgwf) -> bool:
@@ -497,7 +818,8 @@ def load_limmat_flow():
 
 
 def refine_corridor(cgwf, boundary, rivers, spill_xy=None, *,
-                    refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+                    refine_radii: Any = _UNSET,
+                    mesh_spec: Optional["MeshSpec"] = None,
                     case_ws: Optional[Union[str, Path]] = None) -> Dict[str, Any]:
     """Refine the spill->extraction corridor and return a **GridBundle** dict.
 
@@ -506,11 +828,21 @@ def refine_corridor(cgwf, boundary, rivers, spill_xy=None, *,
     then corridor-refines the DISV grid via ``_refine_with_retry`` (the macOS
     arm64 SIGILL / Triangle-precision radius-walk stays INSIDE this call).
 
+    ``refine_radii=`` (legacy) and ``mesh_spec=`` (T1 S3a) are resolved by
+    ``_resolve_mesh_spec`` -- supplying both is a ``ValueError``. A
+    ``mesh_spec`` with more than one ``MeshLevel`` raises ``NotImplementedError``
+    (S3b, not built here).
+
     The returned dict carries everything the sim builders need -- modelgrid,
     gridprops, cell arrays, boundary stress data, and the injection / extraction /
     source cell indices -- so nothing downstream reaches back into the coarse or
-    refined GWF objects.
+    refined GWF objects. It also carries the two T1 S3a mesh identities:
+    ``mesh_spec_hash`` (declared) and ``mesh_hash`` (effective -- the winning
+    retry radius and the GIS content hashes folded in).
     """
+    spec = _resolve_mesh_spec(refine_radii=refine_radii, mesh_spec=mesh_spec)
+    _require_single_level(spec)   # NotImplementedError for >1 level, before any I/O
+
     heads_array = cgwf.output.head().get_data().flatten()
 
     # ---- regional flow direction at the extraction well -> upgradient spill ----
@@ -528,10 +860,11 @@ def refine_corridor(cgwf, boundary, rivers, spill_xy=None, *,
     case_ws = Path(case_ws) if case_ws is not None else _default_case_ws()
     corr_pts, u, L = _corridor_points(spill_xy, ABS_XY)
     refine_points = corr_pts + [tuple(INJ_XY)]
-    res, refine_radius_used = _refine_with_retry(
-        cgwf, boundary, rivers, refine_points, heads_array, case_ws / "refgrid",
-        refine_radii=refine_radii, base_cell_size=LOCKED_PARAMS["base_cell_size"],
-        refined_cell_size=LOCKED_PARAMS["refined_cell_size"], sim_name="rg")
+    boundary_path, rivers_path = _gis_source_paths()
+    res, refine_radius_used, refgrid_hash = _refine_with_retry(
+        cgwf, boundary, rivers, refine_points, heads_array, case_ws,
+        mesh_spec=spec, boundary_path=boundary_path, rivers_path=rivers_path,
+        sim_name="rg")
     rgwf = res["gwf"]; mg = res["modelgrid"]; gp = res["gridprops"]; ncpl = res["ncpl"]
     xc = np.array(mg.xcellcenters); yc = np.array(mg.ycellcenters)
     csz = _cellsize(mg, ncpl)
@@ -557,7 +890,9 @@ def refine_corridor(cgwf, boundary, rivers, spill_xy=None, *,
         inj_cell=injc, ext_cell=extc, src_cells=src_cells,
         spill_xy=(float(spill_xy[0]), float(spill_xy[1])),
         corridor_mask=corridor_mask, u_reg=tuple(u_reg),
-        refine_radius_used=refine_radius_used, rgwf=rgwf)
+        refine_radius_used=refine_radius_used, rgwf=rgwf,
+        mesh_spec=spec, mesh_spec_hash=mesh_spec_hash(spec), mesh_hash=refgrid_hash,
+        boundary_path=boundary_path, rivers_path=rivers_path)
 
 
 def new_sim(case_ws: Union[str, Path], *, pulse_days: float, total_days: float,
@@ -702,7 +1037,8 @@ def build_srcpulse_demo(
     case_ws: Optional[Union[str, Path]] = None,
     cr_target: float = 0.9,
     nstp_cap: int = 2000,
-    refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+    refine_radii: Any = _UNSET,
+    mesh_spec: Optional["MeshSpec"] = None,
     force: bool = False,
 ) -> SrcPulseDemo:
     """Build + run the SRC finite-pulse spill -> capture demo; return diagnostics.
@@ -741,6 +1077,17 @@ def build_srcpulse_demo(
     case_ws : path, optional
         Workspace for the refined grid + coupled sim + cache.  Defaults to
         ``<data>/transport_srcpulse_demo``.
+    refine_radii : sequence of float, optional
+        Legacy corridor-refinement retry ladder.  Predates ``MeshSpec`` (T1
+        S3a) and remains accepted, folding into the default ``MeshSpec``'s
+        ``retry_radii``.  Passing this AND ``mesh_spec`` is a ``ValueError``.
+    mesh_spec : MeshSpec, optional
+        T1 S3a grid parameterisation (``base_cell_size``, ``levels``,
+        ``retry_radii``).  ``None`` (default) uses ``MeshSpec()`` -- today's
+        behaviour exactly -- unless ``refine_radii`` is given, in which case
+        it is folded in instead.  A ``levels`` tuple with more than one
+        ``MeshLevel`` raises ``NotImplementedError`` (multi-level
+        construction is milestone S3b, not built here).
     force : bool
         Rebuild even if a matching cache exists.
 
@@ -784,6 +1131,12 @@ def build_srcpulse_demo(
             f"total_days ({total_days!r}) must be > pulse_days ({pulse_days!r}); "
             "period 1 (post-pulse migration) would otherwise have zero/negative length")
 
+    # T1 S3a: resolve refine_radii=/mesh_spec= to ONE MeshSpec (ValueError if
+    # both given) and refuse >1 level up front (NotImplementedError naming
+    # S3b), before any GIS / MF6 work.
+    spec = _resolve_mesh_spec(refine_radii=refine_radii, mesh_spec=mesh_spec)
+    _require_single_level(spec)
+
     alpha_L_eff = float(LOCKED_PARAMS["alh"]) if alpha_L is None else float(alpha_L)
     # Derive the transverse ratio FROM LOCKED_PARAMS (currently 1.0 / 10.0 = 0.1)
     # rather than hardcoding "/ 10.0" -- that hardcode previously matched the
@@ -795,11 +1148,26 @@ def build_srcpulse_demo(
     case_ws = Path(case_ws) if case_ws is not None else _default_case_ws()
     case_ws.mkdir(parents=True, exist_ok=True)
 
+    # GIS content hashes are cheap (local file reads; `download_named_file` is
+    # a cache hit whenever the files are already local) and known WITHOUT a
+    # corridor build, unlike the winning retry radius -- so they fold into the
+    # pre-solve cache identity (`params`) directly, while the full effective
+    # `mesh_hash` (which needs the winning radius) is only known after
+    # `refine_corridor` runs and is folded into `run_hash` below instead.
+    boundary_path, rivers_path = _gis_source_paths()
+
     params = dict(mass_g=float(mass_g), pulse_days=float(pulse_days),
                   total_days=float(total_days), solubility_mgL=float(solubility_mgL),
                   alpha_L=alpha_L_eff, R=float(R), rho_b=float(rho_b), lam=float(lam),
                   cr_target=float(cr_target), nstp_cap=int(nstp_cap),
-                  refine_radii=list(map(float, refine_radii)),
+                  # T1 S3a: the DECLARED mesh identity (brief Section 2.1) --
+                  # every MeshSpec field (base_cell_size, levels, retry_radii)
+                  # folds in here, replacing the old raw refine_radii list.
+                  mesh_spec_hash=mesh_spec_hash(spec),
+                  # ...and the GIS content that shapes the EFFECTIVE mesh, so a
+                  # boundary/river edit busts this cache too (exit criterion 4).
+                  gis_boundary_sha256=_file_content_hash(boundary_path),
+                  gis_rivers_sha256=_file_content_hash(rivers_path),
                   # Fold a snapshot of LOCKED_PARAMS into the cache identity so an
                   # edit to LOCKED_PARAMS (porosity, scheme, xt3d_off, diffc,
                   # base_cell_size, refined_cell_size, time_units, ath1, ...) busts
@@ -834,8 +1202,7 @@ def build_srcpulse_demo(
 
     # ---- load + refine (the visible builders; SIGILL retry stays inside) ----
     cgwf, boundary, rivers, exe = load_limmat_flow()
-    grid = refine_corridor(cgwf, boundary, rivers, refine_radii=refine_radii,
-                           case_ws=case_ws)
+    grid = refine_corridor(cgwf, boundary, rivers, mesh_spec=spec, case_ws=case_ws)
     ncpl = grid["ncpl"]
     csz = grid["cellsize"]
     heads_ref = grid["heads"]; botm_ref = grid["botm"]
@@ -847,34 +1214,51 @@ def build_srcpulse_demo(
     n_src = len(src_cells)
     smassrate = float(mass_g) / (n_src * float(pulse_days))   # per-cell SRC loading [g/d]
 
+    # T1 S3a (brief Section 3, location "demo coupled sim"): the coupled sim's
+    # workspace is content-addressed by `run_hash` -- `params` (the pre-solve
+    # identity) with the DECLARED `mesh_spec_hash` swapped for the EFFECTIVE
+    # `mesh_hash` now that `refine_corridor` has revealed the winning retry
+    # radius, so two runs whose declared spec+GIS resolve to the SAME winning
+    # radius (the common, deterministic case) reuse one directory, and two
+    # that resolve differently never collide. `new_sim` itself is unchanged
+    # (still appends "sim" under whatever it is given -- see
+    # test_public_builders_compose_to_build_srcpulse_demo, which calls it
+    # directly and depends on that); passing it the hash-keyed parent here is
+    # what makes the FINAL sim directory content-addressed.
+    run_params = dict(params)
+    run_params["mesh_hash"] = grid["mesh_hash"]
+    run_hash = hashlib.sha1(
+        json.dumps(run_params, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+    run_ws = case_ws / f"sim_{run_hash}"
+
     def _make_sim(nstp_per_period):
         """Compose the public builders into one coupled GWF+GWT solve."""
-        sim = new_sim(case_ws, pulse_days=pulse_days, total_days=total_days,
+        sim = new_sim(run_ws, pulse_days=pulse_days, total_days=total_days,
                       nstp_per_period=nstp_per_period, exe=exe)
         gwf = add_flow_model(sim, grid)
         gwt = add_transport_model(sim, gwf, grid, mass_g=mass_g, pulse_days=pulse_days,
                                   R=R, rho_b=rho_b, lam=lam, alpha_L=alpha_L_eff)
-        ok, buf, sim = couple_and_run(sim, gwf, gwt, grid, case_ws)
+        ok, buf, sim = couple_and_run(sim, gwf, gwt, grid, run_ws)
         return sim, gwf, gwt, ok, buf
 
     # ---- pilot: read velocity, size Courant, then production ----
     sim, gwf, gwt, ok, buf = _make_sim(20)
     if not ok:
         raise RuntimeError("pilot run failed; listing tail:\n"
-                           + _run_failure_tail(case_ws / "sim", buf))
+                           + _run_failure_tail(run_ws / "sim", buf))
     spd = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
     vmag = np.sqrt(spd["qx"] ** 2 + spd["qy"] ** 2) / LOCKED_PARAMS["porosity"]
-    # exclude BOTH doublet wells (inj + ext) AND the source cells from Courant binding
-    corr_no_wells = corridor_mask.copy()
-    for c in src_cells + [injc, extc]:
-        corr_no_wells[c] = False
-    nstp, dt, cr_act, cdiag = _courant_nstp(vmag, csz, corr_no_wells, float(total_days),
-                                            cr_target, nstp_cap)
+    # T1 S4: pass the ORIGINAL corridor mask + excluded cell ids (source +
+    # BOTH doublet wells, inj + ext) rather than a pre-masked array -- see
+    # `_courant_nstp_canonical`.
+    nstp, dt, cr_act, cdiag = _courant_nstp(vmag, csz, corridor_mask, float(total_days),
+                                            cr_target, nstp_cap,
+                                            exclusions=src_cells + [injc, extc])
 
     sim, gwf, gwt, ok, buf = _make_sim(nstp)
     if not ok:
         raise RuntimeError("production run failed; listing tail:\n"
-                           + _run_failure_tail(case_ws / "sim", buf))
+                           + _run_failure_tail(run_ws / "sim", buf))
 
     # ---- breakthrough at the extraction well ----
     cobj = gwt.output.concentration(); times = np.array(cobj.get_times())
@@ -902,7 +1286,7 @@ def build_srcpulse_demo(
     sol_margin = float(solubility_mgL / emergent_C) if emergent_C > 0 else float("inf")
 
     # ---- mass balance from the binary GWT budget (gwt.cbc) ----
-    mb = _mass_balance(case_ws / "sim" / "gwt.cbc")
+    mb = _mass_balance(run_ws / "sim" / "gwt.cbc")
 
     # ---- grid Peclet on the corridor (uses the EFFECTIVE dispersivities) ----
     csz_corr = csz[corridor_mask]

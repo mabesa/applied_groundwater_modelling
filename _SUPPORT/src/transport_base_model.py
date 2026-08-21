@@ -49,6 +49,12 @@ import flopy
 from shapely.geometry import Polygon, Point, LineString
 
 import model_io_utils as mio  # build_refined_gwf_model (grid + property interpolation)
+# T1 S4 (DESIGN_DOCS/T1_S4_brief.md v2): the canonical `courant_nstp` calculator
+# lives in transport_srcpulse_demo (which already owns `CourantSpec`, declared
+# there for S4/S8) so that module's own frozen source-closure fingerprint
+# (test_t1_src_closure.py::DEMO_EXPECTED) does not have to grow to include this
+# module. `courant_nstp` below is a thin wrapper delegating to it.
+from transport_srcpulse_demo import _courant_nstp_canonical
 
 # ---------------------------------------------------------------------------
 # LOCKED transport parameters (M2/M3/M4 — do not override per call)
@@ -145,26 +151,38 @@ _refine_with_retry = mio.refine_with_retry
 
 def courant_nstp(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
                  total_time: float, cr_target: float = 0.9, nstp_cap: int = 1000,
-                 sliver_floor_frac: float = 0.4) -> Tuple[int, float, float, Dict[str, float]]:
+                 sliver_floor_frac: float = 0.4, *,
+                 exclusions: Sequence[int] = ()) -> Tuple[int, float, float, Dict[str, float]]:
     """Size fixed time steps from a PER-CELL Courant number Cr_i = v_i*dt/Δs_i.
 
+    T1 S4 (DESIGN_DOCS/T1_S4_brief.md v2): thin wrapper delegating to the
+    canonical calculator in ``transport_srcpulse_demo`` with
+    ``profile='legacy_base'``. This PUBLIC function keeps its EXISTING
+    POSITIONAL signature; ``exclusions`` is new and keyword-only.
+
+    ``mask`` is the ORIGINAL (unmasked) corridor mask, not a pre-excluded
+    array: pass source/well cell ids to drop via ``exclusions`` (both current
+    callers, ``build_doublet_base`` and ``build_spill_scenario``, do this).
+    Passing no ``exclusions`` reproduces the pre-S4 call convention exactly
+    (``mask`` used as-is, since mask-minus-nothing is mask).
+
     Returns (nstp, dt, Cr_actual, diag).  The binding cell is the one with the
-    largest v_i/Δs_i among corridor cells whose size is >= sliver_floor_frac *
-    refined_cell_size (sub-resolution Voronoi slivers carry negligible pore volume
-    and are excluded so they do not force an impractically tiny Δt).  ATS is NOT
-    used (convergence-driven, not Courant-driven).
+    largest v_i/Δs_i among corridor cells (after ``exclusions``) whose size is
+    >= sliver_floor_frac * refined_cell_size (sub-resolution Voronoi slivers
+    carry negligible pore volume and are excluded so they do not force an
+    impractically tiny Δt).  ATS is NOT used (convergence-driven, not
+    Courant-driven).
+
+    ``legacy_base`` semantics (unchanged from pre-S4): an empty floor-filtered
+    selection raises (``ratio.max()`` on an empty array); ``critical == 0``
+    raises at division; a negative ``critical`` may return a NEGATIVE ``nstp``,
+    or raise later at ``nstp == 0``; ``nstp`` is NOT clamped to >= 1.
     """
-    floor = sliver_floor_frac * LOCKED_PARAMS["refined_cell_size"]
-    sel = mask & (size_cells >= floor)
-    ratio = v_cells[sel] / size_cells[sel]          # 1/day, per-cell Courant rate
-    critical = float(ratio.max())
-    dt_need = cr_target / critical
-    nstp = min(int(np.ceil(total_time / dt_need)), nstp_cap)
-    dt = total_time / nstp
-    j = np.where(sel)[0][int(np.argmax(ratio))]
-    diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
-                ds_true_min=float(size_cells[mask].min()), floor=floor)
-    return nstp, dt, critical * dt, diag
+    return _courant_nstp_canonical(
+        v_cells, size_cells, mask, total_time, exclusions=exclusions,
+        cr_target=cr_target, nstp_cap=nstp_cap, sliver_floor_frac=sliver_floor_frac,
+        refined_cell_size=float(LOCKED_PARAMS["refined_cell_size"]),
+        profile="legacy_base")
 
 
 def relocate_receptor(src_xy, receptor_xy, v_seepage: float, retardation: float,
@@ -359,10 +377,10 @@ def build_doublet_base(
                            + _run_failure_tail(case_ws / "sim", buf))
     spd = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
     vmag = np.sqrt(spd["qx"] ** 2 + spd["qy"] ** 2) / LOCKED_PARAMS["porosity"]
-    corr_no_wells = corridor_mask.copy()
-    for c in src_cells + [rcell]:
-        corr_no_wells[c] = False
-    nstp, dt, cr_act, cdiag = courant_nstp(vmag, csz, corr_no_wells, total_time, cr_target, nstp_cap)
+    # T1 S4: pass the ORIGINAL corridor mask + excluded cell ids (source +
+    # receptor) rather than a pre-masked array -- see `courant_nstp`.
+    nstp, dt, cr_act, cdiag = courant_nstp(vmag, csz, corridor_mask, total_time, cr_target, nstp_cap,
+                                           exclusions=src_cells + [rcell])
     v_peak = cdiag["v_bind"]; ds_min = cdiag["ds_bind"]
 
     sim, gwf, gwt, ok, buf = _make_sim(nstp)
@@ -550,10 +568,10 @@ def build_spill_scenario(
                            + _run_failure_tail(case_ws / "sim", buf))
     spd = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
     vmag = np.sqrt(spd["qx"] ** 2 + spd["qy"] ** 2) / LOCKED_PARAMS["porosity"]
-    corr_no_wells = corridor_mask.copy()
-    for c in src_cells + [injc, extc]:
-        corr_no_wells[c] = False
-    nstp, dt, cr_act, cdiag = courant_nstp(vmag, csz, corr_no_wells, total_time, cr_target, nstp_cap)
+    # T1 S4: pass the ORIGINAL corridor mask + excluded cell ids (source +
+    # both doublet wells) rather than a pre-masked array -- see `courant_nstp`.
+    nstp, dt, cr_act, cdiag = courant_nstp(vmag, csz, corridor_mask, total_time, cr_target, nstp_cap,
+                                           exclusions=src_cells + [injc, extc])
     v_peak = cdiag["v_bind"]; ds_min = cdiag["ds_bind"]
 
     sim, gwf, gwt, ok, buf = _make_sim(nstp)

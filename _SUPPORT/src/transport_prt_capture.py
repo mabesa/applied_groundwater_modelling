@@ -186,6 +186,21 @@ from transport_srcpulse_demo import (  # noqa: F401  (re-exported on purpose)
     # this module's `_src_sha()` reuses it rather than re-implementing the
     # AST scan, so the two `_src_sha()`s cannot drift.
     _src_closure_digest,
+    # T1 S3a (DESIGN_DOCS/T1_S3_brief.md v3): the ONE MeshSpec definition and
+    # its identity/resolution helpers -- PRT consumes the SAME MeshSpec the
+    # demo defines (brief Section 3: "MeshSpec is defined in
+    # transport_srcpulse_demo.py and imported by PRT, which already imports
+    # that module"). No new shared module.
+    MeshSpec,
+    MeshLevel,  # noqa: F401  (re-exported so callers can build a MeshSpec here)
+    CourantSpec,  # noqa: F401  (declared-only; re-exported for symmetry)
+    _UNSET,
+    _resolve_mesh_spec,
+    _require_single_level,
+    mesh_spec_hash,
+    mesh_hash,
+    _gis_source_paths,
+    _file_content_hash,
 )
 
 # Solver policy for the steady flow model (same as the ADE demo's GWF).
@@ -409,30 +424,44 @@ def _flow_fp() -> str:
 # ---------------------------------------------------------------------------
 # the flow field (steady GWF + doublet), built once per distinct FLOW identity
 # ---------------------------------------------------------------------------
-def _flow_params(track_days: float, refine_radii: Sequence[float]) -> Dict[str, Any]:
-    """The identity of the FLOW model alone.
+def _flow_params(track_days: float, refine_radii: Any) -> Dict[str, Any]:
+    """The DECLARED identity of the FLOW model alone -- pure / solve-free (no
+    MF6 run, no network I/O).
 
     Deliberately does NOT include n_particles / release_radius_m / stop_at_weak_sink:
     those are PRT-side knobs and do not change a single number in the GWF solution.
-    The flow workspace is named from this hash, so two runs that differ only on the
-    PRT side share (and correctly re-use) one flow directory, while two runs with
-    DIFFERENT flow get DIFFERENT directories -- no overwriting, no stale
-    ``meta["gwf_ws"]``.
+    The flow workspace is named from a hash that folds THIS dict together with the
+    EFFECTIVE `mesh_hash` (winning retry radius + GIS content, only known once
+    `_build_flow` has actually run the corridor refinement -- see `_build_flow`),
+    so two runs that differ only on the PRT side share (and correctly re-use) one
+    flow directory, while two runs with DIFFERENT flow get DIFFERENT directories --
+    no overwriting, no stale ``meta["gwf_ws"]``.
+
+    ``refine_radii`` is deliberately permissive (T1 S3a): a ``MeshSpec`` (what
+    `build_prt_capture` / `capture_halfwidth_at` pass, having already resolved
+    `refine_radii=`/`mesh_spec=` once via `_resolve_mesh_spec` -- so this function
+    always reflects the SAME spec that actually built the grid), a plain sequence
+    of legacy retry radii, or the `_UNSET` sentinel (`MeshSpec()` default).
     """
+    spec = refine_radii if isinstance(refine_radii, MeshSpec) \
+        else _resolve_mesh_spec(refine_radii=refine_radii, mesh_spec=None)
     return dict(track_days=float(track_days),
-                refine_radii=list(map(float, refine_radii)),
+                mesh_spec_hash=mesh_spec_hash(spec),
                 locked=dict(LOCKED_PARAMS),
                 src_sha=_src_sha(),
                 flow_fp=_flow_fp())
 
 
 def _build_flow(case_ws: Path, track_days: float,
-                refine_radii: Sequence[float]) -> Dict[str, Any]:
+                mesh_spec: "MeshSpec") -> Dict[str, Any]:
     """Calibrated regional flow -> corridor-refined grid -> steady GWF with the doublet.
 
     Returns everything the PRT side needs, plus the flow-field diagnostics the
     verification rests on (specific discharge, saturated thickness, the strong-sink
     check).  ``build_prt_capture`` and :func:`capture_halfwidth_at` share this.
+
+    ``mesh_spec`` must already be RESOLVED (via ``_resolve_mesh_spec``, done once
+    by the two public callers) -- this function does not accept ``refine_radii=``.
     """
     cgwf, boundary, rivers, exe = _load_calibrated_flow()
     heads_array = cgwf.output.head().get_data().flatten()
@@ -450,10 +479,11 @@ def _build_flow(case_ws: Path, track_days: float,
     # ---- corridor refinement (SIGILL / Triangle-precision radius walk) ----
     corr_pts, _u, _L = _corridor_points(spill_xy, ABS_XY)
     refine_points = corr_pts + [tuple(INJ_XY)]
-    res, refine_radius_used = _refine_with_retry(
-        cgwf, boundary, rivers, refine_points, heads_array, case_ws / "refgrid",
-        refine_radii=refine_radii, base_cell_size=LOCKED_PARAMS["base_cell_size"],
-        refined_cell_size=LOCKED_PARAMS["refined_cell_size"], sim_name="rg")
+    boundary_path, rivers_path = _gis_source_paths()
+    res, refine_radius_used, refgrid_hash = _refine_with_retry(
+        cgwf, boundary, rivers, refine_points, heads_array, case_ws,
+        mesh_spec=mesh_spec, boundary_path=boundary_path, rivers_path=rivers_path,
+        sim_name="rg")
     rgwf = res["gwf"]
     mg = res["modelgrid"]
     gp = res["gridprops"]
@@ -474,9 +504,16 @@ def _build_flow(case_ws: Path, track_days: float,
     extc = int(np.argmin((xc - ABS_XY[0]) ** 2 + (yc - ABS_XY[1]) ** 2))
 
     # ---- STEADY GWF (same doublet / CHD / RIV / RCHA as the ADE demo) ----
+    # T1 S3a: `flow_hash` folds the DECLARED flow identity (`_flow_params`,
+    # pure/solve-free) together with the EFFECTIVE `mesh_hash` -- now known,
+    # since the corridor refinement above has already revealed the winning
+    # retry radius -- so two flows differing only in which radius won (same
+    # declared spec+GIS, different outcome) get different `gwf_ws` directories
+    # instead of silently aliasing.
+    flow_identity = dict(_flow_params(track_days, mesh_spec))
+    flow_identity["mesh_hash"] = refgrid_hash
     flow_hash = hashlib.sha1(
-        json.dumps(_flow_params(track_days, refine_radii),
-                   sort_keys=True).encode("utf-8")).hexdigest()[:16]
+        json.dumps(flow_identity, sort_keys=True).encode("utf-8")).hexdigest()[:16]
     gwf_ws = case_ws / f"gwf_{flow_hash}"
     sim = flopy.mf6.MFSimulation(sim_name="prtgwf", exe_name=exe, sim_ws=str(gwf_ws))
     # One steady period, ONE time step: the flow field is steady, so a single step
@@ -543,6 +580,8 @@ def _build_flow(case_ws: Path, track_days: float,
         refine_radius_used=float(refine_radius_used),
         porosity=float(LOCKED_PARAMS["porosity"]),
         track_days=float(track_days),
+        mesh_spec=mesh_spec, mesh_spec_hash=mesh_spec_hash(mesh_spec),
+        mesh_hash=refgrid_hash,
     )
 
 
@@ -769,7 +808,8 @@ def capture_halfwidth_at(
     *,
     track_days: float = 730.0,
     case_ws: Optional[Union[str, Path]] = None,
-    refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+    refine_radii: Any = _UNSET,
+    mesh_spec: Optional["MeshSpec"] = None,
     max_offset_m: float = HALFWIDTH_MAX_OFFSET_M,
     tol_m: float = HALFWIDTH_TOL_M,
     n_scan: int = HALFWIDTH_N_SCAN,
@@ -806,9 +846,12 @@ def capture_halfwidth_at(
     if int(n_scan) < 5:
         raise ValueError(f"n_scan must be >= 5 (got {n_scan!r})")
 
+    spec = _resolve_mesh_spec(refine_radii=refine_radii, mesh_spec=mesh_spec)
+    _require_single_level(spec)
+
     case_ws = Path(case_ws) if case_ws is not None else _default_case_ws()
     case_ws.mkdir(parents=True, exist_ok=True)
-    flow = _build_flow(case_ws, float(track_days), refine_radii)
+    flow = _build_flow(case_ws, float(track_days), spec)
 
     out = _bisect_halfwidth(
         flow, float(s_along_axis_m),
@@ -894,7 +937,8 @@ def build_prt_capture(
     *,
     stop_at_weak_sink: bool = False,
     case_ws: Optional[Union[str, Path]] = None,
-    refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+    refine_radii: Any = _UNSET,
+    mesh_spec: Optional["MeshSpec"] = None,
     force: bool = False,
 ) -> PrtCapture:
     """Build + run the forward PRT spill-footprint -> capture demo.
@@ -940,6 +984,16 @@ def build_prt_capture(
     case_ws : path, optional
         Workspace for the refined grid + GWF sim + PRT sim + cache.  Defaults to
         ``<data>/transport_prt_capture``.
+    refine_radii : sequence of float, optional
+        Legacy corridor-refinement retry ladder.  Predates ``MeshSpec`` (T1
+        S3a) and remains accepted, folding into the default ``MeshSpec``'s
+        ``retry_radii``.  Passing this AND ``mesh_spec`` is a ``ValueError``.
+    mesh_spec : MeshSpec, optional
+        T1 S3a grid parameterisation, the SAME ``MeshSpec`` the ADE demo
+        defines.  ``None`` (default) uses ``MeshSpec()`` unless
+        ``refine_radii`` is given.  More than one ``MeshLevel`` in
+        ``mesh_spec.levels`` raises ``NotImplementedError`` (S3b, not built
+        here).
     force : bool
         Rebuild even if a matching cache exists.
 
@@ -966,17 +1020,49 @@ def build_prt_capture(
     if track_days <= 0.0:
         raise ValueError(f"track_days must be > 0 (got {track_days!r})")
 
+    # T1 S3a: resolve refine_radii=/mesh_spec= to ONE MeshSpec (ValueError if
+    # both given) and refuse >1 level up front (NotImplementedError naming
+    # S3b), before any GIS / MF6 work.
+    spec = _resolve_mesh_spec(refine_radii=refine_radii, mesh_spec=mesh_spec)
+    _require_single_level(spec)
+
     porosity = float(LOCKED_PARAMS["porosity"])
 
     case_ws = Path(case_ws) if case_ws is not None else _default_case_ws()
     case_ws.mkdir(parents=True, exist_ok=True)
+
+    # GIS content hashes are cheap (local file reads; a cache hit whenever the
+    # files are already local) and known WITHOUT a corridor build, unlike the
+    # winning retry radius -- so they fold into the pre-solve cache identity
+    # here, while the full effective `mesh_hash` (needs the winning radius) is
+    # folded into the PRT workspace name below, once `_build_flow` reveals it.
+    #
+    # ACCEPTED LIMITATION, stated so it is not rediscovered as a bug: the cache
+    # key therefore does NOT contain the winning retry radius.  If the radius
+    # walk ever resolves differently for the same spec -- it only advances when
+    # an attempt FAILS (the macOS/arm64 Triangle-SIGILL guard) -- a cache built
+    # from one mesh realisation can be served to a run that would now build
+    # another.  This is inherent, not an oversight: an identity that requires
+    # the corridor build to compute cannot key the cache that exists to avoid
+    # it.  The WORKSPACE is keyed by the effective mesh, so two realisations
+    # never overwrite each other on disk; only the cached RESULT can outlive the
+    # realisation it came from.  Measured stability: 12/12 cold runs took the
+    # first radius (70.0 m) with zero SIGILLs -- see
+    # DOCUMENTATION/contracts/evidence/t0_qualification/.
+    boundary_path, rivers_path = _gis_source_paths()
 
     params = dict(
         n_particles=int(n_particles),
         release_radius_m=float(release_radius_m),
         track_days=float(track_days),
         stop_at_weak_sink=bool(stop_at_weak_sink),
-        refine_radii=list(map(float, refine_radii)),
+        # T1 S3a: the DECLARED mesh identity (brief Section 2.1) -- every
+        # MeshSpec field folds in here, replacing the old raw refine_radii list.
+        mesh_spec_hash=mesh_spec_hash(spec),
+        # ...and the GIS content that shapes the EFFECTIVE mesh, so a
+        # boundary/river edit busts this cache too (exit criterion 4).
+        gis_boundary_sha256=_file_content_hash(boundary_path),
+        gis_rivers_sha256=_file_content_hash(rivers_path),
         # A snapshot of LOCKED_PARAMS: an edit to porosity / base_cell_size /
         # refined_cell_size / time_units must bust every existing cache instead of
         # being silently ignored.  json.dumps(..., sort_keys=True) below sorts this
@@ -1005,9 +1091,21 @@ def build_prt_capture(
             return cached
 
     # ---- the flow field (steady GWF + doublet), and the checks that rest on it ----
-    flow = _build_flow(case_ws, float(track_days), refine_radii)
+    flow = _build_flow(case_ws, float(track_days), spec)
     extc, injc = flow["extc"], flow["injc"]
     spill_xy = flow["spill_xy"]
+
+    # T1 S3a (brief Section 3, location "PRT outer cache + workspace"): the
+    # PRT-side workspace is keyed by `run_hash` -- `params` (the pre-solve
+    # identity) with the DECLARED `mesh_spec_hash` swapped for the EFFECTIVE
+    # `mesh_hash`, now that `_build_flow` has revealed the winning retry
+    # radius. The OUTER npz cache filename keeps using `cache_hash` (the
+    # pre-solve identity computed above, before any solve) so a cache HIT
+    # never needs a corridor build at all.
+    run_params = dict(params)
+    run_params["mesh_hash"] = flow["mesh_hash"]
+    run_hash = hashlib.sha1(
+        json.dumps(run_params, sort_keys=True).encode("utf-8")).hexdigest()[:16]
 
     # ---- release disc on the spill footprint ----
     pts = release_disc(spill_xy[0], spill_xy[1], float(release_radius_m), n_particles)
@@ -1028,7 +1126,7 @@ def build_prt_capture(
         raise RuntimeError("every release point landed in the extraction-well cell; "
                            "release_radius_m / n_particles are degenerate")
 
-    prt_ws = case_ws / f"prt_{cache_hash}"
+    prt_ws = case_ws / f"prt_{run_hash}"
     out = _run_prt(flow, rel_pts, prt_ws, track_days=float(track_days),
                    stop_at_weak_sink=bool(stop_at_weak_sink))
     rel_cells = out["release_cells"]
