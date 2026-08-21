@@ -449,22 +449,39 @@ def _refine_with_retry(coarse_gwf, boundary_gdf, river_gdf, refine_points, head_
 # (`transport_base_model` importing this module) does not, since nothing pins
 # `transport_base_model`'s own import set.
 #
-# `profile` admits ONLY the two legacy IDs in S4. `exp_v1` -- the corrected
-# policy: floor keyed off the finest *intended* cell size, source/wells
-# included, global max Courant reported -- does not exist yet; that is S8,
-# gated on the T1 JAG. This function never warns and never reports a cap
-# flag: both stay caller-owned exactly as today (`build_doublet_base` has no
-# cap flag; `build_spill_scenario` sets `cr_capped` from `Cr > 1.001` without
-# warning; this module's own wrapper sets `cr_capped = nstp >= nstp_cap` and
-# warns -- all unchanged, at the call sites, not here).
+# `profile` admitted ONLY the two legacy IDs in S4. T1 S8
+# (`DESIGN_DOCS/T1_S8_brief.md` v2) adds a THIRD profile, `exp_v1` -- the
+# corrected policy: floor keyed off the finest *intended* cell size (a
+# `MeshSpec`, not `LOCKED_PARAMS["refined_cell_size"]`), source/well cells
+# INCLUDED (`exclusions` accepted but ignored), the reported Cr measured as
+# the maximum over the ENTIRE original unmasked corridor (not just the
+# selection that sized `nstp`), and `nstp_cap` RAISING instead of silently
+# absorbing. `exp_v1` inherits NEITHER legacy profile's degenerate-input
+# fallback (see `_courant_nstp_corrected`'s own docstring) and is dispatched
+# to a SEPARATE function below rather than folded into this one, so this
+# function's own source stays the frozen S4 shape (`test_t1_courant_profiles
+# .py::test_canonical_has_no_corrected_policy_surface` pins that literally).
+# This function itself never warns and never reports a cap flag: both stay
+# caller-owned exactly as today (`build_doublet_base` has no cap flag;
+# `build_spill_scenario` sets `cr_capped` from `Cr > 1.001` without a
+# caution message; this module's own wrapper sets `cr_capped = nstp >=
+# nstp_cap` and raises a RuntimeWarning -- all unchanged, at the call
+# sites, not here). `exp_v1` is not wired into any default call in S8 --
+# it ships the capability; T2 uses it.
 # ---------------------------------------------------------------------------
 _COURANT_LEGACY_PROFILES = ("legacy_base", "legacy_srcpulse")
+# T1 S8: the one corrected-policy id, kept as a module-level constant (not a
+# literal inside `_courant_nstp_canonical`'s own body -- see the structural
+# pin noted above) and folded into the admitted-profile enum.
+_COURANT_CORRECTED_PROFILE = "exp_v1"
+_COURANT_PROFILES = _COURANT_LEGACY_PROFILES + (_COURANT_CORRECTED_PROFILE,)
 
 
 def _courant_nstp_canonical(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
                             total_time: float, *, exclusions: Sequence[int] = (),
                             cr_target: float = 0.9, nstp_cap: int,
                             sliver_floor_frac: float = 0.4, refined_cell_size: float,
+                            mesh_spec: Optional["MeshSpec"] = None,
                             profile: str) -> Tuple[int, float, float, Dict[str, float]]:
     """Size fixed time steps from a per-cell Courant number Cr_i = v_i*dt/ds_i.
 
@@ -493,11 +510,22 @@ def _courant_nstp_canonical(v_cells: np.ndarray, size_cells: np.ndarray, mask: n
       floor-filtered selection falls back to the whole (reconstructed) mask;
       `critical <= 0` (zero OR negative) returns the cap with
       `Cr = critical * dt` instead of raising; `nstp` is clamped to >= 1.
+
+    A third, corrected profile is admitted too (T1 S8) but its policy is
+    implemented in a sibling function, not here -- see the module comment
+    just above `_COURANT_LEGACY_PROFILES`. `mesh_spec` is accepted by this
+    signature only to be threaded through to that sibling; the two profiles
+    above never read it.
     """
-    if profile not in _COURANT_LEGACY_PROFILES:
+    if profile not in _COURANT_PROFILES:
         raise ValueError(
             f"unknown courant_nstp profile {profile!r}; expected one of "
-            f"{_COURANT_LEGACY_PROFILES}")
+            f"{_COURANT_PROFILES}")
+    if profile not in _COURANT_LEGACY_PROFILES:
+        return _courant_nstp_corrected(
+            v_cells, size_cells, mask, total_time, exclusions=exclusions,
+            cr_target=cr_target, nstp_cap=nstp_cap,
+            sliver_floor_frac=sliver_floor_frac, mesh_spec=mesh_spec)
 
     # Copy, never mutate, the caller's mask; reconstruct the legacy
     # (pre-S4 pre-masked) selection as mask-minus-exclusions.
@@ -543,6 +571,123 @@ def _courant_nstp_canonical(v_cells: np.ndarray, size_cells: np.ndarray, mask: n
     diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
                 ds_true_min=float(size_cells[legacy_mask].min()), floor=floor)
     return nstp, dt, critical * dt, diag
+
+
+# ---------------------------------------------------------------------------
+# T1 S8 (DESIGN_DOCS/T1_S8_brief.md v2): the corrected `courant_nstp` policy,
+# profile `"exp_v1"`. Kept out of `_courant_nstp_canonical`'s own body
+# deliberately -- that function's frozen S4-era structural pin
+# (test_t1_courant_profiles.py::test_canonical_has_no_corrected_policy_surface)
+# asserts several corrected-policy tokens are ABSENT from its source; this
+# sibling function is dispatched to from there but is not itself scanned by
+# that pin, so both the S4 shape and the S8 policy can be true at once.
+# `_courant_nstp_canonical` still owns no `LOCKED_PARAMS` read, and neither
+# does this function (brief Section 2.4): the floor reference comes from
+# `mesh_spec`, passed in by the caller.
+# ---------------------------------------------------------------------------
+def _courant_nstp_corrected(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
+                            total_time: float, *, exclusions: Sequence[int] = (),
+                            cr_target: float = CourantSpec().cr_target,
+                            nstp_cap: int = CourantSpec().nstp_cap,
+                            sliver_floor_frac: float = CourantSpec().sliver_floor_frac,
+                            mesh_spec: Optional["MeshSpec"] = None
+                            ) -> Tuple[int, float, float, Dict[str, float]]:
+    """The `"exp_v1"` policy (brief Sections 1-3), four corrections over both
+    legacy profiles:
+
+    1. The sliver floor is keyed off the FINEST INTENDED cell size --
+       ``min(level.cell_size for level in mesh_spec.levels)`` -- not a single
+       achieved ``refined_cell_size``. ``mesh_spec`` is REQUIRED here (unlike
+       the legacy profiles, which take a plain ``refined_cell_size`` float);
+       an empty/missing ``mesh_spec`` or a non-finite/nonpositive
+       ``cell_size`` on any level raises.
+    2. ``exclusions`` is accepted (not an error) but IGNORED: source and well
+       cells are included in the floor-filtered selection that sizes `nstp`.
+    3. The reported Courant number is the MEASURED MAXIMUM over every cell of
+       the original (unmasked) ``mask`` -- including cells the sliver floor
+       drops from selection -- not just the cells selection kept. Selection
+       determines `nstp`; this measures the resulting field over the whole
+       corridor.
+    4. ``nstp_cap`` RAISES (naming the cap and the `nstp` that would have been
+       needed) instead of silently truncating.
+
+    Degenerate inputs inherit NEITHER legacy profile's fallback (brief
+    Section 3.2 -- both are preserved defects, not policies): an empty
+    floor-filtered selection raises rather than falling back to the whole
+    mask (that would defeat correction 1), and a nonpositive/non-finite
+    `critical` (e.g. a zero-or-negative-velocity selection) raises rather
+    than returning the cap (that would contradict correction 4). Every raise
+    here names its condition explicitly and is distinct from every other,
+    including the cap error -- unlike `legacy_base`/`legacy_srcpulse`, which
+    take a plain `refined_cell_size` float and never validate `mesh_spec`.
+
+    The three scalar defaults above come from `CourantSpec()` (S3a declared
+    it for exactly this purpose; S4 did not wire it in) rather than being
+    re-hardcoded, so a future edit to `CourantSpec`'s own defaults cannot
+    silently diverge from this profile's.
+    """
+    if mesh_spec is None or not getattr(mesh_spec, "levels", ()):
+        raise ValueError(
+            "courant_nstp profile 'exp_v1' requires mesh_spec=MeshSpec(...) "
+            "with at least one MeshLevel -- unlike legacy_base/legacy_srcpulse, "
+            f"which take a single refined_cell_size directly; got mesh_spec={mesh_spec!r}")
+    level_sizes = [float(level.cell_size) for level in mesh_spec.levels]
+    if any((not math.isfinite(s)) or s <= 0.0 for s in level_sizes):
+        raise ValueError(
+            "courant_nstp profile 'exp_v1': every mesh_spec.levels[*].cell_size "
+            f"must be finite and > 0; got {level_sizes!r}")
+
+    corridor = np.array(mask, dtype=bool, copy=True)   # never mutate the caller's mask
+    if not corridor.any():
+        raise ValueError("courant_nstp profile 'exp_v1': mask has no active corridor cells")
+
+    corridor_sizes = size_cells[corridor]
+    if not np.all(np.isfinite(corridor_sizes)) or np.any(corridor_sizes <= 0.0):
+        raise ValueError(
+            "courant_nstp profile 'exp_v1': size_cells contains a nonpositive "
+            "or non-finite entry within the corridor")
+    corridor_v = v_cells[corridor]
+    if not np.all(np.isfinite(corridor_v)):
+        raise ValueError(
+            "courant_nstp profile 'exp_v1': v_cells contains a non-finite "
+            "entry within the corridor")
+
+    floor = sliver_floor_frac * min(level_sizes)
+    sel = corridor & (size_cells >= floor)          # exclusions ignored by design (correction 2)
+    if not sel.any():
+        raise ValueError(
+            "courant_nstp profile 'exp_v1': the floor-filtered selection is "
+            f"empty (every corridor cell is below sliver_floor_frac*min(level."
+            f"cell_size)={floor:g}); unlike legacy_srcpulse this does not fall "
+            "back to the whole mask (that would defeat the corrected floor policy)")
+
+    ratio = v_cells[sel] / size_cells[sel]
+    critical = float(ratio.max())
+    if not math.isfinite(critical) or critical <= 0.0:
+        raise ValueError(
+            "courant_nstp profile 'exp_v1': the selected cells' maximum v/size "
+            f"ratio is nonpositive or non-finite (critical={critical!r}); unlike "
+            "legacy_srcpulse this does not fall back to nstp_cap (that would "
+            "contradict the cap-raises correction)")
+    j = np.where(sel)[0][int(np.argmax(ratio))]
+
+    dt_need = cr_target / critical
+    nstp_needed = int(np.ceil(total_time / dt_need))
+    if nstp_needed > nstp_cap:
+        raise ValueError(
+            f"courant_nstp profile 'exp_v1': nstp_cap={nstp_cap} is smaller than "
+            f"the nstp={nstp_needed} needed to reach cr_target={cr_target:g} "
+            f"(binding rate={critical:g}/d); raise nstp_cap or relax cr_target")
+    nstp = max(nstp_needed, 1)
+    dt = total_time / nstp
+
+    # The measured maximum over EVERY corridor cell (correction 3) -- not just
+    # `sel`, the floor-filtered selection that sized `nstp` above.
+    cr_reported = float((corridor_v * dt / corridor_sizes).max())
+
+    diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
+                ds_true_min=float(corridor_sizes.min()), floor=floor)
+    return nstp, dt, cr_reported, diag
 
 
 def _courant_nstp(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
@@ -1294,6 +1439,7 @@ def build_srcpulse_demo(
     refine_radii: Any = _UNSET,
     mesh_spec: Optional["MeshSpec"] = None,
     footprint_radius_m: float = 0.0,
+    courant_profile: str = "legacy_srcpulse",
     force: bool = False,
 ) -> SrcPulseDemo:
     """Build + run the SRC finite-pulse spill -> capture demo; return diagnostics.
@@ -1355,6 +1501,19 @@ def build_srcpulse_demo(
         field a failure edge) -- it belongs in the evidence artifact; see
         ``DESIGN_DOCS/T1_S5_brief.md`` Sec 3.  Not wired into any default
         call -- a later milestone (T2) uses a positive value.
+    courant_profile : {"legacy_srcpulse", "exp_v1"}
+        T1 S8 (``DESIGN_DOCS/T1_S8_brief.md`` v2) ``courant_nstp`` policy
+        selector.  ``"legacy_srcpulse"`` (default) is byte-for-byte today's
+        behaviour.  ``"exp_v1"`` is the corrected policy: the sliver floor is
+        keyed off the finest INTENDED cell size in ``mesh_spec`` rather than
+        ``LOCKED_PARAMS["refined_cell_size"]``, source/well cells are
+        INCLUDED in selection, the reported ``Cr`` is the measured maximum
+        over the whole corridor (not just the surviving selection), and
+        ``nstp_cap`` RAISES instead of silently truncating.  Folds into the
+        cache identity (``params``, below) exactly as ``footprint_radius_m``
+        does, so a run under one profile never resolves to a cache file the
+        other wrote.  Not wired into any default call -- a later milestone
+        (T2) uses ``"exp_v1"``.
     force : bool
         Rebuild even if a matching cache exists.
 
@@ -1379,6 +1538,13 @@ def build_srcpulse_demo(
     # raise, checked up front (before any GIS/MF6 work) like every other
     # parameter guard in this block.
     _validate_footprint_radius(footprint_radius_m)
+
+    # T1 S8 (brief Section 3): only the id this module's own call site
+    # understands -- "legacy_base" belongs to transport_base_model, not here.
+    if courant_profile not in ("legacy_srcpulse", "exp_v1"):
+        raise ValueError(
+            f"courant_profile must be 'legacy_srcpulse' or 'exp_v1' (got "
+            f"{courant_profile!r})")
 
     if R < 1.0:
         raise ValueError(f"R must be >= 1.0 (got {R!r})")
@@ -1437,6 +1603,13 @@ def build_srcpulse_demo(
                   # never resolve to a cache file a different radius wrote.
                   footprint_radius_m=float(footprint_radius_m),
                   cr_target=float(cr_target), nstp_cap=int(nstp_cap),
+                  # T1 S8 (brief Section 2.3): the selected courant_nstp
+                  # policy must be part of the cache identity, exactly as
+                  # footprint_radius_m is above -- a run under one profile
+                  # must never resolve to a cache file the other wrote. The
+                  # digest is in the filename, so a stale cache is bypassed,
+                  # never migrated or rejected.
+                  courant_profile=str(courant_profile),
                   # T1 S3a: the DECLARED mesh identity (brief Section 2.1) --
                   # every MeshSpec field (base_cell_size, levels, retry_radii)
                   # folds in here, replacing the old raw refine_radii list.
@@ -1531,10 +1704,20 @@ def build_srcpulse_demo(
     vmag = np.sqrt(spd["qx"] ** 2 + spd["qy"] ** 2) / LOCKED_PARAMS["porosity"]
     # T1 S4: pass the ORIGINAL corridor mask + excluded cell ids (source +
     # BOTH doublet wells, inj + ext) rather than a pre-masked array -- see
-    # `_courant_nstp_canonical`.
-    nstp, dt, cr_act, cdiag = _courant_nstp(vmag, csz, corridor_mask, float(total_days),
-                                            cr_target, nstp_cap,
-                                            exclusions=src_cells + [injc, extc])
+    # `_courant_nstp_canonical`. T1 S8: `courant_profile` selects the policy;
+    # the default ("legacy_srcpulse") is the byte-identical pre-S8 call below.
+    # `exp_v1` ignores `exclusions` and needs `mesh_spec` instead of
+    # `refined_cell_size` -- see `_courant_nstp_corrected`.
+    if courant_profile == "legacy_srcpulse":
+        nstp, dt, cr_act, cdiag = _courant_nstp(vmag, csz, corridor_mask, float(total_days),
+                                                cr_target, nstp_cap,
+                                                exclusions=src_cells + [injc, extc])
+    else:
+        nstp, dt, cr_act, cdiag = _courant_nstp_canonical(
+            vmag, csz, corridor_mask, float(total_days), exclusions=src_cells + [injc, extc],
+            cr_target=cr_target, nstp_cap=nstp_cap,
+            refined_cell_size=float(LOCKED_PARAMS["refined_cell_size"]),
+            mesh_spec=spec, profile=courant_profile)
 
     sim, gwf, gwt, ok, buf = _make_sim(nstp)
     if not ok:
