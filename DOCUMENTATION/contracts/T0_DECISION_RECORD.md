@@ -334,15 +334,33 @@ brief, never in signed text, and it is **relaxed back to Appendix B's wording**.
 case-study group meshes** and the parked pinned-meshes bundle, so S3b would have had to carry regression
 evidence far beyond the transport track. Revisit only if T3/T4 genuinely need a graded mesh to *build*.
 
-#### (c) C1 §3.1 — the unsigned amendment path is RETIRED · 🔴 **NEEDS THE SIGNATURE BELOW**
+#### (c) C1 §3.1 — the unsigned path KEPT, with a verbatim-quotation test · 🔴 **NEEDS THE SIGNATURE BELOW**
 
-Exercised three times (amendments 2, 3, 4); **failed all three.** Each was a derivation presented as a
-quotation, and each cost an adversarial review round to detect. Only amendment 1, which predates the rule,
-stands. **Every amendment now requires a signature.** Review is retained — it is what caught all three.
+The first proposal was to retire the unsigned path outright, on a 0-for-3 record. **Independent review
+argued against it and was persuasive**, so the decision was changed before signing.
+
+**The base rates had been conflated.** *Amendments initially rejected* is 3 of 3; *failures that escaped
+review and reached code* is **0 of 3**. The second is the consequential one — the control held every
+time, and every failure was caught before a line of code was written. Retiring the fast path would have
+removed the cheap route while leaving the effective safeguard untouched, since **a signature authorises an
+amendment but does not cure faulty reasoning**. Always-sign would also have taxed the lecturer on every
+amendment including the correct ones, inviting ceremonial signing, batching, and a disincentive to file
+the enumeration corrections that keep an exhaustive list honest.
+
+**All three failures were one error — a derivation presented as a quotation — so the repair targets that:**
+
+1. **The verbatim-quotation test.** An amendment must quote a **single** Appendix B sentence, in full and
+   unaltered, naming **both the surface and the obligation**. If no single sentence states both, it is an
+   inference and needs a signature.
+2. **Review before force.** An unsigned amendment takes force only once adversarial review confirms the
+   quotation passes test 1 and the entry adds nothing beyond it. Until then it is **PROPOSED**.
+
+⚠️ **Checked against the record: amendments 2, 3 and 4 all fail this test on sight** — 2 names the surface
+but the wrong obligation; 3 and 4 name no surface at all. The test is mechanical, so none would have
+needed a reviewer to reconstruct the author's reasoning.
 
 | Field | Value |
 |---|---|
-| **Change** | C1 §3.1: amendments take force only when signed |
+| **Change** | C1 §3.1: the unsigned path survives, gated by a verbatim-quotation test and review-before-force |
 | **Approved by** | *(pending)* |
 | **Date** | *(pending)* |
-
