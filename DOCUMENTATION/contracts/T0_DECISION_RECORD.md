@@ -153,6 +153,7 @@ never silently different from what was signed.
 | **1** | 2026-08-20 | `T0_1_C1_v2.md` → **v3** | Added allow-list entries **A10–A14** — content-addressed workspaces · fixed source footprint · operator A · GWF-grid sensitivity arm · `claim_support_state` evaluator | **No** — lecturer decision; bounded by C1 §3.1 |
 | **2** | 2026-08-20 | `T0_1_C1_v2.md` → **v4** | **A8 extended to `transport_prt_capture.py`**, which carries its own `_src_sha()` with the identical three-file hole; plus **Appendix B**, the tracked and hashed T1 build-list snapshot | **Yes, retrospectively** — see amendment 3 |
 | **3** | 2026-08-20 | `T0_1_C1_v2.md` → **v5**, **RE-SIGNED** | **A7's surface widened** to a new `exp`-only metrics module; **amendments 1–3 re-based on the signature** rather than on derivation from Appendix B | **YES** |
+| **4** | 2026-08-21 | `T0_1_C1_v2.md` → **v6** | **A15 proposed, refuted, then WITHDRAWN as unnecessary.** Three linked decisions — see §8.3 | 🔴 **ONE SIGNATURE OUTSTANDING** (the §3.1 change only) |
 
 **What happened.** The T1 plan review found that C1's A1–A9, though signed, **omitted five changes the T1
 build list requires**. Because C1 §3 makes an unlisted change a defect, **no implementation could satisfy
@@ -229,3 +230,82 @@ links assertions → gate reads **`Scanned 53 files; checked 108 internal links;
 isolated worktree at `de26680`, because concurrent T1 edits to `transport_srcpulse_demo.py` and
 `transport_prt_capture.py` — both inside the generator's scanned scope — would otherwise have been swept
 into this artifact.
+
+---
+
+### 8.3 The three T1 blocker decisions *(2026-08-21)*
+
+T1 reached **8 of 16 steps** and stopped: S7 (`exp/vN`) turned out to have **no surface authority**, and
+S3b was waiting on a signature. Both were resolved by removing a requirement rather than granting authority.
+
+#### (a) `exp/vN` — A15 WITHDRAWN, S7 dropped as a mechanism · **no signature needed**
+
+A15 was proposed to authorise a namespace parameter threaded through both model modules. Adversarial
+review refuted its basis: Appendix B's *"Versioned experimental namespace"* bullet specifies an
+**outcome**, not module coverage or mechanism — the same species of inference that sank amendment 2.
+
+Rather than sign it, the requirement was re-examined and found **redundant**. C1 §5 demands a *property* —
+the teaching default stays numerically unchanged until the JAG — and **every Phase-3 step already carries
+its own authorised, sentinel-defaulted parameter, each already in the cache identity**:
+
+| Step | Selector | Authority |
+|---|---|---|
+| S8 | `profile` / `CourantSpec` | **A3** — the profile machinery shipped in S4; `transport_srcpulse_demo.py:452` already reserves `exp_v1` for S8 |
+| S9 | `sink_support_m = 0.0` | **T0.0 §3** — pre-authorised *and* schema-lifted |
+| S10 | GWF-grid sensitivity arm | **A13** |
+| S11 | separate `exp`-only module | **A7** + amendment 3 |
+| S5 ✅ | `footprint_radius_m = 0.0` | **A11** |
+
+**`exp/vN` therefore survives as an artifact LABEL, recorded at S14** — not as a threaded runtime
+parameter. **S8–S11 are unblocked with no new authority.**
+
+⚠️ **The cost, stated plainly:** isolation now rests on each step implementing its sentinel correctly,
+with **no single enforcement point**. The mitigation is that each sentinel is independently gate-checked —
+`compare` PASSES only if the default is byte-exact — and S5 has already demonstrated the pattern end to end.
+
+🔴 **A THIRD DUPLICATION, found while verifying this decision (2026-08-21).** The doublet WEL is
+constructed **twice, independently and identically**: `transport_srcpulse_demo.py:1189`–`1192` and
+`transport_prt_capture.py:542`–`545`, both hard-coding the single-cell `injc`/`extc` with `DOUBLET_Q`.
+PRT does **not** call the demo module's `add_flow_model`; it builds its own GWF.
+
+This is the same defect class as the duplicated `courant_nstp` (**A3** exists to canonicalise it) and the
+duplicated `_src_sha()` (**A8** fixed it) — now a third instance, not yet enumerated anywhere.
+
+**Consequence for S9/S10, which must be handled explicitly:** when `sink_support_m > 0` distributes the
+extraction WEL in the demo module, **PRT's flow keeps the single-cell sink.** S10 pairs a GWF solve with a
+**capture fingerprint** — so that fingerprint would describe a *different flow field* than the arm it
+labels, while both appear to share a mesh identity.
+
+⚠️ **A namespace would NOT have caught this** — namespaced or not, PRT would still have built a
+single-cell sink. It is a duplication defect, not an isolation defect, which is why dropping S7 does not
+make it worse. **But nothing now forces an implementer to look at PRT**, so it is recorded here.
+
+**Cheapest resolution, needing no new authority:** S10 records that the capture fingerprint is
+single-cell-sink only, and **B-control arms do not claim one**. Making PRT match the demo module would
+need PRT surface authority for a WEL change, which no current entry grants — do not infer it.
+
+#### (b) S3b (graded mesh construction) — DEFERRED out of T1 · **no signature needed**
+
+Appendix B requires graded refinement to be **"expressible"**, which **S3a already delivers**
+(`MeshSpec.levels` is a tuple; supplying two levels raises `NotImplementedError` naming S3b). The
+2026-08-20 escalation to *"buildable in principle"* was a working decision recorded only in a gitignored
+brief, never in signed text, and it is **relaxed back to Appendix B's wording**.
+
+**T2 does not need it**: its spatial series is five *single-level* specs (50/20/10/5/2 m).
+
+⚠️ Deferring also avoids a disproportionate blast radius: `disv_grid_utils` builds the **nine frozen
+case-study group meshes** and the parked pinned-meshes bundle, so S3b would have had to carry regression
+evidence far beyond the transport track. Revisit only if T3/T4 genuinely need a graded mesh to *build*.
+
+#### (c) C1 §3.1 — the unsigned amendment path is RETIRED · 🔴 **NEEDS THE SIGNATURE BELOW**
+
+Exercised three times (amendments 2, 3, 4); **failed all three.** Each was a derivation presented as a
+quotation, and each cost an adversarial review round to detect. Only amendment 1, which predates the rule,
+stands. **Every amendment now requires a signature.** Review is retained — it is what caught all three.
+
+| Field | Value |
+|---|---|
+| **Change** | C1 §3.1: amendments take force only when signed |
+| **Approved by** | *(pending)* |
+| **Date** | *(pending)* |
+
