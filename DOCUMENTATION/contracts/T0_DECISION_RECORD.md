@@ -334,9 +334,9 @@ brief, never in signed text, and it is **relaxed back to Appendix B's wording**.
 case-study group meshes** and the parked pinned-meshes bundle, so S3b would have had to carry regression
 evidence far beyond the transport track. Revisit only if T3/T4 genuinely need a graded mesh to *build*.
 
-#### (c) C1 §3.1 — the unsigned path KEPT, with a verbatim-quotation test · 🔴 **NEEDS THE SIGNATURE BELOW**
+#### (c) C1 §3.1 — the unsigned path KEPT, gated by a verbatim-quotation test · 🔴 **NEEDS THE SIGNATURE BELOW**
 
-The first proposal was to retire the unsigned path outright, on a 0-for-3 record. **Independent review
+The first proposal was to retire the unsigned path outright on a 0-for-3 record. **Adversarial review
 argued against it and was persuasive**, so the decision was changed before signing.
 
 **The base rates had been conflated.** *Amendments initially rejected* is 3 of 3; *failures that escaped
@@ -347,20 +347,32 @@ amendment but does not cure faulty reasoning**. Always-sign would also have taxe
 amendment including the correct ones, inviting ceremonial signing, batching, and a disincentive to file
 the enumeration corrections that keep an exhaustive list honest.
 
-**All three failures were one error — a derivation presented as a quotation — so the repair targets that:**
+**The repair, as written in C1 §3.1** — an unsigned amendment now requires all three:
 
-1. **The verbatim-quotation test.** An amendment must quote a **single** Appendix B sentence, in full and
-   unaltered, naming **both the surface and the obligation**. If no single sentence states both, it is an
-   inference and needs a signature.
-2. **Review before force.** An unsigned amendment takes force only once adversarial review confirms the
-   quotation passes test 1 and the entry adds nothing beyond it. Until then it is **PROPOSED**.
+1. **A verbatim quotation of ONE Appendix B bullet**, in full, naming the surface and stating the
+   obligation. 🔴 The first draft said *"sentence"* and was **wrong**: Appendix B is a bullet list of
+   eleven items with no free-standing prose, so a sentence-based test was undefined against the document
+   it governs. §3.1 now defines *bullet*, *names the surface* and *states the obligation*.
+2. **Review before force, by a named reviewer who is not the author.** Until reviewed the entry is
+   **PROPOSED** and inert, so a skipped review fails safe.
+3. **No scope beyond the quotation**, and **rewording may not cure missing authority** — a refuted
+   amendment returns only with a qualifying quotation or a signature.
 
-⚠️ **Checked against the record: amendments 2, 3 and 4 all fail this test on sight** — 2 names the surface
-but the wrong obligation; 3 and 4 name no surface at all. The test is mechanical, so none would have
-needed a reviewer to reconstruct the author's reasoning.
+⚠️ **What the signature covers is STRICTER than what review recommended.** The reviewed proposal was
+"verbatim quotation + review before force". The one-bullet limit, the bar on combining bullets, and the
+no-re-proposal rule were **added in drafting**. They are defensible, but they are additions, and the
+signature covers the text as written.
+
+⚠️ **The worked check is not uniformly mechanical**, and §3.1 now says so. Amendments 2 and 3 fail
+plainly — 2 because the bullet's obligation is *consume a `GridSpec`* while the entry added *hash a source
+closure*, a different act; 3 because Appendix B contains no occurrence of "module" or "metric" at all,
+which is checkable by search. **Amendment 4 fails only because "names the surface" is defined as written
+out rather than inferred** — a reader who let a bullet's topic imply its surface could argue it. An
+earlier draft of this record called all three "the same error" and the test "mechanical"; both
+overstated, and both are withdrawn.
 
 | Field | Value |
 |---|---|
-| **Change** | C1 §3.1: the unsigned path survives, gated by a verbatim-quotation test and review-before-force |
+| **Change** | C1 §3.1: the unsigned path survives, gated by a one-bullet verbatim-quotation test, independent review before force, and a bar on curing missing authority by rewording |
 | **Approved by** | *(pending)* |
 | **Date** | *(pending)* |
