@@ -1500,6 +1500,125 @@ def _wel_support_cells(gwf, pname: str = "absw") -> List[Tuple[int, float]]:
     return sorted(pairs, key=lambda pair: pair[0])
 
 
+def _realized_extraction_flows(gwf, pname: str = "absw") -> Dict[int, float]:
+    """T1 S9c (`DESIGN_DOCS/T1_S9c_brief.md` v2 Sec 2.1): read the REALIZED
+    per-cell extraction flow [m^3/d] off the SOLVED GWF cell-by-cell budget
+    (``gwf.cbc``, already written -- ``budget_filerecord="gwf.cbc"`` in
+    ``add_flow_model``) -- NOT the rate handed to ``ModflowGwfwel``.
+    Configured rates can silently diverge from what the solver actually
+    delivered (a cell dries, deactivates, or has its flow reduced), and
+    every test built against the CONFIGURED rate would still pass in that
+    case -- exactly the footgun the brief's round-1 review caught.
+
+    ``paknam2=pname`` isolates ONE WEL package's records from the OTHER
+    doublet well sharing the same ``gwf.cbc``: ``add_flow_model`` builds two
+    separate ``ModflowGwfwel`` packages (``"injw"``, ``"absw"``), and a bare
+    ``text="WEL"`` read would otherwise mix the injection well's flow into
+    the extraction-support weights.
+
+    🔴 The GWF model is STEADY-STATE (``ModflowGwfsto(gwf, steady_state=...)``,
+    ``:1567``) with a transient GWT riding on top of one constant flow
+    field, so EVERY saved WEL budget record (``saverecord=[..., ("BUDGET",
+    "LAST")]``) carries the SAME per-cell flows regardless of stress
+    period -- reading the first one is sufficient; no OC change is made or
+    needed. **This reduction is INVALID the moment GWF ever becomes
+    transient** -- nothing here fails loudly if that changes, so this
+    comment (and the matching one in ``_flux_weighted_breakthrough``) is the
+    only warning; the weights would need to become time-resolved.
+    """
+    bud = gwf.output.budget()
+    recs = bud.get_data(text="WEL", paknam2=pname)
+    if not recs:
+        raise RuntimeError(
+            f"no {pname!r} WEL budget records found in the solved GWF "
+            "cell-by-cell budget -- cannot read realized extraction flows")
+    rec = recs[0]   # steady-state: every saved record is identical (see above)
+    out: Dict[int, float] = {}
+    for row in rec:
+        out[int(row["node"]) - 1] = float(row["q"])
+    return out
+
+
+def _validate_realized_sink_flows(prescribed: Dict[int, float],
+                                   realized: Dict[int, float],
+                                   rtol: float = 1e-5, atol: float = 1e-8) -> None:
+    """T1 S9c (brief Sec 2.1, exit criteria 12-13): raise if the solved GWF
+    does not deliver the extraction-support control it claims.
+
+    Two independent, both-fatal failure modes (never a silent readout of a
+    wrong number under a right-looking name):
+      1. a support cell's REALIZED flow differs from what was PRESCRIBED to
+         ``ModflowGwfwel`` beyond tolerance -- a dry, deactivated, or
+         flow-reduced cell;
+      2. a support cell's realized flow has the WRONG SIGN (positive, i.e.
+         inflow) -- an extraction cell that is not extracting means the
+         control is not doing what it claims, independent of magnitude.
+    """
+    missing = sorted(set(prescribed) - set(realized))
+    if missing:
+        raise RuntimeError(
+            f"support cell(s) {missing} are missing from the realized WEL "
+            "budget -- the arm is not delivering the sink support it claims")
+    for cell in sorted(prescribed):
+        req = prescribed[cell]
+        got = realized[cell]
+        if got > 0.0:
+            raise RuntimeError(
+                f"support cell {cell}: realized WEL flow {got!r} has the "
+                "WRONG SIGN (an extraction cell reporting inflow) -- the "
+                "arm is not delivering the sink support it claims")
+        if not math.isclose(got, req, rel_tol=rtol, abs_tol=atol):
+            raise RuntimeError(
+                f"support cell {cell}: realized WEL flow {got!r} != "
+                f"prescribed {req!r} beyond tolerance (rtol={rtol!r}, "
+                f"atol={atol!r}) -- the arm is not delivering the sink "
+                "support it claims (dry, deactivated, or flow-reduced cell)")
+
+
+def _flux_weighted_breakthrough(cobj, times: np.ndarray, sink_cells: List[int],
+                                 weights: Dict[int, float]) -> np.ndarray:
+    """T1 S9c (`DESIGN_DOCS/T1_S9c_brief.md` v2 Sec 2): the ONE breakthrough
+    series -- every downstream metric (``peak_mgL``, ``arrival_day``,
+    ``t_peak``, exceedance) derives from this array, at the sentinel and at
+    a positive radius alike, so replacing it here is the ONLY place a
+    positive radius changes the readout (exit criteria 3/17: the sentinel
+    branch below selects only the SERIES; all downstream processing is
+    shared code, so the two paths cannot drift).
+
+    ``C_ext(t) = Sum(|q_i| * C_i(t)) / Sum(|q_i|)`` over ``sink_cells``,
+    with the weights ``|q_i|`` held CONSTANT across time -- valid ONLY
+    because GWF is steady-state (see ``_realized_extraction_flows``'s
+    docstring); if GWF ever becomes transient this function's
+    time-invariant-weight assumption breaks and the weights must be read
+    per output time instead.
+
+    🔴 SENTINEL BRANCH (frozen): with exactly one support cell the general
+    formula reduces to ``C`` EXACTLY in real arithmetic (``|q|*C/|q| ==
+    C``), but is NOT guaranteed bit-for-bit in floating point -- so the
+    single-cell case takes an EXPLICIT branch reading ``cobj`` exactly as
+    pre-S9c, rather than resting the default contract on IEEE rounding.
+    The general (multi-cell) formula is used ONLY when the support has more
+    than one cell.
+    """
+    if len(sink_cells) == 1:
+        c = sink_cells[0]
+        raw = np.array([cobj.get_data(totim=t)[0, 0, c] for t in times])
+        return np.maximum(raw, 0.0)
+
+    total_w = sum(abs(weights[c]) for c in sink_cells)
+    if total_w == 0.0:
+        raise RuntimeError(
+            "degenerate sink support: sum(|q_i|) over the support cells is "
+            "0.0 -- cannot form a flux-weighted mixture")
+    raw = np.zeros(len(times), dtype=float)
+    for c in sink_cells:
+        w = abs(weights[c])
+        conc_c = np.array([cobj.get_data(totim=t)[0, 0, c] for t in times])
+        raw = raw + w * conc_c
+    raw = raw / total_w
+    return np.maximum(raw, 0.0)
+
+
 def add_flow_model(sim, grid: Dict[str, Any], sink_support_m: float = 0.0):
     """Add the GWF flow model (DISV, NPF, IC, STO, RCHA, CHD, RIV, WEL x2 doublet,
     OC) to ``sim`` and return it.  The doublet wells are FLOW ONLY (no solute).
@@ -1532,23 +1651,25 @@ def add_flow_model(sim, grid: Dict[str, Any], sink_support_m: float = 0.0):
     the flux-weighted mixture a positive radius implies EMERGES from the
     solver; it is not assembled by hand here.
 
-    ⚠️ **Readout caveat / dry-cell policy** (brief Sec 2.3/2.3.1): this
-    function only builds the WEL package. The breakthrough curve
-    ``build_srcpulse_demo`` reads is still the concentration at the single
-    ``ext_cell`` -- with a distributed sink that is a concentration AT ONE
-    CELL OF THE SUPPORT, not the extracted concentration -- so
-    ``build_srcpulse_demo`` RAISES ``NotImplementedError`` for
-    ``sink_support_m > 0`` rather than silently returning a
-    plausible-looking but wrong number under that name (milestone S9c adds
-    the flux-weighted readout and lifts the raise together). WEL rates
-    themselves are delivered as specified: the GWF model is NEWTON
-    (``icelltype=1`` convertible cells, Newton-Raphson smoothing), which
-    does not abruptly zero out a drying cell's rate the way a Picard/dry-cell
-    reduction could -- a supported cell that cannot sustain its requested
-    rate shows up as a non-converged run (``ok=False``), not a silently
-    reduced flow. Callers must not ASSUME the realized rate matches the
-    requested one for that reason; verify it from the GWF budget instead
-    (see ``test_realized_wel_flow_matches_requested``).
+    ⚠️ **Readout caveat / dry-cell policy** (brief Sec 2.3/2.3.1, lifted by
+    T1 S9c -- `DESIGN_DOCS/T1_S9c_brief.md` v2): this function only builds
+    the WEL package. ``build_srcpulse_demo`` reads the FLUX-WEIGHTED mixture
+    across every support cell (``_flux_weighted_breakthrough``), not the
+    single ``ext_cell`` concentration -- a distributed sink's single-cell
+    reading is a concentration AT ONE CELL OF THE SUPPORT, not the
+    extracted concentration. WEL rates themselves are delivered as
+    specified: the GWF model is NEWTON (``icelltype=1`` convertible cells,
+    Newton-Raphson smoothing), which does not abruptly zero out a drying
+    cell's rate the way a Picard/dry-cell reduction could -- a supported
+    cell that cannot sustain its requested rate shows up as a
+    non-converged run (``ok=False``), not a silently reduced flow.
+    ``build_srcpulse_demo`` does not ASSUME the realized rate matches the
+    requested one for that reason either: it reads the REALIZED per-cell
+    flow back off the solved GWF budget (``_realized_extraction_flows``)
+    and RAISES if it diverges from the prescribed rate beyond tolerance, or
+    has the wrong sign (``_validate_realized_sink_flows``; see also
+    ``test_realized_wel_flow_matches_requested``, the same check exercised
+    directly at this level).
     """
     ncpl = grid["ncpl"]; gp = grid["gridprops"]
     top_ref = grid["top"]; botm_ref = grid["botm"]; k_ref = grid["k"]
@@ -1763,25 +1884,31 @@ def build_srcpulse_demo(
         ``DESIGN_DOCS/T1_S5_brief.md`` Sec 3.  Not wired into any default
         call -- a later milestone (T2) uses a positive value.
     sink_support_m : float
-        T1 S9b (``DESIGN_DOCS/T1_S9b_brief.md`` v2) extraction-support disc
-        radius [m], threaded to ``add_flow_model``.  ``0.0`` (default) is the
-        frozen SENTINEL -- structurally identical to pre-S9b behaviour: the
-        whole doublet extraction rate on the single nearest-centroid
-        ``ext_cell``.  Negative or non-finite raises ``ValueError``.  🔴 A
-        POSITIVE value RAISES ``NotImplementedError`` here (not in
-        ``add_flow_model``, which builds and returns a genuinely distributed
-        WEL): the breakthrough curve below is read at the single ``ext_cell``
-        (see the ``bt = ...`` line), which for a distributed sink is the
-        concentration AT ONE CELL OF THE SUPPORT, not the extracted
-        concentration -- every downstream metric (``peak_mgL``,
-        ``arrival_day``, exceedance) would inherit that silently.  The WEL
-        construction itself ships and is tested directly at the
-        ``add_flow_model`` level; wiring the matching flux-weighted readout
-        (and lifting this raise) is milestone S9c.  ⚠️ MODFLOW 6 PRT builds
-        its own single-cell doublet WEL and does not call ``add_flow_model``,
-        so a positive ``sink_support_m`` used directly with ``add_flow_model``
-        (bypassing this builder) makes PRT's GWF diverge from this one --
-        B-control arms do not claim a capture fingerprint (S10).
+        T1 S9b/S9c (``DESIGN_DOCS/T1_S9c_brief.md`` v2) extraction-support
+        disc radius [m], threaded to ``add_flow_model``.  ``0.0`` (default)
+        is the frozen SENTINEL -- structurally identical to pre-S9b
+        behaviour: the whole doublet extraction rate on the single
+        nearest-centroid ``ext_cell``, and the breakthrough curve below
+        takes the EXPLICIT single-cell branch (bit-identical to pre-S9c;
+        see ``_flux_weighted_breakthrough``).  Negative or non-finite raises
+        ``ValueError``.  A POSITIVE value is supported since S9c: the
+        breakthrough curve becomes the FLUX-WEIGHTED mixture
+        ``Sum(|q_i| C_i) / Sum(|q_i|)`` over the support cells, with the
+        weights read from the REALIZED (not configured) GWF budget after
+        the solve -- see ``_realized_extraction_flows`` /
+        ``_validate_realized_sink_flows``, which RAISE if a support cell's
+        realized flow diverges from what was prescribed (dry, deactivated,
+        or flow-reduced) or has the wrong sign.  Not wired into any default
+        call -- a later milestone (T2) uses a positive value.
+        🔴 **Ceiling:** a positive ``sink_support_m`` controls sink support
+        ONLY.  It is NEVER causal isolation of a grid effect -- flow was
+        not held common across compared runs (that control is descoped,
+        `T0_2b...` Sec 4.2) -- so a grid comparison using this control
+        remains ``hypothesis``, never a stronger claim.
+        ⚠️ MODFLOW 6 PRT builds its own single-cell doublet WEL and does not
+        call ``add_flow_model``, so a positive ``sink_support_m`` used with
+        this builder makes PRT's GWF diverge from this one -- B-control
+        arms do not claim a capture fingerprint (S10).
     courant_profile : {"legacy_srcpulse", "exp_v1"}
         T1 S8 (``DESIGN_DOCS/T1_S8_brief.md`` v2) ``courant_nstp`` policy
         selector.  ``"legacy_srcpulse"`` (default) is byte-for-byte today's
@@ -1824,31 +1951,21 @@ def build_srcpulse_demo(
     # negative / non-finite -> raise (reuse S9a's validators)").
     _validate_footprint_radius(sink_support_m)
 
-    # T1 S9b (`DESIGN_DOCS/T1_S9b_brief.md` v2 Sec 2.3, the review's headline
-    # finding): a POSITIVE sink_support_m is refused HERE -- before any
-    # GIS/MF6 work, mirroring `_require_single_level`'s early
-    # NotImplementedError -- rather than silently built and solved. The
-    # breakthrough readout below (`bt = ...`) still reads the single
-    # `ext_cell`; with a distributed sink that is the concentration at ONE
-    # CELL OF THE SUPPORT, not the extracted concentration, so every
-    # downstream metric (peak_mgL, arrival_day, exceedance) would be wrong
-    # under a name that looks right. Raising here ALSO means a positive
-    # value can never reach the cache lookup below, so it can never be
-    # served a stale cache another (differently-identified) run warmed --
-    # see test_warm_sentinel_cache_is_not_served_to_a_supported_run. The WEL
-    # construction itself is fully implemented and tested directly at the
-    # `add_flow_model` level (test_t1_sink_support_wel.py); wiring the
-    # matching flux-weighted readout and lifting this raise is milestone S9c.
-    if sink_support_m > 0.0:
-        raise NotImplementedError(
-            f"sink_support_m={sink_support_m!r} > 0 is not yet supported by "
-            "build_srcpulse_demo: the breakthrough readout still reads the "
-            "single ext_cell, which is NOT the extracted concentration once "
-            "the sink is distributed across multiple cells. The WEL "
-            "construction itself is implemented (see add_flow_model) and "
-            "tested directly at that level; wiring a flux-weighted readout "
-            "so this builder can return a meaningful result for a positive "
-            "radius is milestone S9c (DESIGN_DOCS/T1_S9b_brief.md Sec 2.3).")
+    # T1 S9c (`DESIGN_DOCS/T1_S9c_brief.md` v2 Sec 1) LIFTS the raise S9b put
+    # here: a positive `sink_support_m` used to be refused before any
+    # GIS/MF6 work because the breakthrough readout below read the single
+    # `ext_cell`, which for a distributed sink is the concentration at ONE
+    # CELL OF THE SUPPORT, not the extracted concentration. That readout is
+    # now the flux-weighted mixture (`_flux_weighted_breakthrough`, wired in
+    # below), so a positive radius can be built, solved, and read
+    # meaningfully. `sink_support_m` was already part of `params` (the
+    # cache-identity dict, below) before this milestone -- see the comment
+    # there -- so a positive value reaching the cache lookup for the first
+    # time is exactly the previously-untested behaviour
+    # `test_sink_support_m_changes_the_cache_identity_cold_and_warm_both_directions`
+    # closes (S9b could only test this statically, since the raise fired
+    # first). The WEL construction itself is unchanged from S9b
+    # (`add_flow_model`, `test_t1_sink_support_wel.py`).
 
     # T1 S8 (brief Section 3): only the id this module's own call site
     # understands -- "legacy_base" belongs to transport_base_model, not here.
@@ -2041,9 +2158,31 @@ def build_srcpulse_demo(
         raise RuntimeError("production run failed; listing tail:\n"
                            + _run_failure_tail(run_ws / "sim", buf))
 
-    # ---- breakthrough at the extraction well ----
+    # ---- breakthrough at the extraction well/support (T1 S9c) ----
     cobj = gwt.output.concentration(); times = np.array(cobj.get_times())
-    bt = np.maximum(np.array([cobj.get_data(totim=t)[0, 0, extc] for t in times]), 0.0)
+    # T1 S9b (brief Sec 2.2): the apportionment ACTUALLY applied by the WEL
+    # construction in `add_flow_model` -- read back from the BUILT
+    # stress-period data on `gwf`'s own "absw" package via
+    # `_wel_support_cells`, never recomputed in parallel from
+    # `sink_support_m`/`DOUBLET_Q` a second time (T0_0 Sec 3: an independent
+    # re-derivation is exactly how a "false record" gets written). At the
+    # sentinel (`sink_support_m == 0.0`) this is
+    # `[(ext_cell, -abs(DOUBLET_Q))]`, sorted ascending (trivially, with one
+    # entry) -- the frozen identity default (`T0_0...` Sec 3). Computed HERE
+    # (moved up from after the mass-balance section, pre-S9c) because the
+    # flux-weighted readout below needs it before `bt` can be built.
+    sink_support_cells = _wel_support_cells(gwf, pname="absw")
+    _sink_cells = [c for c, _ in sink_support_cells]
+    _prescribed_sink_rates = dict(sink_support_cells)
+    # T1 S9c (brief Sec 2.1): weights are the REALIZED per-cell extraction
+    # flow off the solved GWF budget, not the rate handed to
+    # `ModflowGwfwel` -- see `_realized_extraction_flows`'s docstring for
+    # why one budget read is sufficient (GWF is steady-state). Raises if the
+    # realized flow diverges from what was prescribed, or has the wrong
+    # sign (`_validate_realized_sink_flows`).
+    _realized_sink_rates = _realized_extraction_flows(gwf, pname="absw")
+    _validate_realized_sink_flows(_prescribed_sink_rates, _realized_sink_rates)
+    bt = _flux_weighted_breakthrough(cobj, times, _sink_cells, _realized_sink_rates)
     peak = float(bt.max()) if bt.size else float("nan")
     # `arrival_day = times[argmax(bt)]` with no guard is wrong-but-plausible in
     # two degenerate cases: (1) the plume never arrives (bt is all-zero) ->
@@ -2104,18 +2243,6 @@ def build_srcpulse_demo(
             f"(Cr_actual={cr_act:.3f}). Diagnostics/results may be under-resolved "
             "in time -- consider raising nstp_cap.", RuntimeWarning, stacklevel=2)
 
-    # T1 S9b (brief Sec 2.2): the apportionment ACTUALLY applied by the WEL
-    # construction in `add_flow_model` -- read back from the BUILT
-    # stress-period data on `gwf`'s own "absw" package via
-    # `_wel_support_cells`, never recomputed in parallel from
-    # `sink_support_m`/`DOUBLET_Q` a second time (T0_0 Sec 3: an independent
-    # re-derivation is exactly how a "false record" gets written). At the
-    # sentinel (`sink_support_m == 0.0`, the only value that reaches this
-    # line -- see the NotImplementedError above) this is
-    # `[(ext_cell, -abs(DOUBLET_Q))]`, sorted ascending (trivially, with one
-    # entry) -- the frozen identity default (`T0_0...` Sec 3).
-    sink_support_cells = _wel_support_cells(gwf, pname="absw")
-
     meta = dict(ncpl=ncpl, nstp=nstp, dt=dt, Cr=cr_act, n_src=n_src,
                 q_src_darcy=q_src, b_src=b_src, ds_src=ds_src, q_cell=q_cell,
                 v_bind=cdiag["v_bind"], ds_bind=cdiag["ds_bind"],
@@ -2134,10 +2261,11 @@ def build_srcpulse_demo(
         spill_xy=(float(spill_xy[0]), float(spill_xy[1])),
         alpha_L=alpha_L_eff, alpha_T=alpha_T_eff, R=float(R), rho_b=float(rho_b),
         Kd=float(Kd), lam=float(lam),
-        # T1 S9b: the REAL parameter, threaded through (always 0.0 here --
-        # the NotImplementedError above guarantees a positive value never
-        # reaches this line). `t_peak` is NOT passed here (init=False;
-        # derived in __post_init__ from arrival_day above).
+        # T1 S9b/S9c: the REAL parameter, threaded through -- a positive
+        # value now reaches this line (S9c lifted the raise above) and
+        # `breakthrough` above is the flux-weighted mixture for it.
+        # `t_peak` is NOT passed here (init=False; derived in __post_init__
+        # from arrival_day above).
         sink_support_m=float(sink_support_m), meta=meta)
 
     _save_cache(cache, result, params)

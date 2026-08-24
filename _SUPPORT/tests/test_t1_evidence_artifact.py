@@ -848,8 +848,12 @@ class TestOldSchemaVersionFailsClosedForDiagnostics:
         with pytest.raises(t1.SchemaVersionMismatchError):
             t1.load_record(path)
 
-    def test_current_schema_version_is_3_0_0(self):
-        assert t1.SCHEMA_VERSION == "3.0.0"
+    def test_current_schema_version_is_3_1_0(self):
+        """T1 S9c bumped 3.0.0 -> 3.1.0 when `run_identity.controls` and
+        `CONTROL_LABELS` were added. The bump is additive, but the version
+        gate is exact-match so older records fail closed rather than being
+        attributed a default (absent) control."""
+        assert t1.SCHEMA_VERSION == "3.1.0"
 
 
 # ---------------------------------------------------------------------------

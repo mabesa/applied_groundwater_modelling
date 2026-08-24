@@ -341,14 +341,29 @@ def test_positive_radius_yields_multiple_unequal_wel_entries(base_grid, tmp_path
 # ---------------------------------------------------------------------------
 # 7. build_srcpulse_demo RAISES for a positive radius, naming S9c
 # ---------------------------------------------------------------------------
-def test_public_builder_raises_for_positive_sink_support_naming_s9c(tmp_path):
-    """Exit criterion 10 (the review's headline finding, brief Sec 2.3): a
-    positive `sink_support_m` must raise `NotImplementedError` naming S9c,
-    BEFORE any GIS/MF6 work -- fast even though it is not marked `slow`."""
-    with pytest.raises(NotImplementedError, match="S9c"):
-        tsd.build_srcpulse_demo(
-            mass_g=MASS_G, pulse_days=PULSE_DAYS, total_days=TOTAL_DAYS,
-            sink_support_m=PARTIAL_RADIUS_M, case_ws=tmp_path)
+def test_s9b_guard_was_lifted_by_s9c_which_added_the_readout():
+    """HISTORY, kept deliberately rather than deleted.
+
+    S9b made `build_srcpulse_demo` raise `NotImplementedError` naming S9c for
+    any positive `sink_support_m`: the WEL was distributed but the readout
+    still read ONE cell, so the builder would have returned plausible-looking
+    `peak_mgL`/`arrival_day` values that were NOT extracted-concentration
+    metrics. The guard existed so that wrong answer was unreachable, never
+    because distributing the sink was itself unsupported.
+
+    S9c added the flux-weighted readout and lifted the guard IN THE SAME
+    commit, exactly as S9b's docstring promised. This test therefore asserts
+    the guard is GONE -- if it ever returns, the readout has regressed too.
+
+    Live behaviour is covered by
+    `test_t1_sink_support_readout.py::test_positive_radius_no_longer_raises`;
+    this one only pins the direction of travel, with no solve.
+    """
+    import inspect
+    src = inspect.getsource(tsd.build_srcpulse_demo)
+    assert "NotImplementedError" not in src or "sink_support_m > 0" not in src, (
+        "S9b's positive-radius guard is back; S9c lifted it together with the "
+        "flux-weighted readout, so its return would mean the readout regressed")
 
 
 def test_negative_or_nonfinite_radius_raises_in_build_srcpulse_demo(tmp_path):
@@ -396,15 +411,22 @@ def test_sink_support_m_changes_the_cache_identity():
 
 
 @pytest.mark.slow
+@pytest.mark.slow
 def test_warm_sentinel_cache_is_not_served_to_a_supported_run(wel_case_ws):
-    """Exit criterion 6, second half (the safety property): with the
-    sentinel's cache warm on disk, a request for a POSITIVE
-    `sink_support_m` (same other params) must NOT be served that cached
-    sentinel result -- it must raise, never silently return a
-    plausible-looking but mislabelled `SrcPulseDemo`. Because the
-    NotImplementedError guard runs before the cache is even consulted (see
-    `build_srcpulse_demo`), this holds regardless of whether the two
-    requests would have hashed to the same or different cache files."""
+    """Exit criterion 6, second half -- the safety property, now tested FOR
+    REAL rather than trivially.
+
+    S9b could only satisfy this via the `NotImplementedError` guard, which
+    ran before the cache was consulted: the property held, but the cache
+    identity itself was never exercised (S9b recorded that as a deferred
+    gap). S9c lifted the guard, so the property must now rest on what it was
+    always supposed to rest on -- `sink_support_m` being part of the cache
+    identity.
+
+    With the sentinel's cache warm on disk, a positive-radius request with
+    every other parameter identical must return ITS OWN result and write its
+    OWN cache file, never be served the sentinel's.
+    """
     ws = wel_case_ws / "warm_cache_case"
     ws.mkdir(parents=True, exist_ok=True)
     kwargs = dict(mass_g=MASS_G, pulse_days=PULSE_DAYS, total_days=TOTAL_DAYS,
@@ -415,12 +437,42 @@ def test_warm_sentinel_cache_is_not_served_to_a_supported_run(wel_case_ws):
     caches_before = sorted(p.name for p in ws.glob("srcpulse_cache_*.npz"))
     assert len(caches_before) == 1
 
-    with pytest.raises(NotImplementedError, match="S9c"):
-        tsd.build_srcpulse_demo(sink_support_m=PARTIAL_RADIUS_M, force=False, **kwargs)
+    # force=False: if sink_support_m were NOT in the cache identity, this
+    # would hit the sentinel's warm cache and silently return it.
+    supported = tsd.build_srcpulse_demo(
+        sink_support_m=PARTIAL_RADIUS_M, force=False, **kwargs)
 
-    # no new cache file was written by the refused positive-radius request
+    assert supported.sink_support_m == PARTIAL_RADIUS_M, (
+        "the warm SENTINEL cache was served to a supported run -- "
+        "sink_support_m is not part of the cache identity")
+    assert len(supported.meta["sink_support_cells"]) > 1, (
+        "a supported run must distribute the sink across several cells")
+
     caches_after = sorted(p.name for p in ws.glob("srcpulse_cache_*.npz"))
-    assert caches_after == caches_before
+    assert len(caches_after) == 2, (
+        f"the supported run must write its OWN cache file, got {caches_after}")
+    assert set(caches_before) < set(caches_after), "the sentinel's cache must survive"
+
+
+@pytest.mark.slow
+def test_warm_supported_cache_is_not_served_to_a_sentinel_run(wel_case_ws):
+    """The other direction (exit criterion 6, 'both directions'). Warming the
+    SUPPORTED cache first and then asking for the sentinel must return the
+    sentinel's own single-cell result -- and the sentinel is gate-visible, so
+    a leak here would corrupt the default payload itself."""
+    ws = wel_case_ws / "warm_cache_case_reverse"
+    ws.mkdir(parents=True, exist_ok=True)
+    kwargs = dict(mass_g=MASS_G, pulse_days=PULSE_DAYS, total_days=TOTAL_DAYS,
+                  solubility_mgL=1000.0, case_ws=ws)
+    supported = tsd.build_srcpulse_demo(
+        sink_support_m=PARTIAL_RADIUS_M, force=True, **kwargs)
+    assert supported.sink_support_m == PARTIAL_RADIUS_M
+
+    sentinel = tsd.build_srcpulse_demo(sink_support_m=0.0, force=False, **kwargs)
+    assert sentinel.sink_support_m == 0.0
+    assert len(sentinel.meta["sink_support_cells"]) == 1, (
+        "the warm SUPPORTED cache was served to a sentinel run -- this would "
+        "corrupt the gate-visible default payload")
 
 
 # ---------------------------------------------------------------------------
