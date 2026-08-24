@@ -1479,14 +1479,83 @@ def new_sim(case_ws: Union[str, Path], *, pulse_days: float, total_days: float,
     return sim
 
 
-def add_flow_model(sim, grid: Dict[str, Any]):
+def _wel_support_cells(gwf, pname: str = "absw") -> List[Tuple[int, float]]:
+    """T1 S9b (`DESIGN_DOCS/T1_S9b_brief.md` v2 Sec 2.2): read the
+    ACTUALLY BUILT stress-period data off the named WEL package and
+    normalise it into ``[(cell_index, rate), ...]``, sorted ascending by
+    cell index.
+
+    `T0_0...` Sec 3 calls an empty/recomputed record a "false record":
+    ``meta["sink_support_cells"]`` must be derived from the SAME object
+    handed to ``ModflowGwfwel``, read back through FloPy, never
+    reconstructed a second time from ``sink_support_m`` alongside it.
+    "Byte-identical" is not a meaningful comparison once FloPy has converted
+    the input list into an ``MFTransientList`` -- ``get_data(0)`` returns a
+    structured record array whose ``cellid`` field is itself a tuple (e.g.
+    ``(0, 137)`` for this DISV nlay=1 model) and whose ``q`` is a numpy
+    scalar; both are normalised here to plain Python ``int``/``float``.
+    """
+    spd = gwf.get_package(pname).stress_period_data.get_data(0)
+    pairs = [(int(rec["cellid"][-1]), float(rec["q"])) for rec in spd]
+    return sorted(pairs, key=lambda pair: pair[0])
+
+
+def add_flow_model(sim, grid: Dict[str, Any], sink_support_m: float = 0.0):
     """Add the GWF flow model (DISV, NPF, IC, STO, RCHA, CHD, RIV, WEL x2 doublet,
-    OC) to ``sim`` and return it.  The doublet wells are FLOW ONLY (no solute)."""
+    OC) to ``sim`` and return it.  The doublet wells are FLOW ONLY (no solute).
+
+    T1 S9b (`DESIGN_DOCS/T1_S9b_brief.md` v2): ``sink_support_m`` (default
+    ``0.0``, the frozen SENTINEL) apportions the EXTRACTION well's rate
+    across the cells intersecting a disc of this radius centred on the
+    extraction well (``ABS_XY``), via ``_sink_footprint_rates`` -- the SAME
+    area-weighted disc/apportionment machinery S5 uses for the source (S9a's
+    geometry, reused verbatim; no second apportionment routine). At the
+    sentinel, ``_sink_footprint_rates`` takes its own sentinel branch (no
+    disc geometry built at all) and the emitted ``absw`` stress-period data
+    is STRUCTURALLY IDENTICAL to the pre-S9b literal
+    ``[[(0, extc), -abs(DOUBLET_Q)]]``.
+
+    ⚠️ The INJECTION well (``injw``) is UNCHANGED at every radius --
+    `T0_0...` Sec 3 names only the EXTRACTION-support disc; S9b does not
+    touch injection (brief Sec 3).
+
+    ⚠️ **PRT divergence** (brief Sec 2.4): MODFLOW 6 PRT builds its OWN
+    doublet WEL (`transport_prt_capture.py`, hard-coded single-cell) and
+    does NOT call this function. At ``sink_support_m > 0`` the demo's GWF
+    built here and PRT's own GWF are therefore DIFFERENT flow fields that
+    happen to share a mesh identity. Fixing that needs no new authority:
+    B-control arms simply do not claim a capture fingerprint (S10).
+
+    ⚠️ **No SSM change is needed** for a distributed sink (brief Sec 1.1):
+    ``add_transport_model`` uses bare ``ModflowGwtssm(gwt)``, so MF6 already
+    routes each WEL cell's own outflow at that cell's own concentration --
+    the flux-weighted mixture a positive radius implies EMERGES from the
+    solver; it is not assembled by hand here.
+
+    ⚠️ **Readout caveat / dry-cell policy** (brief Sec 2.3/2.3.1): this
+    function only builds the WEL package. The breakthrough curve
+    ``build_srcpulse_demo`` reads is still the concentration at the single
+    ``ext_cell`` -- with a distributed sink that is a concentration AT ONE
+    CELL OF THE SUPPORT, not the extracted concentration -- so
+    ``build_srcpulse_demo`` RAISES ``NotImplementedError`` for
+    ``sink_support_m > 0`` rather than silently returning a
+    plausible-looking but wrong number under that name (milestone S9c adds
+    the flux-weighted readout and lifts the raise together). WEL rates
+    themselves are delivered as specified: the GWF model is NEWTON
+    (``icelltype=1`` convertible cells, Newton-Raphson smoothing), which
+    does not abruptly zero out a drying cell's rate the way a Picard/dry-cell
+    reduction could -- a supported cell that cannot sustain its requested
+    rate shows up as a non-converged run (``ok=False``), not a silently
+    reduced flow. Callers must not ASSUME the realized rate matches the
+    requested one for that reason; verify it from the GWF budget instead
+    (see ``test_realized_wel_flow_matches_requested``).
+    """
     ncpl = grid["ncpl"]; gp = grid["gridprops"]
     top_ref = grid["top"]; botm_ref = grid["botm"]; k_ref = grid["k"]
     heads_ref = grid["heads"]; rch = grid["rch"]; chd = grid["chd"]; riv = grid["riv"]
     injc = grid["inj_cell"]; extc = grid["ext_cell"]
     nper = int(sim.tdis.nper.get_data())
+    _validate_footprint_radius(sink_support_m)   # reuse S9a's validator (brief Sec 3)
 
     gwf = flopy.mf6.ModflowGwf(sim, modelname="gwf", save_flows=True,
                                newtonoptions=_GWF_NEWTON)
@@ -1504,8 +1573,28 @@ def add_flow_model(sim, grid: Dict[str, Any]):
     # ---- doublet wells: FLOW ONLY (clean injection, no concentration) ----
     flopy.mf6.ModflowGwfwel(gwf, pname="injw",
                             stress_period_data={0: [[(0, injc), abs(DOUBLET_Q)]]})
-    flopy.mf6.ModflowGwfwel(gwf, pname="absw",
-                            stress_period_data={0: [[(0, extc), -abs(DOUBLET_Q)]]})
+    # T1 S9b: extraction-support disc (S9a geometry, reused verbatim via
+    # `_sink_footprint_rates`). The sentinel (sink_support_m == 0.0) takes
+    # that function's own sentinel branch -- no disc geometry built -- so
+    # `absw_spd` below is structurally identical to the pre-S9b literal.
+    idomain = np.asarray(grid["rgwf"].disv.idomain.array, dtype=int).reshape(-1)
+    mg = grid["modelgrid"]
+    sink_cells, sink_rates = _sink_footprint_rates(
+        mg, ncpl, idomain, ABS_XY, float(sink_support_m), extc, -abs(DOUBLET_Q))
+    # brief Sec 2.3.1: `extc` is not guaranteed to lie inside its own disc --
+    # if it did not, the retained single-cell readout would not even be a
+    # support-cell observation. Assert it here, at construction time, so a
+    # caller (S9c included) inherits a meaningful anchor rather than a
+    # silent miss.
+    if extc not in sink_cells:
+        raise ValueError(
+            f"sink_support_m={sink_support_m!r}: the extraction cell "
+            f"(ext_cell={extc}) does not lie inside its own resulting "
+            f"support {sink_cells!r} -- the readout anchor requires ext_cell "
+            "to be a member of the support disc (DESIGN_DOCS/T1_S9b_brief.md "
+            "Sec 2.3.1).")
+    absw_spd = [[(0, c), r] for c, r in zip(sink_cells, sink_rates)]
+    flopy.mf6.ModflowGwfwel(gwf, pname="absw", stress_period_data={0: absw_spd})
     flopy.mf6.ModflowGwfoc(gwf, head_filerecord="gwf.hds", budget_filerecord="gwf.cbc",
                            saverecord=[("HEAD", "LAST"), ("BUDGET", "LAST")])
     return gwf
@@ -1610,6 +1699,7 @@ def build_srcpulse_demo(
     refine_radii: Any = _UNSET,
     mesh_spec: Optional["MeshSpec"] = None,
     footprint_radius_m: float = 0.0,
+    sink_support_m: float = 0.0,
     courant_profile: str = "legacy_srcpulse",
     force: bool = False,
 ) -> SrcPulseDemo:
@@ -1672,6 +1762,26 @@ def build_srcpulse_demo(
         field a failure edge) -- it belongs in the evidence artifact; see
         ``DESIGN_DOCS/T1_S5_brief.md`` Sec 3.  Not wired into any default
         call -- a later milestone (T2) uses a positive value.
+    sink_support_m : float
+        T1 S9b (``DESIGN_DOCS/T1_S9b_brief.md`` v2) extraction-support disc
+        radius [m], threaded to ``add_flow_model``.  ``0.0`` (default) is the
+        frozen SENTINEL -- structurally identical to pre-S9b behaviour: the
+        whole doublet extraction rate on the single nearest-centroid
+        ``ext_cell``.  Negative or non-finite raises ``ValueError``.  🔴 A
+        POSITIVE value RAISES ``NotImplementedError`` here (not in
+        ``add_flow_model``, which builds and returns a genuinely distributed
+        WEL): the breakthrough curve below is read at the single ``ext_cell``
+        (see the ``bt = ...`` line), which for a distributed sink is the
+        concentration AT ONE CELL OF THE SUPPORT, not the extracted
+        concentration -- every downstream metric (``peak_mgL``,
+        ``arrival_day``, exceedance) would inherit that silently.  The WEL
+        construction itself ships and is tested directly at the
+        ``add_flow_model`` level; wiring the matching flux-weighted readout
+        (and lifting this raise) is milestone S9c.  ⚠️ MODFLOW 6 PRT builds
+        its own single-cell doublet WEL and does not call ``add_flow_model``,
+        so a positive ``sink_support_m`` used directly with ``add_flow_model``
+        (bypassing this builder) makes PRT's GWF diverge from this one --
+        B-control arms do not claim a capture fingerprint (S10).
     courant_profile : {"legacy_srcpulse", "exp_v1"}
         T1 S8 (``DESIGN_DOCS/T1_S8_brief.md`` v2) ``courant_nstp`` policy
         selector.  ``"legacy_srcpulse"`` (default) is byte-for-byte today's
@@ -1699,7 +1809,8 @@ def build_srcpulse_demo(
     for _name, _val in (("mass_g", mass_g), ("pulse_days", pulse_days),
                          ("total_days", total_days), ("solubility_mgL", solubility_mgL),
                          ("R", R), ("rho_b", rho_b), ("lam", lam),
-                         ("cr_target", cr_target), ("footprint_radius_m", footprint_radius_m)):
+                         ("cr_target", cr_target), ("footprint_radius_m", footprint_radius_m),
+                         ("sink_support_m", sink_support_m)):
         if not math.isfinite(_val):
             raise ValueError(f"{_name} must be finite (got {_val!r})")
     if alpha_L is not None and not math.isfinite(alpha_L):
@@ -1709,6 +1820,35 @@ def build_srcpulse_demo(
     # raise, checked up front (before any GIS/MF6 work) like every other
     # parameter guard in this block.
     _validate_footprint_radius(footprint_radius_m)
+    # T1 S9b: same validator, reused verbatim (brief Sec 3 "Validation:
+    # negative / non-finite -> raise (reuse S9a's validators)").
+    _validate_footprint_radius(sink_support_m)
+
+    # T1 S9b (`DESIGN_DOCS/T1_S9b_brief.md` v2 Sec 2.3, the review's headline
+    # finding): a POSITIVE sink_support_m is refused HERE -- before any
+    # GIS/MF6 work, mirroring `_require_single_level`'s early
+    # NotImplementedError -- rather than silently built and solved. The
+    # breakthrough readout below (`bt = ...`) still reads the single
+    # `ext_cell`; with a distributed sink that is the concentration at ONE
+    # CELL OF THE SUPPORT, not the extracted concentration, so every
+    # downstream metric (peak_mgL, arrival_day, exceedance) would be wrong
+    # under a name that looks right. Raising here ALSO means a positive
+    # value can never reach the cache lookup below, so it can never be
+    # served a stale cache another (differently-identified) run warmed --
+    # see test_warm_sentinel_cache_is_not_served_to_a_supported_run. The WEL
+    # construction itself is fully implemented and tested directly at the
+    # `add_flow_model` level (test_t1_sink_support_wel.py); wiring the
+    # matching flux-weighted readout and lifting this raise is milestone S9c.
+    if sink_support_m > 0.0:
+        raise NotImplementedError(
+            f"sink_support_m={sink_support_m!r} > 0 is not yet supported by "
+            "build_srcpulse_demo: the breakthrough readout still reads the "
+            "single ext_cell, which is NOT the extracted concentration once "
+            "the sink is distributed across multiple cells. The WEL "
+            "construction itself is implemented (see add_flow_model) and "
+            "tested directly at that level; wiring a flux-weighted readout "
+            "so this builder can return a meaningful result for a positive "
+            "radius is milestone S9c (DESIGN_DOCS/T1_S9b_brief.md Sec 2.3).")
 
     # T1 S8 (brief Section 3): only the id this module's own call site
     # understands -- "legacy_base" belongs to transport_base_model, not here.
@@ -1773,6 +1913,12 @@ def build_srcpulse_demo(
                   # embedded in the filename, so a run at one radius must
                   # never resolve to a cache file a different radius wrote.
                   footprint_radius_m=float(footprint_radius_m),
+                  # T1 S9b (brief Sec 3 "Cache identity"): folds in exactly
+                  # like footprint_radius_m above -- with S7 dropped,
+                  # hash-folding IS the isolation between a sentinel run and
+                  # a (currently unreachable past the NotImplementedError
+                  # above) supported run.
+                  sink_support_m=float(sink_support_m),
                   cr_target=float(cr_target), nstp_cap=int(nstp_cap),
                   # T1 S8 (brief Section 2.3): the selected courant_nstp
                   # policy must be part of the cache identity, exactly as
@@ -1860,7 +2006,7 @@ def build_srcpulse_demo(
         """Compose the public builders into one coupled GWF+GWT solve."""
         sim = new_sim(run_ws, pulse_days=pulse_days, total_days=total_days,
                       nstp_per_period=nstp_per_period, exe=exe)
-        gwf = add_flow_model(sim, grid)
+        gwf = add_flow_model(sim, grid, sink_support_m=sink_support_m)
         gwt = add_transport_model(sim, gwf, grid, mass_g=mass_g, pulse_days=pulse_days,
                                   R=R, rho_b=rho_b, lam=lam, alpha_L=alpha_L_eff)
         ok, buf, sim = couple_and_run(sim, gwf, gwt, grid, run_ws)
@@ -1958,14 +2104,17 @@ def build_srcpulse_demo(
             f"(Cr_actual={cr_act:.3f}). Diagnostics/results may be under-resolved "
             "in time -- consider raising nstp_cap.", RuntimeWarning, stacklevel=2)
 
-    # T1 S2 (brief Section 3.3): the apportionment ACTUALLY applied by the WEL
-    # construction in `add_flow_model` -- the whole doublet rate on the single
-    # nearest-centroid extraction cell. `extc`/`DOUBLET_Q` are read off THIS
-    # run, never hardcoded a second time. Sorted by cell index (trivial with
-    # one entry, but written now so a future multi-cell apportionment -- S9c --
-    # inherits an already-sorted invariant).
-    sink_support_cells = sorted(
-        [(int(extc), -abs(float(DOUBLET_Q)))], key=lambda pair: pair[0])
+    # T1 S9b (brief Sec 2.2): the apportionment ACTUALLY applied by the WEL
+    # construction in `add_flow_model` -- read back from the BUILT
+    # stress-period data on `gwf`'s own "absw" package via
+    # `_wel_support_cells`, never recomputed in parallel from
+    # `sink_support_m`/`DOUBLET_Q` a second time (T0_0 Sec 3: an independent
+    # re-derivation is exactly how a "false record" gets written). At the
+    # sentinel (`sink_support_m == 0.0`, the only value that reaches this
+    # line -- see the NotImplementedError above) this is
+    # `[(ext_cell, -abs(DOUBLET_Q))]`, sorted ascending (trivially, with one
+    # entry) -- the frozen identity default (`T0_0...` Sec 3).
+    sink_support_cells = _wel_support_cells(gwf, pname="absw")
 
     meta = dict(ncpl=ncpl, nstp=nstp, dt=dt, Cr=cr_act, n_src=n_src,
                 q_src_darcy=q_src, b_src=b_src, ds_src=ds_src, q_cell=q_cell,
@@ -1985,10 +2134,11 @@ def build_srcpulse_demo(
         spill_xy=(float(spill_xy[0]), float(spill_xy[1])),
         alpha_L=alpha_L_eff, alpha_T=alpha_T_eff, R=float(R), rho_b=float(rho_b),
         Kd=float(Kd), lam=float(lam),
-        # T1 S2: identity default (brief Section 3.2). No builder parameter in
-        # S2 -- constant until S9b makes it real. `t_peak` is NOT passed here
-        # (init=False; derived in __post_init__ from arrival_day above).
-        sink_support_m=0.0, meta=meta)
+        # T1 S9b: the REAL parameter, threaded through (always 0.0 here --
+        # the NotImplementedError above guarantees a positive value never
+        # reaches this line). `t_peak` is NOT passed here (init=False;
+        # derived in __post_init__ from arrival_day above).
+        sink_support_m=float(sink_support_m), meta=meta)
 
     _save_cache(cache, result, params)
     return result
