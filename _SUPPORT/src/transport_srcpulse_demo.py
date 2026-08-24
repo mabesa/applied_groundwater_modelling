@@ -43,12 +43,13 @@ import hashlib
 import json
 import math
 import os
+import platform
 import shutil
 import time
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import geopandas as gpd
@@ -2498,6 +2499,783 @@ def _load_cache(path: Path, params: Dict[str, Any]) -> Optional[SrcPulseDemo]:
             meta=dict(z["meta"].item()), locked=dict(z["locked"].item()))
     except Exception:
         return None
+
+
+# =============================================================================
+# T1 S10 (DESIGN_DOCS/T1_S10_brief.md v2): the GWF-grid sensitivity arm.
+#
+# WHAT THIS IS (brief Sec 1): the "common flow" control -- running transport
+# for several meshes on ONE shared flow field -- is DESCOPED (MF6 GWT requires
+# the GWF discretisation; a non-matching-grid remapper is out of proportion to
+# a teaching artifact). The replacement is THIS arm: flow solved and reported
+# PER MESH, so the arm DOCUMENTS that the flow field changed rather than
+# isolating it. Each mesh carrying its own GWF solve is inherent to the
+# design, not a defect to "optimise" away.
+#
+# 🔴 THE CEILING IS NAMED BY CONSTRUCTION (brief Sec 1, quoting
+# `DOCUMENTATION/contracts/T0_2b_metrics_and_causal_rule.md` Sec 4.2): "any
+# comparison in which the sink support OR the flow field also changed" is
+# insufficient for a `cause` claim. This arm IS such a comparison, by design,
+# so it can NEVER license `cause` -- a grid comparison carrying it stays
+# `hypothesis`. `NON_ISOLATION_STATEMENT` / `CLAIM_CEILING` below encode that
+# in the code (not merely in this comment), `GwfGridSensitivityArmResult.
+# __post_init__` makes it structurally impossible to construct a result
+# claiming otherwise, and every one of `to_dict` / `to_json` / `summary_text`
+# / `deltas_table` (the arm's four reporting/export paths) carries both.
+#
+# 🔴 QUANTIFIED FLOW DELTAS ARE THE SUBSTANCE (brief Sec 1.1): recording
+# *that* flow changed is worth nothing; `GwfMeshFlowDelta` records HOW MUCH,
+# per mesh pair (each non-reference mesh vs the reference mesh), in physical
+# units AND relative terms, for the four "at minimum" diagnostics the brief
+# names: Darcy-flux magnitude at the source and receptor, the head
+# difference across the corridor, and the extraction-cell throughflow.
+#
+# 🔴 NO IMPORT OF `transport_prt_capture` (brief Sec 2.1): that module already
+# imports THIS one (`transport_prt_capture.py:173`), so the reverse edge
+# would close a cycle; `test_t1_src_closure.py::DEMO_EXPECTED` pins this
+# module's transitive `_SUPPORT/src` closure to EXACTLY 7 members, with the
+# PRT closure a strict superset -- an import here would break both. Authority
+# A13 names only this one module. The capture fingerprint is therefore
+# ACCEPTED AS AN ARGUMENT (`CaptureFingerprintRecord`, injected by the
+# caller -- T2's runner, which does import PRT), never computed or imported
+# here -- and, per the SAME cycle/closure constraint, `t1_evidence_artifact`
+# (home of the frozen Role-group vocabulary this section reuses, `run_role` /
+# `grid_role` / `counterpart_run_id`) is likewise not imported: that module's
+# own docstring freezes its imports as one-way `artifact -> model`, never the
+# reverse. The Role-group STRING VALUES are therefore transcribed as local
+# constants below (`_RUN_ROLES`, `_ARM_RUN_ROLE`), not imported -- this is a
+# repetition of the same closed vocabulary, not a redefinition of policy. No
+# `CONTROL_LABELS` vocabulary is touched or reused anywhere in this section:
+# S10 is explicitly NOT a control (brief Sec 3) -- `GwfGridSensitivityArmResult
+# .is_control` is always `False`, enforced in `__post_init__`, and
+# `analysis_kind` is a plainly-named, non-control discoverability marker.
+#
+# Nothing in this section is wired into any default call path (`build_
+# srcpulse_demo`, `__main__`, or any cached/gated payload) -- T1 ships the
+# capability, T2 runs it. Gate coverage is BLIND (brief header): `compare`
+# never sees any of this, so `test_t1_gwf_grid_sensitivity.py` is the entire
+# safety argument for this step, not a supplement to `compare`.
+# =============================================================================
+
+#: T0_2b Sec 5.1 -- the frozen Role-group vocabulary, TRANSCRIBED (never
+#: imported -- see the module-comment above) purely to validate the one
+#: value this arm ever assigns to `run_role`.
+_RUN_ROLES: Tuple[str, ...] = (
+    "spatial_series", "temporal_series", "b_control", "pilot", "feasibility_probe",
+)
+#: This arm's own reading (flagged, brief Sec 3 does not name a specific
+#: value): a GWF-grid-sensitivity arm varies MESH, i.e. it is a point in the
+#: spatial series -- never `b_control` (S9c's vocabulary, not reused here),
+#: `pilot`, `feasibility_probe`, or `temporal_series` (that varies timestep,
+#: not mesh).
+_ARM_RUN_ROLE = "spatial_series"
+#: A non-control, plainly-named discoverability marker (brief Sec 3: "a
+#: non-control analysis-kind marker is permitted... discoverability does not
+#: imply controlling power"). Never read as a control by anything in this
+#: module.
+_ANALYSIS_KIND = "gwf_grid_sensitivity"
+
+#: This module's own closed platform vocabulary (flagged -- brief Sec 2.3
+#: does not fix a wire format for "Mac" / "Hub"): `"<system>-<machine>"`,
+#: lower-cased. A value outside this set is UNSUPPORTED and raises (brief
+#: exit criterion 14).
+SUPPORTED_PLATFORMS: Tuple[str, ...] = ("darwin-arm64", "linux-x86_64")
+
+#: `DOCUMENTATION/contracts/T0_2b_metrics_and_causal_rule.md` Sec 2.6/2.7 --
+#: the frozen 5% relative tolerance `capture_halfwidth_m` is judged against.
+#: Transcribed here (this module imports no contract file); a ~24%
+#: Mac<->Hub spread against this 5% is WHY brief Sec 2.3 requires a measured
+#: repeatability envelope, demonstrably below this value, before ANY
+#: fingerprint comparison (even same-platform) is permitted.
+TOL_WIDTH_REL = 0.05
+
+#: brief Sec 1: the ceiling this arm's evidence can NEVER exceed, "named by
+#: construction" per `T0_2b...` Sec 4.2 -- never `cause`.
+CLAIM_CEILING = "hypothesis"
+
+#: brief Sec 1 / exit criterion 1 -- must be IN the code (not merely in this
+#: comment block) and asserted by a test; every reporting/export path below
+#: carries it verbatim (exit criterion 17).
+NON_ISOLATION_STATEMENT = (
+    "This arm solves MODFLOW 6 GWF flow SEPARATELY for each mesh -- it does "
+    "NOT hold the flow field (or the sink support) common across the meshes "
+    "it compares. Per DOCUMENTATION/contracts/T0_2b_metrics_and_causal_rule.md "
+    "Sec 4.2, any comparison in which the sink support OR the flow field also "
+    "changed can NEVER license a 'cause' claim; a grid comparison carrying "
+    "this arm's evidence stays 'hypothesis', by construction. The quantified "
+    "flow deltas this arm reports let a reader say the observed transport "
+    "difference COINCIDED with these mesh-dependent flow differences, so "
+    "transport-grid causation is UNRESOLVED for the meshes that differ "
+    "materially -- and identify which meshes have negligible flow deltas "
+    "and are therefore better candidates for later isolation work. They do "
+    "NOT let a reader say the transport grid caused, explained, or even "
+    "dominated the observed difference."
+)
+
+
+# ---------------------------------------------------------------------------
+# exceptions -- the fail-closed vocabulary for this section
+# ---------------------------------------------------------------------------
+class GwfGridSensitivityError(RuntimeError):
+    """Base class for every error the T1 S10 GWF-grid sensitivity arm raises."""
+
+
+class DuplicateMeshIdError(GwfGridSensitivityError):
+    """Two (or more) entries in one arm share the same `mesh_id` (exit
+    criterion 13)."""
+
+
+class MeshSolveFailedError(GwfGridSensitivityError):
+    """A mesh's GWF solve failed or was partial, and either (a) mesh
+    construction itself raised, or (b) `assemble_gwf_grid_sensitivity_arm`
+    refuses to record a successful arm from a run set containing an
+    unsolved mesh (exit criterion 15)."""
+
+
+class MalformedFingerprintError(GwfGridSensitivityError):
+    """An injected `CaptureFingerprintRecord`'s value is missing, NaN, or
+    negative, or a required string field is empty (exit criterion 14)."""
+
+
+class UnsupportedPlatformError(GwfGridSensitivityError):
+    """A platform value outside `SUPPORTED_PLATFORMS` (exit criterion 14)."""
+
+
+class FingerprintMeshMismatchError(GwfGridSensitivityError):
+    """An injected fingerprint names a `mesh_id` different from the arm's
+    own mesh -- fingerprints cannot be swapped between meshes (exit
+    criterion 12)."""
+
+
+class FingerprintFlowIncompatibleError(GwfGridSensitivityError):
+    """An injected fingerprint's `flow_identity` does not match the arm's
+    own solved flow identity (brief Sec 2.2, exit criterion 2/5/11)."""
+
+
+class CrossPlatformFingerprintComparisonError(GwfGridSensitivityError):
+    """Two fingerprints recorded on different platforms were compared (exit
+    criterion 3)."""
+
+
+class MissingRepeatabilityEnvelopeError(GwfGridSensitivityError):
+    """A fingerprint comparison was attempted with no `RepeatabilityEnvelope`
+    at all (brief Sec 2.3, exit criterion 10)."""
+
+
+class RepeatabilityEnvelopeMismatchError(GwfGridSensitivityError):
+    """The supplied envelope was measured on a different platform than the
+    fingerprints being compared."""
+
+
+class RepeatabilityEnvelopeInsufficientError(GwfGridSensitivityError):
+    """The supplied envelope's spread is not demonstrably below
+    `TOL_WIDTH_REL` (brief Sec 2.3, exit criterion 10)."""
+
+
+# ---------------------------------------------------------------------------
+# small numeric helpers
+# ---------------------------------------------------------------------------
+def _rel_delta(delta: float, reference: float) -> Optional[float]:
+    """Relative delta = `delta / reference`; `None` (never `inf`/`nan`) when
+    `reference == 0.0` exactly -- a bare division would either raise or
+    produce a non-finite value this section's deterministic JSON export
+    cannot represent."""
+    if reference == 0.0:
+        return None
+    return float(delta) / float(reference)
+
+
+def _fmt_rel(rel: Optional[float]) -> str:
+    return "n/a (zero reference)" if rel is None else f"{rel * 100.0:+.2f}%"
+
+
+def current_platform_tag() -> str:
+    """This run's platform tag in `SUPPORTED_PLATFORMS`' own format --
+    `"<system>-<machine>"`, lower-cased (e.g. `"darwin-arm64"` on a
+    developer Mac, `"linux-x86_64"` on JupyterHub)."""
+    return f"{platform.system().lower()}-{platform.machine().lower()}"
+
+
+def flow_identity_string(mesh_id: str, realized_extraction_cells: Sequence[int]) -> str:
+    """Canonical flow-identity descriptor (brief Sec 2.1/2.2; this module's
+    own construction, flagged -- neither contract quoted in the brief fixes
+    an algorithm for this).
+
+    Two solved flow fields share a "flow identity", for the purpose of
+    validating an injected capture fingerprint, exactly when this string
+    matches -- true whenever the REALIZED extraction-well support cell set
+    matches, regardless of *why* it does or doesn't. MODFLOW 6 PRT always
+    builds its own hard-coded, single-cell doublet
+    (`transport_prt_capture.py:542-545`), which corresponds to a
+    realized-support set of exactly one cell; a demo GWF solved at
+    `sink_support_m > 0` realizes through MORE than one cell, so the two
+    identities differ TODAY -- without this function ever testing
+    `sink_support_m > 0` directly (brief Sec 2.2's round-1 finding: that
+    would wrongly block a future fingerprint legitimately computed from a
+    distributed-support flow, and would miss any OTHER way the two fields
+    could diverge). If PRT ever grows a matching distributed-support well,
+    the two identity strings would agree again with no change needed here.
+
+    `realized_extraction_cells` MUST come from the SOLVED GWF budget
+    (`_realized_extraction_flows`), never the cells merely PRESCRIBED to the
+    WEL package -- the same "realized, not configured" ethos S9c already
+    applies to breakthrough weighting.
+    """
+    cells = tuple(sorted(int(c) for c in realized_extraction_cells))
+    return _identity_digest({"mesh_id": str(mesh_id),
+                             "realized_extraction_support_cells": list(cells)})
+
+
+# ---------------------------------------------------------------------------
+# the injected capture fingerprint -- a TYPED PROVENANCE RECORD (brief Sec
+# 2.1), never a bare float
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class CaptureFingerprintRecord:
+    """A PRT capture-halfwidth fingerprint, INJECTED by the caller (T2's
+    runner, which calls `transport_prt_capture.capture_halfwidth_at()`) --
+    never computed or imported by this module (brief Sec 2.1). A bare float
+    would relocate the coupling to T2 where it is LESS visible and silently
+    permit stale, swapped, or independently generated values; this record
+    carries the value together with enough provenance for THIS arm to
+    validate it against its own run/mesh/flow identity before ever reading
+    `value_m` (see `_validate_capture_fingerprint`,
+    `assemble_gwf_grid_sensitivity_arm`).
+
+    Structural validity (non-empty strings, a finite non-negative value, a
+    supported platform) is enforced HERE, at construction (exit criteria
+    14). `mesh_id` / `flow_identity` compatibility with a SPECIFIC arm run
+    can only be checked once that arm's own identities are known, so that
+    check lives in `_validate_capture_fingerprint`, called from
+    `assemble_gwf_grid_sensitivity_arm` (exit criteria 2, 5, 11, 12).
+
+    `compatibility_status` is the PRODUCER's own self-declared status (e.g.
+    what PRT believed it was compatible with) -- it is recorded but is
+    explicitly NOT authoritative: this arm always independently re-verifies
+    `mesh_id` and `flow_identity` itself rather than trusting the
+    self-declared string, exactly the same "recompute, never trust a
+    declared value verbatim" posture `t1_evidence_artifact.EvidenceRecord.
+    provenance_valid` already uses for `run_health.provenance_valid`.
+    """
+
+    value_m: float
+    platform: str
+    producing_run_id: str
+    mesh_id: str
+    flow_identity: str
+    method_id: str
+    compatibility_status: str
+
+    def __post_init__(self) -> None:
+        if (self.value_m is None or isinstance(self.value_m, bool)
+                or not isinstance(self.value_m, (int, float))
+                or not math.isfinite(float(self.value_m))):
+            raise MalformedFingerprintError(
+                "CaptureFingerprintRecord.value_m must be a finite number; got "
+                f"{self.value_m!r}")
+        if float(self.value_m) < 0.0:
+            raise MalformedFingerprintError(
+                "CaptureFingerprintRecord.value_m must be non-negative (a "
+                f"capture half-width cannot be negative); got {self.value_m!r}")
+        for name in ("platform", "producing_run_id", "mesh_id", "flow_identity",
+                     "method_id", "compatibility_status"):
+            v = getattr(self, name)
+            if not isinstance(v, str) or not v.strip():
+                raise MalformedFingerprintError(
+                    f"CaptureFingerprintRecord.{name} must be a non-empty "
+                    f"string; got {v!r}")
+        if self.platform not in SUPPORTED_PLATFORMS:
+            raise UnsupportedPlatformError(
+                f"CaptureFingerprintRecord.platform={self.platform!r} is not "
+                f"one of {SUPPORTED_PLATFORMS!r}")
+
+
+def _validate_capture_fingerprint(fp: "CaptureFingerprintRecord", *, mesh_id: str,
+                                  flow_identity: str) -> None:
+    """Re-verify an injected fingerprint against THIS arm's own identities
+    (brief Sec 2.1: "validates it against the arm's own run/mesh/flow
+    identity ... raises on mismatch") -- `CaptureFingerprintRecord.
+    __post_init__` already checked internal structural validity; this
+    checks EXTERNAL consistency with the specific mesh it is being attached
+    to."""
+    if fp.mesh_id != mesh_id:
+        raise FingerprintMeshMismatchError(
+            f"injected capture fingerprint names mesh_id={fp.mesh_id!r}, but "
+            f"this arm's own mesh is {mesh_id!r} -- fingerprints cannot be "
+            "swapped between meshes (brief exit criterion 12)")
+    if fp.flow_identity != flow_identity:
+        raise FingerprintFlowIncompatibleError(
+            f"injected capture fingerprint's flow_identity={fp.flow_identity!r} "
+            f"does not match this arm's own solved flow_identity="
+            f"{flow_identity!r} -- the fingerprint's producing run solved a "
+            "DIFFERENT flow field than this arm did (brief Sec 2.2: refuse on "
+            "flow-identity incompatibility, not on sink_support_m > 0 "
+            "directly)")
+
+
+# ---------------------------------------------------------------------------
+# the repeatability envelope + fingerprint comparison -- descriptive-only
+# until measured (brief Sec 2.3)
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class RepeatabilityEnvelope:
+    """Evidence a fingerprint comparison is meaningful (brief Sec 2.3):
+    replicated runs in FRESH EXECUTIONS, demonstrably below `TOL_WIDTH_REL`.
+    Never inferred or defaulted -- always supplied by the caller, from
+    actually-measured replicate runs."""
+
+    platform: str
+    n_replicates: int
+    spread_rel: float
+    replicate_run_ids: Tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if self.platform not in SUPPORTED_PLATFORMS:
+            raise UnsupportedPlatformError(
+                f"RepeatabilityEnvelope.platform={self.platform!r} is not "
+                f"one of {SUPPORTED_PLATFORMS!r}")
+        if self.n_replicates < 2:
+            raise ValueError(
+                "RepeatabilityEnvelope.n_replicates must be >= 2 -- a "
+                "repeatability envelope needs replicated runs, not a single "
+                f"execution; got {self.n_replicates!r}")
+        if len(self.replicate_run_ids) != self.n_replicates:
+            raise ValueError(
+                f"RepeatabilityEnvelope.replicate_run_ids has "
+                f"{len(self.replicate_run_ids)} entries but n_replicates="
+                f"{self.n_replicates}")
+        if len(set(self.replicate_run_ids)) != len(self.replicate_run_ids):
+            raise ValueError(
+                "RepeatabilityEnvelope.replicate_run_ids must be distinct -- "
+                "replicated FRESH EXECUTIONS, not the same run counted twice")
+        if not math.isfinite(self.spread_rel) or self.spread_rel < 0.0:
+            raise ValueError(
+                "RepeatabilityEnvelope.spread_rel must be finite and >= 0; "
+                f"got {self.spread_rel!r}")
+
+
+@dataclass(frozen=True)
+class FingerprintComparisonResult:
+    """The result of a PERMITTED fingerprint comparison (brief Sec 2.3) --
+    `compare_fingerprints` raises rather than returning this whenever the
+    comparison is not permitted."""
+
+    a_mesh_id: str
+    b_mesh_id: str
+    platform: str
+    delta_m: float
+    delta_rel: Optional[float]
+    envelope: "RepeatabilityEnvelope"
+
+
+def compare_fingerprints(a: "CaptureFingerprintRecord", b: "CaptureFingerprintRecord", *,
+                         envelope: Optional["RepeatabilityEnvelope"]
+                         ) -> "FingerprintComparisonResult":
+    """Compare two capture fingerprints -- DESCRIPTIVE-ONLY (brief Sec 2.3).
+
+    Raises unless ALL of: (1) both fingerprints share the same `platform`
+    (a cross-platform comparison always raises, regardless of any envelope);
+    (2) a `RepeatabilityEnvelope` is supplied at all; (3) that envelope was
+    itself measured on the SAME platform; (4) its `spread_rel` is
+    demonstrably below `TOL_WIDTH_REL`. This arm's OWN substance is the
+    deterministic flow deltas of `GwfMeshFlowDelta` -- this function exists
+    so a caller CANNOT accidentally treat the fingerprint as a discriminator
+    without the evidence Sec 2.3 requires; it does not block S10 itself.
+    """
+    if a.platform != b.platform:
+        raise CrossPlatformFingerprintComparisonError(
+            "cannot compare capture fingerprints from different platforms "
+            f"({a.platform!r} vs {b.platform!r}) -- a ~24% Mac<->Hub spread "
+            "makes a cross-platform comparison meaningless regardless of any "
+            "repeatability envelope (brief Sec 2.3)")
+    if envelope is None:
+        raise MissingRepeatabilityEnvelopeError(
+            "fingerprint comparison requires a recorded repeatability "
+            "envelope (brief Sec 2.3) -- absent one, ANY comparison, "
+            "including same-platform, is refused")
+    if envelope.platform != a.platform:
+        raise RepeatabilityEnvelopeMismatchError(
+            f"the supplied repeatability envelope was measured on "
+            f"{envelope.platform!r}, not {a.platform!r} -- it cannot support "
+            "this comparison")
+    if not (envelope.spread_rel < TOL_WIDTH_REL):
+        raise RepeatabilityEnvelopeInsufficientError(
+            f"the repeatability envelope's spread ({envelope.spread_rel:.4f}) "
+            f"is not demonstrably below TOL_WIDTH_REL ({TOL_WIDTH_REL:.4f}) -- "
+            "the fingerprint metric stays descriptive-only until a tighter "
+            "envelope is measured (brief Sec 2.3)")
+    delta_m = float(b.value_m) - float(a.value_m)
+    return FingerprintComparisonResult(
+        a_mesh_id=a.mesh_id, b_mesh_id=b.mesh_id, platform=a.platform,
+        delta_m=delta_m, delta_rel=_rel_delta(delta_m, float(a.value_m)),
+        envelope=envelope)
+
+
+# ---------------------------------------------------------------------------
+# per-mesh flow diagnostics + deltas
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class MeshFlowDiagnostics:
+    """Comparable quantitative flow diagnostics for ONE mesh's solved GWF
+    (brief Sec 1.1) -- the "at minimum" four: Darcy-flux magnitude at the
+    source and receptor, head difference across the corridor, and
+    extraction-cell throughflow. `flow_identity` is `flow_identity_string`'s
+    output for THIS mesh's actually-realized extraction support (empty only
+    when `solved` is `False`, i.e. never computed)."""
+
+    mesh_id: str
+    mesh_spec_hash: str
+    q_source_darcy_m_d: float
+    q_receptor_darcy_m_d: float
+    head_diff_corridor_m: float
+    extraction_throughflow_m3d: float
+    flow_identity: str
+    platform: str
+    solved: bool
+    solver_status: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.mesh_id, str) or not self.mesh_id.strip():
+            raise ValueError("MeshFlowDiagnostics.mesh_id must be a non-empty string")
+        if not isinstance(self.solver_status, str) or not self.solver_status.strip():
+            raise ValueError(
+                "MeshFlowDiagnostics.solver_status must be a non-empty string "
+                "(brief exit criterion 15: solver failure must be handled "
+                "explicitly, never silent)")
+        if self.solved:
+            for name in ("q_source_darcy_m_d", "q_receptor_darcy_m_d",
+                         "head_diff_corridor_m", "extraction_throughflow_m3d"):
+                v = getattr(self, name)
+                if v is None or not math.isfinite(float(v)):
+                    raise ValueError(
+                        f"MeshFlowDiagnostics.{name} must be finite for a "
+                        f"solved mesh; got {v!r}")
+            if not self.flow_identity:
+                raise ValueError(
+                    "MeshFlowDiagnostics.flow_identity must be non-empty for "
+                    "a solved mesh")
+
+
+@dataclass(frozen=True)
+class GwfMeshFlowDelta:
+    """One mesh-vs-reference-mesh flow delta (brief Sec 1.1, exit criterion
+    9) -- the quantified substance of this arm. Every delta is reported in
+    BOTH physical units and as a relative fraction of the reference value
+    (`None` only when the reference value is exactly zero; see
+    `_rel_delta`)."""
+
+    mesh_id: str
+    reference_mesh_id: str
+    d_q_source_darcy_m_d: float
+    d_q_source_darcy_rel: Optional[float]
+    d_q_receptor_darcy_m_d: float
+    d_q_receptor_darcy_rel: Optional[float]
+    d_head_diff_corridor_m: float
+    d_head_diff_corridor_rel: Optional[float]
+    d_extraction_throughflow_m3d: float
+    d_extraction_throughflow_rel: Optional[float]
+
+
+def _compute_delta(candidate: "MeshFlowDiagnostics",
+                   reference: "MeshFlowDiagnostics") -> "GwfMeshFlowDelta":
+    d_src = candidate.q_source_darcy_m_d - reference.q_source_darcy_m_d
+    d_rcpt = candidate.q_receptor_darcy_m_d - reference.q_receptor_darcy_m_d
+    d_head = candidate.head_diff_corridor_m - reference.head_diff_corridor_m
+    d_ext = candidate.extraction_throughflow_m3d - reference.extraction_throughflow_m3d
+    return GwfMeshFlowDelta(
+        mesh_id=candidate.mesh_id, reference_mesh_id=reference.mesh_id,
+        d_q_source_darcy_m_d=d_src,
+        d_q_source_darcy_rel=_rel_delta(d_src, reference.q_source_darcy_m_d),
+        d_q_receptor_darcy_m_d=d_rcpt,
+        d_q_receptor_darcy_rel=_rel_delta(d_rcpt, reference.q_receptor_darcy_m_d),
+        d_head_diff_corridor_m=d_head,
+        d_head_diff_corridor_rel=_rel_delta(d_head, reference.head_diff_corridor_m),
+        d_extraction_throughflow_m3d=d_ext,
+        d_extraction_throughflow_rel=_rel_delta(
+            d_ext, reference.extraction_throughflow_m3d),
+    )
+
+
+# ---------------------------------------------------------------------------
+# the arm result -- role group reused, ceiling enforced structurally
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class GwfGridSensitivityArmResult:
+    """The T1 S10 arm's result: one reference mesh, one or more compared
+    meshes, their flow deltas, any validated injected fingerprints, and the
+    non-isolation statement + ceiling every reporting path below carries
+    (exit criteria 1, 17).
+
+    `run_role` / `grid_role` / `counterpart_run_id` reuse T0_2b Sec 5.1's
+    frozen Role group (transcribed, not imported -- see the section-level
+    comment above); `is_control` is always `False` and `analysis_kind` is a
+    plain, non-control discoverability label (brief Sec 3: "No CONTROL
+    label").
+    """
+
+    reference_mesh_id: str
+    mesh_results: Tuple["MeshFlowDiagnostics", ...]
+    deltas: Tuple["GwfMeshFlowDelta", ...]
+    fingerprints: Mapping[str, "CaptureFingerprintRecord"]
+    non_isolation_statement: str = NON_ISOLATION_STATEMENT
+    claim_ceiling: str = CLAIM_CEILING
+    run_role: str = _ARM_RUN_ROLE
+    grid_role: Optional[str] = None
+    counterpart_run_id: Optional[str] = None
+    analysis_kind: str = _ANALYSIS_KIND
+    is_control: bool = False
+
+    def __post_init__(self) -> None:
+        if self.non_isolation_statement != NON_ISOLATION_STATEMENT:
+            raise ValueError(
+                "GwfGridSensitivityArmResult.non_isolation_statement must be "
+                "exactly the frozen NON_ISOLATION_STATEMENT -- this arm can "
+                "never quietly read as isolating the flow field (brief "
+                "exit criterion 1)")
+        if self.claim_ceiling != CLAIM_CEILING:
+            raise ValueError(
+                f"GwfGridSensitivityArmResult.claim_ceiling must be "
+                f"{CLAIM_CEILING!r} -- a grid comparison carrying this arm "
+                "can never license 'cause' (brief Sec 1, T0_2b Sec 4.2)")
+        if self.is_control is not False:
+            raise ValueError(
+                "GwfGridSensitivityArmResult.is_control must be False -- "
+                "this arm is explicitly NOT a control (brief Sec 3)")
+        if self.run_role not in _RUN_ROLES:
+            raise ValueError(
+                f"GwfGridSensitivityArmResult.run_role={self.run_role!r} is "
+                f"not one of {_RUN_ROLES!r}")
+
+    # -- reporting / export paths -- EVERY one carries the non-isolation
+    # statement and the ceiling verbatim (exit criterion 17) --------------
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "reference_mesh_id": self.reference_mesh_id,
+            "non_isolation_statement": self.non_isolation_statement,
+            "claim_ceiling": self.claim_ceiling,
+            "role": {
+                "run_role": self.run_role,
+                "grid_role": self.grid_role,
+                "counterpart_run_id": self.counterpart_run_id,
+            },
+            "analysis_kind": self.analysis_kind,
+            "is_control": self.is_control,
+            "meshes": [dataclasses.asdict(d) for d in self.mesh_results],
+            "deltas": [dataclasses.asdict(d) for d in self.deltas],
+            "fingerprints": {mid: dataclasses.asdict(fp)
+                             for mid, fp in sorted(self.fingerprints.items())},
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), sort_keys=True, ensure_ascii=True)
+
+    def summary_text(self) -> str:
+        lines = [
+            "GWF-grid sensitivity arm (T1 S10) -- flow solved and reported "
+            "per mesh.",
+            f"  claim ceiling: {self.claim_ceiling!r}",
+            f"  reference mesh: {self.reference_mesh_id}",
+            "",
+            self.non_isolation_statement,
+            "",
+        ]
+        for d in self.deltas:
+            lines.append(
+                f"  mesh {d.mesh_id} vs reference {d.reference_mesh_id}:")
+            lines.append(
+                f"    d(q_source)  = {d.d_q_source_darcy_m_d:+.4g} m/d "
+                f"({_fmt_rel(d.d_q_source_darcy_rel)})")
+            lines.append(
+                f"    d(q_receptor)= {d.d_q_receptor_darcy_m_d:+.4g} m/d "
+                f"({_fmt_rel(d.d_q_receptor_darcy_rel)})")
+            lines.append(
+                f"    d(head diff) = {d.d_head_diff_corridor_m:+.4g} m "
+                f"({_fmt_rel(d.d_head_diff_corridor_rel)})")
+            lines.append(
+                f"    d(Q_ext)     = {d.d_extraction_throughflow_m3d:+.4g} "
+                f"m3/d ({_fmt_rel(d.d_extraction_throughflow_rel)})")
+        return "\n".join(lines)
+
+    def deltas_table(self) -> Dict[str, Any]:
+        rows: List[Dict[str, Any]] = []
+        for d in self.deltas:
+            for metric, abs_val, rel_val, units in (
+                ("q_source_darcy", d.d_q_source_darcy_m_d,
+                 d.d_q_source_darcy_rel, "m/d"),
+                ("q_receptor_darcy", d.d_q_receptor_darcy_m_d,
+                 d.d_q_receptor_darcy_rel, "m/d"),
+                ("head_diff_corridor", d.d_head_diff_corridor_m,
+                 d.d_head_diff_corridor_rel, "m"),
+                ("extraction_throughflow", d.d_extraction_throughflow_m3d,
+                 d.d_extraction_throughflow_rel, "m3/d"),
+            ):
+                rows.append({
+                    "mesh_id": d.mesh_id,
+                    "reference_mesh_id": d.reference_mesh_id,
+                    "metric": metric,
+                    "absolute_delta": abs_val,
+                    "relative_delta": rel_val,
+                    "units": units,
+                })
+        return {
+            "non_isolation_statement": self.non_isolation_statement,
+            "claim_ceiling": self.claim_ceiling,
+            "rows": rows,
+        }
+
+
+def assemble_gwf_grid_sensitivity_arm(
+        mesh_diagnostics: Sequence["MeshFlowDiagnostics"], *,
+        reference_mesh_id: str,
+        fingerprints: Optional[Mapping[str, "CaptureFingerprintRecord"]] = None,
+) -> "GwfGridSensitivityArmResult":
+    """Validate + assemble one `GwfGridSensitivityArmResult` from already
+    -solved per-mesh diagnostics (brief Sec 5, the exit-criteria table):
+
+      * duplicate mesh ids raise (`DuplicateMeshIdError`, exit criterion 13);
+      * `mesh_diagnostics` order IS the result's order -- deterministic by
+        construction (a Python sequence's order is never silently reshuffled
+        here), and any fingerprint naming a `mesh_id` outside this set, or
+        `reference_mesh_id` itself not among the supplied meshes, raises
+        (misalignment, exit criterion 13);
+      * ANY unsolved mesh refuses the WHOLE arm (`MeshSolveFailedError`,
+        never a partially-successful result -- exit criterion 15);
+      * every supplied fingerprint is validated against ITS OWN mesh's
+        identity (`_validate_capture_fingerprint`) before being attached.
+    """
+    mesh_list = list(mesh_diagnostics)
+    if not mesh_list:
+        raise ValueError("assemble_gwf_grid_sensitivity_arm: mesh_diagnostics is empty")
+
+    ids = [d.mesh_id for d in mesh_list]
+    dupes = sorted({m for m in ids if ids.count(m) > 1})
+    if dupes:
+        raise DuplicateMeshIdError(f"duplicate mesh id(s) in this arm: {dupes!r}")
+
+    if reference_mesh_id not in ids:
+        raise ValueError(
+            f"reference_mesh_id={reference_mesh_id!r} is not among the "
+            f"supplied mesh ids {ids!r}")
+
+    failed = [d for d in mesh_list if not d.solved]
+    if failed:
+        raise MeshSolveFailedError(
+            "refusing to record a GWF-grid-sensitivity arm: mesh(es) "
+            f"{[d.mesh_id for d in failed]!r} did not solve successfully "
+            f"(solver_status={[d.solver_status for d in failed]!r}) -- a "
+            "failed or partial solve is never recorded as a successful arm "
+            "(brief exit criterion 15)")
+
+    fingerprints = dict(fingerprints or {})
+    unknown = sorted(set(fingerprints) - set(ids))
+    if unknown:
+        raise ValueError(
+            f"fingerprint(s) supplied for mesh id(s) {unknown!r}, which are "
+            "not among this arm's meshes -- misalignment")
+
+    by_id = {d.mesh_id: d for d in mesh_list}
+    validated: Dict[str, CaptureFingerprintRecord] = {}
+    for mesh_id, fp in fingerprints.items():
+        diag = by_id[mesh_id]
+        _validate_capture_fingerprint(fp, mesh_id=mesh_id, flow_identity=diag.flow_identity)
+        validated[mesh_id] = fp
+
+    reference = by_id[reference_mesh_id]
+    deltas = tuple(_compute_delta(d, reference) for d in mesh_list
+                   if d.mesh_id != reference_mesh_id)
+
+    return GwfGridSensitivityArmResult(
+        reference_mesh_id=reference_mesh_id,
+        mesh_results=tuple(mesh_list),
+        deltas=deltas,
+        fingerprints=validated,
+        counterpart_run_id=reference.mesh_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# the REAL per-mesh GWF solve (brief Sec 1: "flow solved and reported per
+# mesh"). Expensive -- a full corridor refinement + MF6 GWF solve (T2's own
+# timing note: ~316 s for a fine mesh on a fast Mac; Hub speed unmeasured) --
+# so this is NOT exercised by the fast unit tests in
+# test_t1_gwf_grid_sensitivity.py, which test the composition/validation
+# logic above against synthetic `MeshFlowDiagnostics` built from the exact
+# same fields this function returns. Never wired into any default call path.
+# ---------------------------------------------------------------------------
+def _mesh_flow_diagnostics_from_solved_gwf(gwf, grid: Dict[str, Any],
+                                           platform_tag: str) -> "MeshFlowDiagnostics":
+    spd = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
+    heads = gwf.output.head().get_data().flatten()
+    src_cell = int(grid["src_cells"][0])
+    ext_cell = int(grid["ext_cell"])
+    q_src = float(np.hypot(spd["qx"][src_cell], spd["qy"][src_cell]))
+    q_ext = float(np.hypot(spd["qx"][ext_cell], spd["qy"][ext_cell]))
+    head_diff = float(heads[src_cell] - heads[ext_cell])
+    realized = _realized_extraction_flows(gwf, "absw")
+    extraction_throughflow = float(sum(abs(v) for v in realized.values()))
+    flow_id = flow_identity_string(grid["mesh_hash"], tuple(realized.keys()))
+    return MeshFlowDiagnostics(
+        mesh_id=grid["mesh_hash"], mesh_spec_hash=grid["mesh_spec_hash"],
+        q_source_darcy_m_d=q_src, q_receptor_darcy_m_d=q_ext,
+        head_diff_corridor_m=head_diff,
+        extraction_throughflow_m3d=extraction_throughflow,
+        flow_identity=flow_id, platform=platform_tag, solved=True,
+        solver_status="converged")
+
+
+def solve_mesh_flow(mesh_spec: "MeshSpec", *, sink_support_m: float = 0.0,
+                    case_ws: Optional[Union[str, Path]] = None) -> "MeshFlowDiagnostics":
+    """Build + solve MODFLOW 6 GWF for ONE mesh and return its flow
+    diagnostics. A mesh-BUILD failure (corridor refinement exhausting its
+    retry ladder) raises `MeshSolveFailedError`; a mesh that BUILDS but
+    whose MF6 solve does not converge returns `solved=False` with
+    `solver_status` naming the failure (brief exit criterion 15: handled
+    explicitly, never silently recorded as success) -- callers pass such a
+    record straight to `assemble_gwf_grid_sensitivity_arm`, which refuses to
+    build a result from it.
+    """
+    cgwf, boundary, rivers, exe = _load_calibrated_flow()
+    root = Path(case_ws) if case_ws is not None else _default_case_ws() / "gwf_grid_sensitivity"
+    try:
+        grid = refine_corridor(cgwf, boundary, rivers, mesh_spec=mesh_spec, case_ws=root)
+    except Exception as exc:
+        raise MeshSolveFailedError(
+            f"mesh build (corridor refinement) failed for mesh_spec="
+            f"{mesh_spec!r}: {exc!r}") from exc
+
+    platform_tag = current_platform_tag()
+    mesh_ws = root / f"mesh_{grid['mesh_hash']}"
+    sim = new_sim(mesh_ws, pulse_days=1.0, total_days=1.0, nstp_per_period=1, exe=exe)
+    gwf = add_flow_model(sim, grid, sink_support_m=sink_support_m)
+    sim.write_simulation(silent=True)
+    ok, buf = sim.run_simulation(silent=True)
+    if not ok:
+        return MeshFlowDiagnostics(
+            mesh_id=grid["mesh_hash"], mesh_spec_hash=grid["mesh_spec_hash"],
+            q_source_darcy_m_d=float("nan"), q_receptor_darcy_m_d=float("nan"),
+            head_diff_corridor_m=float("nan"),
+            extraction_throughflow_m3d=float("nan"), flow_identity="",
+            platform=platform_tag, solved=False,
+            solver_status=_run_failure_tail(mesh_ws / "sim", buf))
+    return _mesh_flow_diagnostics_from_solved_gwf(gwf, grid, platform_tag)
+
+
+def run_gwf_grid_sensitivity_arm(
+        mesh_specs: Sequence["MeshSpec"], *, reference_index: int = 0,
+        sink_support_m: float = 0.0,
+        fingerprints: Optional[Mapping[str, "CaptureFingerprintRecord"]] = None,
+        case_ws: Optional[Union[str, Path]] = None) -> "GwfGridSensitivityArmResult":
+    """Convenience wrapper: `solve_mesh_flow` for every mesh in
+    `mesh_specs` (⚠️ each mesh carrying its OWN GWF solve is inherent to the
+    design, brief Sec 1 -- not a defect to "optimise" away by sharing one
+    flow field), then `assemble_gwf_grid_sensitivity_arm`. Never wired into
+    any default call path.
+    """
+    diagnostics = [solve_mesh_flow(spec, sink_support_m=sink_support_m, case_ws=case_ws)
+                  for spec in mesh_specs]
+    reference_mesh_id = diagnostics[reference_index].mesh_id
+    return assemble_gwf_grid_sensitivity_arm(
+        diagnostics, reference_mesh_id=reference_mesh_id, fingerprints=fingerprints)
 
 
 # ---------------------------------------------------------------------------
