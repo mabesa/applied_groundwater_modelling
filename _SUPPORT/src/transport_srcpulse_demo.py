@@ -1038,7 +1038,8 @@ def _footprint_cell_polygons(mg, ncpl: int,
 
 
 def _disc_footprint_areas(mg, ncpl: int, idomain: Optional[np.ndarray],
-                          centre_xy: Tuple[float, float], radius_m: float,
+                          centre_xy: Tuple[float, float], radius_m: float, *,
+                          disc_label: str = "source footprint disc",
                           ) -> Tuple[List[int], List[float], float, float]:
     """T1 S5's frozen area-weighted footprint geometry (brief Sec 3.3):
     intersect a disc of `radius_m` centred on `centre_xy` -- Shapely
@@ -1057,6 +1058,13 @@ def _disc_footprint_areas(mg, ncpl: int, idomain: Optional[np.ndarray],
     Callers must validate `radius_m` (`_validate_footprint_radius`) and
     must not call this at the `radius_m == 0.0` sentinel -- see the module
     section banner above.
+
+    `disc_label` (T1 S9a, `DESIGN_DOCS/T1_S9a_brief.md` v2 exit criterion
+    14) is the noun phrase the coverage-failure message opens with --
+    keyword-only, message-only, defaulting to this function's original S5
+    wording so every existing (positional) call site is byte-for-byte
+    unchanged. S9a's sink wrapper passes `disc_label="sink footprint disc"`
+    so the raised text names a sink, not a source.
     """
     disc = Point(float(centre_xy[0]), float(centre_xy[1])).buffer(
         float(radius_m), quad_segs=_FOOTPRINT_QUAD_SEGS)
@@ -1084,7 +1092,7 @@ def _disc_footprint_areas(mg, ncpl: int, idomain: Optional[np.ndarray],
     if disc_area - covered_area > _FOOTPRINT_COVERAGE_TOL_REL * disc_area:
         missing = disc_area - covered_area
         raise ValueError(
-            f"source footprint disc (radius_m={radius_m!r}, centre_xy={centre_xy!r}) "
+            f"{disc_label} (radius_m={radius_m!r}, centre_xy={centre_xy!r}) "
             f"is not fully covered by the mesh's active layer-0 cells: "
             f"{missing:.6g} m^2 of {disc_area:.6g} m^2 uncovered "
             f"({(missing / disc_area if disc_area else float('nan')):.3%}) -- a disc "
@@ -1144,6 +1152,169 @@ def _footprint_rates(grid: Dict[str, Any], mass_g: float, pulse_days: float,
         total_rate = float(mass_g) / float(pulse_days)
         per_cell_rates = _apportion_rates(grid["footprint_areas_m2"], total_rate)
     return src_cells, per_cell_rates, smassrate
+
+
+# ---------------------------------------------------------------------------
+# T1 S9a (DESIGN_DOCS/T1_S9a_brief.md v2): B-control intersection geometry.
+#
+# What this IS: an apportionment of the doublet's extraction rate across the
+# cells intersecting a FIXED PHYSICAL DISC centred on the extraction well --
+# `a_i = area(cell_i INTERSECT disc)`, `q_i = Q * a_i / sum(a)`, cells sorted
+# ascending, `sum(q_i) == Q` asserted on SIGNED values. Identical in FORM to
+# S5's source rule (the same areal regularisation), reusing S5's
+# `_disc_footprint_areas` / `_apportion_rates` VERBATIM -- brief Sec 1 makes
+# writing a second intersection routine a known defect, not a design choice
+# ("courant_nstp", "_src_sha" and the doublet WEL have each already paid for
+# that duplication once).
+#
+# What this is NOT: a physical model of well inflow. Real screen inflow
+# depends on hydraulic conductance, transmissivity / saturated thickness and
+# the evolving well-to-cell head difference -- a MAW-style formulation, which
+# this is not. Area-weighting only holds the receptor's SUPPORT fixed across
+# meshes; it does not reproduce how a well actually draws water. B-control
+# licenses "sink support was controlled", never "the well is physically
+# modelled" and never causal isolation (brief Sec 2.0).
+#
+# Single layer only (brief Sec 2.0.1): `_disc_footprint_areas` intersects
+# LAYER-0 cell polygons, correct here only because this model is nlay=1
+# (`add_flow_model`/`add_transport_model`, both `nlay=1`). A screened
+# multilayer well would need layer-specific geometry and vertical
+# allocation this geometry cannot express -- it will not fail loudly if the
+# model ever gains layers.
+#
+# Sign convention (the one place the sink differs from the source): callers
+# pass `total_rate <= 0` (extraction) -- `Q = -abs(DOUBLET_Q)` at the one
+# call site the brief anticipates (S9b). `_apportion_rates` (reused
+# unmodified) makes every `q_i` share `total_rate`'s sign by construction:
+# `q_i = total_rate * a_i / sum(a)` with `a_i, sum(a) > 0`.
+#
+# S9a builds NO MODEL and is wired into NO CALL PATH -- it adds no
+# `SrcPulseDemo` field and no `meta` key (both already exist at their S2
+# identity default; T0_0 Sec 3). S9b does the WEL integration; S9c the
+# matched arm. The tests in `test_t1_sink_support_geometry.py` are the whole
+# safety argument for this step (gate coverage: BLIND).
+# ---------------------------------------------------------------------------
+def _validate_sink_centre(centre_xy: Tuple[float, float]) -> Tuple[float, float]:
+    """T1 S9a: a finite `(x, y)` pair, or raise `ValueError` -- the disc
+    centre is not validated by `_disc_footprint_areas` itself (brief Sec 4
+    exit criterion 10, 'non-finite ... centre')."""
+    try:
+        cx, cy = float(centre_xy[0]), float(centre_xy[1])
+    except (TypeError, ValueError, IndexError) as exc:
+        raise ValueError(
+            f"sink_centre_xy must be an (x, y) pair of finite floats "
+            f"(got {centre_xy!r})") from exc
+    if not (math.isfinite(cx) and math.isfinite(cy)):
+        raise ValueError(f"sink_centre_xy must be finite (got {centre_xy!r})")
+    return cx, cy
+
+
+def _validate_finite_footprint_geometry(areas: Sequence[float], disc_area: float,
+                                        covered_area: float) -> None:
+    """T1 S9a (brief Sec 4 exit criterion 10): NaN/inf anywhere in the
+    geometry -- `disc_area`, `covered_area`, or any per-cell area -- raises
+    here, before `_apportion_rates` would otherwise propagate a NaN/inf rate
+    silently."""
+    if not (math.isfinite(disc_area) and math.isfinite(covered_area)):
+        raise ValueError(
+            f"sink footprint disc geometry produced a non-finite area "
+            f"(disc_area_m2={disc_area!r}, covered_area_m2={covered_area!r})")
+    if any(not math.isfinite(a) for a in areas):
+        raise ValueError(
+            f"sink footprint disc geometry produced a non-finite per-cell "
+            f"intersection area: {list(areas)!r}")
+
+
+def _sink_footprint_areas(mg, ncpl: int, idomain: Optional[np.ndarray],
+                          centre_xy: Tuple[float, float], radius_m: float,
+                          ) -> Tuple[List[int], List[float], float, float]:
+    """T1 S9a geometry: REUSES `_disc_footprint_areas` verbatim for the
+    disc/cell intersection (brief Sec 1 -- a second intersection routine is
+    forbidden) and adds two guards that helper does not provide on its own:
+
+    * over-coverage (brief Sec 4 exit criterion 9): `_disc_footprint_areas`'s
+      own coverage check (`disc_area - covered_area > tol * disc_area`) is
+      ONE-SIDED -- it catches only UNDER-coverage. Overlapping or invalid
+      cell polygons that double-count area would pass it silently, so this
+      wrapper additionally asserts `covered_area <= disc_area * (1 + tol)`,
+      using the SAME `_FOOTPRINT_COVERAGE_TOL_REL` tolerance, in its own
+      check -- `_disc_footprint_areas` itself is not edited beyond its
+      exception noun (S5's shipped source path depends on it unchanged).
+    * non-finite geometry (exit criterion 10): see
+      `_validate_finite_footprint_geometry`.
+
+    Mirrors `_disc_footprint_areas`'s own contract: callers must not call
+    this at the `radius_m == 0.0` sentinel (see `_sink_footprint_rates`,
+    which owns that branch -- the generic helper does not supply it).
+    """
+    cx, cy = _validate_sink_centre(centre_xy)
+    _validate_footprint_radius(radius_m)
+    cells, areas, disc_area, covered_area = _disc_footprint_areas(
+        mg, ncpl, idomain, (cx, cy), radius_m, disc_label="sink footprint disc")
+    _validate_finite_footprint_geometry(areas, disc_area, covered_area)
+    if covered_area - disc_area > _FOOTPRINT_COVERAGE_TOL_REL * disc_area:
+        excess = covered_area - disc_area
+        raise ValueError(
+            f"sink footprint disc (radius_m={radius_m!r}, centre_xy=({cx!r}, {cy!r})) "
+            f"is OVER-covered by the mesh's active layer-0 cells: "
+            f"{excess:.6g} m^2 of {disc_area:.6g} m^2 double-counted "
+            f"({(excess / disc_area if disc_area else float('nan')):.3%}) -- overlapping "
+            "or invalid cell polygons must not silently double-count area "
+            "(DESIGN_DOCS/T1_S9a_brief.md Sec 4 exit criterion 9)")
+    return cells, areas, disc_area, covered_area
+
+
+def _sink_footprint_rates(mg, ncpl: int, idomain: Optional[np.ndarray],
+                          centre_xy: Tuple[float, float], radius_m: float,
+                          ext_cell: int, total_rate: float,
+                          ) -> Tuple[List[int], List[float]]:
+    """T1 S9a (`DESIGN_DOCS/T1_S9a_brief.md` v2): apportion `total_rate`
+    (the doublet's extraction rate -- callers pass `Q = -abs(DOUBLET_Q)`,
+    negative) across the cells intersecting a disc of `radius_m` centred on
+    `centre_xy`, reusing `_sink_footprint_areas` (geometry) and S5's
+    `_apportion_rates` (`q_i = total_rate * a_i / sum(a)`, unmodified) for
+    the arithmetic.
+
+    This is an **imposed distributed extraction control** -- a
+    mesh-independent regularisation of a prescribed areal sink. It is **NOT
+    a physical model of well inflow**: real screen inflow depends on
+    hydraulic conductance, transmissivity / saturated thickness, and the
+    evolving well-to-cell head difference (a MAW-style formulation, which
+    this is not). Area-weighting holds the receptor's support fixed across
+    meshes; it establishes only that "sink support was controlled", never
+    that the well is physically modelled and never causal isolation (brief
+    Sec 2.0).
+
+    Assumes a SINGLE-LAYER, horizontally distributed sink (brief Sec 2.0.1)
+    -- correct only because this model is `nlay=1`. A screened multilayer
+    well needs layer-specific geometry and vertical allocation this cannot
+    express; it will not fail loudly if the model ever gains layers.
+
+    `radius_m == 0.0` is the frozen SENTINEL -- returns `([ext_cell],
+    [total_rate])`, exactly today's single nearest-centroid extraction cell
+    and its whole rate (`T0_0...` Sec 3's identity default,
+    `[(ext_cell, -abs(DOUBLET_Q))]`), with NO disc geometry built at all.
+    This sentinel is NOT supplied by `_disc_footprint_areas` / the generic
+    helper -- it is this function's own contract.
+
+    At a positive radius, `cells` is sorted ascending by cell index
+    (inherited from `_disc_footprint_areas`) with `sum(rates) == total_rate`
+    to `_FOOTPRINT_RATE_SUM_TOL_REL` relative tolerance on SIGNED values
+    (asserted inside `_apportion_rates`), and every rate carries
+    `total_rate`'s sign (negative, for extraction) by construction.
+
+    Raises `ValueError` for a non-finite `radius_m`/`centre_xy`/`total_rate`,
+    for an incompletely- or over-covered disc, or for non-finite geometry.
+    """
+    _validate_footprint_radius(radius_m)
+    if not math.isfinite(total_rate):
+        raise ValueError(f"total_rate must be finite (got {total_rate!r})")
+    if radius_m == 0.0:
+        return [int(ext_cell)], [float(total_rate)]
+    cells, areas, _disc_area, _covered_area = _sink_footprint_areas(
+        mg, ncpl, idomain, centre_xy, radius_m)
+    rates = _apportion_rates(areas, total_rate)
+    return cells, rates
 
 
 def _binding_cell(cells: Sequence[int], rates: Sequence[float],
