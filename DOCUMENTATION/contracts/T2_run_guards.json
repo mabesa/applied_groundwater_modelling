@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0.0",
+  "decided": "2026-08-26",
+  "step": "T2 S2 -- the nstp_cap guard decision",
+  "why_this_exists": [
+    "T0_2b Sec 3 rule 3: hitting nstp_cap FAILS LOUDLY and takes a failure edge; it may never pass as",
+    "'honest time-stepping'. T0_5 Sec 2.1: nstp_cap is a RESOURCE GUARD, and raising it to MEASURE",
+    "uncapped demand is engineering, not a T0 decision -- but 'a capped run is not a feasible run,",
+    "whatever the cap is set to'.",
+    "So the guard is raised to OBSERVE demand, never to FIT it, and it is fixed and recorded BEFORE",
+    "execution. Raising it reactively after a run hits it is fitting the guard to the result."
+  ],
+
+  "current_caps": {
+    "transport_srcpulse_demo.py": 2000,
+    "transport_base_model.py": 1000
+  },
+
+  "the_problem": [
+    "The 2 m identity at cr_target = 0.9 already needed nstp = 2000 -- EXACTLY the cap -- so cr 0.9 may",
+    "never have been reached, and its 316 s runtime is a FLOOR. Tightening cr halves dt and doubles nstp,",
+    "so the frozen temporal arm at 2 m predicts ~4000 (cr 0.45) and ~8000 (cr 0.225).",
+    "Those predictions are built on a base that is itself capped, so TRUE demand may be higher than 8000."
+  ],
+
+  "guards": {
+    "discovery_guard": {
+      "value": 40000,
+      "applies_to": "the first uncapped run of any identity whose demand is unknown",
+      "rationale": [
+        "A RUNAWAY guard, not a budget. It is set far above any predicted demand (~5x the ~8000",
+        "prediction) precisely so that a legitimate run cannot reach it, while a genuine runaway --",
+        "a degenerate velocity field, a mis-specified mesh -- still stops.",
+        "Deliberately NOT derived from the capped 316 s run: that base is unreliable, and deriving a",
+        "guard from an unreliable base is how the guard ends up fitting the result."
+      ]
+    },
+    "derived_guards": {
+      "rule": "2x the MEASURED uncapped demand of the same identity at cr_target = 0.9",
+      "applies_to": "every identity whose cr 0.9 demand has been measured uncapped",
+      "rationale": [
+        "Once true demand is measured the guard can be tight again, because it is anchored on a",
+        "measurement rather than a prediction. 2x covers the cr 0.45 -> 0.225 doubling with margin."
+      ]
+    }
+  },
+
+  "rules": {
+    "uncapped_means": "COMPLETED BELOW a predeclared guard -- never 'the guard was removed', and never 'the guard was raised again after it was hit'",
+    "on_reaching_a_guard": "STOP and escalate. A run that reaches even a raised guard is a FAILURE, not a result -- T0_2b Sec 3 rule 3.",
+    "recorded_per_run": "the guard the run executed under, and whether it was reached (the artifact's nstp_cap field is already required)",
+    "no_reactive_raising": "A guard may be raised only BEFORE a run, with the new value and its reason recorded here first."
+  },
+
+  "first_action": [
+    "Re-run the 2 m identity at cr_target = 0.9 under the discovery guard, to replace the capped 316 s",
+    "figure with a real one. That single number decides whether 2 m is affordable at all, which is the",
+    "question the lecturer's stated preference for a grid finer than 5 m turns on."
+  ]
+}
