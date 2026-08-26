@@ -283,19 +283,21 @@ def _mesh_spec_to_json(mesh_spec: "tsd.MeshSpec") -> Dict[str, Any]:
     return dataclasses.asdict(mesh_spec)
 
 
-def grid_spec_payload(
-    *,
-    resolved_mesh_spec: "tsd.MeshSpec",
-    courant_profile: str,
-    marker: Mapping[str, Any],
-) -> Dict[str, Any]:
-    """Assemble `run_identity.grid_spec`'s opaque payload -- see module
-    docstring, "PLACEMENT DECISION"."""
-    return {
-        "mesh_spec": _mesh_spec_to_json(resolved_mesh_spec),
-        "courant_profile": courant_profile,
-        "experimental": dict(marker),
-    }
+def grid_spec_payload(*, resolved_mesh_spec: "tsd.MeshSpec") -> Dict[str, Any]:
+    """Assemble `run_identity.grid_spec` -- the GRID, and only the grid.
+
+    🔴 PLACEMENT, revised by the lecturer 2026-08-26. An earlier version also
+    nested `courant_profile` and the experimental marker in here, because the
+    schema declares `grid_spec` an opaque mapping and `T0_2b...` Sec 5.1 calls
+    it "the full parameterisation". That was structurally legal but
+    semantically wrong: `courant_profile` is a TIME-STEPPING policy and the
+    marker is a CLASSIFICATION OF THE RUN, so `grid_spec` became a grab-bag
+    that a T2 consumer would reasonably read expecting mesh geometry. Both are
+    now first-class siblings -- `run_identity.courant_profile` and
+    `run_identity.experimental` -- which Sec 5.1's "at minimum" wording permits
+    without any contract amendment.
+    """
+    return {"mesh_spec": _mesh_spec_to_json(resolved_mesh_spec)}
 
 
 # ---------------------------------------------------------------------------
@@ -770,9 +772,7 @@ def run_and_build_record(
         resolved_mesh_spec=resolved_mesh_spec,
     )
     is_experimental = marker["is_experimental"]
-    grid_spec = grid_spec_payload(
-        resolved_mesh_spec=resolved_mesh_spec, courant_profile=courant_profile, marker=marker
-    )
+    grid_spec = grid_spec_payload(resolved_mesh_spec=resolved_mesh_spec)
 
     env = capture_environment()
     src_sha = tsd._src_sha()
@@ -873,6 +873,8 @@ def run_and_build_record(
         producer_version=PRODUCER_VERSION,
         run_id=run_id,
         grid_spec=grid_spec,
+        courant_profile=courant_profile,
+        experimental=dict(marker),
         cr_target=cr_target,
         case_id=case_id,
         nstp_cap=nstp_cap,

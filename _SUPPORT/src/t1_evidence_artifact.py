@@ -50,7 +50,7 @@ algorithm. Those choices are frozen HERE, as follows.
    attribute <-> JSON-path mapping is `_FIELD_MAP` below, plus the two
    nested collections (`metrics`, `support.envelope`) handled explicitly.
 
-2. SCHEMA VERSION: `SCHEMA_VERSION = "3.1.0"`, a plain string, stored at
+2. SCHEMA VERSION: `SCHEMA_VERSION = "3.2.0"`, a plain string, stored at
    `schema.schema_version`. The loader's schema-version check is an EXACT
    string match against the currently-imported module's `SCHEMA_VERSION`
    (no semver range matching) -- any drift, including a patch bump, must be
@@ -483,7 +483,7 @@ from typing import Any, Mapping, MutableMapping, Optional, Sequence, Tuple, Unio
 # Frozen constants
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION = "3.1.0"
+SCHEMA_VERSION = "3.2.0"
 
 #: T0_2b_metrics_and_causal_rule.md Sec 5.1 "Role" row -- closed, exhaustive.
 RUN_ROLES: Tuple[str, ...] = (
@@ -867,6 +867,15 @@ class EvidenceRecord:
     cr_target: Optional[float]
     case_id: Optional[str]
     nstp_cap: Optional[int]
+    # T1 post-S14: PROMOTED out of `grid_spec`'s opaque mapping (lecturer,
+    # 2026-08-26). `grid_spec` means the GRID; `courant_profile` is a
+    # TIME-STEPPING policy and `experimental` is a CLASSIFICATION OF THE RUN,
+    # so nesting them there made `grid_spec` a grab-bag that a T2 consumer
+    # would reasonably read expecting mesh geometry. `T0_2b...` Sec 5.1 lists
+    # its fields "at minimum", so the schema is a FLOOR and promoting them
+    # needs no contract amendment -- only this version bump.
+    courant_profile: Optional[str]
+    experimental: Optional[Mapping[str, Any]]
     source_footprint: Optional[SourceFootprintRecord]
     controls: Optional[Mapping[str, ControlRecord]]
 
@@ -932,6 +941,8 @@ _FIELD_MAP: Tuple[Tuple[Tuple[str, ...], str], ...] = (
     (("run_identity", "cr_target"), "cr_target"),
     (("run_identity", "case_id"), "case_id"),
     (("run_identity", "nstp_cap"), "nstp_cap"),
+    (("run_identity", "courant_profile"), "courant_profile"),
+    (("run_identity", "experimental"), "experimental"),
     (("fingerprints", "src_sha"), "src_sha"),
     (("fingerprints", "flow_fingerprint"), "flow_fingerprint"),
     (("fingerprints", "gis_hashes"), "gis_hashes"),
@@ -1904,6 +1915,10 @@ def build_fixture_record(
         producer_version="0.1.0",
         run_id=run_id,
         grid_spec={"corridor_cell_size_m": 10.0, "levels": [{"cell_size": 10.0}]},
+        # T1 post-S14: promoted out of `grid_spec` -- see the dataclass.
+        courant_profile="legacy_srcpulse",
+        experimental={"is_experimental": False, "derivation_version": "1",
+                      "knobs": {}},
         cr_target=0.9,
         case_id=case_id,
         nstp_cap=5000,

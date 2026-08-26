@@ -336,12 +336,12 @@ def test_correctly_paired_environment_passes(real_record_raw):
 class TestExperimentalMarker:
     def test_sentinel_run_is_recorded_as_not_experimental(self, real_record):
         record, _omitted = real_record
-        assert record.grid_spec["experimental"]["is_experimental"] is False
+        assert record.experimental["is_experimental"] is False
 
     def test_experimental_derivation_version_is_recorded(self, real_record):
         record, _omitted = real_record
         assert (
-            record.grid_spec["experimental"]["derivation_version"]
+            record.experimental["derivation_version"]
             == prod.EXPERIMENTAL_DERIVATION_VERSION
         )
 
@@ -753,3 +753,36 @@ def test_provenance_valid_is_derived_from_required_field_paths_not_a_rule():
         assert missing == [victim], (
             f"dropping {victim} must register as exactly one missing required path"
         )
+
+
+def test_grid_spec_holds_only_the_grid():
+    """The promotion, pinned (lecturer, 2026-08-26).
+
+    `courant_profile` and `experimental` used to live inside `grid_spec`'s
+    opaque mapping. That was structurally legal -- the schema declares
+    `grid_spec` opaque and `T0_2b` Sec 5.1 calls it "the full
+    parameterisation" -- but semantically wrong: `courant_profile` is a
+    TIME-STEPPING policy and `experimental` classifies the RUN, so `grid_spec`
+    became a grab-bag a T2 consumer would read expecting mesh geometry.
+
+    This asserts the shape T2 will depend on, since changing it after T2
+    consumes records is a failure edge rather than an edit.
+    """
+    import t1_evidence_artifact as tea
+
+    payload = prod.grid_spec_payload(resolved_mesh_spec=tsd.MeshSpec())
+    assert set(payload) == {"mesh_spec"}, (
+        f"grid_spec must hold only the grid, got {sorted(payload)}"
+    )
+
+    # and the two promoted fields are first-class REQUIRED siblings
+    for path in (("run_identity", "courant_profile"),
+                 ("run_identity", "experimental")):
+        assert path in tea.REQUIRED_FIELD_PATHS, f"{path} must be required"
+
+    rec = tea.build_fixture_record(run_role=tea.RUN_ROLES[0])
+    raw = tea.record_to_raw_dict(rec)
+    assert "experimental" not in raw["run_identity"]["grid_spec"]
+    assert "courant_profile" not in raw["run_identity"]["grid_spec"]
+    assert raw["run_identity"]["courant_profile"]
+    assert "is_experimental" in raw["run_identity"]["experimental"]
