@@ -51,7 +51,22 @@ REPRESENTATIVE_CLAIM = "85c05b6b5be4"
 
 
 def run_identity(identity: str, workdir: Path, *,
-                 measured_cr09_demand: int | None = None) -> dict:
+                 measured_cr09_demand: int | None = None,
+                 courant_profile: str = "exp_v1") -> dict:
+    """🔴 `exp_v1` is the DEFAULT here, deliberately.
+
+    `legacy_srcpulse` excludes `src_cells + [injc, extc]` from Courant sizing
+    -- the source and BOTH doublet wells, which are the highest-velocity
+    cells in the domain because flow converges on the extraction well. It
+    also pins the sliver floor at a constant 4.0 m regardless of the
+    `MeshSpec`, which silently drops every cell of a 2 m corridor.
+
+    Under that policy the reported `Cr` is not the field's Cr, and a
+    refinement series measures its own re-quantisation -- the exact confound
+    that made the original grid spike unusable. T1 built `exp_v1` to fix it;
+    T2's matrix is experimental evidence generation, not the teaching
+    default, so it is what the matrix runs under.
+    """
     ctl.verify_prereg()
     ctl.require_registered(identity)
     guard = ctl.guard_for(identity, measured_cr09_demand)
@@ -70,7 +85,7 @@ def run_identity(identity: str, workdir: Path, *,
         run_role="spatial_series",
         axis="spatial" if identity.startswith("spatial") else "temporal",
         mesh_spec=spec, cr_target=CR_TARGET[identity], nstp_cap=guard,
-        case_ws=case_ws, force=True,
+        courant_profile=courant_profile, case_ws=case_ws, force=True,
     )
     wall = time.time() - t0
 
@@ -80,6 +95,7 @@ def run_identity(identity: str, workdir: Path, *,
     ctl.write_acceptance(acc, artifact)
 
     return {"identity": identity, "cell_size_m": cell,
+            "courant_profile": courant_profile,
             "cr_target": CR_TARGET[identity], "guard": guard,
             "ncpl": record.ncpl, "nstp": record.nstp,
             "cr_achieved": record.cr_achieved, "wall_s": round(wall, 1),
@@ -94,6 +110,10 @@ def main() -> int:
     ap.add_argument("identities", nargs="+")
     ap.add_argument("--workdir", required=True)
     ap.add_argument("--measured-cr09-demand", type=int, default=None)
+    ap.add_argument("--courant-profile", default="exp_v1",
+                    choices=["exp_v1", "legacy_srcpulse"],
+                    help="exp_v1 (default) is the corrected policy; legacy is "
+                         "the teaching default and UNDER-RESOLVES in time")
     args = ap.parse_args()
 
     workdir = Path(args.workdir).expanduser().resolve()
@@ -103,7 +123,8 @@ def main() -> int:
     for ident in args.identities:
         try:
             res = run_identity(ident, workdir,
-                               measured_cr09_demand=args.measured_cr09_demand)
+                               measured_cr09_demand=args.measured_cr09_demand,
+                               courant_profile=args.courant_profile)
         except ctl.ControlRefusal as exc:
             print(f"[REFUSED] {ident}: {exc}", file=sys.stderr)
             return 2
