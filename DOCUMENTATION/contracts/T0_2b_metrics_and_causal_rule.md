@@ -142,7 +142,7 @@ signed.
 ### 2.6 `capture_halfwidth_m` — upstream plume / capture half-width (PRT)
 - **Units** m. **Algorithm** bisection of the dividing streamline on a transect
   (`transport_prt_capture.py:666`), bisection tolerance 0.25–1.0 m, max offset 150 m.
-- ⚠️ **Platform sensitivity — NARROWED 2026-08-26** *(pending signature; see the decision record §8.4)*.
+- ⚠️ **Platform sensitivity — NARROWED 2026-08-26** ✅ *(SIGNED, Beatrice Marti; decision record §8.4)*.
   This bullet previously read: *"Platform-sensitive: ~24% Mac↔Hub spread on the bisected half-width
   (`test_transport_prt_capture.py:664`); `≈53 m` may never be quoted as a grid-supported value without a
   platform qualification."*

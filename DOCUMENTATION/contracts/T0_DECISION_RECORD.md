@@ -154,7 +154,7 @@ never silently different from what was signed.
 | **2** | 2026-08-20 | `T0_1_C1_v2.md` → **v4** | **A8 extended to `transport_prt_capture.py`**, which carries its own `_src_sha()` with the identical three-file hole; plus **Appendix B**, the tracked and hashed T1 build-list snapshot | **Yes, retrospectively** — see amendment 3 |
 | **3** | 2026-08-20 | `T0_1_C1_v2.md` → **v5**, **RE-SIGNED** | **A7's surface widened** to a new `exp`-only metrics module; **amendments 1–3 re-based on the signature** rather than on derivation from Appendix B | **YES** |
 | **4** | 2026-08-21 | `T0_1_C1_v2.md` → **v6** | **A15 proposed, refuted, then WITHDRAWN as unnecessary**; S3b deferred; **§3.1 re-gated**. Three linked decisions — see §8.3 | **YES** — §3.1 signed 2026-08-21; (a) and (b) needed none |
-| **5** | 2026-08-26 | `T0_2b…` → **v5** | **§2.6's platform-sensitivity requirement NARROWED** against measurement — see §8.4 | 🔴 **SIGNATURE OUTSTANDING** |
+| **5** | 2026-08-26 | `T0_2b…` → **v5** | **§2.6's platform-sensitivity requirement NARROWED** against measurement — see §8.4 | **YES** — 2026-08-26 |
 
 **What happened.** The T1 plan review found that C1's A1–A9, though signed, **omitted five changes the T1
 build list requires**. Because C1 §3 makes an unlisted change a defect, **no implementation could satisfy
@@ -382,7 +382,7 @@ overstated, and both are withdrawn.
 
 ### 8.4 §2.6's platform qualification, narrowed against measurement *(2026-08-26)*
 
-🔴 **NEEDS A SIGNATURE. This corrects a factual claim in frozen text, which is a failure edge, not an edit.**
+✅ **SIGNED 2026-08-26, Beatrice Marti.** This corrects a factual claim in frozen text — a failure edge taken deliberately, not an edit.
 
 **What §2.6 claimed:** a **~24% Mac↔Hub spread on the bisected half-width**, making a platform
 qualification **mandatory** before `≈53 m` could ever be quoted as a grid-supported value — and making
@@ -419,6 +419,6 @@ message-only change.
 | Field | Value |
 |---|---|
 | **Change** | `T0_2b…` §2.6: platform qualification narrowed to platforms outside the measured pair |
-| **Approved by** | *(pending)* |
-| **Date** | *(pending)* |
+| **Approved by** | **Beatrice Marti** |
+| **Date** | **2026-08-26** |
 
