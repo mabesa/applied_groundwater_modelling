@@ -183,6 +183,28 @@ def preflight() -> list:
     return problems
 
 
+def _side_wall_times(report: dict) -> list:
+    """Pull per-side wall clock out of a qualification report.
+
+    🔴 The first version of this guessed at `report["pairs"][*]["side_A"]`,
+    which does not exist -- so the Hub run of 2026-08-26 passed the
+    qualification and still reported an EMPTY multiplier_H. The real shape,
+    written by `t0_gate_harness.py` at `workdir/qualification_report.json`, is
+    flat: `summary.side_A.wall_s` and `summary.side_B.wall_s`, mirrored at the
+    top level. ONE qualify invocation is ONE PAIR (two cold side-runs); T0.0
+    Sec 5.1's "6 pairs" came from running it six times.
+    """
+    sides = []
+    for container in (report.get("summary") or {}, report):
+        for key in ("side_A", "side_B", "side_A_reference", "side_B_candidate"):
+            side = container.get(key)
+            if isinstance(side, dict) and isinstance(side.get("wall_s"), (int, float)):
+                sides.append(float(side["wall_s"]))
+        if sides:
+            break          # prefer summary; do not double-count the mirror
+    return sides
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -211,11 +233,7 @@ def main() -> int:
     print("== 1+2: gate qualification (cold, threads pinned) ==", file=sys.stderr, flush=True)
     qual = run_qualification(workdir)
 
-    sides = []
-    for pair in qual.get("report", {}).get("pairs", []) or []:
-        for key in ("side_A", "side_B", "side_A_reference", "side_B_candidate"):
-            if isinstance(pair.get(key), dict) and "wall_s" in pair[key]:
-                sides.append(pair[key]["wall_s"])
+    sides = _side_wall_times(qual.get("report", {}))
     h = {}
     if sides:
         mean = statistics.fmean(sides)
@@ -244,6 +262,7 @@ def main() -> int:
         "qualification": {"returncode": qual["returncode"],
                           "passed": qual["returncode"] == 0,
                           "total_wall_s": qual["total_wall_s"],
+                          "summary": (qual.get("report") or {}).get("summary", {}),
                           "stderr_tail": qual["stderr_tail"]},
         "multiplier_H": h,
         "fingerprint_repeatability": fp,
