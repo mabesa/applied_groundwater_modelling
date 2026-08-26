@@ -4,7 +4,12 @@ Instrumentation only: this script changes no model behaviour, is on no C1
 enumerated surface, and is not part of any milestone's deliverable. It exists
 so one Hub session settles three open questions at once.
 
-    uv run python _SUPPORT/src/scripts/hub_measurement.py --workdir ~/hub_meas
+    python _SUPPORT/src/scripts/hub_measurement.py --workdir ~/hub_meas
+
+⚠️ ON THE HUB, use plain `python` -- `uv` is NOT installed there. The Hub's
+JupyterHub environment already has the dependencies, and this script uses
+`sys.executable` throughout, so whichever interpreter launches it is the one
+the subprocesses inherit. Locally on a dev machine, `uv run python ...`.
 
 WHAT IT MEASURES
 
@@ -48,6 +53,7 @@ import json
 import os
 import platform
 import statistics
+import shutil
 import subprocess
 import sys
 import time
@@ -71,10 +77,28 @@ def _pin_threads(env: dict) -> dict:
     return env
 
 
+def _clear_stale_worktrees(out: Path) -> None:
+    """Remove a previous run's worktrees so a re-run is not blocked.
+
+    The harness aborts with "worktree path already exists" if an earlier
+    attempt died partway -- which is exactly what happens when preflight
+    catches a problem AFTER the first worktree was created. `rm -rf` alone is
+    not enough: git still has the worktree REGISTERED in the repo metadata, so
+    `git worktree prune` has to follow, or the next run fails the same way
+    against a directory that no longer exists.
+    """
+    if out.exists():
+        shutil.rmtree(out, ignore_errors=True)
+        print(f"  cleared stale workdir {out}", file=sys.stderr, flush=True)
+    subprocess.run(["git", "worktree", "prune"], cwd=str(REPO),
+                   capture_output=True, text=True)
+
+
 def run_qualification(workdir: Path) -> dict:
     """(1) + (2): the gate against itself, cold, repeated. Per-side wall times
     give H; the pass/fail gives the Hub-side qualification."""
     out = workdir / "qualify"
+    _clear_stale_worktrees(out)
     cmd = [sys.executable, str(REPO / "_SUPPORT/src/scripts/t0_gate_harness.py"),
            "qualify", "--workdir", str(out)]
     t0 = time.time()

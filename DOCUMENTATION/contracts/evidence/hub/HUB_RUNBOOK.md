@@ -10,8 +10,18 @@ paste-back — not three errands.
 ## Run it
 
 ```bash
-uv run python _SUPPORT/src/scripts/hub_measurement.py --workdir ~/hub_meas
+cp config_template.py config.py        # once per Hub checkout -- see below
+python _SUPPORT/src/scripts/hub_measurement.py --workdir ~/hub_meas
 ```
+
+🔴 **On the Hub use plain `python`, NOT `uv run`.** `uv` is not installed there; the JupyterHub environment
+already carries the dependencies. The script uses `sys.executable` throughout, so whichever interpreter
+launches it is the one every subprocess inherits. (`uv run python …` is for a dev machine.)
+
+🔴 **`config.py` is gitignored**, so a fresh Hub checkout never has one — and the gate harness needs it to
+propagate the data-source config into both worktrees. The template's defaults (limmat / dropbox) are what
+the Hub wants. The script preflights this, and also clears a previous run's worktrees so a re-run is not
+blocked by `worktree path already exists`.
 
 Roughly **15–25 minutes**, most of it the gate qualification. It prints progress to stderr and **one JSON
 block to stdout — paste that back verbatim.** Nothing is written into the repo.

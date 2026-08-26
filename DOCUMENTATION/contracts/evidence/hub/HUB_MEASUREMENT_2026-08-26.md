@@ -100,8 +100,18 @@ the failure was invisible until the harness aborted.
 
 ```bash
 cp config_template.py config.py          # defaults (limmat / dropbox) are what the Hub wants
-uv run python _SUPPORT/src/scripts/hub_measurement.py --workdir ~/hub_meas --skip-fingerprint
+python _SUPPORT/src/scripts/hub_measurement.py --workdir ~/hub_meas --skip-fingerprint
 ```
+
+🔴 **Plain `python`, not `uv run` — `uv` is NOT installed on the Hub.** The runbook originally said
+`uv run python`, which is a dev-machine habit; the JupyterHub environment already carries the
+dependencies, and the script uses `sys.executable` so every subprocess inherits the launching
+interpreter.
+
+🔴 **The second attempt then failed on a leftover worktree** — `worktree path already exists:
+~/hub_meas/qualify/worktree_A`, created before the first run aborted. `rm -rf` alone would not have been
+enough: git keeps the worktree REGISTERED in repo metadata, so a prune is required too. **The script now
+clears both automatically** before each qualification run.
 
 `--skip-fingerprint` because result 2 is already settled — this second run only needs questions 1 and 2,
 and will take ~15 min rather than ~25.
