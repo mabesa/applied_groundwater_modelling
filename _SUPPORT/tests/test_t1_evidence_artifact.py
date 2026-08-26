@@ -848,8 +848,17 @@ class TestOldSchemaVersionFailsClosedForDiagnostics:
         with pytest.raises(t1.SchemaVersionMismatchError):
             t1.load_record(path)
 
-    def test_current_schema_version_is_3_0_0(self):
-        assert t1.SCHEMA_VERSION == "3.0.0"
+    def test_current_schema_version_is_3_2_0(self):
+        """History of the exact-match version gate, which fails closed rather
+        than attributing a default to an older record:
+          3.0.0 -> 3.1.0  S9c added `run_identity.controls` / `CONTROL_LABELS`
+          3.1.0 -> 3.2.0  `courant_profile` and `experimental` were PROMOTED
+                          out of `grid_spec`'s opaque mapping to first-class
+                          siblings (lecturer, 2026-08-26) -- `grid_spec` means
+                          the grid, while those are a time-stepping policy and
+                          a classification of the run.
+        """
+        assert t1.SCHEMA_VERSION == "3.2.0"
 
 
 # ---------------------------------------------------------------------------

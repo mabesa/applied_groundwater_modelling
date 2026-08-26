@@ -43,12 +43,13 @@ import hashlib
 import json
 import math
 import os
+import platform
 import shutil
 import time
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import geopandas as gpd
@@ -449,22 +450,39 @@ def _refine_with_retry(coarse_gwf, boundary_gdf, river_gdf, refine_points, head_
 # (`transport_base_model` importing this module) does not, since nothing pins
 # `transport_base_model`'s own import set.
 #
-# `profile` admits ONLY the two legacy IDs in S4. `exp_v1` -- the corrected
-# policy: floor keyed off the finest *intended* cell size, source/wells
-# included, global max Courant reported -- does not exist yet; that is S8,
-# gated on the T1 JAG. This function never warns and never reports a cap
-# flag: both stay caller-owned exactly as today (`build_doublet_base` has no
-# cap flag; `build_spill_scenario` sets `cr_capped` from `Cr > 1.001` without
-# warning; this module's own wrapper sets `cr_capped = nstp >= nstp_cap` and
-# warns -- all unchanged, at the call sites, not here).
+# `profile` admitted ONLY the two legacy IDs in S4. T1 S8
+# (`DESIGN_DOCS/T1_S8_brief.md` v2) adds a THIRD profile, `exp_v1` -- the
+# corrected policy: floor keyed off the finest *intended* cell size (a
+# `MeshSpec`, not `LOCKED_PARAMS["refined_cell_size"]`), source/well cells
+# INCLUDED (`exclusions` accepted but ignored), the reported Cr measured as
+# the maximum over the ENTIRE original unmasked corridor (not just the
+# selection that sized `nstp`), and `nstp_cap` RAISING instead of silently
+# absorbing. `exp_v1` inherits NEITHER legacy profile's degenerate-input
+# fallback (see `_courant_nstp_corrected`'s own docstring) and is dispatched
+# to a SEPARATE function below rather than folded into this one, so this
+# function's own source stays the frozen S4 shape (`test_t1_courant_profiles
+# .py::test_canonical_has_no_corrected_policy_surface` pins that literally).
+# This function itself never warns and never reports a cap flag: both stay
+# caller-owned exactly as today (`build_doublet_base` has no cap flag;
+# `build_spill_scenario` sets `cr_capped` from `Cr > 1.001` without a
+# caution message; this module's own wrapper sets `cr_capped = nstp >=
+# nstp_cap` and raises a RuntimeWarning -- all unchanged, at the call
+# sites, not here). `exp_v1` is not wired into any default call in S8 --
+# it ships the capability; T2 uses it.
 # ---------------------------------------------------------------------------
 _COURANT_LEGACY_PROFILES = ("legacy_base", "legacy_srcpulse")
+# T1 S8: the one corrected-policy id, kept as a module-level constant (not a
+# literal inside `_courant_nstp_canonical`'s own body -- see the structural
+# pin noted above) and folded into the admitted-profile enum.
+_COURANT_CORRECTED_PROFILE = "exp_v1"
+_COURANT_PROFILES = _COURANT_LEGACY_PROFILES + (_COURANT_CORRECTED_PROFILE,)
 
 
 def _courant_nstp_canonical(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
                             total_time: float, *, exclusions: Sequence[int] = (),
                             cr_target: float = 0.9, nstp_cap: int,
                             sliver_floor_frac: float = 0.4, refined_cell_size: float,
+                            mesh_spec: Optional["MeshSpec"] = None,
                             profile: str) -> Tuple[int, float, float, Dict[str, float]]:
     """Size fixed time steps from a per-cell Courant number Cr_i = v_i*dt/ds_i.
 
@@ -493,11 +511,22 @@ def _courant_nstp_canonical(v_cells: np.ndarray, size_cells: np.ndarray, mask: n
       floor-filtered selection falls back to the whole (reconstructed) mask;
       `critical <= 0` (zero OR negative) returns the cap with
       `Cr = critical * dt` instead of raising; `nstp` is clamped to >= 1.
+
+    A third, corrected profile is admitted too (T1 S8) but its policy is
+    implemented in a sibling function, not here -- see the module comment
+    just above `_COURANT_LEGACY_PROFILES`. `mesh_spec` is accepted by this
+    signature only to be threaded through to that sibling; the two profiles
+    above never read it.
     """
-    if profile not in _COURANT_LEGACY_PROFILES:
+    if profile not in _COURANT_PROFILES:
         raise ValueError(
             f"unknown courant_nstp profile {profile!r}; expected one of "
-            f"{_COURANT_LEGACY_PROFILES}")
+            f"{_COURANT_PROFILES}")
+    if profile not in _COURANT_LEGACY_PROFILES:
+        return _courant_nstp_corrected(
+            v_cells, size_cells, mask, total_time, exclusions=exclusions,
+            cr_target=cr_target, nstp_cap=nstp_cap,
+            sliver_floor_frac=sliver_floor_frac, mesh_spec=mesh_spec)
 
     # Copy, never mutate, the caller's mask; reconstruct the legacy
     # (pre-S4 pre-masked) selection as mask-minus-exclusions.
@@ -543,6 +572,123 @@ def _courant_nstp_canonical(v_cells: np.ndarray, size_cells: np.ndarray, mask: n
     diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
                 ds_true_min=float(size_cells[legacy_mask].min()), floor=floor)
     return nstp, dt, critical * dt, diag
+
+
+# ---------------------------------------------------------------------------
+# T1 S8 (DESIGN_DOCS/T1_S8_brief.md v2): the corrected `courant_nstp` policy,
+# profile `"exp_v1"`. Kept out of `_courant_nstp_canonical`'s own body
+# deliberately -- that function's frozen S4-era structural pin
+# (test_t1_courant_profiles.py::test_canonical_has_no_corrected_policy_surface)
+# asserts several corrected-policy tokens are ABSENT from its source; this
+# sibling function is dispatched to from there but is not itself scanned by
+# that pin, so both the S4 shape and the S8 policy can be true at once.
+# `_courant_nstp_canonical` still owns no `LOCKED_PARAMS` read, and neither
+# does this function (brief Section 2.4): the floor reference comes from
+# `mesh_spec`, passed in by the caller.
+# ---------------------------------------------------------------------------
+def _courant_nstp_corrected(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
+                            total_time: float, *, exclusions: Sequence[int] = (),
+                            cr_target: float = CourantSpec().cr_target,
+                            nstp_cap: int = CourantSpec().nstp_cap,
+                            sliver_floor_frac: float = CourantSpec().sliver_floor_frac,
+                            mesh_spec: Optional["MeshSpec"] = None
+                            ) -> Tuple[int, float, float, Dict[str, float]]:
+    """The `"exp_v1"` policy (brief Sections 1-3), four corrections over both
+    legacy profiles:
+
+    1. The sliver floor is keyed off the FINEST INTENDED cell size --
+       ``min(level.cell_size for level in mesh_spec.levels)`` -- not a single
+       achieved ``refined_cell_size``. ``mesh_spec`` is REQUIRED here (unlike
+       the legacy profiles, which take a plain ``refined_cell_size`` float);
+       an empty/missing ``mesh_spec`` or a non-finite/nonpositive
+       ``cell_size`` on any level raises.
+    2. ``exclusions`` is accepted (not an error) but IGNORED: source and well
+       cells are included in the floor-filtered selection that sizes `nstp`.
+    3. The reported Courant number is the MEASURED MAXIMUM over every cell of
+       the original (unmasked) ``mask`` -- including cells the sliver floor
+       drops from selection -- not just the cells selection kept. Selection
+       determines `nstp`; this measures the resulting field over the whole
+       corridor.
+    4. ``nstp_cap`` RAISES (naming the cap and the `nstp` that would have been
+       needed) instead of silently truncating.
+
+    Degenerate inputs inherit NEITHER legacy profile's fallback (brief
+    Section 3.2 -- both are preserved defects, not policies): an empty
+    floor-filtered selection raises rather than falling back to the whole
+    mask (that would defeat correction 1), and a nonpositive/non-finite
+    `critical` (e.g. a zero-or-negative-velocity selection) raises rather
+    than returning the cap (that would contradict correction 4). Every raise
+    here names its condition explicitly and is distinct from every other,
+    including the cap error -- unlike `legacy_base`/`legacy_srcpulse`, which
+    take a plain `refined_cell_size` float and never validate `mesh_spec`.
+
+    The three scalar defaults above come from `CourantSpec()` (S3a declared
+    it for exactly this purpose; S4 did not wire it in) rather than being
+    re-hardcoded, so a future edit to `CourantSpec`'s own defaults cannot
+    silently diverge from this profile's.
+    """
+    if mesh_spec is None or not getattr(mesh_spec, "levels", ()):
+        raise ValueError(
+            "courant_nstp profile 'exp_v1' requires mesh_spec=MeshSpec(...) "
+            "with at least one MeshLevel -- unlike legacy_base/legacy_srcpulse, "
+            f"which take a single refined_cell_size directly; got mesh_spec={mesh_spec!r}")
+    level_sizes = [float(level.cell_size) for level in mesh_spec.levels]
+    if any((not math.isfinite(s)) or s <= 0.0 for s in level_sizes):
+        raise ValueError(
+            "courant_nstp profile 'exp_v1': every mesh_spec.levels[*].cell_size "
+            f"must be finite and > 0; got {level_sizes!r}")
+
+    corridor = np.array(mask, dtype=bool, copy=True)   # never mutate the caller's mask
+    if not corridor.any():
+        raise ValueError("courant_nstp profile 'exp_v1': mask has no active corridor cells")
+
+    corridor_sizes = size_cells[corridor]
+    if not np.all(np.isfinite(corridor_sizes)) or np.any(corridor_sizes <= 0.0):
+        raise ValueError(
+            "courant_nstp profile 'exp_v1': size_cells contains a nonpositive "
+            "or non-finite entry within the corridor")
+    corridor_v = v_cells[corridor]
+    if not np.all(np.isfinite(corridor_v)):
+        raise ValueError(
+            "courant_nstp profile 'exp_v1': v_cells contains a non-finite "
+            "entry within the corridor")
+
+    floor = sliver_floor_frac * min(level_sizes)
+    sel = corridor & (size_cells >= floor)          # exclusions ignored by design (correction 2)
+    if not sel.any():
+        raise ValueError(
+            "courant_nstp profile 'exp_v1': the floor-filtered selection is "
+            f"empty (every corridor cell is below sliver_floor_frac*min(level."
+            f"cell_size)={floor:g}); unlike legacy_srcpulse this does not fall "
+            "back to the whole mask (that would defeat the corrected floor policy)")
+
+    ratio = v_cells[sel] / size_cells[sel]
+    critical = float(ratio.max())
+    if not math.isfinite(critical) or critical <= 0.0:
+        raise ValueError(
+            "courant_nstp profile 'exp_v1': the selected cells' maximum v/size "
+            f"ratio is nonpositive or non-finite (critical={critical!r}); unlike "
+            "legacy_srcpulse this does not fall back to nstp_cap (that would "
+            "contradict the cap-raises correction)")
+    j = np.where(sel)[0][int(np.argmax(ratio))]
+
+    dt_need = cr_target / critical
+    nstp_needed = int(np.ceil(total_time / dt_need))
+    if nstp_needed > nstp_cap:
+        raise ValueError(
+            f"courant_nstp profile 'exp_v1': nstp_cap={nstp_cap} is smaller than "
+            f"the nstp={nstp_needed} needed to reach cr_target={cr_target:g} "
+            f"(binding rate={critical:g}/d); raise nstp_cap or relax cr_target")
+    nstp = max(nstp_needed, 1)
+    dt = total_time / nstp
+
+    # The measured maximum over EVERY corridor cell (correction 3) -- not just
+    # `sel`, the floor-filtered selection that sized `nstp` above.
+    cr_reported = float((corridor_v * dt / corridor_sizes).max())
+
+    diag = dict(v_bind=float(v_cells[j]), ds_bind=float(size_cells[j]),
+                ds_true_min=float(corridor_sizes.min()), floor=floor)
+    return nstp, dt, cr_reported, diag
 
 
 def _courant_nstp(v_cells: np.ndarray, size_cells: np.ndarray, mask: np.ndarray,
@@ -893,7 +1039,8 @@ def _footprint_cell_polygons(mg, ncpl: int,
 
 
 def _disc_footprint_areas(mg, ncpl: int, idomain: Optional[np.ndarray],
-                          centre_xy: Tuple[float, float], radius_m: float,
+                          centre_xy: Tuple[float, float], radius_m: float, *,
+                          disc_label: str = "source footprint disc",
                           ) -> Tuple[List[int], List[float], float, float]:
     """T1 S5's frozen area-weighted footprint geometry (brief Sec 3.3):
     intersect a disc of `radius_m` centred on `centre_xy` -- Shapely
@@ -912,6 +1059,13 @@ def _disc_footprint_areas(mg, ncpl: int, idomain: Optional[np.ndarray],
     Callers must validate `radius_m` (`_validate_footprint_radius`) and
     must not call this at the `radius_m == 0.0` sentinel -- see the module
     section banner above.
+
+    `disc_label` (T1 S9a, `DESIGN_DOCS/T1_S9a_brief.md` v2 exit criterion
+    14) is the noun phrase the coverage-failure message opens with --
+    keyword-only, message-only, defaulting to this function's original S5
+    wording so every existing (positional) call site is byte-for-byte
+    unchanged. S9a's sink wrapper passes `disc_label="sink footprint disc"`
+    so the raised text names a sink, not a source.
     """
     disc = Point(float(centre_xy[0]), float(centre_xy[1])).buffer(
         float(radius_m), quad_segs=_FOOTPRINT_QUAD_SEGS)
@@ -939,7 +1093,7 @@ def _disc_footprint_areas(mg, ncpl: int, idomain: Optional[np.ndarray],
     if disc_area - covered_area > _FOOTPRINT_COVERAGE_TOL_REL * disc_area:
         missing = disc_area - covered_area
         raise ValueError(
-            f"source footprint disc (radius_m={radius_m!r}, centre_xy={centre_xy!r}) "
+            f"{disc_label} (radius_m={radius_m!r}, centre_xy={centre_xy!r}) "
             f"is not fully covered by the mesh's active layer-0 cells: "
             f"{missing:.6g} m^2 of {disc_area:.6g} m^2 uncovered "
             f"({(missing / disc_area if disc_area else float('nan')):.3%}) -- a disc "
@@ -999,6 +1153,169 @@ def _footprint_rates(grid: Dict[str, Any], mass_g: float, pulse_days: float,
         total_rate = float(mass_g) / float(pulse_days)
         per_cell_rates = _apportion_rates(grid["footprint_areas_m2"], total_rate)
     return src_cells, per_cell_rates, smassrate
+
+
+# ---------------------------------------------------------------------------
+# T1 S9a (DESIGN_DOCS/T1_S9a_brief.md v2): B-control intersection geometry.
+#
+# What this IS: an apportionment of the doublet's extraction rate across the
+# cells intersecting a FIXED PHYSICAL DISC centred on the extraction well --
+# `a_i = area(cell_i INTERSECT disc)`, `q_i = Q * a_i / sum(a)`, cells sorted
+# ascending, `sum(q_i) == Q` asserted on SIGNED values. Identical in FORM to
+# S5's source rule (the same areal regularisation), reusing S5's
+# `_disc_footprint_areas` / `_apportion_rates` VERBATIM -- brief Sec 1 makes
+# writing a second intersection routine a known defect, not a design choice
+# ("courant_nstp", "_src_sha" and the doublet WEL have each already paid for
+# that duplication once).
+#
+# What this is NOT: a physical model of well inflow. Real screen inflow
+# depends on hydraulic conductance, transmissivity / saturated thickness and
+# the evolving well-to-cell head difference -- a MAW-style formulation, which
+# this is not. Area-weighting only holds the receptor's SUPPORT fixed across
+# meshes; it does not reproduce how a well actually draws water. B-control
+# licenses "sink support was controlled", never "the well is physically
+# modelled" and never causal isolation (brief Sec 2.0).
+#
+# Single layer only (brief Sec 2.0.1): `_disc_footprint_areas` intersects
+# LAYER-0 cell polygons, correct here only because this model is nlay=1
+# (`add_flow_model`/`add_transport_model`, both `nlay=1`). A screened
+# multilayer well would need layer-specific geometry and vertical
+# allocation this geometry cannot express -- it will not fail loudly if the
+# model ever gains layers.
+#
+# Sign convention (the one place the sink differs from the source): callers
+# pass `total_rate <= 0` (extraction) -- `Q = -abs(DOUBLET_Q)` at the one
+# call site the brief anticipates (S9b). `_apportion_rates` (reused
+# unmodified) makes every `q_i` share `total_rate`'s sign by construction:
+# `q_i = total_rate * a_i / sum(a)` with `a_i, sum(a) > 0`.
+#
+# S9a builds NO MODEL and is wired into NO CALL PATH -- it adds no
+# `SrcPulseDemo` field and no `meta` key (both already exist at their S2
+# identity default; T0_0 Sec 3). S9b does the WEL integration; S9c the
+# matched arm. The tests in `test_t1_sink_support_geometry.py` are the whole
+# safety argument for this step (gate coverage: BLIND).
+# ---------------------------------------------------------------------------
+def _validate_sink_centre(centre_xy: Tuple[float, float]) -> Tuple[float, float]:
+    """T1 S9a: a finite `(x, y)` pair, or raise `ValueError` -- the disc
+    centre is not validated by `_disc_footprint_areas` itself (brief Sec 4
+    exit criterion 10, 'non-finite ... centre')."""
+    try:
+        cx, cy = float(centre_xy[0]), float(centre_xy[1])
+    except (TypeError, ValueError, IndexError) as exc:
+        raise ValueError(
+            f"sink_centre_xy must be an (x, y) pair of finite floats "
+            f"(got {centre_xy!r})") from exc
+    if not (math.isfinite(cx) and math.isfinite(cy)):
+        raise ValueError(f"sink_centre_xy must be finite (got {centre_xy!r})")
+    return cx, cy
+
+
+def _validate_finite_footprint_geometry(areas: Sequence[float], disc_area: float,
+                                        covered_area: float) -> None:
+    """T1 S9a (brief Sec 4 exit criterion 10): NaN/inf anywhere in the
+    geometry -- `disc_area`, `covered_area`, or any per-cell area -- raises
+    here, before `_apportion_rates` would otherwise propagate a NaN/inf rate
+    silently."""
+    if not (math.isfinite(disc_area) and math.isfinite(covered_area)):
+        raise ValueError(
+            f"sink footprint disc geometry produced a non-finite area "
+            f"(disc_area_m2={disc_area!r}, covered_area_m2={covered_area!r})")
+    if any(not math.isfinite(a) for a in areas):
+        raise ValueError(
+            f"sink footprint disc geometry produced a non-finite per-cell "
+            f"intersection area: {list(areas)!r}")
+
+
+def _sink_footprint_areas(mg, ncpl: int, idomain: Optional[np.ndarray],
+                          centre_xy: Tuple[float, float], radius_m: float,
+                          ) -> Tuple[List[int], List[float], float, float]:
+    """T1 S9a geometry: REUSES `_disc_footprint_areas` verbatim for the
+    disc/cell intersection (brief Sec 1 -- a second intersection routine is
+    forbidden) and adds two guards that helper does not provide on its own:
+
+    * over-coverage (brief Sec 4 exit criterion 9): `_disc_footprint_areas`'s
+      own coverage check (`disc_area - covered_area > tol * disc_area`) is
+      ONE-SIDED -- it catches only UNDER-coverage. Overlapping or invalid
+      cell polygons that double-count area would pass it silently, so this
+      wrapper additionally asserts `covered_area <= disc_area * (1 + tol)`,
+      using the SAME `_FOOTPRINT_COVERAGE_TOL_REL` tolerance, in its own
+      check -- `_disc_footprint_areas` itself is not edited beyond its
+      exception noun (S5's shipped source path depends on it unchanged).
+    * non-finite geometry (exit criterion 10): see
+      `_validate_finite_footprint_geometry`.
+
+    Mirrors `_disc_footprint_areas`'s own contract: callers must not call
+    this at the `radius_m == 0.0` sentinel (see `_sink_footprint_rates`,
+    which owns that branch -- the generic helper does not supply it).
+    """
+    cx, cy = _validate_sink_centre(centre_xy)
+    _validate_footprint_radius(radius_m)
+    cells, areas, disc_area, covered_area = _disc_footprint_areas(
+        mg, ncpl, idomain, (cx, cy), radius_m, disc_label="sink footprint disc")
+    _validate_finite_footprint_geometry(areas, disc_area, covered_area)
+    if covered_area - disc_area > _FOOTPRINT_COVERAGE_TOL_REL * disc_area:
+        excess = covered_area - disc_area
+        raise ValueError(
+            f"sink footprint disc (radius_m={radius_m!r}, centre_xy=({cx!r}, {cy!r})) "
+            f"is OVER-covered by the mesh's active layer-0 cells: "
+            f"{excess:.6g} m^2 of {disc_area:.6g} m^2 double-counted "
+            f"({(excess / disc_area if disc_area else float('nan')):.3%}) -- overlapping "
+            "or invalid cell polygons must not silently double-count area "
+            "(DESIGN_DOCS/T1_S9a_brief.md Sec 4 exit criterion 9)")
+    return cells, areas, disc_area, covered_area
+
+
+def _sink_footprint_rates(mg, ncpl: int, idomain: Optional[np.ndarray],
+                          centre_xy: Tuple[float, float], radius_m: float,
+                          ext_cell: int, total_rate: float,
+                          ) -> Tuple[List[int], List[float]]:
+    """T1 S9a (`DESIGN_DOCS/T1_S9a_brief.md` v2): apportion `total_rate`
+    (the doublet's extraction rate -- callers pass `Q = -abs(DOUBLET_Q)`,
+    negative) across the cells intersecting a disc of `radius_m` centred on
+    `centre_xy`, reusing `_sink_footprint_areas` (geometry) and S5's
+    `_apportion_rates` (`q_i = total_rate * a_i / sum(a)`, unmodified) for
+    the arithmetic.
+
+    This is an **imposed distributed extraction control** -- a
+    mesh-independent regularisation of a prescribed areal sink. It is **NOT
+    a physical model of well inflow**: real screen inflow depends on
+    hydraulic conductance, transmissivity / saturated thickness, and the
+    evolving well-to-cell head difference (a MAW-style formulation, which
+    this is not). Area-weighting holds the receptor's support fixed across
+    meshes; it establishes only that "sink support was controlled", never
+    that the well is physically modelled and never causal isolation (brief
+    Sec 2.0).
+
+    Assumes a SINGLE-LAYER, horizontally distributed sink (brief Sec 2.0.1)
+    -- correct only because this model is `nlay=1`. A screened multilayer
+    well needs layer-specific geometry and vertical allocation this cannot
+    express; it will not fail loudly if the model ever gains layers.
+
+    `radius_m == 0.0` is the frozen SENTINEL -- returns `([ext_cell],
+    [total_rate])`, exactly today's single nearest-centroid extraction cell
+    and its whole rate (`T0_0...` Sec 3's identity default,
+    `[(ext_cell, -abs(DOUBLET_Q))]`), with NO disc geometry built at all.
+    This sentinel is NOT supplied by `_disc_footprint_areas` / the generic
+    helper -- it is this function's own contract.
+
+    At a positive radius, `cells` is sorted ascending by cell index
+    (inherited from `_disc_footprint_areas`) with `sum(rates) == total_rate`
+    to `_FOOTPRINT_RATE_SUM_TOL_REL` relative tolerance on SIGNED values
+    (asserted inside `_apportion_rates`), and every rate carries
+    `total_rate`'s sign (negative, for extraction) by construction.
+
+    Raises `ValueError` for a non-finite `radius_m`/`centre_xy`/`total_rate`,
+    for an incompletely- or over-covered disc, or for non-finite geometry.
+    """
+    _validate_footprint_radius(radius_m)
+    if not math.isfinite(total_rate):
+        raise ValueError(f"total_rate must be finite (got {total_rate!r})")
+    if radius_m == 0.0:
+        return [int(ext_cell)], [float(total_rate)]
+    cells, areas, _disc_area, _covered_area = _sink_footprint_areas(
+        mg, ncpl, idomain, centre_xy, radius_m)
+    rates = _apportion_rates(areas, total_rate)
+    return cells, rates
 
 
 def _binding_cell(cells: Sequence[int], rates: Sequence[float],
@@ -1163,14 +1480,204 @@ def new_sim(case_ws: Union[str, Path], *, pulse_days: float, total_days: float,
     return sim
 
 
-def add_flow_model(sim, grid: Dict[str, Any]):
+def _wel_support_cells(gwf, pname: str = "absw") -> List[Tuple[int, float]]:
+    """T1 S9b (`DESIGN_DOCS/T1_S9b_brief.md` v2 Sec 2.2): read the
+    ACTUALLY BUILT stress-period data off the named WEL package and
+    normalise it into ``[(cell_index, rate), ...]``, sorted ascending by
+    cell index.
+
+    `T0_0...` Sec 3 calls an empty/recomputed record a "false record":
+    ``meta["sink_support_cells"]`` must be derived from the SAME object
+    handed to ``ModflowGwfwel``, read back through FloPy, never
+    reconstructed a second time from ``sink_support_m`` alongside it.
+    "Byte-identical" is not a meaningful comparison once FloPy has converted
+    the input list into an ``MFTransientList`` -- ``get_data(0)`` returns a
+    structured record array whose ``cellid`` field is itself a tuple (e.g.
+    ``(0, 137)`` for this DISV nlay=1 model) and whose ``q`` is a numpy
+    scalar; both are normalised here to plain Python ``int``/``float``.
+    """
+    spd = gwf.get_package(pname).stress_period_data.get_data(0)
+    pairs = [(int(rec["cellid"][-1]), float(rec["q"])) for rec in spd]
+    return sorted(pairs, key=lambda pair: pair[0])
+
+
+def _realized_extraction_flows(gwf, pname: str = "absw") -> Dict[int, float]:
+    """T1 S9c (`DESIGN_DOCS/T1_S9c_brief.md` v2 Sec 2.1): read the REALIZED
+    per-cell extraction flow [m^3/d] off the SOLVED GWF cell-by-cell budget
+    (``gwf.cbc``, already written -- ``budget_filerecord="gwf.cbc"`` in
+    ``add_flow_model``) -- NOT the rate handed to ``ModflowGwfwel``.
+    Configured rates can silently diverge from what the solver actually
+    delivered (a cell dries, deactivates, or has its flow reduced), and
+    every test built against the CONFIGURED rate would still pass in that
+    case -- exactly the footgun the brief's round-1 review caught.
+
+    ``paknam2=pname`` isolates ONE WEL package's records from the OTHER
+    doublet well sharing the same ``gwf.cbc``: ``add_flow_model`` builds two
+    separate ``ModflowGwfwel`` packages (``"injw"``, ``"absw"``), and a bare
+    ``text="WEL"`` read would otherwise mix the injection well's flow into
+    the extraction-support weights.
+
+    🔴 The GWF model is STEADY-STATE (``ModflowGwfsto(gwf, steady_state=...)``,
+    ``:1567``) with a transient GWT riding on top of one constant flow
+    field, so EVERY saved WEL budget record (``saverecord=[..., ("BUDGET",
+    "LAST")]``) carries the SAME per-cell flows regardless of stress
+    period -- reading the first one is sufficient; no OC change is made or
+    needed. **This reduction is INVALID the moment GWF ever becomes
+    transient** -- nothing here fails loudly if that changes, so this
+    comment (and the matching one in ``_flux_weighted_breakthrough``) is the
+    only warning; the weights would need to become time-resolved.
+    """
+    bud = gwf.output.budget()
+    recs = bud.get_data(text="WEL", paknam2=pname)
+    if not recs:
+        raise RuntimeError(
+            f"no {pname!r} WEL budget records found in the solved GWF "
+            "cell-by-cell budget -- cannot read realized extraction flows")
+    rec = recs[0]   # steady-state: every saved record is identical (see above)
+    out: Dict[int, float] = {}
+    for row in rec:
+        out[int(row["node"]) - 1] = float(row["q"])
+    return out
+
+
+def _validate_realized_sink_flows(prescribed: Dict[int, float],
+                                   realized: Dict[int, float],
+                                   rtol: float = 1e-5, atol: float = 1e-8) -> None:
+    """T1 S9c (brief Sec 2.1, exit criteria 12-13): raise if the solved GWF
+    does not deliver the extraction-support control it claims.
+
+    Two independent, both-fatal failure modes (never a silent readout of a
+    wrong number under a right-looking name):
+      1. a support cell's REALIZED flow differs from what was PRESCRIBED to
+         ``ModflowGwfwel`` beyond tolerance -- a dry, deactivated, or
+         flow-reduced cell;
+      2. a support cell's realized flow has the WRONG SIGN (positive, i.e.
+         inflow) -- an extraction cell that is not extracting means the
+         control is not doing what it claims, independent of magnitude.
+    """
+    missing = sorted(set(prescribed) - set(realized))
+    if missing:
+        raise RuntimeError(
+            f"support cell(s) {missing} are missing from the realized WEL "
+            "budget -- the arm is not delivering the sink support it claims")
+    for cell in sorted(prescribed):
+        req = prescribed[cell]
+        got = realized[cell]
+        if got > 0.0:
+            raise RuntimeError(
+                f"support cell {cell}: realized WEL flow {got!r} has the "
+                "WRONG SIGN (an extraction cell reporting inflow) -- the "
+                "arm is not delivering the sink support it claims")
+        if not math.isclose(got, req, rel_tol=rtol, abs_tol=atol):
+            raise RuntimeError(
+                f"support cell {cell}: realized WEL flow {got!r} != "
+                f"prescribed {req!r} beyond tolerance (rtol={rtol!r}, "
+                f"atol={atol!r}) -- the arm is not delivering the sink "
+                "support it claims (dry, deactivated, or flow-reduced cell)")
+
+
+def _flux_weighted_breakthrough(cobj, times: np.ndarray, sink_cells: List[int],
+                                 weights: Dict[int, float]) -> np.ndarray:
+    """T1 S9c (`DESIGN_DOCS/T1_S9c_brief.md` v2 Sec 2): the ONE breakthrough
+    series -- every downstream metric (``peak_mgL``, ``arrival_day``,
+    ``t_peak``, exceedance) derives from this array, at the sentinel and at
+    a positive radius alike, so replacing it here is the ONLY place a
+    positive radius changes the readout (exit criteria 3/17: the sentinel
+    branch below selects only the SERIES; all downstream processing is
+    shared code, so the two paths cannot drift).
+
+    ``C_ext(t) = Sum(|q_i| * C_i(t)) / Sum(|q_i|)`` over ``sink_cells``,
+    with the weights ``|q_i|`` held CONSTANT across time -- valid ONLY
+    because GWF is steady-state (see ``_realized_extraction_flows``'s
+    docstring); if GWF ever becomes transient this function's
+    time-invariant-weight assumption breaks and the weights must be read
+    per output time instead.
+
+    🔴 SENTINEL BRANCH (frozen): with exactly one support cell the general
+    formula reduces to ``C`` EXACTLY in real arithmetic (``|q|*C/|q| ==
+    C``), but is NOT guaranteed bit-for-bit in floating point -- so the
+    single-cell case takes an EXPLICIT branch reading ``cobj`` exactly as
+    pre-S9c, rather than resting the default contract on IEEE rounding.
+    The general (multi-cell) formula is used ONLY when the support has more
+    than one cell.
+    """
+    if len(sink_cells) == 1:
+        c = sink_cells[0]
+        raw = np.array([cobj.get_data(totim=t)[0, 0, c] for t in times])
+        return np.maximum(raw, 0.0)
+
+    total_w = sum(abs(weights[c]) for c in sink_cells)
+    if total_w == 0.0:
+        raise RuntimeError(
+            "degenerate sink support: sum(|q_i|) over the support cells is "
+            "0.0 -- cannot form a flux-weighted mixture")
+    raw = np.zeros(len(times), dtype=float)
+    for c in sink_cells:
+        w = abs(weights[c])
+        conc_c = np.array([cobj.get_data(totim=t)[0, 0, c] for t in times])
+        raw = raw + w * conc_c
+    raw = raw / total_w
+    return np.maximum(raw, 0.0)
+
+
+def add_flow_model(sim, grid: Dict[str, Any], sink_support_m: float = 0.0):
     """Add the GWF flow model (DISV, NPF, IC, STO, RCHA, CHD, RIV, WEL x2 doublet,
-    OC) to ``sim`` and return it.  The doublet wells are FLOW ONLY (no solute)."""
+    OC) to ``sim`` and return it.  The doublet wells are FLOW ONLY (no solute).
+
+    T1 S9b (`DESIGN_DOCS/T1_S9b_brief.md` v2): ``sink_support_m`` (default
+    ``0.0``, the frozen SENTINEL) apportions the EXTRACTION well's rate
+    across the cells intersecting a disc of this radius centred on the
+    extraction well (``ABS_XY``), via ``_sink_footprint_rates`` -- the SAME
+    area-weighted disc/apportionment machinery S5 uses for the source (S9a's
+    geometry, reused verbatim; no second apportionment routine). At the
+    sentinel, ``_sink_footprint_rates`` takes its own sentinel branch (no
+    disc geometry built at all) and the emitted ``absw`` stress-period data
+    is STRUCTURALLY IDENTICAL to the pre-S9b literal
+    ``[[(0, extc), -abs(DOUBLET_Q)]]``.
+
+    ⚠️ The INJECTION well (``injw``) is UNCHANGED at every radius --
+    `T0_0...` Sec 3 names only the EXTRACTION-support disc; S9b does not
+    touch injection (brief Sec 3).
+
+    ⚠️ **PRT divergence** (brief Sec 2.4): MODFLOW 6 PRT builds its OWN
+    doublet WEL (`transport_prt_capture.py`, hard-coded single-cell) and
+    does NOT call this function. At ``sink_support_m > 0`` the demo's GWF
+    built here and PRT's own GWF are therefore DIFFERENT flow fields that
+    happen to share a mesh identity. Fixing that needs no new authority:
+    B-control arms simply do not claim a capture fingerprint (S10).
+
+    ⚠️ **No SSM change is needed** for a distributed sink (brief Sec 1.1):
+    ``add_transport_model`` uses bare ``ModflowGwtssm(gwt)``, so MF6 already
+    routes each WEL cell's own outflow at that cell's own concentration --
+    the flux-weighted mixture a positive radius implies EMERGES from the
+    solver; it is not assembled by hand here.
+
+    ⚠️ **Readout caveat / dry-cell policy** (brief Sec 2.3/2.3.1, lifted by
+    T1 S9c -- `DESIGN_DOCS/T1_S9c_brief.md` v2): this function only builds
+    the WEL package. ``build_srcpulse_demo`` reads the FLUX-WEIGHTED mixture
+    across every support cell (``_flux_weighted_breakthrough``), not the
+    single ``ext_cell`` concentration -- a distributed sink's single-cell
+    reading is a concentration AT ONE CELL OF THE SUPPORT, not the
+    extracted concentration. WEL rates themselves are delivered as
+    specified: the GWF model is NEWTON (``icelltype=1`` convertible cells,
+    Newton-Raphson smoothing), which does not abruptly zero out a drying
+    cell's rate the way a Picard/dry-cell reduction could -- a supported
+    cell that cannot sustain its requested rate shows up as a
+    non-converged run (``ok=False``), not a silently reduced flow.
+    ``build_srcpulse_demo`` does not ASSUME the realized rate matches the
+    requested one for that reason either: it reads the REALIZED per-cell
+    flow back off the solved GWF budget (``_realized_extraction_flows``)
+    and RAISES if it diverges from the prescribed rate beyond tolerance, or
+    has the wrong sign (``_validate_realized_sink_flows``; see also
+    ``test_realized_wel_flow_matches_requested``, the same check exercised
+    directly at this level).
+    """
     ncpl = grid["ncpl"]; gp = grid["gridprops"]
     top_ref = grid["top"]; botm_ref = grid["botm"]; k_ref = grid["k"]
     heads_ref = grid["heads"]; rch = grid["rch"]; chd = grid["chd"]; riv = grid["riv"]
     injc = grid["inj_cell"]; extc = grid["ext_cell"]
     nper = int(sim.tdis.nper.get_data())
+    _validate_footprint_radius(sink_support_m)   # reuse S9a's validator (brief Sec 3)
 
     gwf = flopy.mf6.ModflowGwf(sim, modelname="gwf", save_flows=True,
                                newtonoptions=_GWF_NEWTON)
@@ -1188,8 +1695,28 @@ def add_flow_model(sim, grid: Dict[str, Any]):
     # ---- doublet wells: FLOW ONLY (clean injection, no concentration) ----
     flopy.mf6.ModflowGwfwel(gwf, pname="injw",
                             stress_period_data={0: [[(0, injc), abs(DOUBLET_Q)]]})
-    flopy.mf6.ModflowGwfwel(gwf, pname="absw",
-                            stress_period_data={0: [[(0, extc), -abs(DOUBLET_Q)]]})
+    # T1 S9b: extraction-support disc (S9a geometry, reused verbatim via
+    # `_sink_footprint_rates`). The sentinel (sink_support_m == 0.0) takes
+    # that function's own sentinel branch -- no disc geometry built -- so
+    # `absw_spd` below is structurally identical to the pre-S9b literal.
+    idomain = np.asarray(grid["rgwf"].disv.idomain.array, dtype=int).reshape(-1)
+    mg = grid["modelgrid"]
+    sink_cells, sink_rates = _sink_footprint_rates(
+        mg, ncpl, idomain, ABS_XY, float(sink_support_m), extc, -abs(DOUBLET_Q))
+    # brief Sec 2.3.1: `extc` is not guaranteed to lie inside its own disc --
+    # if it did not, the retained single-cell readout would not even be a
+    # support-cell observation. Assert it here, at construction time, so a
+    # caller (S9c included) inherits a meaningful anchor rather than a
+    # silent miss.
+    if extc not in sink_cells:
+        raise ValueError(
+            f"sink_support_m={sink_support_m!r}: the extraction cell "
+            f"(ext_cell={extc}) does not lie inside its own resulting "
+            f"support {sink_cells!r} -- the readout anchor requires ext_cell "
+            "to be a member of the support disc (DESIGN_DOCS/T1_S9b_brief.md "
+            "Sec 2.3.1).")
+    absw_spd = [[(0, c), r] for c, r in zip(sink_cells, sink_rates)]
+    flopy.mf6.ModflowGwfwel(gwf, pname="absw", stress_period_data={0: absw_spd})
     flopy.mf6.ModflowGwfoc(gwf, head_filerecord="gwf.hds", budget_filerecord="gwf.cbc",
                            saverecord=[("HEAD", "LAST"), ("BUDGET", "LAST")])
     return gwf
@@ -1294,6 +1821,8 @@ def build_srcpulse_demo(
     refine_radii: Any = _UNSET,
     mesh_spec: Optional["MeshSpec"] = None,
     footprint_radius_m: float = 0.0,
+    sink_support_m: float = 0.0,
+    courant_profile: str = "legacy_srcpulse",
     force: bool = False,
 ) -> SrcPulseDemo:
     """Build + run the SRC finite-pulse spill -> capture demo; return diagnostics.
@@ -1355,6 +1884,45 @@ def build_srcpulse_demo(
         field a failure edge) -- it belongs in the evidence artifact; see
         ``DESIGN_DOCS/T1_S5_brief.md`` Sec 3.  Not wired into any default
         call -- a later milestone (T2) uses a positive value.
+    sink_support_m : float
+        T1 S9b/S9c (``DESIGN_DOCS/T1_S9c_brief.md`` v2) extraction-support
+        disc radius [m], threaded to ``add_flow_model``.  ``0.0`` (default)
+        is the frozen SENTINEL -- structurally identical to pre-S9b
+        behaviour: the whole doublet extraction rate on the single
+        nearest-centroid ``ext_cell``, and the breakthrough curve below
+        takes the EXPLICIT single-cell branch (bit-identical to pre-S9c;
+        see ``_flux_weighted_breakthrough``).  Negative or non-finite raises
+        ``ValueError``.  A POSITIVE value is supported since S9c: the
+        breakthrough curve becomes the FLUX-WEIGHTED mixture
+        ``Sum(|q_i| C_i) / Sum(|q_i|)`` over the support cells, with the
+        weights read from the REALIZED (not configured) GWF budget after
+        the solve -- see ``_realized_extraction_flows`` /
+        ``_validate_realized_sink_flows``, which RAISE if a support cell's
+        realized flow diverges from what was prescribed (dry, deactivated,
+        or flow-reduced) or has the wrong sign.  Not wired into any default
+        call -- a later milestone (T2) uses a positive value.
+        🔴 **Ceiling:** a positive ``sink_support_m`` controls sink support
+        ONLY.  It is NEVER causal isolation of a grid effect -- flow was
+        not held common across compared runs (that control is descoped,
+        `T0_2b...` Sec 4.2) -- so a grid comparison using this control
+        remains ``hypothesis``, never a stronger claim.
+        ⚠️ MODFLOW 6 PRT builds its own single-cell doublet WEL and does not
+        call ``add_flow_model``, so a positive ``sink_support_m`` used with
+        this builder makes PRT's GWF diverge from this one -- B-control
+        arms do not claim a capture fingerprint (S10).
+    courant_profile : {"legacy_srcpulse", "exp_v1"}
+        T1 S8 (``DESIGN_DOCS/T1_S8_brief.md`` v2) ``courant_nstp`` policy
+        selector.  ``"legacy_srcpulse"`` (default) is byte-for-byte today's
+        behaviour.  ``"exp_v1"`` is the corrected policy: the sliver floor is
+        keyed off the finest INTENDED cell size in ``mesh_spec`` rather than
+        ``LOCKED_PARAMS["refined_cell_size"]``, source/well cells are
+        INCLUDED in selection, the reported ``Cr`` is the measured maximum
+        over the whole corridor (not just the surviving selection), and
+        ``nstp_cap`` RAISES instead of silently truncating.  Folds into the
+        cache identity (``params``, below) exactly as ``footprint_radius_m``
+        does, so a run under one profile never resolves to a cache file the
+        other wrote.  Not wired into any default call -- a later milestone
+        (T2) uses ``"exp_v1"``.
     force : bool
         Rebuild even if a matching cache exists.
 
@@ -1369,7 +1937,8 @@ def build_srcpulse_demo(
     for _name, _val in (("mass_g", mass_g), ("pulse_days", pulse_days),
                          ("total_days", total_days), ("solubility_mgL", solubility_mgL),
                          ("R", R), ("rho_b", rho_b), ("lam", lam),
-                         ("cr_target", cr_target), ("footprint_radius_m", footprint_radius_m)):
+                         ("cr_target", cr_target), ("footprint_radius_m", footprint_radius_m),
+                         ("sink_support_m", sink_support_m)):
         if not math.isfinite(_val):
             raise ValueError(f"{_name} must be finite (got {_val!r})")
     if alpha_L is not None and not math.isfinite(alpha_L):
@@ -1379,6 +1948,32 @@ def build_srcpulse_demo(
     # raise, checked up front (before any GIS/MF6 work) like every other
     # parameter guard in this block.
     _validate_footprint_radius(footprint_radius_m)
+    # T1 S9b: same validator, reused verbatim (brief Sec 3 "Validation:
+    # negative / non-finite -> raise (reuse S9a's validators)").
+    _validate_footprint_radius(sink_support_m)
+
+    # T1 S9c (`DESIGN_DOCS/T1_S9c_brief.md` v2 Sec 1) LIFTS the raise S9b put
+    # here: a positive `sink_support_m` used to be refused before any
+    # GIS/MF6 work because the breakthrough readout below read the single
+    # `ext_cell`, which for a distributed sink is the concentration at ONE
+    # CELL OF THE SUPPORT, not the extracted concentration. That readout is
+    # now the flux-weighted mixture (`_flux_weighted_breakthrough`, wired in
+    # below), so a positive radius can be built, solved, and read
+    # meaningfully. `sink_support_m` was already part of `params` (the
+    # cache-identity dict, below) before this milestone -- see the comment
+    # there -- so a positive value reaching the cache lookup for the first
+    # time is exactly the previously-untested behaviour
+    # `test_sink_support_m_changes_the_cache_identity_cold_and_warm_both_directions`
+    # closes (S9b could only test this statically, since the raise fired
+    # first). The WEL construction itself is unchanged from S9b
+    # (`add_flow_model`, `test_t1_sink_support_wel.py`).
+
+    # T1 S8 (brief Section 3): only the id this module's own call site
+    # understands -- "legacy_base" belongs to transport_base_model, not here.
+    if courant_profile not in ("legacy_srcpulse", "exp_v1"):
+        raise ValueError(
+            f"courant_profile must be 'legacy_srcpulse' or 'exp_v1' (got "
+            f"{courant_profile!r})")
 
     if R < 1.0:
         raise ValueError(f"R must be >= 1.0 (got {R!r})")
@@ -1436,7 +2031,20 @@ def build_srcpulse_demo(
                   # embedded in the filename, so a run at one radius must
                   # never resolve to a cache file a different radius wrote.
                   footprint_radius_m=float(footprint_radius_m),
+                  # T1 S9b (brief Sec 3 "Cache identity"): folds in exactly
+                  # like footprint_radius_m above -- with S7 dropped,
+                  # hash-folding IS the isolation between a sentinel run and
+                  # a (currently unreachable past the NotImplementedError
+                  # above) supported run.
+                  sink_support_m=float(sink_support_m),
                   cr_target=float(cr_target), nstp_cap=int(nstp_cap),
+                  # T1 S8 (brief Section 2.3): the selected courant_nstp
+                  # policy must be part of the cache identity, exactly as
+                  # footprint_radius_m is above -- a run under one profile
+                  # must never resolve to a cache file the other wrote. The
+                  # digest is in the filename, so a stale cache is bypassed,
+                  # never migrated or rejected.
+                  courant_profile=str(courant_profile),
                   # T1 S3a: the DECLARED mesh identity (brief Section 2.1) --
                   # every MeshSpec field (base_cell_size, levels, retry_radii)
                   # folds in here, replacing the old raw refine_radii list.
@@ -1516,7 +2124,7 @@ def build_srcpulse_demo(
         """Compose the public builders into one coupled GWF+GWT solve."""
         sim = new_sim(run_ws, pulse_days=pulse_days, total_days=total_days,
                       nstp_per_period=nstp_per_period, exe=exe)
-        gwf = add_flow_model(sim, grid)
+        gwf = add_flow_model(sim, grid, sink_support_m=sink_support_m)
         gwt = add_transport_model(sim, gwf, grid, mass_g=mass_g, pulse_days=pulse_days,
                                   R=R, rho_b=rho_b, lam=lam, alpha_L=alpha_L_eff)
         ok, buf, sim = couple_and_run(sim, gwf, gwt, grid, run_ws)
@@ -1531,19 +2139,51 @@ def build_srcpulse_demo(
     vmag = np.sqrt(spd["qx"] ** 2 + spd["qy"] ** 2) / LOCKED_PARAMS["porosity"]
     # T1 S4: pass the ORIGINAL corridor mask + excluded cell ids (source +
     # BOTH doublet wells, inj + ext) rather than a pre-masked array -- see
-    # `_courant_nstp_canonical`.
-    nstp, dt, cr_act, cdiag = _courant_nstp(vmag, csz, corridor_mask, float(total_days),
-                                            cr_target, nstp_cap,
-                                            exclusions=src_cells + [injc, extc])
+    # `_courant_nstp_canonical`. T1 S8: `courant_profile` selects the policy;
+    # the default ("legacy_srcpulse") is the byte-identical pre-S8 call below.
+    # `exp_v1` ignores `exclusions` and needs `mesh_spec` instead of
+    # `refined_cell_size` -- see `_courant_nstp_corrected`.
+    if courant_profile == "legacy_srcpulse":
+        nstp, dt, cr_act, cdiag = _courant_nstp(vmag, csz, corridor_mask, float(total_days),
+                                                cr_target, nstp_cap,
+                                                exclusions=src_cells + [injc, extc])
+    else:
+        nstp, dt, cr_act, cdiag = _courant_nstp_canonical(
+            vmag, csz, corridor_mask, float(total_days), exclusions=src_cells + [injc, extc],
+            cr_target=cr_target, nstp_cap=nstp_cap,
+            refined_cell_size=float(LOCKED_PARAMS["refined_cell_size"]),
+            mesh_spec=spec, profile=courant_profile)
 
     sim, gwf, gwt, ok, buf = _make_sim(nstp)
     if not ok:
         raise RuntimeError("production run failed; listing tail:\n"
                            + _run_failure_tail(run_ws / "sim", buf))
 
-    # ---- breakthrough at the extraction well ----
+    # ---- breakthrough at the extraction well/support (T1 S9c) ----
     cobj = gwt.output.concentration(); times = np.array(cobj.get_times())
-    bt = np.maximum(np.array([cobj.get_data(totim=t)[0, 0, extc] for t in times]), 0.0)
+    # T1 S9b (brief Sec 2.2): the apportionment ACTUALLY applied by the WEL
+    # construction in `add_flow_model` -- read back from the BUILT
+    # stress-period data on `gwf`'s own "absw" package via
+    # `_wel_support_cells`, never recomputed in parallel from
+    # `sink_support_m`/`DOUBLET_Q` a second time (T0_0 Sec 3: an independent
+    # re-derivation is exactly how a "false record" gets written). At the
+    # sentinel (`sink_support_m == 0.0`) this is
+    # `[(ext_cell, -abs(DOUBLET_Q))]`, sorted ascending (trivially, with one
+    # entry) -- the frozen identity default (`T0_0...` Sec 3). Computed HERE
+    # (moved up from after the mass-balance section, pre-S9c) because the
+    # flux-weighted readout below needs it before `bt` can be built.
+    sink_support_cells = _wel_support_cells(gwf, pname="absw")
+    _sink_cells = [c for c, _ in sink_support_cells]
+    _prescribed_sink_rates = dict(sink_support_cells)
+    # T1 S9c (brief Sec 2.1): weights are the REALIZED per-cell extraction
+    # flow off the solved GWF budget, not the rate handed to
+    # `ModflowGwfwel` -- see `_realized_extraction_flows`'s docstring for
+    # why one budget read is sufficient (GWF is steady-state). Raises if the
+    # realized flow diverges from what was prescribed, or has the wrong
+    # sign (`_validate_realized_sink_flows`).
+    _realized_sink_rates = _realized_extraction_flows(gwf, pname="absw")
+    _validate_realized_sink_flows(_prescribed_sink_rates, _realized_sink_rates)
+    bt = _flux_weighted_breakthrough(cobj, times, _sink_cells, _realized_sink_rates)
     peak = float(bt.max()) if bt.size else float("nan")
     # `arrival_day = times[argmax(bt)]` with no guard is wrong-but-plausible in
     # two degenerate cases: (1) the plume never arrives (bt is all-zero) ->
@@ -1604,15 +2244,6 @@ def build_srcpulse_demo(
             f"(Cr_actual={cr_act:.3f}). Diagnostics/results may be under-resolved "
             "in time -- consider raising nstp_cap.", RuntimeWarning, stacklevel=2)
 
-    # T1 S2 (brief Section 3.3): the apportionment ACTUALLY applied by the WEL
-    # construction in `add_flow_model` -- the whole doublet rate on the single
-    # nearest-centroid extraction cell. `extc`/`DOUBLET_Q` are read off THIS
-    # run, never hardcoded a second time. Sorted by cell index (trivial with
-    # one entry, but written now so a future multi-cell apportionment -- S9c --
-    # inherits an already-sorted invariant).
-    sink_support_cells = sorted(
-        [(int(extc), -abs(float(DOUBLET_Q)))], key=lambda pair: pair[0])
-
     meta = dict(ncpl=ncpl, nstp=nstp, dt=dt, Cr=cr_act, n_src=n_src,
                 q_src_darcy=q_src, b_src=b_src, ds_src=ds_src, q_cell=q_cell,
                 v_bind=cdiag["v_bind"], ds_bind=cdiag["ds_bind"],
@@ -1631,10 +2262,12 @@ def build_srcpulse_demo(
         spill_xy=(float(spill_xy[0]), float(spill_xy[1])),
         alpha_L=alpha_L_eff, alpha_T=alpha_T_eff, R=float(R), rho_b=float(rho_b),
         Kd=float(Kd), lam=float(lam),
-        # T1 S2: identity default (brief Section 3.2). No builder parameter in
-        # S2 -- constant until S9b makes it real. `t_peak` is NOT passed here
-        # (init=False; derived in __post_init__ from arrival_day above).
-        sink_support_m=0.0, meta=meta)
+        # T1 S9b/S9c: the REAL parameter, threaded through -- a positive
+        # value now reaches this line (S9c lifted the raise above) and
+        # `breakthrough` above is the flux-weighted mixture for it.
+        # `t_peak` is NOT passed here (init=False; derived in __post_init__
+        # from arrival_day above).
+        sink_support_m=float(sink_support_m), meta=meta)
 
     _save_cache(cache, result, params)
     return result
@@ -1866,6 +2499,783 @@ def _load_cache(path: Path, params: Dict[str, Any]) -> Optional[SrcPulseDemo]:
             meta=dict(z["meta"].item()), locked=dict(z["locked"].item()))
     except Exception:
         return None
+
+
+# =============================================================================
+# T1 S10 (DESIGN_DOCS/T1_S10_brief.md v2): the GWF-grid sensitivity arm.
+#
+# WHAT THIS IS (brief Sec 1): the "common flow" control -- running transport
+# for several meshes on ONE shared flow field -- is DESCOPED (MF6 GWT requires
+# the GWF discretisation; a non-matching-grid remapper is out of proportion to
+# a teaching artifact). The replacement is THIS arm: flow solved and reported
+# PER MESH, so the arm DOCUMENTS that the flow field changed rather than
+# isolating it. Each mesh carrying its own GWF solve is inherent to the
+# design, not a defect to "optimise" away.
+#
+# 🔴 THE CEILING IS NAMED BY CONSTRUCTION (brief Sec 1, quoting
+# `DOCUMENTATION/contracts/T0_2b_metrics_and_causal_rule.md` Sec 4.2): "any
+# comparison in which the sink support OR the flow field also changed" is
+# insufficient for a `cause` claim. This arm IS such a comparison, by design,
+# so it can NEVER license `cause` -- a grid comparison carrying it stays
+# `hypothesis`. `NON_ISOLATION_STATEMENT` / `CLAIM_CEILING` below encode that
+# in the code (not merely in this comment), `GwfGridSensitivityArmResult.
+# __post_init__` makes it structurally impossible to construct a result
+# claiming otherwise, and every one of `to_dict` / `to_json` / `summary_text`
+# / `deltas_table` (the arm's four reporting/export paths) carries both.
+#
+# 🔴 QUANTIFIED FLOW DELTAS ARE THE SUBSTANCE (brief Sec 1.1): recording
+# *that* flow changed is worth nothing; `GwfMeshFlowDelta` records HOW MUCH,
+# per mesh pair (each non-reference mesh vs the reference mesh), in physical
+# units AND relative terms, for the four "at minimum" diagnostics the brief
+# names: Darcy-flux magnitude at the source and receptor, the head
+# difference across the corridor, and the extraction-cell throughflow.
+#
+# 🔴 NO IMPORT OF `transport_prt_capture` (brief Sec 2.1): that module already
+# imports THIS one (`transport_prt_capture.py:173`), so the reverse edge
+# would close a cycle; `test_t1_src_closure.py::DEMO_EXPECTED` pins this
+# module's transitive `_SUPPORT/src` closure to EXACTLY 7 members, with the
+# PRT closure a strict superset -- an import here would break both. Authority
+# A13 names only this one module. The capture fingerprint is therefore
+# ACCEPTED AS AN ARGUMENT (`CaptureFingerprintRecord`, injected by the
+# caller -- T2's runner, which does import PRT), never computed or imported
+# here -- and, per the SAME cycle/closure constraint, `t1_evidence_artifact`
+# (home of the frozen Role-group vocabulary this section reuses, `run_role` /
+# `grid_role` / `counterpart_run_id`) is likewise not imported: that module's
+# own docstring freezes its imports as one-way `artifact -> model`, never the
+# reverse. The Role-group STRING VALUES are therefore transcribed as local
+# constants below (`_RUN_ROLES`, `_ARM_RUN_ROLE`), not imported -- this is a
+# repetition of the same closed vocabulary, not a redefinition of policy. No
+# `CONTROL_LABELS` vocabulary is touched or reused anywhere in this section:
+# S10 is explicitly NOT a control (brief Sec 3) -- `GwfGridSensitivityArmResult
+# .is_control` is always `False`, enforced in `__post_init__`, and
+# `analysis_kind` is a plainly-named, non-control discoverability marker.
+#
+# Nothing in this section is wired into any default call path (`build_
+# srcpulse_demo`, `__main__`, or any cached/gated payload) -- T1 ships the
+# capability, T2 runs it. Gate coverage is BLIND (brief header): `compare`
+# never sees any of this, so `test_t1_gwf_grid_sensitivity.py` is the entire
+# safety argument for this step, not a supplement to `compare`.
+# =============================================================================
+
+#: T0_2b Sec 5.1 -- the frozen Role-group vocabulary, TRANSCRIBED (never
+#: imported -- see the module-comment above) purely to validate the one
+#: value this arm ever assigns to `run_role`.
+_RUN_ROLES: Tuple[str, ...] = (
+    "spatial_series", "temporal_series", "b_control", "pilot", "feasibility_probe",
+)
+#: This arm's own reading (flagged, brief Sec 3 does not name a specific
+#: value): a GWF-grid-sensitivity arm varies MESH, i.e. it is a point in the
+#: spatial series -- never `b_control` (S9c's vocabulary, not reused here),
+#: `pilot`, `feasibility_probe`, or `temporal_series` (that varies timestep,
+#: not mesh).
+_ARM_RUN_ROLE = "spatial_series"
+#: A non-control, plainly-named discoverability marker (brief Sec 3: "a
+#: non-control analysis-kind marker is permitted... discoverability does not
+#: imply controlling power"). Never read as a control by anything in this
+#: module.
+_ANALYSIS_KIND = "gwf_grid_sensitivity"
+
+#: This module's own closed platform vocabulary (flagged -- brief Sec 2.3
+#: does not fix a wire format for "Mac" / "Hub"): `"<system>-<machine>"`,
+#: lower-cased. A value outside this set is UNSUPPORTED and raises (brief
+#: exit criterion 14).
+SUPPORTED_PLATFORMS: Tuple[str, ...] = ("darwin-arm64", "linux-x86_64")
+
+#: `DOCUMENTATION/contracts/T0_2b_metrics_and_causal_rule.md` Sec 2.6/2.7 --
+#: the frozen 5% relative tolerance `capture_halfwidth_m` is judged against.
+#: Transcribed here (this module imports no contract file); a ~24%
+#: Mac<->Hub spread against this 5% is WHY brief Sec 2.3 requires a measured
+#: repeatability envelope, demonstrably below this value, before ANY
+#: fingerprint comparison (even same-platform) is permitted.
+TOL_WIDTH_REL = 0.05
+
+#: brief Sec 1: the ceiling this arm's evidence can NEVER exceed, "named by
+#: construction" per `T0_2b...` Sec 4.2 -- never `cause`.
+CLAIM_CEILING = "hypothesis"
+
+#: brief Sec 1 / exit criterion 1 -- must be IN the code (not merely in this
+#: comment block) and asserted by a test; every reporting/export path below
+#: carries it verbatim (exit criterion 17).
+NON_ISOLATION_STATEMENT = (
+    "This arm solves MODFLOW 6 GWF flow SEPARATELY for each mesh -- it does "
+    "NOT hold the flow field (or the sink support) common across the meshes "
+    "it compares. Per DOCUMENTATION/contracts/T0_2b_metrics_and_causal_rule.md "
+    "Sec 4.2, any comparison in which the sink support OR the flow field also "
+    "changed can NEVER license a 'cause' claim; a grid comparison carrying "
+    "this arm's evidence stays 'hypothesis', by construction. The quantified "
+    "flow deltas this arm reports let a reader say the observed transport "
+    "difference COINCIDED with these mesh-dependent flow differences, so "
+    "transport-grid causation is UNRESOLVED for the meshes that differ "
+    "materially -- and identify which meshes have negligible flow deltas "
+    "and are therefore better candidates for later isolation work. They do "
+    "NOT let a reader say the transport grid caused, explained, or even "
+    "dominated the observed difference."
+)
+
+
+# ---------------------------------------------------------------------------
+# exceptions -- the fail-closed vocabulary for this section
+# ---------------------------------------------------------------------------
+class GwfGridSensitivityError(RuntimeError):
+    """Base class for every error the T1 S10 GWF-grid sensitivity arm raises."""
+
+
+class DuplicateMeshIdError(GwfGridSensitivityError):
+    """Two (or more) entries in one arm share the same `mesh_id` (exit
+    criterion 13)."""
+
+
+class MeshSolveFailedError(GwfGridSensitivityError):
+    """A mesh's GWF solve failed or was partial, and either (a) mesh
+    construction itself raised, or (b) `assemble_gwf_grid_sensitivity_arm`
+    refuses to record a successful arm from a run set containing an
+    unsolved mesh (exit criterion 15)."""
+
+
+class MalformedFingerprintError(GwfGridSensitivityError):
+    """An injected `CaptureFingerprintRecord`'s value is missing, NaN, or
+    negative, or a required string field is empty (exit criterion 14)."""
+
+
+class UnsupportedPlatformError(GwfGridSensitivityError):
+    """A platform value outside `SUPPORTED_PLATFORMS` (exit criterion 14)."""
+
+
+class FingerprintMeshMismatchError(GwfGridSensitivityError):
+    """An injected fingerprint names a `mesh_id` different from the arm's
+    own mesh -- fingerprints cannot be swapped between meshes (exit
+    criterion 12)."""
+
+
+class FingerprintFlowIncompatibleError(GwfGridSensitivityError):
+    """An injected fingerprint's `flow_identity` does not match the arm's
+    own solved flow identity (brief Sec 2.2, exit criterion 2/5/11)."""
+
+
+class CrossPlatformFingerprintComparisonError(GwfGridSensitivityError):
+    """Two fingerprints recorded on different platforms were compared (exit
+    criterion 3)."""
+
+
+class MissingRepeatabilityEnvelopeError(GwfGridSensitivityError):
+    """A fingerprint comparison was attempted with no `RepeatabilityEnvelope`
+    at all (brief Sec 2.3, exit criterion 10)."""
+
+
+class RepeatabilityEnvelopeMismatchError(GwfGridSensitivityError):
+    """The supplied envelope was measured on a different platform than the
+    fingerprints being compared."""
+
+
+class RepeatabilityEnvelopeInsufficientError(GwfGridSensitivityError):
+    """The supplied envelope's spread is not demonstrably below
+    `TOL_WIDTH_REL` (brief Sec 2.3, exit criterion 10)."""
+
+
+# ---------------------------------------------------------------------------
+# small numeric helpers
+# ---------------------------------------------------------------------------
+def _rel_delta(delta: float, reference: float) -> Optional[float]:
+    """Relative delta = `delta / reference`; `None` (never `inf`/`nan`) when
+    `reference == 0.0` exactly -- a bare division would either raise or
+    produce a non-finite value this section's deterministic JSON export
+    cannot represent."""
+    if reference == 0.0:
+        return None
+    return float(delta) / float(reference)
+
+
+def _fmt_rel(rel: Optional[float]) -> str:
+    return "n/a (zero reference)" if rel is None else f"{rel * 100.0:+.2f}%"
+
+
+def current_platform_tag() -> str:
+    """This run's platform tag in `SUPPORTED_PLATFORMS`' own format --
+    `"<system>-<machine>"`, lower-cased (e.g. `"darwin-arm64"` on a
+    developer Mac, `"linux-x86_64"` on JupyterHub)."""
+    return f"{platform.system().lower()}-{platform.machine().lower()}"
+
+
+def flow_identity_string(mesh_id: str, realized_extraction_cells: Sequence[int]) -> str:
+    """Canonical flow-identity descriptor (brief Sec 2.1/2.2; this module's
+    own construction, flagged -- neither contract quoted in the brief fixes
+    an algorithm for this).
+
+    Two solved flow fields share a "flow identity", for the purpose of
+    validating an injected capture fingerprint, exactly when this string
+    matches -- true whenever the REALIZED extraction-well support cell set
+    matches, regardless of *why* it does or doesn't. MODFLOW 6 PRT always
+    builds its own hard-coded, single-cell doublet
+    (`transport_prt_capture.py:542-545`), which corresponds to a
+    realized-support set of exactly one cell; a demo GWF solved at
+    `sink_support_m > 0` realizes through MORE than one cell, so the two
+    identities differ TODAY -- without this function ever testing
+    `sink_support_m > 0` directly (brief Sec 2.2's round-1 finding: that
+    would wrongly block a future fingerprint legitimately computed from a
+    distributed-support flow, and would miss any OTHER way the two fields
+    could diverge). If PRT ever grows a matching distributed-support well,
+    the two identity strings would agree again with no change needed here.
+
+    `realized_extraction_cells` MUST come from the SOLVED GWF budget
+    (`_realized_extraction_flows`), never the cells merely PRESCRIBED to the
+    WEL package -- the same "realized, not configured" ethos S9c already
+    applies to breakthrough weighting.
+    """
+    cells = tuple(sorted(int(c) for c in realized_extraction_cells))
+    return _identity_digest({"mesh_id": str(mesh_id),
+                             "realized_extraction_support_cells": list(cells)})
+
+
+# ---------------------------------------------------------------------------
+# the injected capture fingerprint -- a TYPED PROVENANCE RECORD (brief Sec
+# 2.1), never a bare float
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class CaptureFingerprintRecord:
+    """A PRT capture-halfwidth fingerprint, INJECTED by the caller (T2's
+    runner, which calls `transport_prt_capture.capture_halfwidth_at()`) --
+    never computed or imported by this module (brief Sec 2.1). A bare float
+    would relocate the coupling to T2 where it is LESS visible and silently
+    permit stale, swapped, or independently generated values; this record
+    carries the value together with enough provenance for THIS arm to
+    validate it against its own run/mesh/flow identity before ever reading
+    `value_m` (see `_validate_capture_fingerprint`,
+    `assemble_gwf_grid_sensitivity_arm`).
+
+    Structural validity (non-empty strings, a finite non-negative value, a
+    supported platform) is enforced HERE, at construction (exit criteria
+    14). `mesh_id` / `flow_identity` compatibility with a SPECIFIC arm run
+    can only be checked once that arm's own identities are known, so that
+    check lives in `_validate_capture_fingerprint`, called from
+    `assemble_gwf_grid_sensitivity_arm` (exit criteria 2, 5, 11, 12).
+
+    `compatibility_status` is the PRODUCER's own self-declared status (e.g.
+    what PRT believed it was compatible with) -- it is recorded but is
+    explicitly NOT authoritative: this arm always independently re-verifies
+    `mesh_id` and `flow_identity` itself rather than trusting the
+    self-declared string, exactly the same "recompute, never trust a
+    declared value verbatim" posture `t1_evidence_artifact.EvidenceRecord.
+    provenance_valid` already uses for `run_health.provenance_valid`.
+    """
+
+    value_m: float
+    platform: str
+    producing_run_id: str
+    mesh_id: str
+    flow_identity: str
+    method_id: str
+    compatibility_status: str
+
+    def __post_init__(self) -> None:
+        if (self.value_m is None or isinstance(self.value_m, bool)
+                or not isinstance(self.value_m, (int, float))
+                or not math.isfinite(float(self.value_m))):
+            raise MalformedFingerprintError(
+                "CaptureFingerprintRecord.value_m must be a finite number; got "
+                f"{self.value_m!r}")
+        if float(self.value_m) < 0.0:
+            raise MalformedFingerprintError(
+                "CaptureFingerprintRecord.value_m must be non-negative (a "
+                f"capture half-width cannot be negative); got {self.value_m!r}")
+        for name in ("platform", "producing_run_id", "mesh_id", "flow_identity",
+                     "method_id", "compatibility_status"):
+            v = getattr(self, name)
+            if not isinstance(v, str) or not v.strip():
+                raise MalformedFingerprintError(
+                    f"CaptureFingerprintRecord.{name} must be a non-empty "
+                    f"string; got {v!r}")
+        if self.platform not in SUPPORTED_PLATFORMS:
+            raise UnsupportedPlatformError(
+                f"CaptureFingerprintRecord.platform={self.platform!r} is not "
+                f"one of {SUPPORTED_PLATFORMS!r}")
+
+
+def _validate_capture_fingerprint(fp: "CaptureFingerprintRecord", *, mesh_id: str,
+                                  flow_identity: str) -> None:
+    """Re-verify an injected fingerprint against THIS arm's own identities
+    (brief Sec 2.1: "validates it against the arm's own run/mesh/flow
+    identity ... raises on mismatch") -- `CaptureFingerprintRecord.
+    __post_init__` already checked internal structural validity; this
+    checks EXTERNAL consistency with the specific mesh it is being attached
+    to."""
+    if fp.mesh_id != mesh_id:
+        raise FingerprintMeshMismatchError(
+            f"injected capture fingerprint names mesh_id={fp.mesh_id!r}, but "
+            f"this arm's own mesh is {mesh_id!r} -- fingerprints cannot be "
+            "swapped between meshes (brief exit criterion 12)")
+    if fp.flow_identity != flow_identity:
+        raise FingerprintFlowIncompatibleError(
+            f"injected capture fingerprint's flow_identity={fp.flow_identity!r} "
+            f"does not match this arm's own solved flow_identity="
+            f"{flow_identity!r} -- the fingerprint's producing run solved a "
+            "DIFFERENT flow field than this arm did (brief Sec 2.2: refuse on "
+            "flow-identity incompatibility, not on sink_support_m > 0 "
+            "directly)")
+
+
+# ---------------------------------------------------------------------------
+# the repeatability envelope + fingerprint comparison -- descriptive-only
+# until measured (brief Sec 2.3)
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class RepeatabilityEnvelope:
+    """Evidence a fingerprint comparison is meaningful (brief Sec 2.3):
+    replicated runs in FRESH EXECUTIONS, demonstrably below `TOL_WIDTH_REL`.
+    Never inferred or defaulted -- always supplied by the caller, from
+    actually-measured replicate runs."""
+
+    platform: str
+    n_replicates: int
+    spread_rel: float
+    replicate_run_ids: Tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if self.platform not in SUPPORTED_PLATFORMS:
+            raise UnsupportedPlatformError(
+                f"RepeatabilityEnvelope.platform={self.platform!r} is not "
+                f"one of {SUPPORTED_PLATFORMS!r}")
+        if self.n_replicates < 2:
+            raise ValueError(
+                "RepeatabilityEnvelope.n_replicates must be >= 2 -- a "
+                "repeatability envelope needs replicated runs, not a single "
+                f"execution; got {self.n_replicates!r}")
+        if len(self.replicate_run_ids) != self.n_replicates:
+            raise ValueError(
+                f"RepeatabilityEnvelope.replicate_run_ids has "
+                f"{len(self.replicate_run_ids)} entries but n_replicates="
+                f"{self.n_replicates}")
+        if len(set(self.replicate_run_ids)) != len(self.replicate_run_ids):
+            raise ValueError(
+                "RepeatabilityEnvelope.replicate_run_ids must be distinct -- "
+                "replicated FRESH EXECUTIONS, not the same run counted twice")
+        if not math.isfinite(self.spread_rel) or self.spread_rel < 0.0:
+            raise ValueError(
+                "RepeatabilityEnvelope.spread_rel must be finite and >= 0; "
+                f"got {self.spread_rel!r}")
+
+
+@dataclass(frozen=True)
+class FingerprintComparisonResult:
+    """The result of a PERMITTED fingerprint comparison (brief Sec 2.3) --
+    `compare_fingerprints` raises rather than returning this whenever the
+    comparison is not permitted."""
+
+    a_mesh_id: str
+    b_mesh_id: str
+    platform: str
+    delta_m: float
+    delta_rel: Optional[float]
+    envelope: "RepeatabilityEnvelope"
+
+
+def compare_fingerprints(a: "CaptureFingerprintRecord", b: "CaptureFingerprintRecord", *,
+                         envelope: Optional["RepeatabilityEnvelope"]
+                         ) -> "FingerprintComparisonResult":
+    """Compare two capture fingerprints -- DESCRIPTIVE-ONLY (brief Sec 2.3).
+
+    Raises unless ALL of: (1) both fingerprints share the same `platform`
+    (a cross-platform comparison always raises, regardless of any envelope);
+    (2) a `RepeatabilityEnvelope` is supplied at all; (3) that envelope was
+    itself measured on the SAME platform; (4) its `spread_rel` is
+    demonstrably below `TOL_WIDTH_REL`. This arm's OWN substance is the
+    deterministic flow deltas of `GwfMeshFlowDelta` -- this function exists
+    so a caller CANNOT accidentally treat the fingerprint as a discriminator
+    without the evidence Sec 2.3 requires; it does not block S10 itself.
+    """
+    if a.platform != b.platform:
+        raise CrossPlatformFingerprintComparisonError(
+            "cannot compare capture fingerprints from different platforms "
+            f"({a.platform!r} vs {b.platform!r}) -- a ~24% Mac<->Hub spread "
+            "makes a cross-platform comparison meaningless regardless of any "
+            "repeatability envelope (brief Sec 2.3)")
+    if envelope is None:
+        raise MissingRepeatabilityEnvelopeError(
+            "fingerprint comparison requires a recorded repeatability "
+            "envelope (brief Sec 2.3) -- absent one, ANY comparison, "
+            "including same-platform, is refused")
+    if envelope.platform != a.platform:
+        raise RepeatabilityEnvelopeMismatchError(
+            f"the supplied repeatability envelope was measured on "
+            f"{envelope.platform!r}, not {a.platform!r} -- it cannot support "
+            "this comparison")
+    if not (envelope.spread_rel < TOL_WIDTH_REL):
+        raise RepeatabilityEnvelopeInsufficientError(
+            f"the repeatability envelope's spread ({envelope.spread_rel:.4f}) "
+            f"is not demonstrably below TOL_WIDTH_REL ({TOL_WIDTH_REL:.4f}) -- "
+            "the fingerprint metric stays descriptive-only until a tighter "
+            "envelope is measured (brief Sec 2.3)")
+    delta_m = float(b.value_m) - float(a.value_m)
+    return FingerprintComparisonResult(
+        a_mesh_id=a.mesh_id, b_mesh_id=b.mesh_id, platform=a.platform,
+        delta_m=delta_m, delta_rel=_rel_delta(delta_m, float(a.value_m)),
+        envelope=envelope)
+
+
+# ---------------------------------------------------------------------------
+# per-mesh flow diagnostics + deltas
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class MeshFlowDiagnostics:
+    """Comparable quantitative flow diagnostics for ONE mesh's solved GWF
+    (brief Sec 1.1) -- the "at minimum" four: Darcy-flux magnitude at the
+    source and receptor, head difference across the corridor, and
+    extraction-cell throughflow. `flow_identity` is `flow_identity_string`'s
+    output for THIS mesh's actually-realized extraction support (empty only
+    when `solved` is `False`, i.e. never computed)."""
+
+    mesh_id: str
+    mesh_spec_hash: str
+    q_source_darcy_m_d: float
+    q_receptor_darcy_m_d: float
+    head_diff_corridor_m: float
+    extraction_throughflow_m3d: float
+    flow_identity: str
+    platform: str
+    solved: bool
+    solver_status: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.mesh_id, str) or not self.mesh_id.strip():
+            raise ValueError("MeshFlowDiagnostics.mesh_id must be a non-empty string")
+        if not isinstance(self.solver_status, str) or not self.solver_status.strip():
+            raise ValueError(
+                "MeshFlowDiagnostics.solver_status must be a non-empty string "
+                "(brief exit criterion 15: solver failure must be handled "
+                "explicitly, never silent)")
+        if self.solved:
+            for name in ("q_source_darcy_m_d", "q_receptor_darcy_m_d",
+                         "head_diff_corridor_m", "extraction_throughflow_m3d"):
+                v = getattr(self, name)
+                if v is None or not math.isfinite(float(v)):
+                    raise ValueError(
+                        f"MeshFlowDiagnostics.{name} must be finite for a "
+                        f"solved mesh; got {v!r}")
+            if not self.flow_identity:
+                raise ValueError(
+                    "MeshFlowDiagnostics.flow_identity must be non-empty for "
+                    "a solved mesh")
+
+
+@dataclass(frozen=True)
+class GwfMeshFlowDelta:
+    """One mesh-vs-reference-mesh flow delta (brief Sec 1.1, exit criterion
+    9) -- the quantified substance of this arm. Every delta is reported in
+    BOTH physical units and as a relative fraction of the reference value
+    (`None` only when the reference value is exactly zero; see
+    `_rel_delta`)."""
+
+    mesh_id: str
+    reference_mesh_id: str
+    d_q_source_darcy_m_d: float
+    d_q_source_darcy_rel: Optional[float]
+    d_q_receptor_darcy_m_d: float
+    d_q_receptor_darcy_rel: Optional[float]
+    d_head_diff_corridor_m: float
+    d_head_diff_corridor_rel: Optional[float]
+    d_extraction_throughflow_m3d: float
+    d_extraction_throughflow_rel: Optional[float]
+
+
+def _compute_delta(candidate: "MeshFlowDiagnostics",
+                   reference: "MeshFlowDiagnostics") -> "GwfMeshFlowDelta":
+    d_src = candidate.q_source_darcy_m_d - reference.q_source_darcy_m_d
+    d_rcpt = candidate.q_receptor_darcy_m_d - reference.q_receptor_darcy_m_d
+    d_head = candidate.head_diff_corridor_m - reference.head_diff_corridor_m
+    d_ext = candidate.extraction_throughflow_m3d - reference.extraction_throughflow_m3d
+    return GwfMeshFlowDelta(
+        mesh_id=candidate.mesh_id, reference_mesh_id=reference.mesh_id,
+        d_q_source_darcy_m_d=d_src,
+        d_q_source_darcy_rel=_rel_delta(d_src, reference.q_source_darcy_m_d),
+        d_q_receptor_darcy_m_d=d_rcpt,
+        d_q_receptor_darcy_rel=_rel_delta(d_rcpt, reference.q_receptor_darcy_m_d),
+        d_head_diff_corridor_m=d_head,
+        d_head_diff_corridor_rel=_rel_delta(d_head, reference.head_diff_corridor_m),
+        d_extraction_throughflow_m3d=d_ext,
+        d_extraction_throughflow_rel=_rel_delta(
+            d_ext, reference.extraction_throughflow_m3d),
+    )
+
+
+# ---------------------------------------------------------------------------
+# the arm result -- role group reused, ceiling enforced structurally
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class GwfGridSensitivityArmResult:
+    """The T1 S10 arm's result: one reference mesh, one or more compared
+    meshes, their flow deltas, any validated injected fingerprints, and the
+    non-isolation statement + ceiling every reporting path below carries
+    (exit criteria 1, 17).
+
+    `run_role` / `grid_role` / `counterpart_run_id` reuse T0_2b Sec 5.1's
+    frozen Role group (transcribed, not imported -- see the section-level
+    comment above); `is_control` is always `False` and `analysis_kind` is a
+    plain, non-control discoverability label (brief Sec 3: "No CONTROL
+    label").
+    """
+
+    reference_mesh_id: str
+    mesh_results: Tuple["MeshFlowDiagnostics", ...]
+    deltas: Tuple["GwfMeshFlowDelta", ...]
+    fingerprints: Mapping[str, "CaptureFingerprintRecord"]
+    non_isolation_statement: str = NON_ISOLATION_STATEMENT
+    claim_ceiling: str = CLAIM_CEILING
+    run_role: str = _ARM_RUN_ROLE
+    grid_role: Optional[str] = None
+    counterpart_run_id: Optional[str] = None
+    analysis_kind: str = _ANALYSIS_KIND
+    is_control: bool = False
+
+    def __post_init__(self) -> None:
+        if self.non_isolation_statement != NON_ISOLATION_STATEMENT:
+            raise ValueError(
+                "GwfGridSensitivityArmResult.non_isolation_statement must be "
+                "exactly the frozen NON_ISOLATION_STATEMENT -- this arm can "
+                "never quietly read as isolating the flow field (brief "
+                "exit criterion 1)")
+        if self.claim_ceiling != CLAIM_CEILING:
+            raise ValueError(
+                f"GwfGridSensitivityArmResult.claim_ceiling must be "
+                f"{CLAIM_CEILING!r} -- a grid comparison carrying this arm "
+                "can never license 'cause' (brief Sec 1, T0_2b Sec 4.2)")
+        if self.is_control is not False:
+            raise ValueError(
+                "GwfGridSensitivityArmResult.is_control must be False -- "
+                "this arm is explicitly NOT a control (brief Sec 3)")
+        if self.run_role not in _RUN_ROLES:
+            raise ValueError(
+                f"GwfGridSensitivityArmResult.run_role={self.run_role!r} is "
+                f"not one of {_RUN_ROLES!r}")
+
+    # -- reporting / export paths -- EVERY one carries the non-isolation
+    # statement and the ceiling verbatim (exit criterion 17) --------------
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "reference_mesh_id": self.reference_mesh_id,
+            "non_isolation_statement": self.non_isolation_statement,
+            "claim_ceiling": self.claim_ceiling,
+            "role": {
+                "run_role": self.run_role,
+                "grid_role": self.grid_role,
+                "counterpart_run_id": self.counterpart_run_id,
+            },
+            "analysis_kind": self.analysis_kind,
+            "is_control": self.is_control,
+            "meshes": [dataclasses.asdict(d) for d in self.mesh_results],
+            "deltas": [dataclasses.asdict(d) for d in self.deltas],
+            "fingerprints": {mid: dataclasses.asdict(fp)
+                             for mid, fp in sorted(self.fingerprints.items())},
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), sort_keys=True, ensure_ascii=True)
+
+    def summary_text(self) -> str:
+        lines = [
+            "GWF-grid sensitivity arm (T1 S10) -- flow solved and reported "
+            "per mesh.",
+            f"  claim ceiling: {self.claim_ceiling!r}",
+            f"  reference mesh: {self.reference_mesh_id}",
+            "",
+            self.non_isolation_statement,
+            "",
+        ]
+        for d in self.deltas:
+            lines.append(
+                f"  mesh {d.mesh_id} vs reference {d.reference_mesh_id}:")
+            lines.append(
+                f"    d(q_source)  = {d.d_q_source_darcy_m_d:+.4g} m/d "
+                f"({_fmt_rel(d.d_q_source_darcy_rel)})")
+            lines.append(
+                f"    d(q_receptor)= {d.d_q_receptor_darcy_m_d:+.4g} m/d "
+                f"({_fmt_rel(d.d_q_receptor_darcy_rel)})")
+            lines.append(
+                f"    d(head diff) = {d.d_head_diff_corridor_m:+.4g} m "
+                f"({_fmt_rel(d.d_head_diff_corridor_rel)})")
+            lines.append(
+                f"    d(Q_ext)     = {d.d_extraction_throughflow_m3d:+.4g} "
+                f"m3/d ({_fmt_rel(d.d_extraction_throughflow_rel)})")
+        return "\n".join(lines)
+
+    def deltas_table(self) -> Dict[str, Any]:
+        rows: List[Dict[str, Any]] = []
+        for d in self.deltas:
+            for metric, abs_val, rel_val, units in (
+                ("q_source_darcy", d.d_q_source_darcy_m_d,
+                 d.d_q_source_darcy_rel, "m/d"),
+                ("q_receptor_darcy", d.d_q_receptor_darcy_m_d,
+                 d.d_q_receptor_darcy_rel, "m/d"),
+                ("head_diff_corridor", d.d_head_diff_corridor_m,
+                 d.d_head_diff_corridor_rel, "m"),
+                ("extraction_throughflow", d.d_extraction_throughflow_m3d,
+                 d.d_extraction_throughflow_rel, "m3/d"),
+            ):
+                rows.append({
+                    "mesh_id": d.mesh_id,
+                    "reference_mesh_id": d.reference_mesh_id,
+                    "metric": metric,
+                    "absolute_delta": abs_val,
+                    "relative_delta": rel_val,
+                    "units": units,
+                })
+        return {
+            "non_isolation_statement": self.non_isolation_statement,
+            "claim_ceiling": self.claim_ceiling,
+            "rows": rows,
+        }
+
+
+def assemble_gwf_grid_sensitivity_arm(
+        mesh_diagnostics: Sequence["MeshFlowDiagnostics"], *,
+        reference_mesh_id: str,
+        fingerprints: Optional[Mapping[str, "CaptureFingerprintRecord"]] = None,
+) -> "GwfGridSensitivityArmResult":
+    """Validate + assemble one `GwfGridSensitivityArmResult` from already
+    -solved per-mesh diagnostics (brief Sec 5, the exit-criteria table):
+
+      * duplicate mesh ids raise (`DuplicateMeshIdError`, exit criterion 13);
+      * `mesh_diagnostics` order IS the result's order -- deterministic by
+        construction (a Python sequence's order is never silently reshuffled
+        here), and any fingerprint naming a `mesh_id` outside this set, or
+        `reference_mesh_id` itself not among the supplied meshes, raises
+        (misalignment, exit criterion 13);
+      * ANY unsolved mesh refuses the WHOLE arm (`MeshSolveFailedError`,
+        never a partially-successful result -- exit criterion 15);
+      * every supplied fingerprint is validated against ITS OWN mesh's
+        identity (`_validate_capture_fingerprint`) before being attached.
+    """
+    mesh_list = list(mesh_diagnostics)
+    if not mesh_list:
+        raise ValueError("assemble_gwf_grid_sensitivity_arm: mesh_diagnostics is empty")
+
+    ids = [d.mesh_id for d in mesh_list]
+    dupes = sorted({m for m in ids if ids.count(m) > 1})
+    if dupes:
+        raise DuplicateMeshIdError(f"duplicate mesh id(s) in this arm: {dupes!r}")
+
+    if reference_mesh_id not in ids:
+        raise ValueError(
+            f"reference_mesh_id={reference_mesh_id!r} is not among the "
+            f"supplied mesh ids {ids!r}")
+
+    failed = [d for d in mesh_list if not d.solved]
+    if failed:
+        raise MeshSolveFailedError(
+            "refusing to record a GWF-grid-sensitivity arm: mesh(es) "
+            f"{[d.mesh_id for d in failed]!r} did not solve successfully "
+            f"(solver_status={[d.solver_status for d in failed]!r}) -- a "
+            "failed or partial solve is never recorded as a successful arm "
+            "(brief exit criterion 15)")
+
+    fingerprints = dict(fingerprints or {})
+    unknown = sorted(set(fingerprints) - set(ids))
+    if unknown:
+        raise ValueError(
+            f"fingerprint(s) supplied for mesh id(s) {unknown!r}, which are "
+            "not among this arm's meshes -- misalignment")
+
+    by_id = {d.mesh_id: d for d in mesh_list}
+    validated: Dict[str, CaptureFingerprintRecord] = {}
+    for mesh_id, fp in fingerprints.items():
+        diag = by_id[mesh_id]
+        _validate_capture_fingerprint(fp, mesh_id=mesh_id, flow_identity=diag.flow_identity)
+        validated[mesh_id] = fp
+
+    reference = by_id[reference_mesh_id]
+    deltas = tuple(_compute_delta(d, reference) for d in mesh_list
+                   if d.mesh_id != reference_mesh_id)
+
+    return GwfGridSensitivityArmResult(
+        reference_mesh_id=reference_mesh_id,
+        mesh_results=tuple(mesh_list),
+        deltas=deltas,
+        fingerprints=validated,
+        counterpart_run_id=reference.mesh_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# the REAL per-mesh GWF solve (brief Sec 1: "flow solved and reported per
+# mesh"). Expensive -- a full corridor refinement + MF6 GWF solve (T2's own
+# timing note: ~316 s for a fine mesh on a fast Mac; Hub speed unmeasured) --
+# so this is NOT exercised by the fast unit tests in
+# test_t1_gwf_grid_sensitivity.py, which test the composition/validation
+# logic above against synthetic `MeshFlowDiagnostics` built from the exact
+# same fields this function returns. Never wired into any default call path.
+# ---------------------------------------------------------------------------
+def _mesh_flow_diagnostics_from_solved_gwf(gwf, grid: Dict[str, Any],
+                                           platform_tag: str) -> "MeshFlowDiagnostics":
+    spd = gwf.output.budget().get_data(text="DATA-SPDIS")[0]
+    heads = gwf.output.head().get_data().flatten()
+    src_cell = int(grid["src_cells"][0])
+    ext_cell = int(grid["ext_cell"])
+    q_src = float(np.hypot(spd["qx"][src_cell], spd["qy"][src_cell]))
+    q_ext = float(np.hypot(spd["qx"][ext_cell], spd["qy"][ext_cell]))
+    head_diff = float(heads[src_cell] - heads[ext_cell])
+    realized = _realized_extraction_flows(gwf, "absw")
+    extraction_throughflow = float(sum(abs(v) for v in realized.values()))
+    flow_id = flow_identity_string(grid["mesh_hash"], tuple(realized.keys()))
+    return MeshFlowDiagnostics(
+        mesh_id=grid["mesh_hash"], mesh_spec_hash=grid["mesh_spec_hash"],
+        q_source_darcy_m_d=q_src, q_receptor_darcy_m_d=q_ext,
+        head_diff_corridor_m=head_diff,
+        extraction_throughflow_m3d=extraction_throughflow,
+        flow_identity=flow_id, platform=platform_tag, solved=True,
+        solver_status="converged")
+
+
+def solve_mesh_flow(mesh_spec: "MeshSpec", *, sink_support_m: float = 0.0,
+                    case_ws: Optional[Union[str, Path]] = None) -> "MeshFlowDiagnostics":
+    """Build + solve MODFLOW 6 GWF for ONE mesh and return its flow
+    diagnostics. A mesh-BUILD failure (corridor refinement exhausting its
+    retry ladder) raises `MeshSolveFailedError`; a mesh that BUILDS but
+    whose MF6 solve does not converge returns `solved=False` with
+    `solver_status` naming the failure (brief exit criterion 15: handled
+    explicitly, never silently recorded as success) -- callers pass such a
+    record straight to `assemble_gwf_grid_sensitivity_arm`, which refuses to
+    build a result from it.
+    """
+    cgwf, boundary, rivers, exe = _load_calibrated_flow()
+    root = Path(case_ws) if case_ws is not None else _default_case_ws() / "gwf_grid_sensitivity"
+    try:
+        grid = refine_corridor(cgwf, boundary, rivers, mesh_spec=mesh_spec, case_ws=root)
+    except Exception as exc:
+        raise MeshSolveFailedError(
+            f"mesh build (corridor refinement) failed for mesh_spec="
+            f"{mesh_spec!r}: {exc!r}") from exc
+
+    platform_tag = current_platform_tag()
+    mesh_ws = root / f"mesh_{grid['mesh_hash']}"
+    sim = new_sim(mesh_ws, pulse_days=1.0, total_days=1.0, nstp_per_period=1, exe=exe)
+    gwf = add_flow_model(sim, grid, sink_support_m=sink_support_m)
+    sim.write_simulation(silent=True)
+    ok, buf = sim.run_simulation(silent=True)
+    if not ok:
+        return MeshFlowDiagnostics(
+            mesh_id=grid["mesh_hash"], mesh_spec_hash=grid["mesh_spec_hash"],
+            q_source_darcy_m_d=float("nan"), q_receptor_darcy_m_d=float("nan"),
+            head_diff_corridor_m=float("nan"),
+            extraction_throughflow_m3d=float("nan"), flow_identity="",
+            platform=platform_tag, solved=False,
+            solver_status=_run_failure_tail(mesh_ws / "sim", buf))
+    return _mesh_flow_diagnostics_from_solved_gwf(gwf, grid, platform_tag)
+
+
+def run_gwf_grid_sensitivity_arm(
+        mesh_specs: Sequence["MeshSpec"], *, reference_index: int = 0,
+        sink_support_m: float = 0.0,
+        fingerprints: Optional[Mapping[str, "CaptureFingerprintRecord"]] = None,
+        case_ws: Optional[Union[str, Path]] = None) -> "GwfGridSensitivityArmResult":
+    """Convenience wrapper: `solve_mesh_flow` for every mesh in
+    `mesh_specs` (⚠️ each mesh carrying its OWN GWF solve is inherent to the
+    design, brief Sec 1 -- not a defect to "optimise" away by sharing one
+    flow field), then `assemble_gwf_grid_sensitivity_arm`. Never wired into
+    any default call path.
+    """
+    diagnostics = [solve_mesh_flow(spec, sink_support_m=sink_support_m, case_ws=case_ws)
+                  for spec in mesh_specs]
+    reference_mesh_id = diagnostics[reference_index].mesh_id
+    return assemble_gwf_grid_sensitivity_arm(
+        diagnostics, reference_mesh_id=reference_mesh_id, fingerprints=fingerprints)
 
 
 # ---------------------------------------------------------------------------

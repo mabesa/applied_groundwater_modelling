@@ -50,7 +50,7 @@ algorithm. Those choices are frozen HERE, as follows.
    attribute <-> JSON-path mapping is `_FIELD_MAP` below, plus the two
    nested collections (`metrics`, `support.envelope`) handled explicitly.
 
-2. SCHEMA VERSION: `SCHEMA_VERSION = "3.0.0"`, a plain string, stored at
+2. SCHEMA VERSION: `SCHEMA_VERSION = "3.2.0"`, a plain string, stored at
    `schema.schema_version`. The loader's schema-version check is an EXACT
    string match against the currently-imported module's `SCHEMA_VERSION`
    (no semver range matching) -- any drift, including a patch bump, must be
@@ -392,6 +392,75 @@ algorithm. Those choices are frozen HERE, as follows.
     branch exists anywhere in this module -- because, per the task brief,
     it is the DEFAULT configuration, not a special case.
 
+20. `run_identity.controls` (SCHEMA_VERSION 3.0.0 -> 3.1.0 addition): T1 S9c
+    (`DESIGN_DOCS/T1_S9c_brief.md` v2 Sec 3) adds `sink_support_controlled`,
+    the label for a B-control arm whose extraction well distributes its
+    rate across a fixed-support disc (T1 S9b/S9c, C1 A6). This is
+    EXPLICITLY NOT a `DiagnosticRecord`: `DIAGNOSTIC_LABELS` is closed to
+    `observation_support_robustness` (decision #13), and a diagnostic is
+    post-processing with NO SOLVE of its own, while a B-control arm carries
+    its own GWF solve -- conflating the two is the same category error
+    decision #16 already avoided once for the source footprint. So this is
+    a SEPARATE closed vocabulary, `CONTROL_LABELS`, and a NEW small record
+    type, `ControlRecord`, filed at `run_identity.controls` -- a SIBLING of
+    `source_footprint`, not nested under `support` -- because a control is
+    an APPLIED configuration that identifies what ran, exactly the same
+    placement reasoning decision #16 gives `source_footprint`.
+
+    `run_identity.controls` is a mapping of label -> `ControlRecord`,
+    mirroring `support.diagnostics`'s "named-entries mapping" shape
+    (decision #12) rather than `source_footprint`'s single optional
+    structure: most runs carry NO control at all (only a `b_control`-role
+    arm does), so -- exactly like `support.diagnostics` (decision #15) --
+    the bare key `run_identity.controls` must be PRESENT (an object,
+    possibly `{}`) for structural completeness, but which labels it
+    contains is producer-side policy this schema does not fix. The
+    dict-key-must-equal-its-own-label invariant `support.diagnostics`
+    enforces (decision #13) is INHERITED verbatim here: the key a control
+    is filed under must equal its own `label`, or `record_from_raw_dict`
+    raises `MalformedEvidenceRecordError`, same as any other
+    present-but-invalid value.
+
+    🔴 `ControlRecord`'s CEILING is the entire point of the label existing
+    (brief Sec 3): `sink_support_controlled` licenses *"sink support was
+    controlled in this arm"* and NOTHING more. It is NEVER causal isolation
+    of a grid effect -- flow was not held common across compared runs (that
+    control is descoped, `T0_2b...` Sec 4.2), so a grid comparison under
+    this control remains `hypothesis`. This is encoded exactly like
+    decision #13's `DIAGNOSTIC_CAUSAL_SUPPORT_ELIGIBLE` precedent: a frozen
+    `CONTROL_CAUSAL_ISOLATION_ELIGIBLE` mapping (currently
+    `{"sink_support_controlled": False}`), computed at JSON-emission time
+    (never a caller-supplied `ControlRecord` field, so it cannot be
+    silently overridden) and re-verified against the frozen mapping on
+    load -- a record claiming a different value for a known label is
+    treated as malformed, not accepted.
+
+    `ControlRecord.uncontrolled_counterpart_run_id` names the SENTINEL run
+    (`sink_support_m == 0.0`) at the SAME cell size this control's own run
+    is compared against (brief Sec 4, "name the uncontrolled counterpart":
+    the "with" arm is this record's own run; the "without" arm is this
+    field) -- distinct from the pre-existing top-level `counterpart_run_id`
+    (Role group), which this module leaves free for other pairing uses.
+
+    `ControlRecord.prt_capture_diverges` records that MODFLOW 6 PRT builds
+    its own, unmodified single-cell doublet WEL and does NOT see this
+    control's distributed sink (brief Sec 2.4 / constraints) -- so a
+    downstream consumer (S10) cannot unknowingly pair a PRT capture
+    fingerprint with a B-control arm without checking this flag first.
+
+    *** Whether a whole new record TYPE was warranted at all, versus
+    reusing `SourceFootprintRecord` or `DiagnosticRecord` outright, is this
+    module's own reading of the task brief's "a whole new record hierarchy
+    is not required... if an existing run-configuration record can carry
+    the closed label and its ceiling, use that": neither existing type fits
+    without contorting its own meaning (`SourceFootprintRecord` has no
+    label/ceiling at all; `DiagnosticRecord`'s label vocabulary is closed
+    to the OTHER, structurally different, no-solve category), so ONE new,
+    deliberately minimal dataclass is added -- not a multi-class hierarchy
+    like the footprint's three-part `FootprintEntry`/`FootprintCoverage`/
+    `SourceFootprintRecord` shape. Flagged here rather than decided
+    silently. ***
+
 Fail-closed contract, restated precisely: `load_record()` raises
 `SchemaVersionMismatchError` or `ContentHashMismatchError` and returns
 NOTHING on those two failures -- it never falls back to a stale or default
@@ -414,7 +483,7 @@ from typing import Any, Mapping, MutableMapping, Optional, Sequence, Tuple, Unio
 # Frozen constants
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION = "3.0.0"
+SCHEMA_VERSION = "3.2.0"
 
 #: T0_2b_metrics_and_causal_rule.md Sec 5.1 "Role" row -- closed, exhaustive.
 RUN_ROLES: Tuple[str, ...] = (
@@ -498,6 +567,33 @@ _DIAGNOSTIC_SUBFIELDS: Tuple[str, ...] = (
     "times",
     "values",
     "reason",
+)
+
+#: T1 S9c (`DESIGN_DOCS/T1_S9c_brief.md` v2 Sec 3) -- closed, currently one
+#: member. DELIBERATELY SEPARATE from `DIAGNOSTIC_LABELS`: a control is an
+#: applied configuration carrying its own GWF solve, never a no-solve
+#: post-processing diagnostic. SCHEMA DECISIONS #20.
+CONTROL_LABELS: Tuple[str, ...] = ("sink_support_controlled",)
+
+# Whether a control may EVER be cited as CAUSAL ISOLATION of a grid effect.
+# Frozen FALSE for every current label -- flow was not held common across
+# compared runs (that control is descoped, T0_2b... Sec 4.2), so a grid
+# comparison under a control remains `hypothesis`, never a stronger claim.
+# Computed at JSON-emission time (see `_controls_to_json`), never a
+# caller-supplied `ControlRecord` field, so the ceiling cannot be silently
+# overridden -- and re-verified against this same mapping on load (see
+# `_validate_enums_and_types`). SCHEMA DECISIONS #20.
+CONTROL_CAUSAL_ISOLATION_ELIGIBLE: Mapping[str, bool] = {
+    "sink_support_controlled": False,
+}
+
+#: Required sub-fields of every `run_identity.controls` entry.
+#: SCHEMA DECISIONS #20.
+_CONTROL_SUBFIELDS: Tuple[str, ...] = (
+    "label",
+    "sink_support_m",
+    "uncontrolled_counterpart_run_id",
+    "prt_capture_diverges",
 )
 
 #: Required sub-fields of `support.envelope` -- T0.3 Sec 4.7's envelope,
@@ -696,6 +792,53 @@ class SourceFootprintRecord:
     coverage: FootprintCoverage
 
 
+@dataclass(frozen=True)
+class ControlRecord:
+    """An APPLIED B-control configuration -- T1 S9c
+    (`DESIGN_DOCS/T1_S9c_brief.md` v2 Sec 3) -- e.g. `sink_support_controlled`.
+    Filed at `run_identity.controls`, a SIBLING of `source_footprint`, NEVER
+    under `support.diagnostics`: `DIAGNOSTIC_LABELS` is closed to
+    `observation_support_robustness` (a no-solve post-processing
+    diagnostic), while a control is an applied configuration carrying its
+    own GWF solve -- conflating the two categories is the same error
+    already caught once at S13 for the source footprint (module docstring
+    SCHEMA DECISIONS #20).
+
+    `label` is a CLOSED enumeration (`CONTROL_LABELS`). The dict key a
+    control is filed under in `run_identity.controls` MUST equal its own
+    `label` -- the SAME invariant `support.diagnostics` enforces
+    (SCHEMA DECISIONS #13), inherited verbatim here.
+
+    🔴 THE CEILING (the whole point of the label): `sink_support_controlled`
+    licenses "sink support was controlled in this arm" and NOTHING more --
+    it is NEVER causal isolation of a grid effect, because flow was not
+    held common across compared runs (that control is descoped,
+    `T0_2b...` Sec 4.2). A grid comparison using this control remains
+    `hypothesis`. This is NOT a stored field on this dataclass -- it is
+    computed from the frozen `CONTROL_CAUSAL_ISOLATION_ELIGIBLE` mapping at
+    JSON-emission time (mirroring `DIAGNOSTIC_CAUSAL_SUPPORT_ELIGIBLE`), so
+    a producer cannot silently override it, and it is re-verified against
+    that same mapping on load.
+
+    `uncontrolled_counterpart_run_id` names the SENTINEL run
+    (`sink_support_m == 0.0`) at the SAME cell size this control's own run
+    is compared against (brief Sec 4's "name the uncontrolled counterpart":
+    the "with" arm is this record's own run; the "without" arm is this
+    field) -- `None` only when no such counterpart run exists yet.
+
+    `prt_capture_diverges` records that MODFLOW 6 PRT builds its own,
+    unmodified single-cell doublet WEL and does NOT see this control's
+    distributed sink (brief Sec 2.4 / constraints) -- always `True` while
+    that PRT limitation stands, so a downstream consumer (S10) cannot
+    unknowingly pair a PRT capture fingerprint with a B-control arm.
+    """
+
+    label: str
+    sink_support_m: float
+    uncontrolled_counterpart_run_id: Optional[str]
+    prt_capture_diverges: bool
+
+
 # ---------------------------------------------------------------------------
 # The record
 # ---------------------------------------------------------------------------
@@ -724,7 +867,17 @@ class EvidenceRecord:
     cr_target: Optional[float]
     case_id: Optional[str]
     nstp_cap: Optional[int]
+    # T1 post-S14: PROMOTED out of `grid_spec`'s opaque mapping (lecturer,
+    # 2026-08-26). `grid_spec` means the GRID; `courant_profile` is a
+    # TIME-STEPPING policy and `experimental` is a CLASSIFICATION OF THE RUN,
+    # so nesting them there made `grid_spec` a grab-bag that a T2 consumer
+    # would reasonably read expecting mesh geometry. `T0_2b...` Sec 5.1 lists
+    # its fields "at minimum", so the schema is a FLOOR and promoting them
+    # needs no contract amendment -- only this version bump.
+    courant_profile: Optional[str]
+    experimental: Optional[Mapping[str, Any]]
     source_footprint: Optional[SourceFootprintRecord]
+    controls: Optional[Mapping[str, ControlRecord]]
 
     # -- fingerprints ---------------------------------------------------------
     src_sha: Optional[str]
@@ -788,6 +941,8 @@ _FIELD_MAP: Tuple[Tuple[Tuple[str, ...], str], ...] = (
     (("run_identity", "cr_target"), "cr_target"),
     (("run_identity", "case_id"), "case_id"),
     (("run_identity", "nstp_cap"), "nstp_cap"),
+    (("run_identity", "courant_profile"), "courant_profile"),
+    (("run_identity", "experimental"), "experimental"),
     (("fingerprints", "src_sha"), "src_sha"),
     (("fingerprints", "flow_fingerprint"), "flow_fingerprint"),
     (("fingerprints", "gis_hashes"), "gis_hashes"),
@@ -832,6 +987,10 @@ REQUIRED_FIELD_PATHS: Tuple[Tuple[str, ...], ...] = tuple(
     ("support", "envelope", "tolerance"),
     ("support", "envelope", "threshold_record_id"),
     ("support", "diagnostics"),
+    # T1 S9c (SCHEMA DECISIONS #20): bare-presence only, mirroring
+    # `support.diagnostics` -- which labels (if any) it contains is
+    # producer-side policy this schema does not fix.
+    ("run_identity", "controls"),
     ("run_identity", "source_footprint"),
     ("run_identity", "source_footprint", "algorithm_id"),
     ("run_identity", "source_footprint", "radius_m"),
@@ -1016,6 +1175,24 @@ def _footprint_to_json(footprint: Optional[SourceFootprintRecord]) -> Optional[d
     }
 
 
+def _controls_to_json(controls: Optional[Mapping[str, ControlRecord]]) -> Optional[dict]:
+    if controls is None:
+        return None
+    out: dict = {}
+    for label, c in controls.items():
+        out[label] = {
+            "label": c.label,
+            "sink_support_m": c.sink_support_m,
+            "uncontrolled_counterpart_run_id": c.uncontrolled_counterpart_run_id,
+            "prt_capture_diverges": c.prt_capture_diverges,
+            # Frozen False -- see CONTROL_CAUSAL_ISOLATION_ELIGIBLE. Emitted so
+            # the artifact states the ceiling instead of implying the
+            # opposite by sitting next to a run's other identity fields.
+            "causal_isolation_eligible": CONTROL_CAUSAL_ISOLATION_ELIGIBLE[c.label],
+        }
+    return out
+
+
 def record_to_raw_dict(record: EvidenceRecord) -> dict:
     """Convert an `EvidenceRecord` into the nested, JSON-ready dict shape
     (without `content_hash` -- callers that want the hash-stamped version
@@ -1035,6 +1212,9 @@ def record_to_raw_dict(record: EvidenceRecord) -> dict:
     footprint_json = _footprint_to_json(record.source_footprint)
     if footprint_json is not None:
         _set_path(raw, ("run_identity", "source_footprint"), footprint_json)
+    controls_json = _controls_to_json(record.controls)
+    if controls_json is not None:
+        _set_path(raw, ("run_identity", "controls"), controls_json)
     return raw
 
 
@@ -1352,6 +1532,68 @@ def _validate_enums_and_types(raw: Mapping[str, Any]) -> None:
                                     f"{covered!r})"
                                 )
 
+    # T1 S9c (SCHEMA DECISIONS #20): `run_identity.controls` mirrors
+    # `support.diagnostics`'s validation shape -- closed label vocabulary,
+    # dict-key-must-equal-own-label invariant -- but is a SEPARATE
+    # vocabulary (`CONTROL_LABELS`), never `DIAGNOSTIC_LABELS`.
+    if _has_path(raw, ("run_identity", "controls")):
+        controls = _get_path(raw, ("run_identity", "controls"))
+        if not isinstance(controls, Mapping):
+            errors.append("run_identity.controls: expected object")
+        else:
+            for key, c in controls.items():
+                if not isinstance(c, Mapping):
+                    errors.append(f"run_identity.controls.{key}: expected object")
+                    continue
+                for sub in _CONTROL_SUBFIELDS:
+                    if sub not in c:
+                        errors.append(f"run_identity.controls.{key}.{sub}: missing")
+                label = c.get("label") if "label" in c else None
+                if "label" in c:
+                    if label not in CONTROL_LABELS:
+                        errors.append(
+                            f"run_identity.controls.{key}.label: {label!r} is not one of "
+                            f"{CONTROL_LABELS!r}"
+                        )
+                    elif label != key:
+                        errors.append(
+                            f"run_identity.controls.{key}: dict key {key!r} does not match "
+                            f"its own label {label!r}"
+                        )
+                if "sink_support_m" in c:
+                    v = c["sink_support_m"]
+                    if isinstance(v, bool) or not isinstance(v, (int, float)):
+                        errors.append(
+                            f"run_identity.controls.{key}.sink_support_m: expected float"
+                        )
+                    elif not math.isfinite(float(v)) or float(v) <= 0.0:
+                        errors.append(
+                            f"run_identity.controls.{key}.sink_support_m: must be finite "
+                            f"and > 0 (a control only applies at a positive radius), got "
+                            f"{v!r}"
+                        )
+                if "prt_capture_diverges" in c:
+                    err = _check_type(
+                        ("run_identity", "controls", key, "prt_capture_diverges"),
+                        c["prt_capture_diverges"], bool, allow_none=False,
+                    )
+                    if err:
+                        errors.append(err)
+                # 🔴 The ceiling cannot be silently overridden: a record
+                # claiming a `causal_isolation_eligible` value other than
+                # the frozen one for a KNOWN label is malformed, not merely
+                # "a producer's opinion" (brief Sec 3/6 -- never causal
+                # isolation).
+                if ("causal_isolation_eligible" in c and label in CONTROL_LABELS):
+                    expected = CONTROL_CAUSAL_ISOLATION_ELIGIBLE[label]
+                    if c["causal_isolation_eligible"] != expected:
+                        errors.append(
+                            f"run_identity.controls.{key}.causal_isolation_eligible: "
+                            f"{c['causal_isolation_eligible']!r} must equal the frozen "
+                            f"ceiling {expected!r} for label {label!r} -- a control is "
+                            "never causal isolation"
+                        )
+
     if errors:
         raise MalformedEvidenceRecordError(
             "evidence record fails schema validation: " + "; ".join(errors)
@@ -1441,6 +1683,20 @@ def _footprint_from_json(raw_footprint: Any) -> Optional[SourceFootprintRecord]:
     )
 
 
+def _controls_from_json(raw_controls: Any) -> Optional[Mapping[str, ControlRecord]]:
+    if raw_controls is None:
+        return None
+    out = {}
+    for key, c in raw_controls.items():
+        out[key] = ControlRecord(
+            label=c.get("label"),
+            sink_support_m=c.get("sink_support_m"),
+            uncontrolled_counterpart_run_id=c.get("uncontrolled_counterpart_run_id"),
+            prt_capture_diverges=c.get("prt_capture_diverges"),
+        )
+    return out
+
+
 def record_from_raw_dict(raw: Mapping[str, Any]) -> EvidenceRecord:
     """Build an `EvidenceRecord` from a nested raw dict (already past the
     schema-version / content-hash gates, or being built fresh by a
@@ -1463,6 +1719,9 @@ def record_from_raw_dict(raw: Mapping[str, Any]) -> EvidenceRecord:
     run_identity_raw = raw.get("run_identity") if isinstance(raw.get("run_identity"), Mapping) else None
     kwargs["source_footprint"] = _footprint_from_json(
         run_identity_raw.get("source_footprint") if run_identity_raw else None
+    )
+    kwargs["controls"] = _controls_from_json(
+        run_identity_raw.get("controls") if run_identity_raw else None
     )
 
     is_complete, _missing = _structural_completeness(raw)
@@ -1561,6 +1820,7 @@ def build_fixture_record(
     envelope: Optional[SupportEnvelope] = None,
     diagnostics: Optional[Mapping[str, DiagnosticRecord]] = None,
     source_footprint: Optional[SourceFootprintRecord] = None,
+    controls: Optional[Mapping[str, ControlRecord]] = None,
     **overrides: Any,
 ) -> EvidenceRecord:
     """Build a synthetic, well-formed `EvidenceRecord` for tests/dev use.
@@ -1642,16 +1902,28 @@ def build_fixture_record(
             coverage=FootprintCoverage(disc_area_m2=0.0, covered_area_m2=0.0),
         )
 
+    if controls is None:
+        # T1 S9c: unlike `diagnostics`/`source_footprint`, MOST runs carry
+        # NO control at all (SCHEMA DECISIONS #20 -- only a `b_control`-role
+        # arm does), so an empty mapping -- not a synthetic example -- is
+        # the default here.
+        controls = {}
+
     fields: dict = dict(
         schema_version=SCHEMA_VERSION,
         producer_module="t1_evidence_artifact",
         producer_version="0.1.0",
         run_id=run_id,
         grid_spec={"corridor_cell_size_m": 10.0, "levels": [{"cell_size": 10.0}]},
+        # T1 post-S14: promoted out of `grid_spec` -- see the dataclass.
+        courant_profile="legacy_srcpulse",
+        experimental={"is_experimental": False, "derivation_version": "1",
+                      "knobs": {}},
         cr_target=0.9,
         case_id=case_id,
         nstp_cap=5000,
         source_footprint=source_footprint,
+        controls=controls,
         src_sha="0" * 64,
         flow_fingerprint="1" * 64,
         gis_hashes={"model_boundary": "2" * 64, "rivers": "3" * 64},

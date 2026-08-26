@@ -153,6 +153,7 @@ never silently different from what was signed.
 | **1** | 2026-08-20 | `T0_1_C1_v2.md` → **v3** | Added allow-list entries **A10–A14** — content-addressed workspaces · fixed source footprint · operator A · GWF-grid sensitivity arm · `claim_support_state` evaluator | **No** — lecturer decision; bounded by C1 §3.1 |
 | **2** | 2026-08-20 | `T0_1_C1_v2.md` → **v4** | **A8 extended to `transport_prt_capture.py`**, which carries its own `_src_sha()` with the identical three-file hole; plus **Appendix B**, the tracked and hashed T1 build-list snapshot | **Yes, retrospectively** — see amendment 3 |
 | **3** | 2026-08-20 | `T0_1_C1_v2.md` → **v5**, **RE-SIGNED** | **A7's surface widened** to a new `exp`-only metrics module; **amendments 1–3 re-based on the signature** rather than on derivation from Appendix B | **YES** |
+| **4** | 2026-08-21 | `T0_1_C1_v2.md` → **v6** | **A15 proposed, refuted, then WITHDRAWN as unnecessary**; S3b deferred; **§3.1 re-gated**. Three linked decisions — see §8.3 | **YES** — §3.1 signed 2026-08-21; (a) and (b) needed none |
 
 **What happened.** The T1 plan review found that C1's A1–A9, though signed, **omitted five changes the T1
 build list requires**. Because C1 §3 makes an unlisted change a defect, **no implementation could satisfy
@@ -229,3 +230,149 @@ links assertions → gate reads **`Scanned 53 files; checked 108 internal links;
 isolated worktree at `de26680`, because concurrent T1 edits to `transport_srcpulse_demo.py` and
 `transport_prt_capture.py` — both inside the generator's scanned scope — would otherwise have been swept
 into this artifact.
+
+---
+
+### 8.3 The three T1 blocker decisions *(2026-08-21)*
+
+T1 reached **8 of 16 steps** and stopped: S7 (`exp/vN`) turned out to have **no surface authority**, and
+S3b was waiting on a signature. Both were resolved by removing a requirement rather than granting authority.
+
+#### (a) `exp/vN` — A15 WITHDRAWN, S7 dropped as a mechanism · **no signature needed**
+
+A15 was proposed to authorise a namespace parameter threaded through both model modules. Adversarial
+review refuted its basis: Appendix B's *"Versioned experimental namespace"* bullet specifies an
+**outcome**, not module coverage or mechanism — the same species of inference that sank amendment 2.
+
+Rather than sign it, the requirement was re-examined and found **redundant**. C1 §5 demands a *property* —
+the teaching default stays numerically unchanged until the JAG — and **every Phase-3 step already carries
+its own authorised, sentinel-defaulted parameter, each already in the cache identity**:
+
+| Step | Selector | Authority |
+|---|---|---|
+| S8 | `profile` / `CourantSpec` | **A3** — the profile machinery shipped in S4; `transport_srcpulse_demo.py:452` already reserves `exp_v1` for S8 |
+| S9 | `sink_support_m = 0.0` | **T0.0 §3** — pre-authorised *and* schema-lifted |
+| S10 | GWF-grid sensitivity arm | **A13** |
+| S11 | separate `exp`-only module | **A7** + amendment 3 |
+| S5 ✅ | `footprint_radius_m = 0.0` | **A11** |
+
+**`exp/vN` therefore survives as an artifact LABEL, recorded at S14** — not as a threaded runtime
+parameter. **S8–S11 are unblocked with no new authority.**
+
+⚠️ **The cost, stated plainly:** isolation now rests on each step implementing its sentinel correctly,
+with **no single enforcement point**. The mitigation is that each sentinel is independently gate-checked —
+`compare` PASSES only if the default is byte-exact — and S5 has already demonstrated the pattern end to end.
+
+🔴 **A THIRD DUPLICATION, found while verifying this decision (2026-08-21).** The doublet WEL is
+constructed **twice, independently and identically**: `transport_srcpulse_demo.py:1189`–`1192` and
+`transport_prt_capture.py:542`–`545`, both hard-coding the single-cell `injc`/`extc` with `DOUBLET_Q`.
+PRT does **not** call the demo module's `add_flow_model`; it builds its own GWF.
+
+This is the same defect class as the duplicated `courant_nstp` (**A3** exists to canonicalise it) and the
+duplicated `_src_sha()` (**A8** fixed it) — now a third instance, not yet enumerated anywhere.
+
+**Consequence for S9/S10, which must be handled explicitly:** when `sink_support_m > 0` distributes the
+extraction WEL in the demo module, **PRT's flow keeps the single-cell sink.** S10 pairs a GWF solve with a
+**capture fingerprint** — so that fingerprint would describe a *different flow field* than the arm it
+labels, while both appear to share a mesh identity.
+
+⚠️ **A namespace would NOT have caught this** — namespaced or not, PRT would still have built a
+single-cell sink. It is a duplication defect, not an isolation defect, which is why dropping S7 does not
+make it worse. **But nothing now forces an implementer to look at PRT**, so it is recorded here.
+
+**Cheapest resolution, needing no new authority:** S10 records that the capture fingerprint is
+single-cell-sink only, and **B-control arms do not claim one**. Making PRT match the demo module would
+need PRT surface authority for a WEL change, which no current entry grants — do not infer it.
+
+---
+
+#### 🔴 Independent review of this decision: **DROP IS UNSAFE for T2** *(2026-08-21)*
+
+The drop was reviewed after the fact. It returned **UNSAFE**, with one finding that goes beyond the WEL
+duplication above. **It does not endanger anything shipped**: through T1 every sentinel sits at its
+default and nothing experimental runs. The control below is required **before the first experimental arm
+runs**, which is T2.
+
+**What was checked and CLOSED:** the cache hash is SHA-1 truncated to 64 bits and the cache lives in a
+caller-supplied directory, but `_load_cache` compares the **full stored key-set and every value**, so a
+collision causes rejection or rebuild — **not** cross-configuration serving.
+
+🔴 **What survives — PRT's identity cannot see the other module's runtime arguments.** PRT's `src_sha`
+notices *source* changes in the imported module, but **not different argument values passed to unchanged
+code**. `footprint_radius_m`, the future `sink_support_m` and the Courant profile all live in the demo
+module's params dict, not PRT's. Consequently **two distinct experimental arms can receive the same PRT
+identity and the same capture result, with no machine-checkable indication that their flow semantics
+differ.** Re-exporting names between the modules does not cure this — it changes neither data flow nor
+identity propagation. For standalone PRT use this is harmless; **at S10's join, where a flow solve is
+paired with a capture fingerprint, it is both a provenance and a correctness risk.**
+
+🔴 **The hidden assumption in "each step carries its own sentinel", now stated explicitly.** It assumes a
+**closed, complete dependency inventory**: every present *and future* behaviour-changing value is
+identified, correctly defaulted, and propagated into every direct **and composed** identity before any
+cache, workspace, metric, fingerprint or artifact is reused. The metrics module and the sensitivity-arm
+join are exactly where that can fail. An `exp/vN` **label** supplies description, not isolation.
+
+> **MANDATORY CONTROL, binding on T2 — and it needs NO new module authority.** The experiment runner
+> derives **one canonical full-configuration digest** and passes **digest-specific `case_ws` directories
+> to both modules**, with a **separate fixed directory for teaching defaults**. `case_ws` is already a
+> public parameter of both, so this is caller-side work — which is why A15 stays withdrawn: the control
+> that was actually needed never required threading a parameter through either module.
+
+⚠️ **This is not a reinstatement of S7.** S7 proposed changing the modules; this changes only the caller.
+The distinction is the whole reason the authority question dissolved.
+
+#### (b) S3b (graded mesh construction) — DEFERRED out of T1 · **no signature needed**
+
+Appendix B requires graded refinement to be **"expressible"**, which **S3a already delivers**
+(`MeshSpec.levels` is a tuple; supplying two levels raises `NotImplementedError` naming S3b). The
+2026-08-20 escalation to *"buildable in principle"* was a working decision recorded only in a gitignored
+brief, never in signed text, and it is **relaxed back to Appendix B's wording**.
+
+**T2 does not need it**: its spatial series is five *single-level* specs (50/20/10/5/2 m).
+
+⚠️ Deferring also avoids a disproportionate blast radius: `disv_grid_utils` builds the **nine frozen
+case-study group meshes** and the parked pinned-meshes bundle, so S3b would have had to carry regression
+evidence far beyond the transport track. Revisit only if T3/T4 genuinely need a graded mesh to *build*.
+
+#### (c) C1 §3.1 — the unsigned path KEPT, gated by a verbatim-quotation test · ✅ **SIGNED 2026-08-21**
+
+The first proposal was to retire the unsigned path outright on a 0-for-3 record. **Adversarial review
+argued against it and was persuasive**, so the decision was changed before signing.
+
+**The base rates had been conflated.** *Amendments initially rejected* is 3 of 3; *failures that escaped
+review and reached code* is **0 of 3**. The second is the consequential one — the control held every
+time, and every failure was caught before a line of code was written. Retiring the fast path would have
+removed the cheap route while leaving the effective safeguard untouched, since **a signature authorises an
+amendment but does not cure faulty reasoning**. Always-sign would also have taxed the lecturer on every
+amendment including the correct ones, inviting ceremonial signing, batching, and a disincentive to file
+the enumeration corrections that keep an exhaustive list honest.
+
+**The repair, as written in C1 §3.1** — an unsigned amendment now requires all three:
+
+1. **A verbatim quotation of ONE Appendix B bullet**, in full, naming the surface and stating the
+   obligation. 🔴 The first draft said *"sentence"* and was **wrong**: Appendix B is a bullet list of
+   eleven items with no free-standing prose, so a sentence-based test was undefined against the document
+   it governs. §3.1 now defines *bullet*, *names the surface* and *states the obligation*.
+2. **Review before force, by a named reviewer who is not the author.** Until reviewed the entry is
+   **PROPOSED** and inert, so a skipped review fails safe.
+3. **No scope beyond the quotation**, and **rewording may not cure missing authority** — a refuted
+   amendment returns only with a qualifying quotation or a signature.
+
+⚠️ **What the signature covers is STRICTER than what review recommended.** The reviewed proposal was
+"verbatim quotation + review before force". The one-bullet limit, the bar on combining bullets, and the
+no-re-proposal rule were **added in drafting**. They are defensible, but they are additions, and the
+signature covers the text as written.
+
+⚠️ **The worked check is not uniformly mechanical**, and §3.1 now says so. Amendments 2 and 3 fail
+plainly — 2 because the bullet's obligation is *consume a `GridSpec`* while the entry added *hash a source
+closure*, a different act; 3 because Appendix B contains no occurrence of "module" or "metric" at all,
+which is checkable by search. **Amendment 4 fails only because "names the surface" is defined as written
+out rather than inferred** — a reader who let a bullet's topic imply its surface could argue it. An
+earlier draft of this record called all three "the same error" and the test "mechanical"; both
+overstated, and both are withdrawn.
+
+| Field | Value |
+|---|---|
+| **Change** | C1 §3.1: the unsigned path survives, gated by a one-bullet verbatim-quotation test, independent review before force, and a bar on curing missing authority by rewording |
+| **Approved by** | **Beatrice Marti** |
+| **Date** | **2026-08-21** |

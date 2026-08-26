@@ -188,10 +188,30 @@ def test_profile_enum_admits_only_the_two_legacy_ids():
 
 
 def test_unknown_profile_raises_value_error():
+    """T1 S8: this test previously passed `profile="exp_v1"`, which was unknown
+    at S4. S8 makes `exp_v1` a VALID profile, so that call now raises for an
+    unrelated reason (a missing `mesh_spec`) whose message happens to contain
+    "legacy_base" -- the test would have stayed green while no longer testing
+    an unknown profile at all. It now uses a name that cannot become valid.
+    """
     v, size, mask = _fields(4)
-    with pytest.raises(ValueError, match="legacy_base"):
+    with pytest.raises(ValueError, match="unknown courant_nstp profile"):
+        tsd._courant_nstp_canonical(v, size, mask, 365.0, nstp_cap=1000,
+                                    refined_cell_size=REFINED_CELL_SIZE,
+                                    profile="no_such_profile_v0")
+
+
+def test_exp_v1_is_a_known_profile_not_an_unknown_one():
+    """The other half of the guard above: `exp_v1` must reach the corrected
+    policy, NOT the unknown-profile branch. Asserted on the error identity, so
+    it stays meaningful whatever the corrected policy later requires.
+    """
+    v, size, mask = _fields(4)
+    with pytest.raises(ValueError) as excinfo:
         tsd._courant_nstp_canonical(v, size, mask, 365.0, nstp_cap=1000,
                                     refined_cell_size=REFINED_CELL_SIZE, profile="exp_v1")
+    assert "unknown courant_nstp profile" not in str(excinfo.value)
+    assert "exp_v1" in str(excinfo.value)
 
 
 def test_canonical_has_no_corrected_policy_surface():
