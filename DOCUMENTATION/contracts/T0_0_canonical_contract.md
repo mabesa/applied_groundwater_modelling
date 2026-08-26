@@ -423,10 +423,21 @@ HUB_SAFETY_MARGIN  =  2.0    # ceiling = wall / MARGIN
   T0 for a revised threshold or requirement). It may **not** pass by reclassifying the mandatory fine run
   as optional.
 
-⚠️ **The Hub multiplier `H` is still unmeasured.** Every runtime in the design docs is a fast Mac. At the
-illustrative `H = 3`, the 316 s fine identity becomes ≈ 948 s — **over this ceiling.** That is precisely why
-the threshold is frozen before the measurement rather than after it. **Timing one known case on the Hub
-remains the cheapest outstanding action in the project.**
+✅ **MEASURED 2026-08-26: `H = 2.30`** (Linux x86_64 Hub vs macOS-arm64), from the gate qualification
+itself — the transport solve, not a proxy. Sides 35.69 s / 31.60 s against the macOS 14.61 s mean.
+**The 316 s fine identity projects to ≈ 728 s: above `HUB_FINE_TARGET_S`, BELOW `HUB_FINE_CEILING_S`, so it
+passes with the recorded warning above and T2 does NOT take its failure edge.**
+Evidence: `evidence/hub/HUB_MEASUREMENT_2026-08-26.md`. 🔴 **Nothing frozen here is changed by this —
+the measurement is recorded against the threshold, not used to move it.**
+
+⚠️ **Three caveats travel with the number.** It is a **two-sample** mean whose sides differ by 12.2%;
+**316 s is a floor**, since that run sat on `nstp_cap = 2000` so `cr_target = 0.9` may never have been
+reached; and the **19% headroom is the only margin** — if uncapped demand is higher, this verdict moves.
+
+⚠️ **A proxy first gave `H ≈ 2.9–3.0`, projecting ≈ 945 s — ABOVE the ceiling.** It came from PRT particle
+tracking rather than a transport solve and **overestimated by 28%**, enough to have triggered T2's failure
+edge for no reason. Recorded because it generalises: a same-script, same-workload cross-platform comparison
+is still not a substitute for measuring the workload in question.
 
 ---
 
@@ -453,7 +464,9 @@ both would have created two dates that could drift apart.
    environment.** It remains a per-environment claim: a Hub-side gate needs its own qualification.
 2. **The three constants in §6** are proposed policy, not a measurement. `HUB_FINE_CEILING_S = 900` (half
    the 1800 s wall) is the value to accept or change; changing it *after* T2 measures the Hub is a failure
-   edge, not an edit.
+   edge, not an edit. ✅ **`H` is now measured (§6) and the projection clears the ceiling with 19% to
+   spare, so no change to these constants is needed on current evidence** — and none may be made to fit a
+   later one.
 3. **The `arrival_day` → `t_peak` migration of §3.3** — pre-authorised here, but it is a naming decision
    T0.2 formally owns and M0 already made. Confirm it rather than reopen it. ⚠️ **Confirming the NAME does
    not confirm an interpolated VALUE**: through T1/T2 `t_peak` is the lattice alias (§3.3); the
