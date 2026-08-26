@@ -133,6 +133,32 @@ def run_fingerprint_replication(workdir: Path, n: int) -> dict:
     return {"runs": vals, "failures": errs, "envelope": env}
 
 
+def preflight() -> list:
+    """Cheap checks that would otherwise fail MINUTES in.
+
+    The first Hub run (2026-08-26) lost its qualification stage to a missing
+    `config.py` -- gitignored, so a fresh Hub checkout never has one, while the
+    gate harness requires it to propagate the data-source config into both
+    worktrees. The fingerprint stage ran fine, which is exactly why this is
+    worth checking up front: the failure is silent until the harness aborts.
+    """
+    problems = []
+    if not (REPO / "config.py").exists():
+        problems.append(
+            "MISSING config.py -- the gate qualification (questions 1 and 2) cannot run.\n"
+            "    Fix, from the repo root:   cp config_template.py config.py\n"
+            "    (config.py is gitignored, so a fresh checkout never has one. The\n"
+            "     template's defaults -- limmat / dropbox -- are what the Hub wants.)"
+        )
+    mf6 = Path(os.path.expanduser("~/.local/share/flopy/bin"))
+    if not mf6.exists():
+        problems.append(
+            f"flopy bin dir not found at {mf6} -- MF6/Triangle may be unresolvable.\n"
+            "    Fix:   uv run python -m flopy.mf6.utils.get_modflow ~/.local/share/flopy/bin"
+        )
+    return problems
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -140,10 +166,23 @@ def main() -> int:
     ap.add_argument("--fingerprint-reps", type=int, default=5,
                     help="replications for the repeatability envelope (default 5)")
     ap.add_argument("--skip-fingerprint", action="store_true")
+    ap.add_argument("--ignore-preflight", action="store_true",
+                    help="run anyway despite preflight problems")
     args = ap.parse_args()
 
     workdir = Path(os.path.expanduser(args.workdir)).resolve()
     workdir.mkdir(parents=True, exist_ok=True)
+
+    problems = preflight()
+    if problems:
+        print("== PREFLIGHT FAILED -- fix these first ==", file=sys.stderr)
+        for prob in problems:
+            print("  * " + prob, file=sys.stderr)
+        if not args.ignore_preflight:
+            print("\n(re-run with --ignore-preflight to proceed anyway; the stages that "
+                  "do not need the missing piece will still run)", file=sys.stderr)
+            return 2
+        print("  ... proceeding anyway (--ignore-preflight)\n", file=sys.stderr)
 
     print("== 1+2: gate qualification (cold, threads pinned) ==", file=sys.stderr, flush=True)
     qual = run_qualification(workdir)
