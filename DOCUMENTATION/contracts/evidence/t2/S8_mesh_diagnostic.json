@@ -1,0 +1,14 @@
+[
+  {
+    "cell_m": 5.0,
+    "ncpl": 5784,
+    "build_s": 2.1,
+    "refine_radius_used": 70.0
+  },
+  {
+    "cell_m": 2.0,
+    "ncpl": 15727,
+    "build_s": 4.7,
+    "refine_radius_used": 70.0
+  }
+]
