@@ -1,0 +1,44 @@
+[
+  {
+    "identity": "spatial_50m_cr0.9",
+    "cell_size_m": 50.0,
+    "cr_target": 0.9,
+    "guard": 40000,
+    "ncpl": 4221,
+    "nstp": 86,
+    "cr_achieved": 0.8942940579199358,
+    "wall_s": 11.9,
+    "work_W": 363006,
+    "accepted": true,
+    "failures": [],
+    "artifact": "/private/tmp/claude-501/-Users-bea-Documents-GitHub-applied-groundwater-modelling/a8b9475e-3bfe-413d-8d71-07c18fdc3c3d/scratchpad/t2_s4/spatial_50m_cr0.9/spatial_50m_cr0.9.json"
+  },
+  {
+    "identity": "spatial_20m_cr0.9",
+    "cell_size_m": 20.0,
+    "cr_target": 0.9,
+    "guard": 40000,
+    "ncpl": 4233,
+    "nstp": 85,
+    "cr_achieved": 0.8979328316014817,
+    "wall_s": 11.4,
+    "work_W": 359805,
+    "accepted": true,
+    "failures": [],
+    "artifact": "/private/tmp/claude-501/-Users-bea-Documents-GitHub-applied-groundwater-modelling/a8b9475e-3bfe-413d-8d71-07c18fdc3c3d/scratchpad/t2_s4/spatial_20m_cr0.9/spatial_20m_cr0.9.json"
+  },
+  {
+    "identity": "spatial_10m_cr0.9",
+    "cell_size_m": 10.0,
+    "cr_target": 0.9,
+    "guard": 40000,
+    "ncpl": 4408,
+    "nstp": 122,
+    "cr_achieved": 0.8983225368461273,
+    "wall_s": 15.0,
+    "work_W": 537776,
+    "accepted": true,
+    "failures": [],
+    "artifact": "/private/tmp/claude-501/-Users-bea-Documents-GitHub-applied-groundwater-modelling/a8b9475e-3bfe-413d-8d71-07c18fdc3c3d/scratchpad/t2_s4/spatial_10m_cr0.9/spatial_10m_cr0.9.json"
+  }
+]
