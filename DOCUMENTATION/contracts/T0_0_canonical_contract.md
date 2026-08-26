@@ -425,10 +425,33 @@ HUB_SAFETY_MARGIN  =  2.0    # ceiling = wall / MARGIN
 
 ✅ **MEASURED 2026-08-26: `H = 2.30`** (Linux x86_64 Hub vs macOS-arm64), from the gate qualification
 itself — the transport solve, not a proxy. Sides 35.69 s / 31.60 s against the macOS 14.61 s mean.
-**The 316 s fine identity projects to ≈ 728 s: above `HUB_FINE_TARGET_S`, BELOW `HUB_FINE_CEILING_S`, so it
-passes with the recorded warning above and T2 does NOT take its failure edge.**
 Evidence: `evidence/hub/HUB_MEASUREMENT_2026-08-26.md`. 🔴 **Nothing frozen here is changed by this —
 the measurement is recorded against the threshold, not used to move it.**
+
+### 🔴 WITHDRAWN 2026-08-26 (same day): the "≈ 728 s, below the ceiling" projection
+
+This section briefly read: *"the 316 s fine identity projects to ≈ 728 s: above `HUB_FINE_TARGET_S`, BELOW
+`HUB_FINE_CEILING_S`, so it passes with the recorded warning and T2 does NOT take its failure edge."*
+**That conclusion is withdrawn.**
+
+**`H = 2.30` stands** — it comes from the gate qualification's own cold side-runs, which are honest.
+**The PROJECTION does not**, because its base is not:
+
+> **The 316 s run sat ON `nstp_cap = 2000`** (`T0_5…` §2), so `cr_target = 0.9` may never have been
+> reached — and `T0_5…` §2.1 is explicit that **"a capped run is not a feasible run, whatever the cap is
+> set to."** 316 s is therefore the runtime of an **under-resolved** run: a **floor**, not a measurement.
+
+**Consequently `316 × 2.30 = 728 s` is a LOWER BOUND, and whether an honest 2 m identity clears
+`HUB_FINE_CEILING_S = 900` is UNKNOWN.** It clears by 19% on a floor; the uncapped cost is higher by an
+unmeasured factor and could exceed the ceiling.
+
+> **To settle it:** re-run the 2 m identity at `cr_target = 0.9` with `nstp_cap` raised enough that it
+> completes **genuinely uncapped**, and project from that. Until then no feasibility verdict on the fine
+> identity is established — in either direction.
+
+⚠️ **This does not change the threshold or any constant**, and it is not bad news by itself: `T0_2b…` §3
+rule 2 makes a spatial-series point above the ceiling an **allowable feasibility stop** — *"a result, not a
+failure"*. The probe is the thing that fails on the ceiling, and the probe is a different, larger identity.
 
 ⚠️ **Three caveats travel with the number.** It is a **two-sample** mean whose sides differ by 12.2%;
 **316 s is a floor**, since that run sat on `nstp_cap = 2000` so `cr_target = 0.9` may never have been
@@ -464,9 +487,10 @@ both would have created two dates that could drift apart.
    environment.** It remains a per-environment claim: a Hub-side gate needs its own qualification.
 2. **The three constants in §6** are proposed policy, not a measurement. `HUB_FINE_CEILING_S = 900` (half
    the 1800 s wall) is the value to accept or change; changing it *after* T2 measures the Hub is a failure
-   edge, not an edit. ✅ **`H` is now measured (§6) and the projection clears the ceiling with 19% to
-   spare, so no change to these constants is needed on current evidence** — and none may be made to fit a
-   later one.
+   edge, not an edit. ⚠️ **`H` is now measured (§6), but the fine-run projection built on it was
+   WITHDRAWN the same day** — its 316 s base came from a capped run. **No feasibility verdict on the fine
+   identity is established in either direction**, and no change to these constants is warranted on that
+   basis — nor may one be made to fit a later measurement.
 3. **The `arrival_day` → `t_peak` migration of §3.3** — pre-authorised here, but it is a naming decision
    T0.2 formally owns and M0 already made. Confirm it rather than reopen it. ⚠️ **Confirming the NAME does
    not confirm an interpolated VALUE**: through T1/T2 `t_peak` is the lattice alias (§3.3); the
