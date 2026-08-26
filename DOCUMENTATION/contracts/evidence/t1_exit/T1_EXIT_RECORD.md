@@ -92,3 +92,59 @@ passes. It is dead data of exactly the kind this track is removing, and belongs 
 - **Anything about T2's matrix.** T1 ships capability; T2 runs it.
 - **The six pre-existing failures in `test_casestudy_flow_builder.py`** are flow-track
   platform-dependent Triangle goldens, outside C1's five suites, and unrelated to this milestone.
+
+---
+
+## 5. Carried into T2 *(added 2026-08-26, after the first Hub session)*
+
+🔴 **Recorded here, in TRACKED text, because `transport_notebook_milestones.md` is gitignored.** T2's own
+statement of these items lives in that file and **two of them are now stale** (§5.3). Anything T2 depends
+on has to survive a clean clone.
+
+### 5.1 🔴 The open question is now the MESH, not the platform
+
+`T0_2b…` §2.6 warned about *"a highly **mesh**/platform-dependent geometric quantity"*. The 2026-08-26
+measurement addressed only the **platform** half — ten runs across two platforms, but **one mesh, one
+transect position, default probe settings** — and the signed narrowing says so explicitly.
+
+**T2 varies the mesh deliberately.** That makes mesh-dependence the exposure that actually bears on its
+verdict, and it is **entirely unmeasured**.
+
+> **What T2 should do before trusting `capture_halfwidth_m` as a discriminator:** replicate the fingerprint
+> across the spatial series' meshes on **one** platform, and compare that spread against
+> `TOL_WIDTH_REL = 5%` — the same test the platform question just passed. `hub_measurement.py`'s
+> `run_fingerprint_replication` does the replication; only the mesh needs varying.
+
+⚠️ If mesh spread exceeds the tolerance, the fingerprint is a **descriptor of the mesh**, not evidence
+about the plume — and S10's arm loses its second reported quantity while keeping its first (the flow
+deltas, which are deterministic solver outputs and unaffected).
+
+### 5.2 ⚠️ `H = 2.30` is a two-sample mean — get parity before committing to a matrix
+
+| | |
+|---|---|
+| samples | **2** side-runs, differing by **12.2%** (35.69 / 31.60 s) |
+| macOS record it is compared against | **6 pairs / 12 cold side-runs** |
+| SIGILL evidence | **0/2** on Hub vs **0/12** on macOS |
+| headroom to `HUB_FINE_CEILING_S` | **19%** (728 s of 900 s) |
+| 🔴 `316 s` | a **FLOOR** — that run sat on `nstp_cap = 2000`, so `cr_target = 0.9` may never have been reached |
+
+**Five more `qualify` invocations (~10 minutes) would give parity with the macOS record.** Worth doing
+**before** T2 commits to a mesh matrix, because the verdict that the fine run clears the ceiling rests on
+19% headroom against a floor — and T2 prices *every* fine identity against that same threshold.
+
+```bash
+python _SUPPORT/src/scripts/hub_measurement.py --workdir ~/hub_meas --skip-fingerprint   # x5
+```
+
+### 5.3 🔴 Two items in the milestone plan are now STALE
+
+| Plan item | Status |
+|---|---|
+| **T2 §6** — *"PRT grid/platform gate — ~24% Mac↔Hub spread … so `≈53 m` cannot be a grid-supported value unqualified"* | **SUPERSEDED.** `T0_2b…` §2.6 was narrowed and **signed 2026-08-26** (decision record §8.4): no platform qualification between macOS-arm64 and this Hub. The **mesh** half stands — see §5.1 |
+| **T2 §7** — *"T2 measures the Hub slowdown factor, prices the fine run against `BUDGET_WARN_S` / `WALL_TIMEOUT_S`"* | **PARTLY DISCHARGED.** `H = 2.30` measured; fine run priced at **728 s**, below `HUB_FINE_CEILING_S = 900`. ⚠️ **The default-grid DECISION in the same item is untouched and remains T2's**, as does applying T0.5's threshold as pass/fail to the **case-study** fine identity, which is a different and larger run than the notebook demo measured here |
+
+⚠️ **Do not read §7 as discharged.** What was measured is the **notebook demo** identity. T0.5's probe case
+`b010227` runs **1095 days at 4320 m³/d over a 250 m corridor** — an 18× horizon, ~2.8× corridor and 3.15×
+pumping against the demo — and its feasibility is still predeclared as *"very likely to exceed both the
+step cap and `HUB_FINE_CEILING_S`"*. **`H` prices that run; it does not exempt it.**
