@@ -5,39 +5,49 @@
 
 ---
 
-## Result 1 — 🔴 `H ≈ 2.9–3.0`, and the fine run projects **ABOVE the ceiling**
+## Result 1 — ✅ `H = 2.30` measured. The fine run projects **BELOW the ceiling**
 
-The qualification stage did not run (§4), so this comes from the **fingerprint stage as a proxy**: the same
-workload, the same script, both platforms, five fresh processes each.
+**Measured by the gate qualification itself** — the transport solve, i.e. the workload that matters —
+after the setup problems of §4 were cleared.
 
 | | macOS-arm64 | Linux Hub |
 |---|---:|---:|
-| per run | 6.2 s ×5 | 20.4 · 18.1 · 17.9 · 18.6 · 17.7 s |
-| mean | **6.20 s** | **18.54 s** |
+| per side | mean **14.61 s** (min 14.35 · max 15.00) | **35.69 s** · **31.60 s** |
+| mean | **14.61 s** | **33.65 s** |
 
-**`H = 2.99`** on all runs, **`2.92`** excluding the first (warm-up) run.
-
-⚠️ **That is almost exactly the `H = 3` that `T0_0…` §6 used as its illustration of the failure case.**
+> **`H = 2.30`** (range **2.24 – 2.35** against the macOS max/min).
 
 | | |
 |---|---:|
 | fine run, fast Mac | 316 s |
-| projected on Hub (`H = 2.92 … 2.99`) | **921 – 945 s** |
-| `HUB_FINE_TARGET_S` | 600 s |
-| `HUB_FINE_CEILING_S` | **900 s** |
+| **projected on Hub** | **728 s** (709 – 741) |
+| `HUB_FINE_TARGET_S` | 600 s → **above target** |
+| `HUB_FINE_CEILING_S` | 900 s → ✅ **below the ceiling** |
+| headroom | **172 s (19%)** |
 
-> 🔴 **The projection lands ABOVE the ceiling.** On these numbers T2's mandatory fine run **fails** and
-> takes its pre-declared failure edge — back to **T1** for a cheaper `GridSpec`, or to **T0** for a revised
-> threshold. It may **not** pass by reclassifying the fine run as optional.
+> ✅ **Verdict: PASSES WITH A RECORDED WARNING.** Per `T0_0…` §6, between target and ceiling the fine run
+> passes but students on a **loaded** Hub will feel it. **T2 does not take its failure edge.**
 
-⚠️ **And 316 s is likely an UNDER-estimate**: that run sat on `nstp_cap = 2000`, so `cr_target = 0.9` may
-never have been reached.
+### 🔴 This CORRECTS the earlier proxy figure — which would have triggered a false failure edge
 
-⚠️ **Proxy caveat, stated plainly.** PRT particle tracking is not a GWT transport solve and need not scale
-identically. This is a strong signal, **not** the measurement `T0_0…` §6 asks for — that still needs the
-qualification stage (§4).
+An earlier entry in this file reported `H ≈ 2.9–3.0`, derived from the **fingerprint stage as a proxy**
+(macOS 6.20 s vs Hub 18.54 s). **The proxy overestimated by 28%**, and on that figure the fine run
+projected to 921–945 s — **above** the ceiling, which would have sent T2 to its pre-declared failure edge
+for no reason.
 
----
+**Why it was wrong:** PRT particle tracking and a GWT transport solve are different workload mixes, and
+they do not scale together across architectures. The proxy was honestly labelled a proxy, but the lesson
+is sharper than that — **a same-script, same-workload comparison across platforms is still not a
+substitute for measuring the workload you actually care about.**
+
+### ⚠️ What this figure does and does not support
+
+- **`n = 2` side-runs**, and they differ by **12.2%** (35.69 vs 31.60). `H = 2.30` is a two-sample mean,
+  not a converged one. Five more `qualify` invocations would give parity with the macOS six-pair record.
+- 🔴 **316 s is a FLOOR, not the cost.** That run sat on `nstp_cap = 2000`, so `cr_target = 0.9` may never
+  have been reached. If the uncapped demand is higher, the 19% headroom shrinks — and it is the only thing
+  standing between this result and the failure edge.
+- **Hub load is not controlled.** This was one session on an otherwise-quiet machine.
 
 ## Result 2 — ✅ The capture fingerprint is IDENTICAL across platforms
 
@@ -79,9 +89,17 @@ bisected one.
 
 ---
 
-## 3. Result 3 — the Hub-side gate qualification did NOT run
+## Result 3 — ✅ The gate is qualified Hub-side, on ONE pair
 
-Blocked by §4. **`T0_0…` §5.1's "a Hub-side T1 gate would need its own qualification" remains open.**
+`qualify` returned **PASS** on Linux x86_64: both cold side-runs OK, payloads exactly equal, no environment
+mismatches. **`T0_0…` §5.1's "a Hub-side T1 gate would need its own qualification" is now met** — the gate
+works on the platform students actually use.
+
+⚠️ **On one pair, not six.** One `qualify` invocation is **one pair / two cold side-runs**; §5.1's
+"6 pairs, 12 cold side-runs" came from six separate invocations. So the Hub evidence is **1/6 the
+sampling** of the macOS record, and in particular the **SIGILL rate is 0/2 here against 0/12 there** —
+much weaker evidence about a hazard repo memory once put at ~40% on macOS-arm64. Five more invocations
+would give parity and cost ~10 minutes.
 
 ---
 
