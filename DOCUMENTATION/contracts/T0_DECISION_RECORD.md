@@ -154,6 +154,7 @@ never silently different from what was signed.
 | **2** | 2026-08-20 | `T0_1_C1_v2.md` → **v4** | **A8 extended to `transport_prt_capture.py`**, which carries its own `_src_sha()` with the identical three-file hole; plus **Appendix B**, the tracked and hashed T1 build-list snapshot | **Yes, retrospectively** — see amendment 3 |
 | **3** | 2026-08-20 | `T0_1_C1_v2.md` → **v5**, **RE-SIGNED** | **A7's surface widened** to a new `exp`-only metrics module; **amendments 1–3 re-based on the signature** rather than on derivation from Appendix B | **YES** |
 | **4** | 2026-08-21 | `T0_1_C1_v2.md` → **v6** | **A15 proposed, refuted, then WITHDRAWN as unnecessary**; S3b deferred; **§3.1 re-gated**. Three linked decisions — see §8.3 | **YES** — §3.1 signed 2026-08-21; (a) and (b) needed none |
+| **5** | 2026-08-26 | `T0_2b…` → **v5** | **§2.6's platform-sensitivity requirement NARROWED** against measurement — see §8.4 | **YES** — 2026-08-26 |
 
 **What happened.** The T1 plan review found that C1's A1–A9, though signed, **omitted five changes the T1
 build list requires**. Because C1 §3 makes an unlisted change a defect, **no implementation could satisfy
@@ -376,3 +377,48 @@ overstated, and both are withdrawn.
 | **Change** | C1 §3.1: the unsigned path survives, gated by a one-bullet verbatim-quotation test, independent review before force, and a bar on curing missing authority by rewording |
 | **Approved by** | **Beatrice Marti** |
 | **Date** | **2026-08-21** |
+
+---
+
+### 8.4 §2.6's platform qualification, narrowed against measurement *(2026-08-26)*
+
+✅ **SIGNED 2026-08-26, Beatrice Marti.** This corrects a factual claim in frozen text — a failure edge taken deliberately, not an edit.
+
+**What §2.6 claimed:** a **~24% Mac↔Hub spread on the bisected half-width**, making a platform
+qualification **mandatory** before `≈53 m` could ever be quoted as a grid-supported value — and making
+`TOL_WIDTH_REL = 5%` "far tighter than the platform spread".
+
+**What the first Hub measurement found:** `capture_halfwidth_at()`'s bisected `halfwidth_m` returns
+**`53.125 m` on all five macOS-arm64 runs and all five Linux-x86_64 Hub runs.** Ten fresh processes,
+`stdev = 0.0`, `spread_rel = 0.0`. Identical to the digit.
+
+**What is changed:** the qualification is **narrowed, not removed** — not required between the two
+**measured** platforms; still required for any platform, toolchain or **mesh** outside that measurement.
+
+**What is deliberately NOT changed:**
+- 🔴 **The 24% is not re-attributed.** The cited line describes `max_captured_offset_m`, a *sampling
+  statistic* the next test calls *"a lower bound, not a capture-zone half-width"* and which the bisected
+  value was built to replace — a plausible reading, but **the original observation's conditions were never
+  recorded**, so it cannot be re-examined. It is left standing as **unexplained**.
+- **No tolerance, threshold or constant moves.**
+- **S10's cross-platform comparison block stays.** One agreeing case is not a cross-platform envelope.
+
+**What it unlocks:** S10's `compare_fingerprints` already takes a `RepeatabilityEnvelope` as an argument,
+so **same-platform comparisons become usable with no code change** — a caller passes the measured envelope.
+Before this, every comparison raised for want of exactly this evidence.
+
+⚠️ **The evidence's honest scope:** ten runs, two platforms, one toolchain each, **one mesh**, one transect
+position, default probe settings. It supports *"identical between these two"* — **not** *"platform
+invariant"* — and says nothing about the **mesh** dependence §2.6 also warned of.
+
+⚠️ **Follow-up, not part of this signature:** `compare_fingerprints`'s cross-platform error message still
+asserts *"a ~24% Mac↔Hub spread makes a cross-platform comparison meaningless"*. That wording is now
+questionable and should be softened to cite the unexplained figure rather than assert it — an A13
+message-only change.
+
+| Field | Value |
+|---|---|
+| **Change** | `T0_2b…` §2.6: platform qualification narrowed to platforms outside the measured pair |
+| **Approved by** | **Beatrice Marti** |
+| **Date** | **2026-08-26** |
+

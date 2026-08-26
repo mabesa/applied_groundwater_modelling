@@ -142,12 +142,36 @@ signed.
 ### 2.6 `capture_halfwidth_m` — upstream plume / capture half-width (PRT)
 - **Units** m. **Algorithm** bisection of the dividing streamline on a transect
   (`transport_prt_capture.py:666`), bisection tolerance 0.25–1.0 m, max offset 150 m.
-- ⚠️ **Platform-sensitive: ~24% Mac↔Hub spread** on the bisected half-width
-  (`test_transport_prt_capture.py:664`). **`≈53 m` may never be quoted as a grid-supported value without a
-  platform qualification**, and the qualification never substitutes for generation.
+- ⚠️ **Platform sensitivity — NARROWED 2026-08-26** ✅ *(SIGNED, Beatrice Marti; decision record §8.4)*.
+  This bullet previously read: *"Platform-sensitive: ~24% Mac↔Hub spread on the bisected half-width
+  (`test_transport_prt_capture.py:664`); `≈53 m` may never be quoted as a grid-supported value without a
+  platform qualification."*
+
+  ✅ **Measured, and it disagrees.** `capture_halfwidth_at()`'s bisected `halfwidth_m` returns
+  **`53.125 m` on all five macOS-arm64 runs and all five Linux-x86_64 Hub runs** — ten fresh processes,
+  `stdev = 0.0`, `spread_rel = 0.0`. Not "within 24%": identical to the digit.
+  Evidence: `evidence/hub/HUB_MEASUREMENT_2026-08-26.md`.
+
+  ⚠️ **The 24%'s provenance is unresolved, and is NOT re-attributed here.** The cited line describes
+  **`max_captured_offset_m`** — a *sampling statistic* that the next test
+  (`test_halfwidth_is_stable_across_probe_radii_but_max_offset_is_not`) explicitly calls *"a lower bound,
+  not a capture-zone half-width"*, and which the bisected value was introduced to replace. That reading is
+  plausible but **the original observation's conditions were never recorded**, so it cannot be re-examined.
+  **The figure is therefore left standing as unexplained, not reassigned.**
+
+  > **NARROWED REQUIREMENT.** The platform qualification on `≈53 m` is **not required between
+  > macOS-arm64 and Linux-x86_64 (this Hub)** — the measured pair. It **remains required** for any
+  > platform, toolchain, or **mesh** not covered by that measurement, and the qualification never
+  > substitutes for generation.
+
+  ⚠️ **Scope of the evidence, stated so it is not over-read:** ten runs, **two platforms, one toolchain
+  each, ONE mesh, one transect position, default probe settings.** It supports *"identical between these
+  two"*. It does **not** support *"platform-invariant"*, and it says nothing about the **mesh**-dependence
+  this bullet also warned of.
 - **Tolerance** `TOL_WIDTH_REL = 5%` relative — deliberately looser than the concentration tolerance
-  because the bisection's own probe settings move it by ~1 m, and **still far tighter than the 24%
-  platform spread**, which is why the platform qualification is mandatory rather than optional.
+  because the bisection's own probe settings move it by ~1 m. ⚠️ *Previously this clause also read "still
+  far tighter than the 24% platform spread, which is why the platform qualification is mandatory rather
+  than optional" — superseded by the narrowing above.*
 
 ### 2.7 Frozen tolerance table
 
