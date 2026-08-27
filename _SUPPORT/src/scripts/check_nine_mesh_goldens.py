@@ -52,6 +52,16 @@ REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "_SUPPORT" / "src"))
 
 import casestudy_flow_builder as b  # noqa: E402
+import casestudy_flow_common as cfc  # noqa: E402
+import model_io_utils as mio  # noqa: E402
+
+#: Canonical members describing the MESH ITSELF. If these differ the grid moved;
+#: if only the others differ, the grid is intact and a package array changed.
+_MESH_MEMBERS = frozenset({
+    "gridprops__vertices", "gridprops__cell2d_flat", "gridprops__cell2d_lengths",
+    "gridprops__ncpl", "gridprops__nvert", "ncpl", "botm", "top", "idomain",
+    "crs", "refine_radius_used",
+})
 
 #: Diagnostic gates the builder already computes; all are platform-independent.
 _HEALTH_GATES = ("flow_mass_balance", "flow_convergence", "finite_heads",
@@ -69,7 +79,43 @@ def _gate_ok(value) -> bool:
     return value is not None
 
 
-def check_group(group: int, *, state: str = "baseline") -> dict:
+def member_level_diff(group: int, manifest: dict) -> dict:
+    """Which canonical members differ, WITHOUT the builder's pin raising first.
+
+    `build_flow_state` refuses to continue when the pin fails, so it can say *that*
+    the grid diverged but never *which part*. This rebuilds the spec directly -- the
+    same path `test_builder_spec_hashes_match_committed_without_solve` uses -- and
+    diffs member by member, which is the difference between "the mesh moved" and "a
+    package array changed".
+    """
+    out = {"mesh_members_differing": [], "package_members_differing": [],
+           "mesh_intact": None, "aggregate_matches": None}
+    try:
+        mother = mio.ensure_flow_model()
+        _sim, cgwf = cfc.load_coarse_model(mother)
+        coarse_heads = cgwf.output.head().get_data().flatten()
+        boundary_gdf, river_gdf = cfc.load_gis(mother)
+        refine_points = cfc.group_refine_points(group)
+        spec, riv_info = cfc.build_baseline_spec(
+            cgwf, boundary_gdf, river_gdf, refine_points, coarse_heads)
+        agg, arr = cfc.spec_canonical_hashes(spec)
+    except Exception as exc:                       # noqa: BLE001
+        out["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+        return out
+
+    golden_arr = manifest.get("array_hashes") or {}
+    for name, want in sorted(golden_arr.items()):
+        if arr.get(name) != want:
+            key = "mesh_members_differing" if name in _MESH_MEMBERS else "package_members_differing"
+            out[key].append(name)
+    out["mesh_intact"] = not out["mesh_members_differing"]
+    out["aggregate_matches"] = (agg == manifest.get("aggregate_hash"))
+    out["faithful_riv_matches"] = (
+        riv_info.get("hash") == (manifest.get("faithful_riv") or {}).get("hash"))
+    return out
+
+
+def check_group(group: int, *, state: str = "baseline", diagnose: bool = False) -> dict:
     """Rebuild one group and compare it against its committed golden."""
     manifest = b._frozen_golden_manifest(group)
     if manifest is None:
@@ -94,6 +140,9 @@ def check_group(group: int, *, state: str = "baseline") -> dict:
         rec["result"] = "FAIL"
         rec["wall_s"] = round(time.time() - t0, 1)
         rec["failures"].append(f"build raised {type(exc).__name__}: {str(exc)[:400]}")
+        # the builder's pin fires before any of our own comparisons, so go get the
+        # member-level detail it could not give us
+        rec["diff"] = member_level_diff(group, manifest)
         return rec
     rec["wall_s"] = round(time.time() - t0, 1)
 
@@ -136,6 +185,8 @@ def check_group(group: int, *, state: str = "baseline") -> dict:
             w = json.dumps(want)[:24] if not isinstance(want, str) else want[:24]
             rec["failures"].append(f"{name}: built {g}.. != golden {w}..")
 
+    if diagnose and "diff" not in rec:
+        rec["diff"] = member_level_diff(group, manifest)
     rec["result"] = "FAIL" if rec["failures"] else "PASS"
     return rec
 
@@ -164,6 +215,9 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--groups", type=int, nargs="+", default=list(b.ALL_GROUPS))
     ap.add_argument("--state", default="baseline")
+    ap.add_argument("--diagnose", action="store_true",
+                    help="always compute the member-level diff (costs one extra spec "
+                         "build per group), not only when the pin fires")
     ap.add_argument("--json", type=Path, default=None,
                     help="write the full per-group record here (the A16 evidence file)")
     args = ap.parse_args()
@@ -174,12 +228,21 @@ def main() -> int:
 
     records = []
     for g in args.groups:
-        rec = check_group(g, state=args.state)
+        rec = check_group(g, state=args.state, diagnose=args.diagnose)
         records.append(rec)
         enforced = "hashes ENFORCED" if rec.get("hashes_enforced") else "hashes SKIPPED (cross-platform)"
         print(f"[{rec['result']:4s}] group {g}  ({enforced}, {rec.get('wall_s', '?')}s)", flush=True)
         for f in rec["failures"]:
             print(f"         ! {f}", flush=True)
+        d = rec.get("diff") or {}
+        if d and not d.get("error"):  # printed for FAIL, and for --diagnose on PASS
+            mesh = d["mesh_members_differing"]
+            pkg = d["package_members_differing"]
+            print(f"         > mesh intact: {d['mesh_intact']}"
+                  f"   mesh members differing: {mesh or 'none'}"
+                  f"   package members differing: {pkg or 'none'}", flush=True)
+        elif d.get("error"):
+            print(f"         > member-level diff unavailable: {d['error']}", flush=True)
 
     n_fail = sum(1 for r in records if r["result"] == "FAIL")
     n_pass = sum(1 for r in records if r["result"] == "PASS")
