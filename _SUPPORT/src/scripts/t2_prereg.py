@@ -118,7 +118,7 @@ def validate(doc: dict) -> dict:
                 errors.append(f"{where}: no identities")
             for ident in ids:
                 if ident not in IDENTITIES:
-                    errors.append(f"{where}: identity {ident!r} not in the frozen 11")
+                    errors.append(f"{where}: identity {ident!r} not in IDENTITIES")
             if not c.get("verdict_rule"):
                 errors.append(f"{where}: no verdict_rule")
         else:

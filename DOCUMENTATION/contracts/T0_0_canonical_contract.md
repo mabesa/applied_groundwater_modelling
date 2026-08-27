@@ -253,6 +253,7 @@ One formatter, applied everywhere. Named integers, no inline magic numbers.
 SIGFIG_FLOAT        = 12    # every float, including inside meta / mass_balance / locked / arrays
 FLOAT_FORMAT        = "{:.11e}"   # 12 significant digits -- STORAGE/hashing form
 FLOAT_REL_TOL       = 1e-5        # 🔴 the COMPARISON tolerance (2026-08-27)
+FLOAT_ABS_TOL       = 1e-8        # 🔴 the near-zero FLOOR (2026-08-27)
 ```
 
 12 significant digits is **strict on purpose**. It is not a tolerance — the ±8% test pin already exists
@@ -268,6 +269,36 @@ canonical form. What changed is the **comparison**: two floats now agree when th
 **Why.** 12 significant digits tests **solver noise, not the model.** The concentrations this gate exists
 to protect carry ~3 significant digits of physical meaning, so a bit-level comparison rejected changes no
 student and no claim could ever see.
+
+### ✅ AMENDED 2026-08-27 (second) — the comparison carries an ABSOLUTE FLOOR
+*(**SIGNED 2026-08-27, Beatrice Marti** — decision record §8.6.)*
+
+Two floats now agree when
+
+> `|a - b|  <=  FLOAT_ABS_TOL + FLOAT_REL_TOL * max(|a|, |b|)`
+
+**Why.** A purely *relative* tolerance has no meaningful denominator on a leaf that is
+numerically zero. The first change that exposed this (A17's preconditioner) was rejected on
+**three near-zero fields** while every metric the gate exists to protect was bit-identical:
+
+| field | side A | side B | rel. diff | abs. diff |
+|:--|--:|--:|--:|--:|
+| `mass_balance.grouped_residual_g` | 5.82e-10 g | 2.33e-10 g | 6.0e-01 | 3.5e-10 g |
+| `mass_balance.pct_imbalance` | -1.77e-11 % | 4.40e-11 % | 1.4e+00 | 6.2e-11 % |
+| `breakthrough[0]` | 1.52506e-04 | 1.52510e-04 | 2.5e-05 | 3.8e-09 mg/L |
+
+Those are mass-balance residuals of ~1e-10 g against a **3.0e+05 g** release — about 1e-16
+relative to the quantity being balanced — and the first sample of a breakthrough curve whose
+peak is 5.28 mg/L. `peak_mgL` and `t_peak` did not appear at all: they agreed to **7.3e-10**.
+
+**Why 1e-8.** It sits **below every physically meaningful magnitude in the payload** and
+**above solver round-off**: concentrations are O(1) mg/L, times O(10) d, masses O(1e5) g,
+coordinates O(1e6) m, Péclet numbers O(1). No recorded quantity carries meaning at 1e-8, so
+the floor cannot mask a real change — it only stops a relative test being applied where it
+has no denominator.
+
+⚠️ **The floor does not weaken the relative test.** For every leaf of ordinary magnitude the
+`rtol` term dominates and 1e-5 still governs, unchanged.
 
 **Why 1e-5 and not 1e-3.** 1e-3 matches the physical resolution; 1e-5 is **100× tighter**, so the gate
 still catches anything approaching a real change. ⚠️ **Heads would tolerate 1e-3** — this constant governs

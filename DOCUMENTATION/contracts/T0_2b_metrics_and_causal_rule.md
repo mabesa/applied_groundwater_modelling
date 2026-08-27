@@ -201,12 +201,12 @@ identities and overstated the matrix.
 
 | Arm | Identities |
 |---|---|
-| Spatial series (at `cr_target = 0.9`) | **5** |
+| Spatial series (at `cr_target = 0.9`) | **6** *(5 + the 1 m point, signed 2026-08-27)* |
 | Temporal refinement at the **coarse** grid (50 m), 2 further `cr_target` values | **2** |
 | Temporal refinement at the **finest** grid (2 m), 2 further `cr_target` values | **2** |
 | Operator **A** diagnostic | post-processing only — **0 additional solves** |
 | **B-control** arm, matched coarse + fine | **2** |
-| **TOTAL** | **11 identities** |
+| **TOTAL** | **12 identities** *(11 + 1 m)* |
 
 The two temporal endpoints reuse their `cr_target = 0.9` runs from the spatial series, so each adds two
 identities rather than three.
@@ -227,8 +227,37 @@ identities rather than three.
      "feasibility stop" to dodge the edge.
 3. **Step-cap** — hitting `nstp_cap` **fails loudly** and takes a failure edge (T1 exit). It may never pass
    as "honest time-stepping".
-4. 🔴 **No open-ended refinement.** The series is these five spatial and three temporal points. Adding a
-   point after seeing the results is a **failure edge to T0**.
+4. 🔴 **No open-ended refinement.** The series is these **six** spatial and three temporal points.
+   Adding a point after seeing the results is a **failure edge to T0**.
+
+   ### ✅ AMENDED 2026-08-27 — the 1 m spatial point is added, under signature
+   *(**SIGNED 2026-08-27, Beatrice Marti** — decision record §8.6. C1 **A17**.)*
+
+   The series was **five** spatial points and ended at 2 m. It is now **six**, ending at 1 m.
+   This rule is exactly what such an extension has to answer to, so the reasoning is recorded
+   rather than assumed:
+
+   **The 2 m stop was a rule-2 stop, not a rule-1 stop.** The series did not end because the
+   metric had converged — it ended because the next refinement was priced above
+   `HUB_FINE_CEILING_S`, and rule 2 required reporting *"tolerance not reached within the
+   feasible envelope."* That is a statement about the **envelope**, not about the physics.
+
+   **The envelope then changed, and not to fit a result.** The lecturer moved the fine grids to
+   **instructor-side precomputation** — students receive the results rather than running them —
+   which removes the Hub ceiling as a bound on the series. `HUB_FINE_CEILING_S` still governs
+   what a *student* may be asked to run, and still governs the named feasibility-probe identity;
+   it no longer bounds an instructor-generated series point.
+
+   ⚠️ **The residual hazard, stated plainly.** The 1 m point was nonetheless chosen *after*
+   seeing that 2 m had not converged, which is the shape of thing rule 4 exists to prevent. Two
+   facts bound it: the point is **the next halving**, not one selected from a menu of candidate
+   grids after inspecting outcomes; and its cell size, guard and Courant policy were fixed and
+   recorded **before** the run. What it is not, and must not be presented as, is a point that was
+   pre-registered in ignorance of the 2 m result.
+
+   **Anything beyond 1 m re-arms this rule in full.** A 0.5 m or 0.8 m point added after seeing
+   the 1 m result would be a failure edge, and the lifted ceiling is not a general licence to
+   keep refining.
 
 **Both axes are required for `grid_supported`** (T0.3 §4.4). A claim evaluated on only one axis is
 `null / refinement_axis_untested` — which is the current state of every arrival and exceedance-window

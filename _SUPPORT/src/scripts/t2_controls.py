@@ -57,7 +57,7 @@ def verify_prereg(path: Path = PREREG, expected: str = PREREG_SHA256) -> str:
 def registered_identities(path: Path = PREREG) -> set:
     """Identities the pre-registration actually references.
 
-    ⚠️ NOT the frozen 11. An identity can be frozen and still be referenced by
+    ⚠️ NOT the frozen set. An identity can be frozen and still be referenced by
     no component -- running it would produce evidence no claim consumes.
     """
     doc = json.loads(path.read_text())
