@@ -47,8 +47,12 @@ def test_a_registered_identity_is_accepted():
 
 
 def test_an_unregistered_identity_is_refused():
+    # NOT a plausible-but-unregistered name. "spatial_1m_cr0.9" was used here until it
+    # was registered by lecturer signature on 2026-08-27, at which point this test went
+    # green for the wrong reason. The sentinel must be a name that cannot ever become a
+    # real identity, so registering a new grid can never silently disarm this control.
     with pytest.raises(ctl.ControlRefusal, match="not referenced by the pre-registration"):
-        ctl.require_registered("spatial_1m_cr0.9")
+        ctl.require_registered("spatial_NOT_AN_IDENTITY_cr0.9")
 
 
 # --- 3. the guard comes from S2, never from the caller ----------------------

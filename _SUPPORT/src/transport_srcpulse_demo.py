@@ -299,7 +299,18 @@ _GWF_NEWTON = "NEWTON"
 # reachable by relaxing this solver. Graded refinement is the remaining route.
 _GWF_IMS = dict(complexity="COMPLEX", outer_maximum=1000, inner_maximum=100,
                 outer_dvclose=1e-4, inner_dvclose=1e-5, linear_acceleration="BICGSTAB")
-_GWT_IMS = dict(complexity="MODERATE", linear_acceleration="BICGSTAB",
+# 🔴 COMPLEXITY drives the LINEAR PRECONDITIONER, and it is the only knob that makes the
+# transport solve converge on finely refined corridors (C1 **A17**, lecturer signature
+# 2026-08-27).  Under MODERATE the GWT solution ("Solution 2") fails at sp1/ts1 for
+# corridors at or below 1 m while the FLOW solve converges normally -- raising GWT
+# outer/inner iteration budgets does not help, so this is preconditioning, not iteration
+# count.  Evidence: DOCUMENTATION/contracts/evidence/t2/S10_SUB2M_SOLVER.md.
+#
+# ⚠️ NOT the solver route rejected by A16.  That route relaxed the dvclose TOLERANCES and
+# moved concentrations 2.3e-04.  This changes the preconditioner with tolerances UNCHANGED
+# (1e-6 / 1e-7): the converged answer is the same answer, reached by a different path, and
+# it is measured -- peak_mgL agrees to 7.3e-10 across the two preconditioners at 10 m.
+_GWT_IMS = dict(complexity="COMPLEX", linear_acceleration="BICGSTAB",
                 outer_dvclose=1e-6, inner_dvclose=1e-7)
 
 # Representative spare doublet b010191 (LV95) -- FLOW ONLY, not assigned to any group.

@@ -42,10 +42,14 @@ METRICS = ("peak_mgL", "t_peak", "t_first_exceedance", "t_last_exceedance",
 # T0_2b Sec 2.7: the only tolerances that exist.
 TOLERANCES = {"TOL_CONC_REL": 0.02, "TOL_TIME_REL": 0.02, "TOL_WIDTH_REL": 0.05}
 
-# T0_2b Sec 3: the frozen 11 identities.
+# T0_2b Sec 3: the frozen identities -- 11, plus the 1 m spatial point added by
+# LECTURER SIGNATURE 2026-08-27.  Rule 4 forbids adding a point after seeing the
+# results; the 2 m stop was a rule-2 FEASIBILITY stop against HUB_FINE_CEILING_S,
+# and that ceiling was lifted when the lecturer moved the fine grids to
+# instructor-side precomputation.  See T0_2b Sec 3 and decision record Sec 8.6.
 IDENTITIES = (
     "spatial_50m_cr0.9", "spatial_20m_cr0.9", "spatial_10m_cr0.9",
-    "spatial_5m_cr0.9", "spatial_2m_cr0.9",
+    "spatial_5m_cr0.9", "spatial_2m_cr0.9", "spatial_1m_cr0.9",
     "temporal_50m_cr0.45", "temporal_50m_cr0.225",
     "temporal_2m_cr0.45", "temporal_2m_cr0.225",
     "bcontrol_coarse", "bcontrol_fine",

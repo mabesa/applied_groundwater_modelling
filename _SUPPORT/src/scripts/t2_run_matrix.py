@@ -37,6 +37,7 @@ SPATIAL_CELL_SIZE = {
     "spatial_10m_cr0.9": 10.0,
     "spatial_5m_cr0.9": 5.0,
     "spatial_2m_cr0.9": 2.0,
+    "spatial_1m_cr0.9": 1.0,
 }
 CR_TARGET = {**{k: 0.9 for k in SPATIAL_CELL_SIZE},
              "temporal_50m_cr0.45": 0.45, "temporal_50m_cr0.225": 0.225,

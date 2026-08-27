@@ -123,6 +123,22 @@ FLOAT_FORMAT = "{:.11e}"  # 12 significant digits, one canonical exponent form
 # payload, which is why it is tighter than the head criterion.
 FLOAT_REL_TOL = 1e-5
 
+# 🔴 THE ABSOLUTE FLOOR (2026-08-27).  A purely RELATIVE tolerance is undefined in
+# practice on quantities that are numerically zero: a mass-balance residual of 1e-10 g
+# against a 3.0e+05 g release differs from another such residual by 60% RELATIVE while
+# both are exact zero physically.  The gate was rejecting solver round-off in near-zero
+# leaves while the metrics it exists to protect (peak_mgL, t_peak) were bit-identical.
+#
+# The rule is the standard combined form -- equal when
+#     |a - b| <= FLOAT_ABS_TOL + FLOAT_REL_TOL * max(|a|, |b|)
+#
+# ⚠️ 1e-8 is chosen to be BELOW every physically meaningful magnitude in the payload and
+# ABOVE solver round-off: concentrations are O(1) mg/L, times O(10) d, masses O(1e5) g,
+# coordinates O(1e6) m, Peclet numbers O(1).  No recorded quantity carries meaning at
+# 1e-8, so the floor cannot mask a real change; it only stops relative comparison from
+# being applied where it has no denominator.
+FLOAT_ABS_TOL = 1e-8
+
 # ---------------------------------------------------------------------------
 # Section 2 -- the frozen REFERENCE payload schema: NAME -> normalisation
 # CLASS, transcribed once from the contract's own tables (Section 2.1's
@@ -1099,7 +1115,8 @@ def _leaf_equal(a, b):
     """Compare one normalised leaf. Returns `(equal, relative_difference)`.
 
     Both sides are canonical STRINGS (`_normalize` ran first). When both parse
-    as finite floats they are compared on `FLOAT_REL_TOL`; everything else --
+    as finite floats they are compared on `FLOAT_ABS_TOL + FLOAT_REL_TOL`;
+    everything else --
     hashes, versions, enum values, ints that do not parse as float -- keeps
     EXACT equality, because for those a single character is a real difference.
 
@@ -1124,8 +1141,11 @@ def _leaf_equal(a, b):
     denom = max(abs(fa), abs(fb))
     if denom == 0.0:
         return True, 0.0            # both zero, differing only in sign/format
-    rel = abs(fa - fb) / denom
-    return rel <= FLOAT_REL_TOL, rel
+    diff = abs(fa - fb)
+    rel = diff / denom
+    # combined absolute + relative: the floor governs near-zero leaves, where a
+    # relative test has no meaningful denominator (see FLOAT_ABS_TOL).
+    return diff <= FLOAT_ABS_TOL + FLOAT_REL_TOL * denom, rel
 
 
 # ---------------------------------------------------------------------------

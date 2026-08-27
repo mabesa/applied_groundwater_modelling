@@ -35,7 +35,7 @@ GUARDS = REPO / "DOCUMENTATION/contracts/T2_run_guards.json"
 # The checksum S1 committed. A mismatch means the mapping moved after the
 # evaluation was designed against it -- which is the whole thing S1 exists to
 # prevent, so it is a refusal rather than a warning.
-PREREG_SHA256 = "a3765544fd7b56a8e17057c39897be7228ec55aa5fb9ee5965a556ee73ece283"
+PREREG_SHA256 = "e88c2ccf0418996ce9caf15b0a85f0a437be98339cc0cef57ce04e5a35f0d762"
 
 
 class ControlRefusal(Exception):
