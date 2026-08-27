@@ -40,15 +40,21 @@ A17 work, on a detached worktree.
 
 ## Why this blocks S3b
 
-S3b changes `disv_grid_utils.py`, which builds all nine meshes. Today a change there would be
-checked against:
+S3b changes `disv_grid_utils.py`, which builds all nine meshes. What the measured facts support,
+stated precisely:
 
-- **group 0**, on Linux only — and only once the six assertions are made to run; and
-- **nothing at all** for groups 6 and 8.
+> **Builder golden-hash regression coverage currently exercises group 0 only, against
+> Linux-generated goldens — and on macOS those assertions do not run at all.**
 
-So S3b cannot produce the evidence A16 requires, and a real mesh break in eight of the nine
-groups would be undetected. Six permanent reds also mean a genuine failure would land in an
-already-red file and go unremarked.
+⚠️ **The narrow claim is the defensible one.** It does **not** follow that `disv_grid_utils.py`
+is tested *only* through group 0: other test files reference groups 1–5 and 7 and may exercise
+invariants that utility affects. Equally, a *reference* to a group is not proof of construction
+or of meaningful regression coverage. What the facts establish is the absence of **nine-mesh
+golden regression evidence**, which is precisely what A16 names — not a broader claim about all
+testing of that module.
+
+So S3b cannot produce the evidence A16 requires. Six permanent reds also mean a genuine failure
+would land in an already-red file and go unremarked.
 
 ## What has to be decided first
 
