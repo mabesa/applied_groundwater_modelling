@@ -297,7 +297,7 @@ _GWF_NEWTON = "NEWTON"
 #
 # Consequence, recorded so it is not rediscovered: the 2 m identity is NOT
 # reachable by relaxing this solver. Graded refinement is the remaining route.
-_GWF_IMS = dict(complexity="COMPLEX", outer_maximum=200, inner_maximum=100,
+_GWF_IMS = dict(complexity="COMPLEX", outer_maximum=1000, inner_maximum=100,
                 outer_dvclose=1e-4, inner_dvclose=1e-5, linear_acceleration="BICGSTAB")
 _GWT_IMS = dict(complexity="MODERATE", linear_acceleration="BICGSTAB",
                 outer_dvclose=1e-6, inner_dvclose=1e-7)
