@@ -155,6 +155,7 @@ never silently different from what was signed.
 | **3** | 2026-08-20 | `T0_1_C1_v2.md` → **v5**, **RE-SIGNED** | **A7's surface widened** to a new `exp`-only metrics module; **amendments 1–3 re-based on the signature** rather than on derivation from Appendix B | **YES** |
 | **4** | 2026-08-21 | `T0_1_C1_v2.md` → **v6** | **A15 proposed, refuted, then WITHDRAWN as unnecessary**; S3b deferred; **§3.1 re-gated**. Three linked decisions — see §8.3 | **YES** — §3.1 signed 2026-08-21; (a) and (b) needed none |
 | **5** | 2026-08-26 | `T0_2b…` → **v5** | **§2.6's platform-sensitivity requirement NARROWED** against measurement — see §8.4 | **YES** — 2026-08-26 |
+| **6** | 2026-08-27 | `T0_0…` → **v4** · `T0_1_C1_v2.md` → **v7** | **Gate tolerance `FLOAT_REL_TOL = 1e-5`**, and **A16** authorising graded mesh construction (S3b) — see §8.5 | **YES** — 2026-08-27 |
 
 **What happened.** The T1 plan review found that C1's A1–A9, though signed, **omitted five changes the T1
 build list requires**. Because C1 §3 makes an unlisted change a defect, **no implementation could satisfy
@@ -421,4 +422,52 @@ message-only change.
 | **Change** | `T0_2b…` §2.6: platform qualification narrowed to platforms outside the measured pair |
 | **Approved by** | **Beatrice Marti** |
 | **Date** | **2026-08-26** |
+
+---
+
+### 8.5 The gate tolerance, and graded mesh construction *(2026-08-27)* — ✅ **SIGNED, Beatrice Marti**
+
+Two linked decisions, both taken **against measurement** rather than in the abstract.
+
+#### (a) `T0_0…` §4 — the gate compares on `FLOAT_REL_TOL = 1e-5`
+
+Twelve significant digits tested **solver noise, not the model**. The concentrations the gate protects
+carry ~3 significant digits of physical meaning. `FLOAT_FORMAT` still normalises for storage and hashing;
+only the **comparison** moved.
+
+**1e-5, not the physics-matching 1e-3** — 100× tighter than the physical resolution, so the gate still
+catches anything approaching a real change.
+
+⚠️ **What it costs, recorded rather than glossed:** the gate is **no longer a bit-level regression
+detector**. It caught real defects at high precision (S5's sentinel, S9b's schema-lifted fields); at 1e-5 a
+6th-significant-figure change now passes. The trade is deliberate — its job is *"the teaching numbers did
+not move"*, not *"no float moved"*.
+
+🔴 **And the same tolerance immediately bound a decision.** Relaxing the coupled-sim GWF solver to
+1e-3/1e-4 makes a 2 m mesh converge — but moves concentrations up to **2.3e-04**, including
+`breakthrough[13]` at **1.010 mg/L**, essentially **on the 1 mg/L compliance threshold**. The lecturer
+**kept 1e-5 and rejected the solver change**, on the ground that precision near the exceedance threshold is
+where it buys something *physical*. **The solver stays at 1e-4/1e-5.**
+
+#### (b) C1 **A16** — graded / multi-level mesh construction (S3b)
+
+Authorises `model_io_utils.py` and `disv_grid_utils.py` for per-level refine geometry, so a `MeshSpec` with
+more than one `MeshLevel` **builds** instead of raising.
+
+**Why now:** *"the corridor does not require its smallest cells everywhere"* — and with the solver route
+closed by (a), graded refinement is **the only remaining authorised route to cells finer than 5 m.**
+
+🔴 **Signed, not amended.** Appendix B says graded refinement must be **"expressible"**, which S3a already
+delivered. **Building it is genuinely new authority**, and the §3.1 verbatim-quotation test would correctly
+reject an amendment — this is exactly the case §3.1 reserves for a signature.
+
+⚠️ **Blast radius, carried into the authorisation:** `disv_grid_utils` also builds the **nine frozen
+case-study group meshes** and the parked pinned-meshes bundle. **S3b must carry regression evidence for
+those**, not merely the transport suite.
+
+| Field | Value |
+|---|---|
+| **Change** | `T0_0…` §4 gate tolerance; C1 **A16** (graded mesh construction) |
+| **Approved by** | **Beatrice Marti** |
+| **Date** | **2026-08-27** |
 

@@ -258,8 +258,8 @@ FLOAT_REL_TOL       = 1e-5        # 🔴 the COMPARISON tolerance (2026-08-27)
 12 significant digits is **strict on purpose**. It is not a tolerance — the ±8% test pin already exists
 elsewhere and is exactly what cannot detect leakage (T1's stated reason for this gate).
 
-### 🔴 AMENDED 2026-08-27 — the gate compares on a RELATIVE TOLERANCE, not exact equality
-*(Lecturer decision; **pending the signature that enacts it**.)*
+### ✅ AMENDED 2026-08-27 — the gate compares on a RELATIVE TOLERANCE, not exact equality
+*(**SIGNED 2026-08-27, Beatrice Marti** — decision record §8.5.)*
 
 `FLOAT_FORMAT` still normalises for **storage and hashing** — the recorded payload keeps its 12-digit
 canonical form. What changed is the **comparison**: two floats now agree when they are within
