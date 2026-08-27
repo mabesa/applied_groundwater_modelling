@@ -1,0 +1,192 @@
+{
+  "host_os": "Darwin",
+  "state": "baseline",
+  "groups": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "passed": 9,
+  "failed": 0,
+  "hashes_enforced_on": 0,
+  "is_full_a16_evidence": false,
+  "records": [
+    {
+      "group": 0,
+      "golden_generation_os": "Linux",
+      "current_os": "Darwin",
+      "hashes_enforced": false,
+      "checks": {
+        "refine_radius": "PASS",
+        "flow_mass_balance": "PASS",
+        "flow_convergence": "PASS",
+        "finite_heads": "PASS",
+        "flow_no_dry_cells": "PASS",
+        "aggregate_hash": "SKIP_CROSS_PLATFORM",
+        "array_hashes": "SKIP_CROSS_PLATFORM",
+        "faithful_riv_hash": "SKIP_CROSS_PLATFORM"
+      },
+      "failures": [],
+      "wall_s": 2.4,
+      "result": "PASS"
+    },
+    {
+      "group": 1,
+      "golden_generation_os": "Linux",
+      "current_os": "Darwin",
+      "hashes_enforced": false,
+      "checks": {
+        "refine_radius": "PASS",
+        "flow_mass_balance": "PASS",
+        "flow_convergence": "PASS",
+        "finite_heads": "PASS",
+        "flow_no_dry_cells": "PASS",
+        "aggregate_hash": "SKIP_CROSS_PLATFORM",
+        "array_hashes": "SKIP_CROSS_PLATFORM",
+        "faithful_riv_hash": "SKIP_CROSS_PLATFORM"
+      },
+      "failures": [],
+      "wall_s": 3.0,
+      "result": "PASS"
+    },
+    {
+      "group": 2,
+      "golden_generation_os": "Linux",
+      "current_os": "Darwin",
+      "hashes_enforced": false,
+      "checks": {
+        "refine_radius": "PASS",
+        "flow_mass_balance": "PASS",
+        "flow_convergence": "PASS",
+        "finite_heads": "PASS",
+        "flow_no_dry_cells": "PASS",
+        "aggregate_hash": "SKIP_CROSS_PLATFORM",
+        "array_hashes": "SKIP_CROSS_PLATFORM",
+        "faithful_riv_hash": "SKIP_CROSS_PLATFORM"
+      },
+      "failures": [],
+      "wall_s": 1.8,
+      "result": "PASS"
+    },
+    {
+      "group": 3,
+      "golden_generation_os": "Linux",
+      "current_os": "Darwin",
+      "hashes_enforced": false,
+      "checks": {
+        "refine_radius": "PASS",
+        "flow_mass_balance": "PASS",
+        "flow_convergence": "PASS",
+        "finite_heads": "PASS",
+        "flow_no_dry_cells": "PASS",
+        "aggregate_hash": "SKIP_CROSS_PLATFORM",
+        "array_hashes": "SKIP_CROSS_PLATFORM",
+        "faithful_riv_hash": "SKIP_CROSS_PLATFORM"
+      },
+      "failures": [],
+      "wall_s": 3.1,
+      "result": "PASS"
+    },
+    {
+      "group": 4,
+      "golden_generation_os": "Linux",
+      "current_os": "Darwin",
+      "hashes_enforced": false,
+      "checks": {
+        "refine_radius": "PASS",
+        "flow_mass_balance": "PASS",
+        "flow_convergence": "PASS",
+        "finite_heads": "PASS",
+        "flow_no_dry_cells": "PASS",
+        "aggregate_hash": "SKIP_CROSS_PLATFORM",
+        "array_hashes": "SKIP_CROSS_PLATFORM",
+        "faithful_riv_hash": "SKIP_CROSS_PLATFORM"
+      },
+      "failures": [],
+      "wall_s": 3.0,
+      "result": "PASS"
+    },
+    {
+      "group": 5,
+      "golden_generation_os": "Linux",
+      "current_os": "Darwin",
+      "hashes_enforced": false,
+      "checks": {
+        "refine_radius": "PASS",
+        "flow_mass_balance": "PASS",
+        "flow_convergence": "PASS",
+        "finite_heads": "PASS",
+        "flow_no_dry_cells": "PASS",
+        "aggregate_hash": "SKIP_CROSS_PLATFORM",
+        "array_hashes": "SKIP_CROSS_PLATFORM",
+        "faithful_riv_hash": "SKIP_CROSS_PLATFORM"
+      },
+      "failures": [],
+      "wall_s": 3.0,
+      "result": "PASS"
+    },
+    {
+      "group": 6,
+      "golden_generation_os": "Linux",
+      "current_os": "Darwin",
+      "hashes_enforced": false,
+      "checks": {
+        "refine_radius": "PASS",
+        "flow_mass_balance": "PASS",
+        "flow_convergence": "PASS",
+        "finite_heads": "PASS",
+        "flow_no_dry_cells": "PASS",
+        "aggregate_hash": "SKIP_CROSS_PLATFORM",
+        "array_hashes": "SKIP_CROSS_PLATFORM",
+        "faithful_riv_hash": "SKIP_CROSS_PLATFORM"
+      },
+      "failures": [],
+      "wall_s": 3.0,
+      "result": "PASS"
+    },
+    {
+      "group": 7,
+      "golden_generation_os": "Linux",
+      "current_os": "Darwin",
+      "hashes_enforced": false,
+      "checks": {
+        "refine_radius": "PASS",
+        "flow_mass_balance": "PASS",
+        "flow_convergence": "PASS",
+        "finite_heads": "PASS",
+        "flow_no_dry_cells": "PASS",
+        "aggregate_hash": "SKIP_CROSS_PLATFORM",
+        "array_hashes": "SKIP_CROSS_PLATFORM",
+        "faithful_riv_hash": "SKIP_CROSS_PLATFORM"
+      },
+      "failures": [],
+      "wall_s": 1.7,
+      "result": "PASS"
+    },
+    {
+      "group": 8,
+      "golden_generation_os": "Linux",
+      "current_os": "Darwin",
+      "hashes_enforced": false,
+      "checks": {
+        "refine_radius": "PASS",
+        "flow_mass_balance": "PASS",
+        "flow_convergence": "PASS",
+        "finite_heads": "PASS",
+        "flow_no_dry_cells": "PASS",
+        "aggregate_hash": "SKIP_CROSS_PLATFORM",
+        "array_hashes": "SKIP_CROSS_PLATFORM",
+        "faithful_riv_hash": "SKIP_CROSS_PLATFORM"
+      },
+      "failures": [],
+      "wall_s": 1.7,
+      "result": "PASS"
+    }
+  ]
+}
