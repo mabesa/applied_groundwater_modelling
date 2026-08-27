@@ -155,6 +155,8 @@ never silently different from what was signed.
 | **3** | 2026-08-20 | `T0_1_C1_v2.md` → **v5**, **RE-SIGNED** | **A7's surface widened** to a new `exp`-only metrics module; **amendments 1–3 re-based on the signature** rather than on derivation from Appendix B | **YES** |
 | **4** | 2026-08-21 | `T0_1_C1_v2.md` → **v6** | **A15 proposed, refuted, then WITHDRAWN as unnecessary**; S3b deferred; **§3.1 re-gated**. Three linked decisions — see §8.3 | **YES** — §3.1 signed 2026-08-21; (a) and (b) needed none |
 | **5** | 2026-08-26 | `T0_2b…` → **v5** | **§2.6's platform-sensitivity requirement NARROWED** against measurement — see §8.4 | **YES** — 2026-08-26 |
+| **6** | 2026-08-27 | `T0_0…` → **v4** · `T0_1_C1_v2.md` → **v7** | **Gate tolerance `FLOAT_REL_TOL = 1e-5`**, and **A16** authorising graded mesh construction (S3b) — see §8.5 | **YES** — 2026-08-27 |
+| **7** | 2026-08-27 | `T0_0…` → **v5** · `T0_1_C1_v2.md` → **v8** · `T0_2b…` → **v2** | **A17** — the **1 m spatial identity**: GWT preconditioner `COMPLEX`, gate **`FLOAT_ABS_TOL = 1e-8`**, and `spatial_1m_cr0.9` as the sixth spatial point — see §8.6 | **YES** — 2026-08-27 |
 
 **What happened.** The T1 plan review found that C1's A1–A9, though signed, **omitted five changes the T1
 build list requires**. Because C1 §3 makes an unlisted change a defect, **no implementation could satisfy
@@ -422,3 +424,149 @@ message-only change.
 | **Approved by** | **Beatrice Marti** |
 | **Date** | **2026-08-26** |
 
+---
+
+### 8.5 The gate tolerance, and graded mesh construction *(2026-08-27)* — ✅ **SIGNED, Beatrice Marti**
+
+Two linked decisions, both taken **against measurement** rather than in the abstract.
+
+#### (a) `T0_0…` §4 — the gate compares on `FLOAT_REL_TOL = 1e-5`
+
+Twelve significant digits tested **solver noise, not the model**. The concentrations the gate protects
+carry ~3 significant digits of physical meaning. `FLOAT_FORMAT` still normalises for storage and hashing;
+only the **comparison** moved.
+
+**1e-5, not the physics-matching 1e-3** — 100× tighter than the physical resolution, so the gate still
+catches anything approaching a real change.
+
+⚠️ **What it costs, recorded rather than glossed:** the gate is **no longer a bit-level regression
+detector**. It caught real defects at high precision (S5's sentinel, S9b's schema-lifted fields); at 1e-5 a
+6th-significant-figure change now passes. The trade is deliberate — its job is *"the teaching numbers did
+not move"*, not *"no float moved"*.
+
+🔴 **And the same tolerance immediately bound a decision.** Relaxing the coupled-sim GWF solver to
+1e-3/1e-4 makes a 2 m mesh converge — but moves concentrations up to **2.3e-04**, including
+`breakthrough[13]` at **1.010 mg/L**, essentially **on the 1 mg/L compliance threshold**. The lecturer
+**kept 1e-5 and rejected the solver change**, on the ground that precision near the exceedance threshold is
+where it buys something *physical*. **The solver stays at 1e-4/1e-5.**
+
+#### (b) C1 **A16** — graded / multi-level mesh construction (S3b)
+
+Authorises `model_io_utils.py` and `disv_grid_utils.py` for per-level refine geometry, so a `MeshSpec` with
+more than one `MeshLevel` **builds** instead of raising.
+
+**Why now:** *"the corridor does not require its smallest cells everywhere"* — and with the solver route
+closed by (a), graded refinement is **the only remaining authorised route to cells finer than 5 m.**
+
+🔴 **Signed, not amended.** Appendix B says graded refinement must be **"expressible"**, which S3a already
+delivered. **Building it is genuinely new authority**, and the §3.1 verbatim-quotation test would correctly
+reject an amendment — this is exactly the case §3.1 reserves for a signature.
+
+⚠️ **Blast radius, carried into the authorisation:** `disv_grid_utils` also builds the **nine frozen
+case-study group meshes** and the parked pinned-meshes bundle. **S3b must carry regression evidence for
+those**, not merely the transport suite.
+
+| Field | Value |
+|---|---|
+| **Change** | `T0_0…` §4 gate tolerance; C1 **A16** (graded mesh construction) |
+| **Approved by** | **Beatrice Marti** |
+| **Date** | **2026-08-27** |
+
+---
+
+## §8.6 — A17: the 1 m spatial identity *(signed 2026-08-27)*
+
+T2 measured the spatial series to 2 m and reported, correctly, that the peak had not converged
+(`5 → 2 m` still moving **3.95 %**). This entry is what it took to reach 1 m, where it does.
+
+### (a) The blocker was diagnosed wrong twice, and the record should say so
+
+The 2 m blocker was a **GWF iteration cap**, so the sub-2 m failure was assumed to be more of the
+same. It was not. GWF `outer_maximum` to 3000/5000, `inner_maximum` to 500/1000, backtracking, DBD
+under-relaxation and `NO_PTC` **all produced byte-identical failures at ~44 s** — the constant wall
+time being the tell that nothing under test sat in the failing path.
+
+`mfsim.lst` names **`Solution 2`**, which is **GWT, not GWF**. The per-outer record shows flow
+converging normally — 130 outers, `dvmax` decaying to 9.70e-05, inside its own 1e-4 target. The
+failing solve was **transport**, at `MXITER = 50`, the `COMPLEXITY=MODERATE` default.
+
+Transport here is linear, so 50 outers failing is a **preconditioner** problem. Isolation:
+`inner_maximum=500` no · `inner_maximum=1000 + outer_maximum=200` no · `outer_maximum=200` no ·
+**`complexity="COMPLEX"` alone, yes.**
+
+### (b) ⚠️ §8.5(a) rejected *a* solver change. This is not that change.
+
+§8.5(a) records: *"The lecturer kept 1e-5 and rejected the solver change. The solver stays at
+1e-4/1e-5."* That decision concerned **relaxing GWF `dvclose` TOLERANCES** to 1e-3/1e-4, which moved
+concentrations up to **2.3e-04** — including `breakthrough[13]` to **1.010 mg/L**, essentially on the
+1 mg/L compliance threshold. It was rejected because precision near the exceedance threshold buys
+something physical.
+
+**A17 changes no tolerance.** GWF stays 1e-4/1e-5; GWT stays 1e-6/1e-7. Only the linear
+preconditioner moves, and the effect was **measured rather than argued**: the full series was re-run
+under both preconditioners on identical grids, and `peak_mgL` agrees to **7.3e-10** at 10 m — six
+orders of magnitude tighter than the rejected route, and four orders below the refinement step being
+resolved. The converged answer is the same answer, reached by a different path.
+
+### (c) The gate needed an absolute floor, and this is a real weakness it exposed
+
+`COMPLEX` initially **failed** the gate — on three fields that are numerically zero: two
+mass-balance residuals of ~**1e-10 g against a 3.0e+05 g release**, and the first sample of a
+breakthrough curve, **3.8e-09 mg/L** apart. `peak_mgL` and `t_peak` did not appear at all.
+
+A purely relative tolerance has no meaningful denominator there. The fix is the standard combined
+form, `|a-b| <= FLOAT_ABS_TOL + FLOAT_REL_TOL * max(|a|,|b|)` with **`FLOAT_ABS_TOL = 1e-8`** — below
+every physically meaningful magnitude in the payload, above solver round-off. For leaves of ordinary
+magnitude the relative term dominates and **1e-5 still governs, unchanged**.
+
+⚠️ **This was a latent defect, not a convenience.** It would have rejected *any* change that
+perturbed round-off in a near-zero field, and it did so while reporting a "60 % relative difference"
+between two numbers that are both physically zero.
+
+### (d) Rule 4, and the hazard that remains
+
+`T0_2b…` §3 rule 4 forbids adding a series point after seeing the results. The justification is
+recorded in full at that rule and summarised here: **the 2 m stop was a rule-2 FEASIBILITY stop**
+against `HUB_FINE_CEILING_S`, not a rule-1 convergence stop, and the lecturer moved the fine grids to
+**instructor-side precomputation**, which removes the Hub ceiling as a bound on the series.
+`HUB_FINE_CEILING_S` still governs what a student may be asked to run and still governs the named
+feasibility-probe identity.
+
+⚠️ **Stated plainly rather than glossed:** the 1 m point was still chosen *after* seeing that 2 m had
+not converged. It is the **next halving** rather than one selected from a menu after inspecting
+outcomes, and its cell size, guard and Courant policy were recorded before the run — but it was not
+pre-registered in ignorance of the 2 m result, and must not be presented as though it were.
+
+### (e) A17 does not retire A16
+
+A16 authorised **graded/multi-level mesh construction** (S3b) partly on the ground that, *"with the
+solver route closed by (a), graded refinement is the only remaining authorised route to cells finer
+than 5 m."* A17 opens a different route, so **that particular necessity argument is now weaker** — recorded
+rather than quietly dropped.
+
+A16 nonetheless stands, and S3b remains unbuilt and still useful. The 1 m identity runs on a
+**single-level** `MeshSpec`; the gradation visible in its mesh is Triangle's natural area transition
+between the refinement polygon and the base grid, **not** per-level control. A16 would let the corridor
+carry its smallest cells only where they are needed instead of throughout — which is a cell-count
+argument, and at `ncpl = 42 071` for 1 m it is a live one.
+
+### (f) The result
+
+| cell | `ncpl` | `nstp` | `peak_mgL` | Δ | `t_peak` | Δ |
+|---:|---:|---:|---:|---:|---:|---:|
+| 10 m | 4 408 | 122 | 5.2770 | — | 38.80 | — |
+| 5 m | 5 784 | 370 | 5.8765 | +11.361 % | 37.45 | −3.500 % |
+| 2 m | 15 727 | 1 979 | 6.1085 | +3.948 % | 37.64 | +0.508 % |
+| **1 m** | **42 071** | **7 986** | **6.1322** | **+0.389 %** | **37.95** | **+0.829 %** |
+
+Both metrics inside the 2 % tolerance at the final step. Successive peak differences
+**0.5995 → 0.2320 → 0.0238 mg/L** (ratio 0.102); Richardson limit **≈ 6.135 mg/L**, residual **~0.04 %**.
+
+**0.5 m and 0.8 m were considered and declined** — see §8.6(d): anything beyond 1 m re-arms rule 4 in
+full, and the lifted ceiling is not a general licence to keep refining.
+
+| Field | Value |
+|---|---|
+| **Change** | C1 **A17** — GWT preconditioner · gate `FLOAT_ABS_TOL` · the 1 m identity |
+| **Approved by** | **Beatrice Marti** |
+| **Date** | **2026-08-27** |

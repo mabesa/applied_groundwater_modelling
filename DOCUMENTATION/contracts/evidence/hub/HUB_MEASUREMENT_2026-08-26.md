@@ -25,8 +25,17 @@ after the setup problems of §4 were cleared.
 | `HUB_FINE_CEILING_S` | 900 s → ✅ **below the ceiling** |
 | headroom | **172 s (19%)** |
 
-> ✅ **Verdict: PASSES WITH A RECORDED WARNING.** Per `T0_0…` §6, between target and ceiling the fine run
-> passes but students on a **loaded** Hub will feel it. **T2 does not take its failure edge.**
+> 🔴 **VERDICT WITHDRAWN — the projection's BASE is invalid.** The 316 s run **sat on `nstp_cap = 2000`**
+> (`T0_5…` §2), and *"a capped run is not a feasible run, whatever the cap is set to"* (§2.1). So 316 s is
+> the runtime of an **under-resolved** run — a floor, not a measurement — and **728 s is a LOWER BOUND**.
+> **Whether an honest 2 m identity clears the 900 s ceiling is UNKNOWN in either direction.**
+>
+> **`H = 2.30` is unaffected**: it comes from the qualification's own cold side-runs, which are honest.
+> To settle the projection, re-run 2 m at `cr_target = 0.9` with `nstp_cap` raised enough to finish
+> uncapped, and project from that.
+>
+> ⚠️ Not bad news by itself: `T0_2b…` §3 rule 2 makes a spatial-series point above the ceiling an
+> **allowable feasibility stop** — *"a result, not a failure"*.
 
 ### 🔴 This CORRECTS the earlier proxy figure — which would have triggered a false failure edge
 

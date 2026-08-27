@@ -251,11 +251,73 @@ One formatter, applied everywhere. Named integers, no inline magic numbers.
 
 ```
 SIGFIG_FLOAT        = 12    # every float, including inside meta / mass_balance / locked / arrays
-FLOAT_FORMAT        = "{:.11e}"   # 12 significant digits, one canonical exponent form
+FLOAT_FORMAT        = "{:.11e}"   # 12 significant digits -- STORAGE/hashing form
+FLOAT_REL_TOL       = 1e-5        # 🔴 the COMPARISON tolerance (2026-08-27)
+FLOAT_ABS_TOL       = 1e-8        # 🔴 the near-zero FLOOR (2026-08-27)
 ```
 
 12 significant digits is **strict on purpose**. It is not a tolerance — the ±8% test pin already exists
 elsewhere and is exactly what cannot detect leakage (T1's stated reason for this gate).
+
+### ✅ AMENDED 2026-08-27 — the gate compares on a RELATIVE TOLERANCE, not exact equality
+*(**SIGNED 2026-08-27, Beatrice Marti** — decision record §8.5.)*
+
+`FLOAT_FORMAT` still normalises for **storage and hashing** — the recorded payload keeps its 12-digit
+canonical form. What changed is the **comparison**: two floats now agree when they are within
+**`FLOAT_REL_TOL = 1e-5`** relative.
+
+**Why.** 12 significant digits tests **solver noise, not the model.** The concentrations this gate exists
+to protect carry ~3 significant digits of physical meaning, so a bit-level comparison rejected changes no
+student and no claim could ever see.
+
+### ✅ AMENDED 2026-08-27 (second) — the comparison carries an ABSOLUTE FLOOR
+*(**SIGNED 2026-08-27, Beatrice Marti** — decision record §8.6.)*
+
+Two floats now agree when
+
+> `|a - b|  <=  FLOAT_ABS_TOL + FLOAT_REL_TOL * max(|a|, |b|)`
+
+**Why.** A purely *relative* tolerance has no meaningful denominator on a leaf that is
+numerically zero. The first change that exposed this (A17's preconditioner) was rejected on
+**three near-zero fields** while every metric the gate exists to protect was bit-identical:
+
+| field | side A | side B | rel. diff | abs. diff |
+|:--|--:|--:|--:|--:|
+| `mass_balance.grouped_residual_g` | 5.82e-10 g | 2.33e-10 g | 6.0e-01 | 3.5e-10 g |
+| `mass_balance.pct_imbalance` | -1.77e-11 % | 4.40e-11 % | 1.4e+00 | 6.2e-11 % |
+| `breakthrough[0]` | 1.52506e-04 | 1.52510e-04 | 2.5e-05 | 3.8e-09 mg/L |
+
+Those are mass-balance residuals of ~1e-10 g against a **3.0e+05 g** release — about 1e-16
+relative to the quantity being balanced — and the first sample of a breakthrough curve whose
+peak is 5.28 mg/L. `peak_mgL` and `t_peak` did not appear at all: they agreed to **7.3e-10**.
+
+**Why 1e-8.** It sits **below every physically meaningful magnitude in the payload** and
+**above solver round-off**: concentrations are O(1) mg/L, times O(10) d, masses O(1e5) g,
+coordinates O(1e6) m, Péclet numbers O(1). No recorded quantity carries meaning at 1e-8, so
+the floor cannot mask a real change — it only stops a relative test being applied where it
+has no denominator.
+
+⚠️ **The floor does not weaken the relative test.** For every leaf of ordinary magnitude the
+`rtol` term dominates and 1e-5 still governs, unchanged.
+
+**Why 1e-5 and not 1e-3.** 1e-3 matches the physical resolution; 1e-5 is **100× tighter**, so the gate
+still catches anything approaching a real change. ⚠️ **Heads would tolerate 1e-3** — this constant governs
+the **concentration** payload, which is why it is stricter than the head criterion.
+
+**Non-finite values are never compared by tolerance**, only exactly, so `nan` against a number is a
+mismatch. ⚠️ But identical normalised strings — `"nan"` included — remain equal: `peak_mgL`/`t_peak` are
+legitimately NaN when the plume never arrives, and a NaN≠NaN rule would fail the gate **against itself**.
+
+⚠️ **What this costs.** The gate is no longer a bit-level regression detector. It has caught real defects
+at high precision (S5's sentinel, S9b's schema-lifted fields); at 1e-5 a change in the 6th significant
+figure now passes. That is the deliberate trade: the gate's job is *"the teaching numbers did not move"*,
+not *"no float moved"*.
+
+🔴 **Measured consequence, recorded the same day.** Relaxing the coupled-sim GWF solver to 1e-3/1e-4 —
+which makes a 2 m mesh converge — moves concentrations by up to **2.3e-04**, including `breakthrough[13]`
+at **1.010 mg/L**, essentially on the 1 mg/L compliance threshold. **1e-5 rejects it, and the tolerance was
+kept rather than widened**: precision near the exceedance threshold is where it buys something physical.
+**So the 2 m identity is not reachable by relaxing the solver.**
 
 ⚠️ **But do not call it bitwise** *(codex r1 #2)*. `FLOAT_FORMAT` is lossy 12-significant-digit
 quantisation, not float equality; and v1's claim that "deterministic MF6 on one machine reproduces
@@ -425,10 +487,33 @@ HUB_SAFETY_MARGIN  =  2.0    # ceiling = wall / MARGIN
 
 ✅ **MEASURED 2026-08-26: `H = 2.30`** (Linux x86_64 Hub vs macOS-arm64), from the gate qualification
 itself — the transport solve, not a proxy. Sides 35.69 s / 31.60 s against the macOS 14.61 s mean.
-**The 316 s fine identity projects to ≈ 728 s: above `HUB_FINE_TARGET_S`, BELOW `HUB_FINE_CEILING_S`, so it
-passes with the recorded warning above and T2 does NOT take its failure edge.**
 Evidence: `evidence/hub/HUB_MEASUREMENT_2026-08-26.md`. 🔴 **Nothing frozen here is changed by this —
 the measurement is recorded against the threshold, not used to move it.**
+
+### 🔴 WITHDRAWN 2026-08-26 (same day): the "≈ 728 s, below the ceiling" projection
+
+This section briefly read: *"the 316 s fine identity projects to ≈ 728 s: above `HUB_FINE_TARGET_S`, BELOW
+`HUB_FINE_CEILING_S`, so it passes with the recorded warning and T2 does NOT take its failure edge."*
+**That conclusion is withdrawn.**
+
+**`H = 2.30` stands** — it comes from the gate qualification's own cold side-runs, which are honest.
+**The PROJECTION does not**, because its base is not:
+
+> **The 316 s run sat ON `nstp_cap = 2000`** (`T0_5…` §2), so `cr_target = 0.9` may never have been
+> reached — and `T0_5…` §2.1 is explicit that **"a capped run is not a feasible run, whatever the cap is
+> set to."** 316 s is therefore the runtime of an **under-resolved** run: a **floor**, not a measurement.
+
+**Consequently `316 × 2.30 = 728 s` is a LOWER BOUND, and whether an honest 2 m identity clears
+`HUB_FINE_CEILING_S = 900` is UNKNOWN.** It clears by 19% on a floor; the uncapped cost is higher by an
+unmeasured factor and could exceed the ceiling.
+
+> **To settle it:** re-run the 2 m identity at `cr_target = 0.9` with `nstp_cap` raised enough that it
+> completes **genuinely uncapped**, and project from that. Until then no feasibility verdict on the fine
+> identity is established — in either direction.
+
+⚠️ **This does not change the threshold or any constant**, and it is not bad news by itself: `T0_2b…` §3
+rule 2 makes a spatial-series point above the ceiling an **allowable feasibility stop** — *"a result, not a
+failure"*. The probe is the thing that fails on the ceiling, and the probe is a different, larger identity.
 
 ⚠️ **Three caveats travel with the number.** It is a **two-sample** mean whose sides differ by 12.2%;
 **316 s is a floor**, since that run sat on `nstp_cap = 2000` so `cr_target = 0.9` may never have been
@@ -464,9 +549,10 @@ both would have created two dates that could drift apart.
    environment.** It remains a per-environment claim: a Hub-side gate needs its own qualification.
 2. **The three constants in §6** are proposed policy, not a measurement. `HUB_FINE_CEILING_S = 900` (half
    the 1800 s wall) is the value to accept or change; changing it *after* T2 measures the Hub is a failure
-   edge, not an edit. ✅ **`H` is now measured (§6) and the projection clears the ceiling with 19% to
-   spare, so no change to these constants is needed on current evidence** — and none may be made to fit a
-   later one.
+   edge, not an edit. ⚠️ **`H` is now measured (§6), but the fine-run projection built on it was
+   WITHDRAWN the same day** — its 316 s base came from a capped run. **No feasibility verdict on the fine
+   identity is established in either direction**, and no change to these constants is warranted on that
+   basis — nor may one be made to fit a later measurement.
 3. **The `arrival_day` → `t_peak` migration of §3.3** — pre-authorised here, but it is a naming decision
    T0.2 formally owns and M0 already made. Confirm it rather than reopen it. ⚠️ **Confirming the NAME does
    not confirm an interpolated VALUE**: through T1/T2 `t_peak` is the lattice alias (§3.3); the

@@ -282,9 +282,35 @@ def mesh_hash(spec: "MeshSpec", *, winning_radius: float,
 
 # Solver policy (replicated from transport_base_model)
 _GWF_NEWTON = "NEWTON"
-_GWF_IMS = dict(complexity="COMPLEX", outer_maximum=200, inner_maximum=100,
+# ⚠️ dvclose stays at 1e-4/1e-5 -- lecturer decision 2026-08-27, made against
+# measurement rather than in the abstract.
+#
+# Relaxing to 1e-3/1e-4 (what `model_io_utils` uses for the REFGRID build, and
+# what PR #113 established a refined GWF needs) DOES make a 2 m mesh converge:
+# the coupled sim currently fails at SP1/TS1 where the refgrid build succeeds.
+# But it moves this model's CONCENTRATIONS by up to 2.3e-04 relative --
+# `breakthrough[13]`, which sits at 1.010 mg/L, essentially on the 1 mg/L
+# compliance threshold. The gate's concentration tolerance is 1e-5 (T0.0
+# Sec 4), so the change is inadmissible, and the tolerance was kept rather
+# than widened: precision near the exceedance threshold is where it buys
+# something physical rather than numerical.
+#
+# Consequence, recorded so it is not rediscovered: the 2 m identity is NOT
+# reachable by relaxing this solver. Graded refinement is the remaining route.
+_GWF_IMS = dict(complexity="COMPLEX", outer_maximum=1000, inner_maximum=100,
                 outer_dvclose=1e-4, inner_dvclose=1e-5, linear_acceleration="BICGSTAB")
-_GWT_IMS = dict(complexity="MODERATE", linear_acceleration="BICGSTAB",
+# 🔴 COMPLEXITY drives the LINEAR PRECONDITIONER, and it is the only knob that makes the
+# transport solve converge on finely refined corridors (C1 **A17**, lecturer signature
+# 2026-08-27).  Under MODERATE the GWT solution ("Solution 2") fails at sp1/ts1 for
+# corridors at or below 1 m while the FLOW solve converges normally -- raising GWT
+# outer/inner iteration budgets does not help, so this is preconditioning, not iteration
+# count.  Evidence: DOCUMENTATION/contracts/evidence/t2/S10_SUB2M_SOLVER.md.
+#
+# ⚠️ NOT the solver route rejected by A16.  That route relaxed the dvclose TOLERANCES and
+# moved concentrations 2.3e-04.  This changes the preconditioner with tolerances UNCHANGED
+# (1e-6 / 1e-7): the converged answer is the same answer, reached by a different path, and
+# it is measured -- peak_mgL agrees to 7.3e-10 across the two preconditioners at 10 m.
+_GWT_IMS = dict(complexity="COMPLEX", linear_acceleration="BICGSTAB",
                 outer_dvclose=1e-6, inner_dvclose=1e-7)
 
 # Representative spare doublet b010191 (LV95) -- FLOW ONLY, not assigned to any group.

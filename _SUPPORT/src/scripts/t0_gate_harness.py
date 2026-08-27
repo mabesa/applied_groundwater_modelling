@@ -104,6 +104,41 @@ from pathlib import Path
 SIGFIG_FLOAT = 12
 FLOAT_FORMAT = "{:.11e}"  # 12 significant digits, one canonical exponent form
 
+# 🔴 LECTURER DECISION 2026-08-27: the gate compares floats on a RELATIVE
+# TOLERANCE, not exact string equality.
+#
+# FLOAT_FORMAT still normalises for STORAGE and hashing -- the recorded
+# payload keeps its 12-digit canonical form. What changed is the COMPARISON:
+# 12 significant digits tests solver noise, not the model. The concentrations
+# this gate exists to protect carry ~3 significant digits of physical meaning,
+# and a bit-level comparison on them was rejecting changes no student and no
+# claim could ever see.
+#
+# 1e-5 was chosen over the physics-matching 1e-3 deliberately: it is 100x
+# tighter than the physical resolution, so it still catches anything
+# approaching a real change, while admitting the solver-tolerance fix that a
+# 2 m mesh needs (which moves the peak 4.5e-06).
+#
+# ⚠️ Heads would tolerate 1e-3; this constant governs the CONCENTRATION
+# payload, which is why it is tighter than the head criterion.
+FLOAT_REL_TOL = 1e-5
+
+# 🔴 THE ABSOLUTE FLOOR (2026-08-27).  A purely RELATIVE tolerance is undefined in
+# practice on quantities that are numerically zero: a mass-balance residual of 1e-10 g
+# against a 3.0e+05 g release differs from another such residual by 60% RELATIVE while
+# both are exact zero physically.  The gate was rejecting solver round-off in near-zero
+# leaves while the metrics it exists to protect (peak_mgL, t_peak) were bit-identical.
+#
+# The rule is the standard combined form -- equal when
+#     |a - b| <= FLOAT_ABS_TOL + FLOAT_REL_TOL * max(|a|, |b|)
+#
+# ⚠️ 1e-8 is chosen to be BELOW every physically meaningful magnitude in the payload and
+# ABOVE solver round-off: concentrations are O(1) mg/L, times O(10) d, masses O(1e5) g,
+# coordinates O(1e6) m, Peclet numbers O(1).  No recorded quantity carries meaning at
+# 1e-8, so the floor cannot mask a real change; it only stops relative comparison from
+# being applied where it has no denominator.
+FLOAT_ABS_TOL = 1e-8
+
 # ---------------------------------------------------------------------------
 # Section 2 -- the frozen REFERENCE payload schema: NAME -> normalisation
 # CLASS, transcribed once from the contract's own tables (Section 2.1's
@@ -1066,9 +1101,51 @@ def _diff_normalized(a, b, path=""):
             for i, (av, bv) in enumerate(zip(a, b)):
                 mismatches.extend(_diff_normalized(av, bv, f"{path}[{i}]"))
     else:
-        if a != b:
-            mismatches.append({"field": path, "A": a, "B": b})
+        equal, rel = _leaf_equal(a, b)
+        if not equal:
+            m = {"field": path, "A": a, "B": b}
+            if rel is not None:
+                m["relative_difference"] = f"{rel:.3e}"
+                m["tolerance"] = f"{FLOAT_REL_TOL:.0e}"
+            mismatches.append(m)
     return mismatches
+
+
+def _leaf_equal(a, b):
+    """Compare one normalised leaf. Returns `(equal, relative_difference)`.
+
+    Both sides are canonical STRINGS (`_normalize` ran first). When both parse
+    as finite floats they are compared on `FLOAT_ABS_TOL + FLOAT_REL_TOL`;
+    everything else --
+    hashes, versions, enum values, ints that do not parse as float -- keeps
+    EXACT equality, because for those a single character is a real difference.
+
+    🔴 Non-finite values are never compared BY TOLERANCE -- only exactly. So
+    `nan` against a number, or `inf` against a large float, is a mismatch and
+    cannot be waved through by closeness.
+
+    ⚠️ But identical normalised strings ARE equal, `"nan"` included. That is
+    deliberate: `peak_mgL`/`t_peak` are legitimately NaN when the plume never
+    arrives, and a rule making NaN != NaN would fail the gate against ITSELF
+    on a valid run. The gate detects DIFFERENCE between two sides; judging
+    whether NaN is a valid outcome is `provenance_valid`'s job, not this one.
+    """
+    if a == b:
+        return True, None
+    try:
+        fa, fb = float(a), float(b)
+    except (TypeError, ValueError):
+        return False, None
+    if not (math.isfinite(fa) and math.isfinite(fb)):
+        return False, None          # NaN/inf: exact only
+    denom = max(abs(fa), abs(fb))
+    if denom == 0.0:
+        return True, 0.0            # both zero, differing only in sign/format
+    diff = abs(fa - fb)
+    rel = diff / denom
+    # combined absolute + relative: the floor governs near-zero leaves, where a
+    # relative test has no meaningful denominator (see FLOAT_ABS_TOL).
+    return diff <= FLOAT_ABS_TOL + FLOAT_REL_TOL * denom, rel
 
 
 # ---------------------------------------------------------------------------

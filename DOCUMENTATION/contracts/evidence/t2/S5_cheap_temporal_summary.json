@@ -1,0 +1,30 @@
+[
+  {
+    "identity": "temporal_50m_cr0.45",
+    "cell_size_m": 50.0,
+    "cr_target": 0.45,
+    "guard": 40000,
+    "ncpl": 4221,
+    "nstp": 171,
+    "cr_achieved": 0.4497619238661665,
+    "wall_s": 17.0,
+    "work_W": 721791,
+    "accepted": true,
+    "failures": [],
+    "artifact": "/private/tmp/claude-501/-Users-bea-Documents-GitHub-applied-groundwater-modelling/a8b9475e-3bfe-413d-8d71-07c18fdc3c3d/scratchpad/t2_s5/temporal_50m_cr0.45/temporal_50m_cr0.45.json"
+  },
+  {
+    "identity": "temporal_50m_cr0.225",
+    "cell_size_m": 50.0,
+    "cr_target": 0.225,
+    "guard": 40000,
+    "ncpl": 4221,
+    "nstp": 342,
+    "cr_achieved": 0.22488096193308324,
+    "wall_s": 27.4,
+    "work_W": 1443582,
+    "accepted": true,
+    "failures": [],
+    "artifact": "/private/tmp/claude-501/-Users-bea-Documents-GitHub-applied-groundwater-modelling/a8b9475e-3bfe-413d-8d71-07c18fdc3c3d/scratchpad/t2_s5/temporal_50m_cr0.225/temporal_50m_cr0.225.json"
+  }
+]
