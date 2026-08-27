@@ -251,11 +251,42 @@ One formatter, applied everywhere. Named integers, no inline magic numbers.
 
 ```
 SIGFIG_FLOAT        = 12    # every float, including inside meta / mass_balance / locked / arrays
-FLOAT_FORMAT        = "{:.11e}"   # 12 significant digits, one canonical exponent form
+FLOAT_FORMAT        = "{:.11e}"   # 12 significant digits -- STORAGE/hashing form
+FLOAT_REL_TOL       = 1e-5        # 🔴 the COMPARISON tolerance (2026-08-27)
 ```
 
 12 significant digits is **strict on purpose**. It is not a tolerance — the ±8% test pin already exists
 elsewhere and is exactly what cannot detect leakage (T1's stated reason for this gate).
+
+### 🔴 AMENDED 2026-08-27 — the gate compares on a RELATIVE TOLERANCE, not exact equality
+*(Lecturer decision; **pending the signature that enacts it**.)*
+
+`FLOAT_FORMAT` still normalises for **storage and hashing** — the recorded payload keeps its 12-digit
+canonical form. What changed is the **comparison**: two floats now agree when they are within
+**`FLOAT_REL_TOL = 1e-5`** relative.
+
+**Why.** 12 significant digits tests **solver noise, not the model.** The concentrations this gate exists
+to protect carry ~3 significant digits of physical meaning, so a bit-level comparison rejected changes no
+student and no claim could ever see.
+
+**Why 1e-5 and not 1e-3.** 1e-3 matches the physical resolution; 1e-5 is **100× tighter**, so the gate
+still catches anything approaching a real change. ⚠️ **Heads would tolerate 1e-3** — this constant governs
+the **concentration** payload, which is why it is stricter than the head criterion.
+
+**Non-finite values are never compared by tolerance**, only exactly, so `nan` against a number is a
+mismatch. ⚠️ But identical normalised strings — `"nan"` included — remain equal: `peak_mgL`/`t_peak` are
+legitimately NaN when the plume never arrives, and a NaN≠NaN rule would fail the gate **against itself**.
+
+⚠️ **What this costs.** The gate is no longer a bit-level regression detector. It has caught real defects
+at high precision (S5's sentinel, S9b's schema-lifted fields); at 1e-5 a change in the 6th significant
+figure now passes. That is the deliberate trade: the gate's job is *"the teaching numbers did not move"*,
+not *"no float moved"*.
+
+🔴 **Measured consequence, recorded the same day.** Relaxing the coupled-sim GWF solver to 1e-3/1e-4 —
+which makes a 2 m mesh converge — moves concentrations by up to **2.3e-04**, including `breakthrough[13]`
+at **1.010 mg/L**, essentially on the 1 mg/L compliance threshold. **1e-5 rejects it, and the tolerance was
+kept rather than widened**: precision near the exceedance threshold is where it buys something physical.
+**So the 2 m identity is not reachable by relaxing the solver.**
 
 ⚠️ **But do not call it bitwise** *(codex r1 #2)*. `FLOAT_FORMAT` is lossy 12-significant-digit
 quantisation, not float equality; and v1's claim that "deterministic MF6 on one machine reproduces
