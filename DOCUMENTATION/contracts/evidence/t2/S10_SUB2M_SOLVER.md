@@ -1,7 +1,10 @@
 # S10 — sub-2 m corridors: the blocker was the TRANSPORT solver, not the flow solver
 
-**Status:** diagnosed and reproduced. **The shipped default is unchanged** — the fix
-fails the T0 gate on three near-zero fields (Section 4) and that call is the lecturer's.
+**Status:** ✅ **RESOLVED AND SHIPPED** (C1 **A17**, lecturer signature 2026-08-27).
+The preconditioner is on `main`, the gate gained an absolute floor and returns **PASS /
+0 mismatches**, and `spatial_1m_cr0.9` is a **registered identity** whose controlled run
+passed all seven acceptance checks. Sections 4, 5 and 9 record how that was reached; they
+described an open question when written and are marked where superseded.
 
 ## 1. What was asked
 
@@ -53,7 +56,7 @@ monotonically to 9.70e-05, inside its own 1e-4 target:
 
 > The flow model was healthy the whole time. The failing solve was transport.
 
-## 4. The fix, and why it is not shipped
+## 4. The fix, and why it did not initially ship
 
 Transport here is linear, so 50 outers failing is a *preconditioner* problem, not an
 iteration-count problem — and the isolation matrix says exactly that:
@@ -87,12 +90,18 @@ All three are near-zero quantities, where a *relative* tolerance measures round-
   (~1e-16 relative). The 1.402 "relative difference" is a sign flip on numerical zero.
 
 The 1e-5 concentration tolerance is right for concentrations of order 1 and wrong for
-a 1e-10 g residual. That is a property of the gate, not of this change — **but the gate
-is a signed T0 artifact and its tolerance was a lecturer decision, so nothing here
-touches either.** `_GWT_IMS` stays `MODERATE` on `main`.
+a 1e-10 g residual. That is a property of the gate, not of this change.
 
-**Decision needed:** does the gate get a near-zero absolute floor (compare on absolute
-magnitude when both sides are below some epsilon), or does `COMPLEX` stay spike-only?
+### ✅ RESOLVED 2026-08-27 — the gate gained an absolute floor
+
+The lecturer's call was the near-zero floor, and it shipped as part of **A17**:
+
+> `|a - b|  <=  FLOAT_ABS_TOL + FLOAT_REL_TOL * max(|a|, |b|)`,  `FLOAT_ABS_TOL = 1e-8`
+
+1e-8 sits below every physically meaningful magnitude in the payload and above solver
+round-off; for leaves of ordinary magnitude the relative term dominates and 1e-5 still
+governs unchanged. `compare` against the shipped candidate now returns **PASS, 0
+mismatches**. See `T0_0…` §4 and decision record §8.6.
 
 ## 5. How the series was therefore run
 
@@ -101,10 +110,36 @@ already-measured 10 / 5 / 2 m — are re-run under it. Otherwise the 2 m → 1 m
 mix a refinement change with a solver change, which is the same confound that made the
 original grid spike unusable (S8b).
 
-A sub-2 m identity is **not** in `T2_preregistration.json`, and `T0_2b` §3 rule 4 makes
-adding a series point a failure edge, so `t2_run_matrix.require_registered` refuses it
-by design. This is a diagnostic spike; it is **not matrix evidence** and is not
-recorded as such.
+When this was written a sub-2 m identity was **not** in `T2_preregistration.json`, so
+`t2_run_matrix.require_registered` refused it by design and the series above was a
+diagnostic spike.
+
+### ✅ SUPERSEDED 2026-08-27 — 1 m is a registered identity
+
+`spatial_1m_cr0.9` is registered (34 prereg components; checksum `a3765544…` →
+`e88c2ccf…`) under the rule-4 justification recorded at `T0_2b` §3. It was then re-run
+through the **controlled path** — `t2_run_matrix.py`, with `verify_prereg`,
+`require_registered`, `guard_for` and `accept_run` all in force:
+
+| | |
+|---|---|
+| `peak_mgL` | **6.132222951825588** — *bit-identical to the spike above* |
+| `t_peak` | 37.945764426 d (`t_peak_quadratic_vertex_v1`, interpolated) |
+| `ncpl` / `nstp` | 42 071 / 7 986 |
+| `cr_achieved` | 0.89996 against a 0.9 target |
+| `nstp_cap` | 40 000 — **guard not reached** |
+| `provenance_valid` | `true` |
+| acceptance | **7 / 7 checks passed** |
+| wall | 5 756 s (96 min, Mac) |
+
+⚠️ **Two `t_peak` evaluators, and they differ slightly.** The artifact records the
+*interpolated* `t_peak_quadratic_vertex_v1` (37.9458 d); the spike table and the
+convergence arithmetic in §8 use the *lattice* alias (37.9482 d). The gap is 0.0025 d
+(**0.0065 %**), far inside tolerance, but the two are not the same number and should not
+be quoted interchangeably.
+
+Artifacts committed alongside this document: `spatial_1m_cr0.9.json` and
+`spatial_1m_cr0.9.acceptance.json`.
 
 ## 6. Direct measurement: how much does `COMPLEX` actually move the series?
 
@@ -212,14 +247,37 @@ which is why 42 071 cells buys 1 m resolution where it matters.
 
 Regenerate with `plot_grid_1m.py` in this directory (reads the cached mesh; no re-solve).
 
-## 9. What still needs the lecturer
+## 9. ✅ All three decisions taken, 2026-08-27
 
-1. 🔴 **The gate's near-zero handling.** `COMPLEX` fails `compare` only on fields that are
-   numerically zero (Section 4), while `peak_mgL` agrees to 7.3e-10. Either the gate gains an
-   absolute floor for near-zero leaves, or `COMPLEX` stays spike-only and sub-2 m results are
-   always produced off the shipped default. Until that is decided, `main` keeps `MODERATE`.
-2. **Whether the 1 m result is publishable evidence.** It is a spike by construction — a
-   sub-2 m identity is not pre-registered, and registering one is a `T0_2b` §3 rule 4 failure
-   edge. Showing students a converged peak means either accepting spike-grade evidence for a
-   teaching figure, or amending the pre-registration.
-3. **Whether to spend the 0.5 m run** (~20 h) as confirmation.
+1. **Gate near-zero handling** → **absolute floor** `FLOAT_ABS_TOL = 1e-8` (§4). `COMPLEX`
+   ships on `main`; `compare` returns PASS / 0 mismatches.
+2. **1 m as evidence** → **registered** as `spatial_1m_cr0.9`, the sixth spatial point, and
+   re-run through the controlled path (§5).
+3. **A finer confirmation run** → **declined**, for both 0.5 m and 0.8 m. See §10.
+
+## 10. Why no point finer than 1 m
+
+The ASME grid-convergence procedure (Celik et al., 2008) on the three finest points,
+with representative `h` = corridor cell size (a domain-wide `h` would be dominated by the
+untouched 50 m background):
+
+| metric | observed order `p` | 1 m value | extrapolated | **GCI band** |
+|:--|--:|--:|--:|--:|
+| `peak_mgL` | 2.385 | 6.1322 | 6.1378 | **± 0.115 %** |
+| `t_peak` | 1.377 | 37.948 | 38.144 | **± 0.643 %** |
+
+`p ≈ 2.4` on the peak is better than second order — the series is in its asymptotic range,
+not wandering. Remaining discretisation error at 1 m is **0.0056 mg/L (0.092 %)**.
+
+| next point | expected move in `peak_mgL` | cost vs the 1 m run |
+|:--|--:|--:|
+| 0.8 m | **0.038 %** | ~2× |
+| 0.5 m | 0.074 % | ~8× |
+
+🔴 **A 0.8 m point's expected signal is 3× SMALLER than the ±0.115 % uncertainty band on
+the 1 m value itself.** It would be measuring the series' own noise floor, at twice the
+cost of the run it is checking.
+
+⚠️ It would also **re-arm `T0_2b` §3 rule 4 in full**, with no envelope change to justify
+it: the ceiling was lifted once, for a specific reason, and that is not a standing licence
+to keep refining.
