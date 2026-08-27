@@ -196,6 +196,22 @@ for cell in (10.0, 5.0, 2.0, 1.0):
     print(cell, r.meta["ncpl"], r.meta["nstp"], r.peak_mgL, r.t_peak)
 ```
 
+## 8b. The mesh itself
+
+![Three-panel figure of the 1 m corridor-refined DISV mesh: (a) the full Limmat valley
+domain of 42 071 Voronoi cells bounded by the river, with the refined area boxed; (b) the
+graded corridor, a 1 m capsule from spill source to extraction well plus a disc at the
+injection well, fading outward to the 50 m base grid; (c) individual 1 m cells resolved in
+a 90 x 72 m window around the extraction well.](grid_1m_mesh.png)
+
+Refinement is **graded**, not stepped: the 1 m capsule covers the spill-to-extraction
+corridor with a second disc at the injection well, and grades outward through intermediate
+sizes to the 50 m base grid. **87.5 % of cells are <= 1.5 m** (median 1.13 m, min 0.73 m,
+max 74.2 m) -- concentrated in a corridor that is a small fraction of the domain area,
+which is why 42 071 cells buys 1 m resolution where it matters.
+
+Regenerate with `plot_grid_1m.py` in this directory (reads the cached mesh; no re-solve).
+
 ## 9. What still needs the lecturer
 
 1. 🔴 **The gate's near-zero handling.** `COMPLEX` fails `compare` only on fields that are
