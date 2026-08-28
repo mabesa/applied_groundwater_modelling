@@ -198,6 +198,15 @@ def check_group(group: int, *, state: str = "baseline", diagnose: bool = False) 
 
     cross = b._golden_is_cross_platform(manifest)
     env_diff = env_mismatch(manifest)
+    # The calibration a golden was built from. Goldens frozen before 2026-08-28 do not
+    # record it, so absence is reported as unknown rather than treated as agreement --
+    # a drifted mother model was the 2026-08-28 root cause and must never read as "fine".
+    golden_fp = (manifest.get("versions") or {}).get("flow_model_fingerprint")
+    try:
+        import model_io_utils as _mio
+        current_fp = _mio.flow_model_fingerprint(_mio.ensure_flow_model())
+    except Exception:                                        # noqa: BLE001
+        current_fp = None
     # 🔴 Same OS is necessary but NOT sufficient: a golden pins hashes of floating-point
     # arrays, reproducible only in the environment that produced them. If the recorded
     # libraries differ, the hashes cannot distinguish a regression from an environment
@@ -207,6 +216,9 @@ def check_group(group: int, *, state: str = "baseline", diagnose: bool = False) 
         "golden_generation_os": b._golden_generation_os(manifest),
         "current_os": platform.system(),
         "env_mismatch": env_diff,
+        "flow_model_fingerprint": current_fp,
+        "golden_flow_model_fingerprint": golden_fp,
+        "flow_model_matches_golden": (None if golden_fp is None else golden_fp == current_fp),
         "hashes_enforced": (not cross) and not env_diff,
         "checks": {},
         "failures": [],
@@ -333,6 +345,15 @@ def main() -> int:
 
     print(f"\n{n_pass} passed, {n_fail} failed, {n_env} inconclusive (environment), "
           f"of {len(records)} groups")
+    unknown_fp = [r["group"] for r in records
+                  if r.get("golden_flow_model_fingerprint") is None]
+    if unknown_fp and n_fail:
+        cur = next((r.get("flow_model_fingerprint") for r in records), None)
+        print(f"\n⚠️  {len(unknown_fp)} golden(s) predate flow_model_fingerprint recording, so "
+              f"the calibration they\n   were built from CANNOT be checked here. This "
+              f"machine's calibration is {cur}.\n   Verify with "
+              f"model_io_utils.verify_flow_model() -- a drifted mother model produces "
+              f"exactly\n   the signature 'topology none / cell-properties [botm, strt]'.")
     if n_env:
         ex = next(r for r in records if r["result"] == "ENV_MISMATCH")
         print("\n🔴 ENVIRONMENT MISMATCH -- these goldens pin hashes of floating-point "

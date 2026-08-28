@@ -66,23 +66,56 @@ cause was a *data file*.
 **falsifiable hash comparison**. The lesson is not "hypothesise less" but "make each hypothesis
 produce a number that can disagree with you."
 
-## 🔴 The structural hole this exposed — still OPEN
+## ✅ The structural hole — CLOSED 2026-08-28 (lecturer: *"fix it, it's in scope"*)
 
 **The goldens pin their outputs to 12 significant digits while their single largest input is
 unpinned and unverified.** Manifests record `numpy`, `flopy`, `geos`, `python`, `mf6` and the
 kernel — and **no hash of the mother model**.
 
-Three follow-ups, in priority order:
+All three follow-ups are implemented.
 
-1. **`ensure_flow_model` must verify what it returns.** A hash check with a message like *"your
-   local calibration copy has drifted from the published artifact — remove it and re-download"*
-   converts this two-day hunt into one line of output. ⚠️ **Needs an authority decision**:
-   `model_io_utils.py` is a C1 transitively-reached surface, and **A16 names it only for graded
-   mesh construction**, which this is not.
-2. **Record the mother-model hash in the golden manifests.** Same hole, one level up: a changed
-   input would still be invisible to a golden.
-3. **The pin's error message says "the built grid DIVERGED"** — it points at the model when the
-   cause was data. It cost two days here and would cost a student their afternoon.
+### 1 · `ensure_flow_model` now verifies what it returns
+
+The infrastructure already existed and was simply never wired: `flow_model_fingerprint()`'s own
+docstring says it is *"used to … **(b) detect a stale/mismatched local workspace in
+`ensure_flow_model`**"* — and `ensure_flow_model` never called it. It checked only
+`archive_version`, which `stamp_flow_manifest()` deliberately lets a local 05f output satisfy.
+
+- **`CANONICAL_FLOW_FINGERPRINT = "6a9e27c455dcbb66"`** pins the shipped archive.
+- **`verify_flow_model(ws)`** reports two independent things — `manifest_consistent` (files vs
+  their own manifest: catches partial extraction) and `is_canonical` (files vs the shipped
+  archive: catches a local variant). It **reports**; it never raises.
+- **Default is a WARNING**, not a failure, so a deliberate local calibration
+  (`RUN_PEST_LOCALLY=True`) stays usable — that workflow is legitimate and must not break.
+- **`require_canonical=True` REFUSES**, and the golden-pinned walk in
+  `casestudy_flow_builder._refine_solve_baseline_walk` now passes it. A local variant is rejected
+  *at the point the calibration is loaded*, naming the calibration — instead of surfacing later
+  as "the built grid DIVERGED".
+- **`AGM_ALLOW_LOCAL_FLOW_MODEL=1`** silences the warning; it does **not** relax the refusal.
+- A **freshly downloaded** archive that is non-canonical **raises unconditionally** — that means
+  the shipped artifact and the constant disagree, and every golden is suspect.
+
+### 2 · Golden manifests now record the calibration they were built from
+
+`_golden_versions()` records `flow_model_fingerprint`. ⚠️ **Goldens frozen before 2026-08-28 do
+not carry it**, so `check_nine_mesh_goldens.py` reports that as *unknown* rather than agreement,
+and prints the current calibration fingerprint plus the tell-tale signature when a run fails.
+Absence must never read as "fine".
+
+### 3 · The pin's error message no longer blames the grid
+
+`_pin_built_grid_to_frozen_golden` now appends, when the calibration is not canonical:
+
+> 🔴 **LIKELY CAUSE:** the calibrated flow model this was built from is NOT the shipped one
+> (fingerprint … != …). The goldens were frozen on the shipped calibration, so no grid built on a
+> different one can match.
+
+### Tests
+
+`_SUPPORT/tests/test_flow_model_provenance.py` — 8 tests, including the negative controls that
+matter: drift **warns** by default, drift is **refused** under `require_canonical`, the opt-out
+silences the warning but **not** the refusal, the message names cause *and* remedy, and the
+golden-pinned walk is asserted to require the canonical model.
 
 ## Also fixed along the way
 
