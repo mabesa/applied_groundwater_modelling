@@ -163,3 +163,42 @@ def test_topology_and_cell_properties_are_classified_apart():
     assert "botm" not in nine._TOPOLOGY_MEMBERS
     assert "gridprops__vertices" in nine._TOPOLOGY_MEMBERS
     assert not (nine._TOPOLOGY_MEMBERS & nine._CELL_PROPERTY_MEMBERS)
+
+
+# --- 5. regression: the diff must build at the GOLDEN's radius ---------------
+@pytest.mark.parametrize("group", [1, 3, 4, 5, 6])   # the radius-62 goldens
+def test_diff_builds_at_the_goldens_own_radius_not_the_default(group):
+    """🔴 Regression guard for a bug in this very script.
+
+    The builder walks `retry_radii` = (70, 62, 78, 56, 84) and freezes whichever first
+    converged, so FIVE of the nine goldens are radius 62 -- not the default 70. The first
+    version of `member_level_diff` called `build_baseline_spec` without a radius, silently
+    built at 70, and compared it against a 62 golden. It then reported EVERY member as
+    differing, which read as a catastrophic regression and sent the investigation after a
+    cause that did not exist.
+    """
+    manifest = b._frozen_golden_manifest(group)
+    assert manifest["radius_used"] == 62.0, "fixture assumption: these goldens are r=62"
+    d = nine.member_level_diff(group, manifest)
+    assert d.get("error") is None, d
+    assert d["built_at_radius"] == 62.0
+    # the tell-tale of the bug: essentially every member differing at once
+    total = (len(d["topology_members_differing"])
+             + len(d["cell_property_members_differing"])
+             + len(d["package_members_differing"]))
+    assert total < 10, (
+        f"group {group} reports {total} differing members -- the signature of comparing "
+        f"a radius-70 build against a radius-62 golden")
+
+
+def test_radius_70_and_radius_62_goldens_give_the_same_signature():
+    """Whatever differs must differ for the same reason on both radii; a split by radius
+    means the comparison, not the model, is at fault."""
+    sigs = {}
+    for group in (0, 3):                      # r=70 and r=62
+        m = b._frozen_golden_manifest(group)
+        d = nine.member_level_diff(group, m)
+        sigs[group] = set(d["cell_property_members_differing"])
+    assert sigs[0] == sigs[3], (
+        f"radius-70 group differs in {sigs[0]}, radius-62 group in {sigs[3]} -- "
+        "a radius-dependent signature indicates a comparison bug")

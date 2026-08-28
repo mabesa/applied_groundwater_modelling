@@ -150,15 +150,24 @@ def member_level_diff(group: int, manifest: dict) -> dict:
     """
     out = {"topology_members_differing": [], "cell_property_members_differing": [],
            "package_members_differing": [], "topology_intact": None,
-           "aggregate_matches": None}
+           "aggregate_matches": None,
+           "built_at_radius": manifest.get("radius_used")}
     try:
         mother = mio.ensure_flow_model()
         _sim, cgwf = cfc.load_coarse_model(mother)
         coarse_heads = cgwf.output.head().get_data().flatten()
         boundary_gdf, river_gdf = cfc.load_gis(mother)
         refine_points = cfc.group_refine_points(group)
+        # 🔴 BUILD AT THE GOLDEN'S OWN RADIUS. The builder walks `retry_radii` =
+        # (70, 62, 78, 56, 84) and freezes whichever one first converged, so five of the
+        # nine goldens are radius 62, not the default 70. Calling build_baseline_spec
+        # without a radius silently builds at 70 and compares it against a 62 golden --
+        # which reports EVERY member as differing and looks exactly like a catastrophic
+        # regression. That artefact is precisely what this argument prevents.
+        golden_radius = manifest.get("radius_used")
+        kwargs = {} if golden_radius is None else {"refine_radius": float(golden_radius)}
         spec, riv_info = cfc.build_baseline_spec(
-            cgwf, boundary_gdf, river_gdf, refine_points, coarse_heads)
+            cgwf, boundary_gdf, river_gdf, refine_points, coarse_heads, **kwargs)
         agg, arr = cfc.spec_canonical_hashes(spec)
     except Exception as exc:                       # noqa: BLE001
         out["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"

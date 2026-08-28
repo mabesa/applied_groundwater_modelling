@@ -64,6 +64,47 @@ not topology; `strt` follows `botm` through the `strt = max(strt, botm + 0.01)` 
 move together from one cause. Members are now reported in three buckets — **topology**,
 **cell-properties**, **packages** — and only the first answers "did the mesh move".
 
+## 🔴 CONFIRMED student-facing failure — this is not only a test problem
+
+The student template calls the same code the check calls:
+
+```
+PROJECT/workspace/template/case_study_flow_group_N.ipynb
+  -> cfb.build_all_flow_states          (2 callsites in the student notebook)
+    -> _refine_solve_baseline_walk
+      -> _pin_built_grid_to_frozen_golden   -> RuntimeError
+```
+
+A second gate does the same at `casestudy_flow_builder.py:~659`
+(*"walked grid hash != committed golden -- single-walk grid is not the frozen grid"*). **Both
+guard on `_golden_is_cross_platform`, i.e. on OS alone.** On the Hub — Linux golden, Linux host —
+both ENFORCE, the hashes differ because of numpy/flopy, and the notebook raises.
+
+> **The nine-mesh check did not merely find a test problem. It ran the exact code path students
+> run and reproduced the exact crash they would get, on all nine groups.**
+
+## ⚠️ A false signature produced by this script, and corrected
+
+The first Hub `--diagnose` run appeared to show **two** signatures:
+
+| groups | reported | golden radius |
+|---|---|---|
+| 0, 2, 7, 8 | `botm` + `strt` only | **70.0** |
+| 1, 3, 4, 5, 6 | *every* member differing | **62.0** |
+
+The second signature was **an artefact of this script**, not a finding. The builder walks
+`retry_radii = (70, 62, 78, 56, 84)` and freezes whichever radius first converged, so **five of
+the nine goldens are radius 62**. `member_level_diff` called `build_baseline_spec` *without* a
+radius, silently built at the default **70**, and compared it against a **62** golden — so every
+member differed. The giveaway is in the run's own log: for those five groups the *second* Voronoi
+build matches the golden `ncpl` exactly (4056, 4144, 4031, 3899, 4186).
+
+**Fixed:** the diff now builds at `manifest["radius_used"]`, and a parametrised regression test
+over the five radius-62 goldens asserts both the radius used and that the "everything differs"
+signature cannot return.
+
+**The corrected, uniform signal is `botm` + `strt` only, topology intact, on all nine groups.**
+
 ## What to do
 
 1. **Install the locked dependencies on the Hub** (`numpy 2.3.5`, `flopy 3.9.5`), then re-run.
