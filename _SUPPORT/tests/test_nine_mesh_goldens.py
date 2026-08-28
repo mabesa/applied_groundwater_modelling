@@ -119,3 +119,47 @@ def test_this_machines_run_is_evidence_only_if_it_is_the_generation_os():
     assert rec["hashes_enforced"] is (not cross)
     assert nine.is_full_a16_evidence([rec], expected_groups=[0]) is (
         (not cross) and rec["result"] == "PASS")
+
+
+# --- 4. environment mismatch is its own outcome, never a pass or a regression ---
+def test_env_mismatch_is_detected_from_the_manifest():
+    manifest = b._frozen_golden_manifest(0)
+    assert manifest["versions"]["numpy"], "the manifest must record numpy to compare it"
+    assert nine.env_mismatch(manifest) == {}, (
+        "this environment should match the golden's recorded versions; if it does not, "
+        "install the project's locked dependencies (uv.lock) before trusting any pin")
+
+
+def test_env_mismatch_reports_each_differing_library(monkeypatch):
+    monkeypatch.setattr(nine, "current_env", lambda: {
+        "numpy": "2.1.3", "flopy": "3.9.3", "python": "3.12.9", "geos": "3.13.1"})
+    diff = nine.env_mismatch(b._frozen_golden_manifest(0))
+    assert set(diff) == {"numpy", "flopy"}
+    assert diff["numpy"] == {"golden": "2.3.5", "current": "2.1.3"}
+
+
+def test_kernel_bump_alone_is_not_an_env_mismatch(monkeypatch):
+    """The Hub kernel moved 6.8.0-124 -> 6.8.0-136 between freeze and re-run. A kernel
+    bump is not a numerical difference and must not be reported as one."""
+    golden = b._frozen_golden_manifest(0)["versions"]
+    monkeypatch.setattr(nine, "current_env", lambda: {
+        k: golden[k] for k in ("numpy", "flopy", "python", "geos")})
+    assert nine.env_mismatch(b._frozen_golden_manifest(0)) == {}
+
+
+def test_env_mismatch_run_is_never_a16_evidence():
+    """🔴 The failure mode this guards: nine ENV_MISMATCH results must not be mistaken
+    for either a clean run or a real regression."""
+    recs = [{"group": g, "result": "ENV_MISMATCH", "hashes_enforced": False}
+            for g in range(9)]
+    assert nine.is_full_a16_evidence(recs) is False
+
+
+def test_topology_and_cell_properties_are_classified_apart():
+    """`botm` is an elevation sampled onto the mesh, not mesh topology. Bucketing it as
+    topology made an earlier run report 'mesh intact: False' for an intact mesh."""
+    assert "botm" in nine._CELL_PROPERTY_MEMBERS
+    assert "strt" in nine._CELL_PROPERTY_MEMBERS
+    assert "botm" not in nine._TOPOLOGY_MEMBERS
+    assert "gridprops__vertices" in nine._TOPOLOGY_MEMBERS
+    assert not (nine._TOPOLOGY_MEMBERS & nine._CELL_PROPERTY_MEMBERS)

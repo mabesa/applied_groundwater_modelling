@@ -55,13 +55,73 @@ import casestudy_flow_builder as b  # noqa: E402
 import casestudy_flow_common as cfc  # noqa: E402
 import model_io_utils as mio  # noqa: E402
 
-#: Canonical members describing the MESH ITSELF. If these differ the grid moved;
-#: if only the others differ, the grid is intact and a package array changed.
-_MESH_MEMBERS = frozenset({
+#: The mesh TOPOLOGY -- vertices and connectivity. If these differ, the grid moved.
+_TOPOLOGY_MEMBERS = frozenset({
     "gridprops__vertices", "gridprops__cell2d_flat", "gridprops__cell2d_lengths",
-    "gridprops__ncpl", "gridprops__nvert", "ncpl", "botm", "top", "idomain",
-    "crs", "refine_radius_used",
+    "gridprops__ncpl", "gridprops__nvert", "ncpl", "nvert",
 })
+#: Per-cell PROPERTIES sampled onto that topology. `botm` and `top` are elevations
+#: interpolated from the mother model, NOT mesh geometry -- an earlier version of this
+#: script bucketed `botm` as topology and so reported "mesh intact: False" for a run
+#: whose mesh was in fact identical. `strt` follows `botm` through the
+#: `strt = max(strt, botm + 0.01)` clip, so the two move together from one cause.
+_CELL_PROPERTY_MEMBERS = frozenset({
+    "botm", "top", "idomain", "k", "strt", "crs", "refine_radius_used", "well_cells",
+})
+
+#: Recorded in every manifest's `versions`, and decisive: these libraries determine the
+#: bit pattern of interpolated arrays. Kernel/platform strings are deliberately NOT
+#: compared -- a kernel bump is not a numerical difference.
+_ENV_KEYS = ("numpy", "flopy", "python", "geos")
+
+
+def current_env() -> dict:
+    import platform as _p
+    env = {"python": _p.python_version()}
+    try:
+        import numpy
+        env["numpy"] = numpy.__version__
+    except Exception:                              # noqa: BLE001
+        env["numpy"] = None
+    try:
+        import flopy
+        env["flopy"] = flopy.__version__
+    except Exception:                              # noqa: BLE001
+        env["flopy"] = None
+    try:
+        from shapely import geos_version_string
+        env["geos"] = str(geos_version_string)
+    except Exception:                              # noqa: BLE001
+        env["geos"] = None
+    return env
+
+
+def env_mismatch(manifest) -> dict:
+    """Which recorded library versions differ from this environment.
+
+    🔴 A golden pins hashes of FLOATING-POINT ARRAYS. Those are reproducible only in the
+    environment that produced them -- same OS is necessary but NOT sufficient. The
+    manifest has always recorded `versions`; nothing ever compared them, so an
+    environment mismatch surfaced as nine spurious FAILs indistinguishable from a real
+    regression.
+    """
+    golden = (manifest.get("versions") or {})
+    now = current_env()
+    out = {}
+    for k in _ENV_KEYS:
+        a, b = golden.get(k), now.get(k)
+        if a is None or b is None:
+            continue
+        a, b = str(a), str(b)
+        if k == "python":
+            # MEASURED, not assumed: a machine on CPython 3.12.10 reproduces `botm` and
+            # `strt` bit-for-bit against goldens frozen on 3.12.9, so a PATCH bump is not
+            # a numerical difference. Compare major.minor only -- comparing the patch
+            # level would flag a conforming environment and make the check unusable.
+            a, b = ".".join(a.split(".")[:2]), ".".join(b.split(".")[:2])
+        if a != b:
+            out[k] = {"golden": str(golden.get(k)), "current": str(now.get(k))}
+    return out
 
 #: Diagnostic gates the builder already computes; all are platform-independent.
 _HEALTH_GATES = ("flow_mass_balance", "flow_convergence", "finite_heads",
@@ -88,8 +148,9 @@ def member_level_diff(group: int, manifest: dict) -> dict:
     diffs member by member, which is the difference between "the mesh moved" and "a
     package array changed".
     """
-    out = {"mesh_members_differing": [], "package_members_differing": [],
-           "mesh_intact": None, "aggregate_matches": None}
+    out = {"topology_members_differing": [], "cell_property_members_differing": [],
+           "package_members_differing": [], "topology_intact": None,
+           "aggregate_matches": None}
     try:
         mother = mio.ensure_flow_model()
         _sim, cgwf = cfc.load_coarse_model(mother)
@@ -106,9 +167,13 @@ def member_level_diff(group: int, manifest: dict) -> dict:
     golden_arr = manifest.get("array_hashes") or {}
     for name, want in sorted(golden_arr.items()):
         if arr.get(name) != want:
-            key = "mesh_members_differing" if name in _MESH_MEMBERS else "package_members_differing"
-            out[key].append(name)
-    out["mesh_intact"] = not out["mesh_members_differing"]
+            if name in _TOPOLOGY_MEMBERS:
+                out["topology_members_differing"].append(name)
+            elif name in _CELL_PROPERTY_MEMBERS:
+                out["cell_property_members_differing"].append(name)
+            else:
+                out["package_members_differing"].append(name)
+    out["topology_intact"] = not out["topology_members_differing"]
     out["aggregate_matches"] = (agg == manifest.get("aggregate_hash"))
     out["faithful_riv_matches"] = (
         riv_info.get("hash") == (manifest.get("faithful_riv") or {}).get("hash"))
@@ -123,11 +188,17 @@ def check_group(group: int, *, state: str = "baseline", diagnose: bool = False) 
                 "detail": "no committed golden manifest -- not a frozen group"}
 
     cross = b._golden_is_cross_platform(manifest)
+    env_diff = env_mismatch(manifest)
+    # 🔴 Same OS is necessary but NOT sufficient: a golden pins hashes of floating-point
+    # arrays, reproducible only in the environment that produced them. If the recorded
+    # libraries differ, the hashes cannot distinguish a regression from an environment
+    # change, so they are not enforced and the run is INCONCLUSIVE -- never a silent PASS.
     rec = {
         "group": group,
         "golden_generation_os": b._golden_generation_os(manifest),
         "current_os": platform.system(),
-        "hashes_enforced": not cross,
+        "env_mismatch": env_diff,
+        "hashes_enforced": (not cross) and not env_diff,
         "checks": {},
         "failures": [],
     }
@@ -137,12 +208,14 @@ def check_group(group: int, *, state: str = "baseline", diagnose: bool = False) 
         with tempfile.TemporaryDirectory() as wd:
             built = b.build_flow_state(group, state, work_dir=wd)
     except Exception as exc:                       # noqa: BLE001 -- report, never mask
-        rec["result"] = "FAIL"
         rec["wall_s"] = round(time.time() - t0, 1)
         rec["failures"].append(f"build raised {type(exc).__name__}: {str(exc)[:400]}")
         # the builder's pin fires before any of our own comparisons, so go get the
         # member-level detail it could not give us
         rec["diff"] = member_level_diff(group, manifest)
+        # `_pin_built_grid_to_frozen_golden` guards on OS ALONE, so it raises even when
+        # the real cause is a library mismatch. Do not report that as a regression.
+        rec["result"] = "ENV_MISMATCH" if env_diff else "FAIL"
         return rec
     rec["wall_s"] = round(time.time() - t0, 1)
 
@@ -236,19 +309,29 @@ def main() -> int:
             print(f"         ! {f}", flush=True)
         d = rec.get("diff") or {}
         if d and not d.get("error"):  # printed for FAIL, and for --diagnose on PASS
-            mesh = d["mesh_members_differing"]
             pkg = d["package_members_differing"]
-            print(f"         > mesh intact: {d['mesh_intact']}"
-                  f"   mesh members differing: {mesh or 'none'}"
-                  f"   package members differing: {pkg or 'none'}", flush=True)
+            print(f"         > topology intact: {d['topology_intact']}"
+                  f" | topology: {d['topology_members_differing'] or 'none'}"
+                  f" | cell-properties: {d['cell_property_members_differing'] or 'none'}"
+                  f" | packages: {pkg or 'none'}", flush=True)
         elif d.get("error"):
             print(f"         > member-level diff unavailable: {d['error']}", flush=True)
 
     n_fail = sum(1 for r in records if r["result"] == "FAIL")
     n_pass = sum(1 for r in records if r["result"] == "PASS")
+    n_env = sum(1 for r in records if r["result"] == "ENV_MISMATCH")
     n_hash_enforced = sum(1 for r in records if r.get("hashes_enforced"))
 
-    print(f"\n{n_pass} passed, {n_fail} failed, of {len(records)} groups")
+    print(f"\n{n_pass} passed, {n_fail} failed, {n_env} inconclusive (environment), "
+          f"of {len(records)} groups")
+    if n_env:
+        ex = next(r for r in records if r["result"] == "ENV_MISMATCH")
+        print("\n🔴 ENVIRONMENT MISMATCH -- these goldens pin hashes of floating-point "
+              "arrays and\n   are reproducible ONLY in the environment that produced them:")
+        for k, v in ex["env_mismatch"].items():
+            print(f"     {k:8s} golden {v['golden']:12s} != current {v['current']}")
+        print("   This is NOT a regression and NOT evidence either way. Install the "
+              "project's\n   locked dependencies (uv.lock) and re-run.")
     print(f"mesh-topology hashes enforced on {n_hash_enforced}/{len(records)} groups")
     if n_hash_enforced < len(records):
         print(f"⚠️  {host_os} is NOT the generation OS for "
@@ -270,7 +353,7 @@ def main() -> int:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(summary, indent=2) + "\n")
         print(f"\nwrote {args.json}")
-    return 1 if n_fail else 0
+    return 1 if (n_fail or n_env) else 0
 
 
 if __name__ == "__main__":
