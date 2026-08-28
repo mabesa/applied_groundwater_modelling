@@ -119,3 +119,86 @@ def test_this_machines_run_is_evidence_only_if_it_is_the_generation_os():
     assert rec["hashes_enforced"] is (not cross)
     assert nine.is_full_a16_evidence([rec], expected_groups=[0]) is (
         (not cross) and rec["result"] == "PASS")
+
+
+# --- 4. environment mismatch is its own outcome, never a pass or a regression ---
+def test_env_mismatch_is_detected_from_the_manifest():
+    manifest = b._frozen_golden_manifest(0)
+    assert manifest["versions"]["numpy"], "the manifest must record numpy to compare it"
+    assert nine.env_mismatch(manifest) == {}, (
+        "this environment should match the golden's recorded versions; if it does not, "
+        "install the project's locked dependencies (uv.lock) before trusting any pin")
+
+
+def test_env_mismatch_reports_each_differing_library(monkeypatch):
+    monkeypatch.setattr(nine, "current_env", lambda: {
+        "numpy": "2.1.3", "flopy": "3.9.3", "python": "3.12.9", "geos": "3.13.1"})
+    diff = nine.env_mismatch(b._frozen_golden_manifest(0))
+    assert set(diff) == {"numpy", "flopy"}
+    assert diff["numpy"] == {"golden": "2.3.5", "current": "2.1.3"}
+
+
+def test_kernel_bump_alone_is_not_an_env_mismatch(monkeypatch):
+    """The Hub kernel moved 6.8.0-124 -> 6.8.0-136 between freeze and re-run. A kernel
+    bump is not a numerical difference and must not be reported as one."""
+    golden = b._frozen_golden_manifest(0)["versions"]
+    monkeypatch.setattr(nine, "current_env", lambda: {
+        k: golden[k] for k in ("numpy", "flopy", "python", "geos")})
+    assert nine.env_mismatch(b._frozen_golden_manifest(0)) == {}
+
+
+def test_env_mismatch_run_is_never_a16_evidence():
+    """🔴 The failure mode this guards: nine ENV_MISMATCH results must not be mistaken
+    for either a clean run or a real regression."""
+    recs = [{"group": g, "result": "ENV_MISMATCH", "hashes_enforced": False}
+            for g in range(9)]
+    assert nine.is_full_a16_evidence(recs) is False
+
+
+def test_topology_and_cell_properties_are_classified_apart():
+    """`botm` is an elevation sampled onto the mesh, not mesh topology. Bucketing it as
+    topology made an earlier run report 'mesh intact: False' for an intact mesh."""
+    assert "botm" in nine._CELL_PROPERTY_MEMBERS
+    assert "strt" in nine._CELL_PROPERTY_MEMBERS
+    assert "botm" not in nine._TOPOLOGY_MEMBERS
+    assert "gridprops__vertices" in nine._TOPOLOGY_MEMBERS
+    assert not (nine._TOPOLOGY_MEMBERS & nine._CELL_PROPERTY_MEMBERS)
+
+
+# --- 5. regression: the diff must build at the GOLDEN's radius ---------------
+@pytest.mark.parametrize("group", [1, 3, 4, 5, 6])   # the radius-62 goldens
+def test_diff_builds_at_the_goldens_own_radius_not_the_default(group):
+    """🔴 Regression guard for a bug in this very script.
+
+    The builder walks `retry_radii` = (70, 62, 78, 56, 84) and freezes whichever first
+    converged, so FIVE of the nine goldens are radius 62 -- not the default 70. The first
+    version of `member_level_diff` called `build_baseline_spec` without a radius, silently
+    built at 70, and compared it against a 62 golden. It then reported EVERY member as
+    differing, which read as a catastrophic regression and sent the investigation after a
+    cause that did not exist.
+    """
+    manifest = b._frozen_golden_manifest(group)
+    assert manifest["radius_used"] == 62.0, "fixture assumption: these goldens are r=62"
+    d = nine.member_level_diff(group, manifest)
+    assert d.get("error") is None, d
+    assert d["built_at_radius"] == 62.0
+    # the tell-tale of the bug: essentially every member differing at once
+    total = (len(d["topology_members_differing"])
+             + len(d["cell_property_members_differing"])
+             + len(d["package_members_differing"]))
+    assert total < 10, (
+        f"group {group} reports {total} differing members -- the signature of comparing "
+        f"a radius-70 build against a radius-62 golden")
+
+
+def test_radius_70_and_radius_62_goldens_give_the_same_signature():
+    """Whatever differs must differ for the same reason on both radii; a split by radius
+    means the comparison, not the model, is at fault."""
+    sigs = {}
+    for group in (0, 3):                      # r=70 and r=62
+        m = b._frozen_golden_manifest(group)
+        d = nine.member_level_diff(group, m)
+        sigs[group] = set(d["cell_property_members_differing"])
+    assert sigs[0] == sigs[3], (
+        f"radius-70 group differs in {sigs[0]}, radius-62 group in {sigs[3]} -- "
+        "a radius-dependent signature indicates a comparison bug")
