@@ -1,4 +1,10 @@
-# 🔴 The authoritative Linux run FAILED all nine — the goldens are STALE, not drifted
+# 🔴 The Linux run FAILED all nine *(interim — the goldens were NOT stale)*
+
+> ✅ **RESOLVED 2026-08-28 — see `ROOT_CAUSE_MOTHER_MODEL_DRIFT.md`. The run now passes 9/9 with
+> hashes enforced on 9/9.** This document is kept for the investigation record, but its headline
+> claim — *"the goldens are stale"* — is **WRONG**. The goldens were correct throughout; the Hub's
+> local **mother model** had drifted from the published artifact and was being served unverified.
+> Its §3 suspect (`fe0cc4b`) is likewise **refuted**.
 
 **Run:** JupyterHub (Linux), `main` @ `a6aa8c4`, 2026-08-27.
 **Result:** `0 passed, 9 failed`, **mesh-topology hashes enforced on 9/9 groups**.

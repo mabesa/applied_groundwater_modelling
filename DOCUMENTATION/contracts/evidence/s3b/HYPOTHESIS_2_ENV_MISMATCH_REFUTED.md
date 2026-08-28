@@ -1,7 +1,27 @@
-# ✅ Root cause: the Hub is not running the project's locked dependencies
+# ❌ REFUTED HYPOTHESIS 2 — library drift was real, but was NOT the cause
 
-**Settled 2026-08-28.** The nine Linux FAILs are **an environment mismatch, not a regression.**
-The goldens are correct. The code is correct. **The Hub environment is wrong.**
+> 🔴 **This document's original title was "Root cause: the Hub is not running the project's
+> locked dependencies." That claim is WRONG and was refuted on 2026-08-28.** It is kept, renamed,
+> for the record — the finding it contains is true and worth having, it simply was not the cause.
+> **The actual root cause is in `ROOT_CAUSE_MOTHER_MODEL_DRIFT.md`.**
+>
+> **How it was refuted:** `uv sync` on the Hub installed the locked numpy 2.3.5 / flopy 3.9.5, the
+> checker reported `0 inconclusive (environment)` — i.e. versions matched — and **all nine still
+> failed**, with an unchanged signature of `botm` + `strt`.
+
+## What remains TRUE and worth acting on
+
+The Hub image really was running numpy 2.1.3 / flopy 3.9.3 against a lock pinning 2.3.5 / 3.9.5,
+and `pyproject.toml`'s loose bounds (`numpy>=2.0`, `flopy>=3.9.2`) permit exactly that drift. That
+is a genuine defect; it was simply not what broke the goldens. The `ENV_MISMATCH` reporting added
+here is also worth keeping — it is what let the decisive run say "versions match" and so kill this
+hypothesis in one step instead of another cycle.
+
+---
+
+## Original text follows (claims below about the CAUSE are superseded)
+
+**The nine Linux FAILs are an environment mismatch, not a regression.**
 
 | | golden (frozen) | Hub now | |
 |---|---|---|---|
