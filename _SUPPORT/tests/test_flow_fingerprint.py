@@ -82,7 +82,7 @@ def test_calibrated_flow_fingerprint_delegates(tmp_path, monkeypatch):
     _write(ws, "limmat_valley.npf", b"k data")
     _write(ws, "limmat_valley.wel", b"wel data")
     _write(ws, "limmat_valley.disv", b"grid data")
-    monkeypatch.setattr(mio, "ensure_flow_model", lambda p=None: ws)
+    monkeypatch.setattr(mio, "ensure_flow_model", lambda p=None, **kw: ws)
     assert mio.calibrated_flow_fingerprint() == mio.flow_model_fingerprint(ws)
 
 

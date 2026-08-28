@@ -1,8 +1,18 @@
 # 🔴 S3b BLOCKER — A16's nine-mesh regression evidence does not exist
 
-**Status:** 🟡 **MECHANISM BUILT; AWAITING THE AUTHORITATIVE RUN.** S3b may not start until a
-Hub (Linux) run of the command in §"How to produce the evidence" returns
-`is_full_a16_evidence: true`.
+**Status:** ✅ **CLOSED 2026-08-28 — S3b IS UNBLOCKED.**
+
+The authoritative Hub (Linux) run passed with mesh-topology hashes **enforced on 9/9 groups**:
+
+```
+[PASS] group 0..8   (hashes ENFORCED)
+9 passed, 0 failed, 0 inconclusive (environment), of 9 groups
+mesh-topology hashes enforced on 9/9 groups
+```
+
+Getting there required finding why it first failed all nine — a drifted local mother model served
+unverified by `ensure_flow_model`. See **`ROOT_CAUSE_MOTHER_MODEL_DRIFT.md`**, which also records
+the three refuted hypotheses and the structural hole that is **still open**.
 **Found:** 2026-08-27, while triaging six pre-existing test failures.
 **Plan:** `DESIGN_DOCS/casestudy_golden_platform_plan.md` (DRAFT, **local-only —
 `DESIGN_DOCS/` is gitignored**). This file is the tracked record of the obligation, so the

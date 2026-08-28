@@ -946,6 +946,15 @@ def _golden_versions() -> Dict[str, Any]:
     versions = rg._best_effort_versions()
     versions["platform"] = platform.platform()
     versions["machine"] = platform.machine()
+    # 🔴 The calibrated mother model a golden was built FROM. Without it a manifest pins
+    # its outputs to 12 significant digits while its single largest INPUT is unrecorded,
+    # so a drifted calibration is invisible to the golden it silently invalidates -- the
+    # 2026-08-28 root cause. See evidence/s3b/ROOT_CAUSE_MOTHER_MODEL_DRIFT.md.
+    try:
+        versions["flow_model_fingerprint"] = mio.flow_model_fingerprint(
+            mio.ensure_flow_model())
+    except Exception as exc:                                 # noqa: BLE001
+        versions["flow_model_fingerprint"] = f"unavailable: {type(exc).__name__}"
     versions["ims_options"] = {
         k: (list(v) if isinstance(v, (list, tuple)) else v)
         for k, v in dict(mio.GWF_NEWTON_IMS_OPTIONS).items()

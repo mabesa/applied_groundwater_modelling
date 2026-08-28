@@ -353,12 +353,29 @@ def _pin_built_grid_to_frozen_golden(group, spec, riv_info, refine_radius) -> No
     if abs(float(refine_radius) - golden_radius) > 1e-9:
         problems.append(f"refine radius {refine_radius} != golden {golden_radius}")
     if problems:
+        # Name the most common CAUSE, not just the symptom. A drifted mother model is
+        # what produced this in 2026-08-28's two-day investigation; the message then
+        # said only "the built grid DIVERGED", which sent the search to the mesh.
+        cause = ""
+        try:
+            report = mio.verify_flow_model(mio.ensure_flow_model())
+            if not report["is_canonical"]:
+                cause = (
+                    f"\n\n🔴 LIKELY CAUSE: the calibrated flow model this was built from "
+                    f"is NOT the shipped one (fingerprint {report['fingerprint']} != "
+                    f"{report['canonical']}). The goldens were frozen on the shipped "
+                    f"calibration, so no grid built on a different one can match. "
+                    f"See model_io_utils.verify_flow_model()."
+                )
+        except Exception:                                    # noqa: BLE001
+            pass
         raise RuntimeError(
             f"group {group}: the built grid DIVERGED from the committed/frozen "
             f"golden (_SUPPORT/src/golden/group{group}_flow.*): "
             + "; ".join(problems)
             + ". Refusing to build state ii on a grid that does not match the "
             "frozen artifact this group is pinned to."
+            + cause
         )
 
 
@@ -393,7 +410,11 @@ def _refine_solve_baseline_walk(group, workspace, *, sim_name, model_name=None) 
     Raises ``RuntimeError`` (a DEFERRAL, naming the per-radius reasons) if no
     radius refines+solves on this platform.
     """
-    mother = mio.ensure_flow_model()
+    # require_canonical: this walk pins its result to a frozen golden that was built
+    # on the SHIPPED calibration, so a local 05f variant cannot produce a matching grid.
+    # Refusing here names the real cause; without it the failure surfaced downstream as
+    # "the built grid DIVERGED", which points at the grid (2026-08-28).
+    mother = mio.ensure_flow_model(require_canonical=True)
     _sim, cgwf = cfc.load_coarse_model(mother)
     coarse_heads = cgwf.output.head().get_data().flatten()
     boundary_gdf, river_gdf = cfc.load_gis(mother)

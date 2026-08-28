@@ -581,7 +581,9 @@ class TestBuilderNonFiniteHeadGate:
         # "built" state: the refine+solve WALK rejects a non-finite solve at
         # EVERY radius and raises a DEFERRAL RuntimeError (the NaN-fragility
         # guard -- build_flow_state cannot proceed on a broken head field).
-        monkeypatch.setattr(b.mio, "ensure_flow_model", lambda: tmp_path / "mother")
+        # accepts **kw: ensure_flow_model gained require_canonical (2026-08-28)
+        monkeypatch.setattr(b.mio, "ensure_flow_model",
+                            lambda *a, **kw: tmp_path / "mother")
         monkeypatch.setattr(
             b.cfc, "load_coarse_model",
             lambda m: (None, type("G", (), {"output": type("O", (), {"head": staticmethod(
