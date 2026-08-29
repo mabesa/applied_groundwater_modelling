@@ -85,6 +85,19 @@ def check_task_with_solution(task_id):
     submit_button.on_click(on_submit)
     solution_button.on_click(on_toggle_solution)
 
+    from IPython.display import HTML
+    display(HTML("""
+    <style>
+        .widget-radio-box label {
+            line-height: 1.6;
+            padding: 5px 0;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+    </style>
+    """))
+
+    
     # Display widgets
     display(Markdown(question_to_print))
     if task_functions_start and task_id in task_functions_start:
