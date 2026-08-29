@@ -10,9 +10,23 @@ The authoritative Hub (Linux) run passed with mesh-topology hashes **enforced on
 mesh-topology hashes enforced on 9/9 groups
 ```
 
+**The artifact is committed: `nine_mesh_check_linux.json`.** Every check verdict is `PASS` — no
+`SKIP_CROSS_PLATFORM` anywhere — on the canonical calibration `6a9e27c455dcbb66`.
+
 Getting there required finding why it first failed all nine — a drifted local mother model served
 unverified by `ensure_flow_model`. See **`ROOT_CAUSE_MOTHER_MODEL_DRIFT.md`**, which also records
-the three refuted hypotheses and the structural hole that is **still open**.
+the three refuted hypotheses.
+
+### ⚠️ One residual gap, visible in the artifact itself
+
+Every record carries `"golden_flow_model_fingerprint": null` and therefore
+`"flow_model_matches_golden": null`. The nine goldens were frozen **before** manifests recorded
+the calibration they were built from, so **this run cannot prove it used the same calibration as
+the goldens** — only that it used the one currently shipped.
+
+That the field reads `null` rather than `true` is the guard behaving correctly: **absence is
+reported as unknown, never as agreement.** It closes the next time the goldens are regenerated,
+which will stamp `flow_model_fingerprint` into their manifests.
 **Found:** 2026-08-27, while triaging six pre-existing test failures.
 **Plan:** `DESIGN_DOCS/casestudy_golden_platform_plan.md` (DRAFT, **local-only —
 `DESIGN_DOCS/` is gitignored**). This file is the tracked record of the obligation, so the
