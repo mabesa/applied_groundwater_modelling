@@ -1848,7 +1848,7 @@ def build_srcpulse_demo(
     mesh_spec: Optional["MeshSpec"] = None,
     footprint_radius_m: float = 0.0,
     sink_support_m: float = 0.0,
-    courant_profile: str = "legacy_srcpulse",
+    courant_profile: str = "exp_v1",
     force: bool = False,
 ) -> SrcPulseDemo:
     """Build + run the SRC finite-pulse spill -> capture demo; return diagnostics.
