@@ -1,6 +1,6 @@
 
 import ipywidgets as widgets
-from IPython.display import display, Markdown, clear_output
+from IPython.display import display, Markdown, clear_output, HTML
 from tasks_data import solutions, solutions_exact, solution_unit, questions_markdown, solutions_markdown, task_functions, task_functions_start, multiple_choice_options
 from uncertainty_plot import display_disc_area_interactive
 
@@ -224,17 +224,28 @@ def create_multiple_choice(task_id):
     # Create mapping from label back to value for checking
     label_to_value = {label: value for (value, label) in options}
 
-    # 🔴 ipywidgets RadioButtons draw each option as ONE fixed-height row and do not wrap.
-    # Several of these labels run to 200-450 characters, so on JupyterHub the rows collide
-    # and the options render on top of each other (reported 2026-08-30). Fix: show the FULL
-    # text as markdown above, and give the radio buttons the SHORT summary that already
-    # exists as the tuple's first element. Answer checking is unchanged -- it matches on
-    # `value`, and label_to_value still maps whatever the radio displays back to it.
-    _LONG = 110
-    if any(len(l) > _LONG for l in option_labels):
-        display(Markdown("\n\n".join(f"**{v}**  \n{l}" for (v, l) in options)))
-        option_labels = [value for (value, label) in options]
-        label_to_value = {value: value for (value, label) in options}
+    # 🔴 ipywidgets RadioButtons draw each option as ONE fixed-height row that does not wrap.
+    # Several of these labels run to 200-450 characters, so on JupyterHub the rows collide and
+    # the options render on top of each other (reported 2026-08-30).
+    #
+    # Fix by Louise (review_transport_louise_from_course_2026, 91b823c): let the labels WRAP.
+    # Preferred over substituting short labels, because the student keeps reading the full
+    # option text on the control they are actually selecting.
+    #
+    # ⚠️ Her version injected this from `check_task_with_solution`, which never creates
+    # RadioButtons -- it only worked when a numeric checkpoint happened to run earlier in the
+    # same notebook, since the CSS is global once injected. It belongs here.
+    display(HTML("""
+    <style>
+        .widget-radio-box label {
+            line-height: 1.6;
+            padding: 5px 0;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+        .widget-radio-box { width: 100%; }
+    </style>
+    """))
 
     # Create widgets
     radio = widgets.RadioButtons(
