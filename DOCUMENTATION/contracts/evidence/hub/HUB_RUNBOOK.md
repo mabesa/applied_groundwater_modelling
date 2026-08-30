@@ -11,8 +11,20 @@ paste-back — not three errands.
 
 ```bash
 cp config_template.py config.py        # once per Hub checkout -- see below
-python _SUPPORT/src/scripts/hub_measurement.py --workdir ~/hub_meas
+python _SUPPORT/src/scripts/hub_measurement.py --workdir ~/hub_meas --qualify-reps 5
 ```
+
+🔴 **`--qualify-reps 5` is T2 S7.** `H = 2.30` (2026-08-26) came from **one** qualify
+invocation — one pair, two cold side-runs — and those two sides differed by **12.2%**, so
+it is a two-sample mean, not a converged one. One invocation is one pair; five gives
+parity with the macOS six-pair record. The reps share a session, so this adds roughly
+**10 minutes**, not five separate sittings. `H` is pooled over every side and the JSON
+reports each pair separately plus `side_spread_rel`, so a noisy pair is visible rather
+than averaged away.
+
+*(Reference: the same command at `--qualify-reps 2` on the dev Mac returns `H = 1.018`
+with a 1.6% spread — the 14.61 s macOS baseline still reproduces, so drift in the
+baseline is not what a large Hub `H` would be measuring.)*
 
 🔴 **On the Hub use plain `python`, NOT `uv run`.** `uv` is not installed there; the JupyterHub environment
 already carries the dependencies. The script uses `sys.executable` throughout, so whichever interpreter

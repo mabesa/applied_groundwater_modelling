@@ -211,6 +211,10 @@ def main() -> int:
     ap.add_argument("--workdir", required=True)
     ap.add_argument("--fingerprint-reps", type=int, default=5,
                     help="replications for the repeatability envelope (default 5)")
+    ap.add_argument("--qualify-reps", type=int, default=1,
+                    help="qualify invocations; ONE invocation is ONE PAIR (two cold "
+                         "side-runs). H is pooled over all sides. T2 S7 wants 6 pairs "
+                         "for parity with the macOS six-pair record (default 1)")
     ap.add_argument("--skip-fingerprint", action="store_true")
     ap.add_argument("--ignore-preflight", action="store_true",
                     help="run anyway despite preflight problems")
@@ -230,10 +234,22 @@ def main() -> int:
             return 2
         print("  ... proceeding anyway (--ignore-preflight)\n", file=sys.stderr)
 
-    print("== 1+2: gate qualification (cold, threads pinned) ==", file=sys.stderr, flush=True)
-    qual = run_qualification(workdir)
+    reps = max(1, args.qualify_reps)
+    print(f"== 1+2: gate qualification (cold, threads pinned) -- {reps} pair(s) ==",
+          file=sys.stderr, flush=True)
+    quals, sides, pairs = [], [], []
+    for i in range(reps):
+        if reps > 1:
+            print(f"  -- pair {i + 1}/{reps}", file=sys.stderr, flush=True)
+        q = run_qualification(workdir)
+        quals.append(q)
+        pair_sides = _side_wall_times(q.get("report", {}))
+        sides.extend(pair_sides)
+        pairs.append({"pair": i + 1, "returncode": q["returncode"],
+                      "passed": q["returncode"] == 0,
+                      "side_wall_s": [round(x, 2) for x in pair_sides]})
+    qual = quals[-1]
 
-    sides = _side_wall_times(qual.get("report", {}))
     h = {}
     if sides:
         mean = statistics.fmean(sides)
@@ -241,6 +257,12 @@ def main() -> int:
              "hub_min_side_s": round(min(sides), 2),
              "hub_max_side_s": round(max(sides), 2),
              "n_sides": len(sides),
+             "n_pairs": len(pairs),
+             "pairs": pairs,
+             # Spread across sides is the honest read on whether H has settled:
+             # the 2026-08-26 two-sample H differed by 12.2% between its own sides.
+             "side_spread_rel": (round((max(sides) - min(sides)) / mean, 4)
+                                 if mean else None),
              "mac_baseline": MAC_BASELINE_S,
              "H": round(mean / MAC_BASELINE_S["mean"], 3)}
         fine = FINE_RUN_MAC_S * h["H"]
@@ -256,11 +278,13 @@ def main() -> int:
         fp = run_fingerprint_replication(workdir, args.fingerprint_reps)
 
     print(json.dumps({
-        "hub_measurement_version": "1",
+        "hub_measurement_version": "2",
         "platform": {"platform": platform.platform(), "machine": platform.machine(),
                      "python": sys.version.split()[0]},
         "qualification": {"returncode": qual["returncode"],
                           "passed": qual["returncode"] == 0,
+                          "all_pairs_passed": all(p["passed"] for p in pairs),
+                          "n_pairs": len(pairs),
                           "total_wall_s": qual["total_wall_s"],
                           "summary": (qual.get("report") or {}).get("summary", {}),
                           "stderr_tail": qual["stderr_tail"]},
