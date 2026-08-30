@@ -1393,6 +1393,29 @@ class TestRealRepoUnnumberedDetectionClaim:
             "carrying R's vocabulary with no digit for N to match"
         )
 
+    def test_03t_cell7_not_universal_constants_line_is_found_by_r_without_n(self):
+        r_pattern, n_pattern = tci.load_net_patterns(REPO_ROOT)
+        word_pattern = tci.compile_word_only_pattern()
+        nb_path = REPO_ROOT / "PROJECT/transport/03t_modflow_transport.ipynb"
+        candidates = tci.scan_notebook(
+            nb_path, REPO_ROOT, r_pattern, n_pattern, word_pattern, tci.Coverage()
+        )
+        hits = [
+            c for c in candidates
+            if c.detector == "r_without_n" and "not universal constants" in c.matched_text
+        ]
+        assert hits, (
+            "expected the 'not universal constants of transport' causal "
+            "claim in 03t cell 7 to be found by r_without_n"
+        )
+        assert hits[0].cell_index == 7
+
+
+# ---------------------------------------------------------------------------
+# Read-only / static-only sanity (requirements 6-7 of the design doc).
+# ---------------------------------------------------------------------------
+
+
 class TestReadOnlyAndStatic:
     def test_module_does_not_import_inventoried_transport_modules(self):
         import ast
