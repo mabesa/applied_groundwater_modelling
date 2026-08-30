@@ -68,3 +68,45 @@ def test_verify_reports_without_raising(tmp_path):
 def test_canonical_fingerprint_is_pinned():
     assert isinstance(tsr.CANONICAL_FINE_FINGERPRINT, str)
     assert len(tsr.CANONICAL_FINE_FINGERPRINT) == 16
+
+
+# --- the config-entry fallback -----------------------------------------------
+def test_heal_is_a_noop_when_the_entry_exists(monkeypatch):
+    import data_utils as du
+    urls = du.get_data_urls()
+    if tsr.DOWNLOAD_NAME not in urls:
+        pytest.skip("this checkout's config has no transport_fine_1m entry")
+    before = dict(urls[tsr.DOWNLOAD_NAME])
+    tsr._heal_download_entry()
+    assert urls[tsr.DOWNLOAD_NAME] == before, "an existing entry must never be overwritten"
+
+
+def test_heal_restores_an_entry_missing_from_an_old_config():
+    """config.py is a one-time copy, so an existing one never receives new entries."""
+    import data_utils as du
+    urls = du.get_data_urls()
+    if tsr.DOWNLOAD_NAME not in urls:
+        pytest.skip("this checkout's config has no transport_fine_1m entry")
+    saved = urls.pop(tsr.DOWNLOAD_NAME)            # simulate a config.py that predates it
+    try:
+        tsr._heal_download_entry()
+        assert tsr.DOWNLOAD_NAME in urls
+        assert urls[tsr.DOWNLOAD_NAME]["url"] == saved["url"]
+    finally:
+        urls[tsr.DOWNLOAD_NAME] = saved
+
+
+def test_a_deliberate_none_url_is_left_alone():
+    """Omission is not a supported way to disable the download; url=None is, and the
+    heal must not 'repair' it back to the template's URL."""
+    import data_utils as du
+    urls = du.get_data_urls()
+    if tsr.DOWNLOAD_NAME not in urls:
+        pytest.skip("this checkout's config has no transport_fine_1m entry")
+    saved = urls[tsr.DOWNLOAD_NAME]
+    urls[tsr.DOWNLOAD_NAME] = {**saved, "url": None}
+    try:
+        tsr._heal_download_entry()
+        assert urls[tsr.DOWNLOAD_NAME]["url"] is None
+    finally:
+        urls[tsr.DOWNLOAD_NAME] = saved

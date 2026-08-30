@@ -54,6 +54,34 @@ def fingerprint(folder: Path) -> Optional[str]:
     return h.hexdigest()[:16]
 
 
+def _heal_download_entry() -> None:
+    """Fill in this one download entry if the local `config.py` predates it.
+
+    `config.py` is a ONE-TIME COPY of `config_template.py` (README), and `data_utils`
+    falls back to the template only when `config.py` is ABSENT -- not when it exists but
+    lacks a key. So anyone who set up before this archive shipped would silently get the
+    10 m fallback instead of the fine-grid result the notebooks quote. Patch the single
+    key in memory; never write to the user's config, and never touch other entries.
+
+    An entry that IS present is left alone, so a deliberate URL override or an
+    institutional mirror survives. It reads the ACTIVE `DATA_SOURCE`, so it cannot switch
+    anyone to the template's default source.
+
+    ⚠️ It cannot distinguish "predates the entry" from "deliberately removed to block this
+    download". Omission is therefore NOT a supported way to disable it -- set the entry's
+    url to None instead, which this leaves untouched.
+
+    No try/except here on purpose: the only caller wraps this, and swallowing exceptions
+    twice would hide a programming error as a missing download.
+    """
+    import data_utils as du
+    urls = du.get_data_urls()
+    if DOWNLOAD_NAME in urls:
+        return
+    import config_template as ct
+    urls[DOWNLOAD_NAME] = ct.DATA_URLS[du.CASE_STUDY][du.DATA_SOURCE][DOWNLOAD_NAME]
+
+
 def ensure_fine_result(dest: Optional[Path] = None) -> Optional[Path]:
     """Return the folder holding the shipped result, downloading it if needed.
 
@@ -65,6 +93,7 @@ def ensure_fine_result(dest: Optional[Path] = None) -> Optional[Path]:
     folder.mkdir(parents=True, exist_ok=True)
     try:
         from data_utils import download_named_file
+        _heal_download_entry()
         zip_path = download_named_file(DOWNLOAD_NAME, dest_folder=str(folder))
         with zipfile.ZipFile(zip_path) as zf:
             zf.extractall(folder)
