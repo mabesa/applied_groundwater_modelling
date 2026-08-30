@@ -224,6 +224,18 @@ def create_multiple_choice(task_id):
     # Create mapping from label back to value for checking
     label_to_value = {label: value for (value, label) in options}
 
+    # 🔴 ipywidgets RadioButtons draw each option as ONE fixed-height row and do not wrap.
+    # Several of these labels run to 200-450 characters, so on JupyterHub the rows collide
+    # and the options render on top of each other (reported 2026-08-30). Fix: show the FULL
+    # text as markdown above, and give the radio buttons the SHORT summary that already
+    # exists as the tuple's first element. Answer checking is unchanged -- it matches on
+    # `value`, and label_to_value still maps whatever the radio displays back to it.
+    _LONG = 110
+    if any(len(l) > _LONG for l in option_labels):
+        display(Markdown("\n\n".join(f"**{v}**  \n{l}" for (v, l) in options)))
+        option_labels = [value for (value, label) in options]
+        label_to_value = {value: value for (value, label) in options}
+
     # Create widgets
     radio = widgets.RadioButtons(
         options=option_labels,

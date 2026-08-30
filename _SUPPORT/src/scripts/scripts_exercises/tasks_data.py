@@ -472,7 +472,9 @@ The inherited flow grid has ~50 m cells; we **refine the source→well corridor 
 "task_t04_checkpoint_2": r"""
 ## Checkpoint 2 — Maximum Time Step on the Refined Grid
 
-On the refined corridor, the well-adjacent cell has seepage velocity $v = q/n_e \approx 28.3$ m/d (read from the NPF specific-discharge field — **not** the radial velocity singularity at the well itself) and size $\Delta s \approx 10.8$ m.
+⚠️ *Worked example with given numbers — these are **not** read from the model you run; its own Courant-binding cell is nearer 9 m/d, and 04t prints the value it actually used.*
+
+Take a well-adjacent cell with seepage velocity $v = q/n_e = 28.3$ m/d and size $\Delta s \approx 10.8$ m.
 
 The Courant accuracy criterion $Cr = v\,\Delta t / \Delta s \le 1$ sets the largest admissible time step:
 
