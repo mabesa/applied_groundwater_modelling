@@ -120,11 +120,10 @@ DATA_URLS = {
                 # _SUPPORT/src/scripts/package_fine_transport.py, loaded by
                 # transport_shipped_results.ensure_fine_result(), which verifies it against
                 # CANONICAL_FINE_FINGERPRINT before use.
-                # 🔴 URL PENDING: upload limmat_transport_fine_1m.zip and paste the link here.
-                "url": None,
+                "url": "https://www.dropbox.com/scl/fi/bdax0tj8dew19p2j6ygsb/limmat_transport_fine_1m.zip?rlkey=lmmt4v3yz90frjy1yrf1x74nx&dl=1",
                 "filename": "limmat_transport_fine_1m.zip",
                 "layer": None,  # zip of npz + json, no GIS layer
-                "readme_url": None,
+                "readme_url": "https://www.dropbox.com/scl/fi/5laur50dd2o6bmfpyuo03/limmat_transport_fine_1m_README.md?rlkey=ctuvihmvxviu42u051digowg4&dl=1",
             },
             "flow_model_mf6": {
                 # Transport track: the 05f-CALIBRATED MF6/DISV flow model (mean K ~375 m/d, 2,160 m³/d pumping).
