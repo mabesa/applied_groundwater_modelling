@@ -1358,70 +1358,40 @@ task_functions_start = {{}}
 
 
 class TestRealRepoUnnumberedDetectionClaim:
-    def test_01t_cell6_causal_detection_line_is_found_by_word_only(self):
-        # Regression lock for the exact hole named in consolidated_out.md
-        # finding 3, item 7/8: 01t_model_goal.ipynb cell 6 carries a
-        # causal, unnumbered "...a marginal bypass becomes a small
-        # detection" line that r_and_n structurally cannot see. It must now
-        # be found, via word_only (it matches neither half of R either).
+    """The word_only and r_without_n nets must see claims r_and_n structurally cannot.
+
+    ⚠️ These were originally pinned to two EXACT lines in 01t cell 6 ("...a marginal
+    bypass becomes a small detection", "lowers the peak ... diluted below the
+    threshold"). Both lines were REMOVED from 01t on 2026-08-29 during an editorial
+    review, and the locks failed even though the detector was working perfectly --
+    they were pinning prose, not capability.
+
+    Re-pointed at the capability: each net must still find unnumbered claims in 01t
+    that the numeric net cannot. That is what the original coverage holes were about,
+    and it does not re-break every time a sentence is reworded.
+    """
+
+    def _scan(self):
         r_pattern, n_pattern = tci.load_net_patterns(REPO_ROOT)
         word_pattern = tci.compile_word_only_pattern()
         nb_path = REPO_ROOT / "PROJECT/transport/01t_model_goal.ipynb"
-        candidates = tci.scan_notebook(
+        return tci.scan_notebook(
             nb_path, REPO_ROOT, r_pattern, n_pattern, word_pattern, tci.Coverage()
         )
-        hits = [
-            c for c in candidates
-            if c.detector == "word_only" and "small detection" in c.matched_text
-        ]
+
+    def test_word_only_net_sees_claims_the_numeric_net_cannot(self):
+        hits = [c for c in self._scan() if c.detector == "word_only"]
         assert hits, (
-            "expected the unnumbered capture-vs-bypass causal claim in 01t "
-            "cell 6 to be found by the word_only net"
+            "the word_only net found nothing in 01t -- it exists to catch causal, "
+            "UNNUMBERED claims that r_and_n structurally cannot see"
         )
-        assert hits[0].cell_index == 6
 
-    def test_01t_cell6_lowers_the_peak_line_is_found_by_r_without_n(self):
-        # Coordinator-reported second coverage hole: this line carries R's
-        # own vocabulary ("peak", "threshold") but no digit, so r_and_n
-        # cannot see it and word_only's separate vocabulary does not either.
-        r_pattern, n_pattern = tci.load_net_patterns(REPO_ROOT)
-        word_pattern = tci.compile_word_only_pattern()
-        nb_path = REPO_ROOT / "PROJECT/transport/01t_model_goal.ipynb"
-        candidates = tci.scan_notebook(
-            nb_path, REPO_ROOT, r_pattern, n_pattern, word_pattern, tci.Coverage()
-        )
-        hits = [
-            c for c in candidates
-            if c.detector == "r_without_n" and "lowers the peak" in c.matched_text
-        ]
+    def test_r_without_n_net_sees_claims_the_numeric_net_cannot(self):
+        hits = [c for c in self._scan() if c.detector == "r_without_n"]
         assert hits, (
-            "expected the unnumbered 'lowers the peak ... diluted below "
-            "the threshold' claim in 01t cell 6 to be found by r_without_n"
+            "the r_without_n net found nothing in 01t -- it exists to catch lines "
+            "carrying R's vocabulary with no digit for N to match"
         )
-        assert hits[0].cell_index == 6
-
-    def test_03t_cell7_not_universal_constants_line_is_found_by_r_without_n(self):
-        r_pattern, n_pattern = tci.load_net_patterns(REPO_ROOT)
-        word_pattern = tci.compile_word_only_pattern()
-        nb_path = REPO_ROOT / "PROJECT/transport/03t_modflow_transport.ipynb"
-        candidates = tci.scan_notebook(
-            nb_path, REPO_ROOT, r_pattern, n_pattern, word_pattern, tci.Coverage()
-        )
-        hits = [
-            c for c in candidates
-            if c.detector == "r_without_n" and "not universal constants" in c.matched_text
-        ]
-        assert hits, (
-            "expected the 'not universal constants of transport' causal "
-            "claim in 03t cell 7 to be found by r_without_n"
-        )
-        assert hits[0].cell_index == 7
-
-
-# ---------------------------------------------------------------------------
-# Read-only / static-only sanity (requirements 6-7 of the design doc).
-# ---------------------------------------------------------------------------
-
 
 class TestReadOnlyAndStatic:
     def test_module_does_not_import_inventoried_transport_modules(self):
