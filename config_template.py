@@ -113,6 +113,19 @@ DATA_URLS = {
                 "filename": "limmat_valley_calibrated_model.zip",
                 "readme_url": "https://www.dropbox.com/scl/fi/1gbut8vgrf3k0gl46bkhx/limmat_valley_calibrated_model_README.md?rlkey=yaxlxk02zwk6yf9bylw2i9pho&dl=1",
             }, 
+            "transport_fine_1m": {
+                # Transport track: the FINE-GRID (1 m) result the teaching notebooks DISPLAY.
+                # Students run the 10 m grid themselves; the gap between the two is the
+                # lesson (grid refinement effects). Built by
+                # _SUPPORT/src/scripts/package_fine_transport.py, loaded by
+                # transport_shipped_results.ensure_fine_result(), which verifies it against
+                # CANONICAL_FINE_FINGERPRINT before use.
+                # 🔴 URL PENDING: upload limmat_transport_fine_1m.zip and paste the link here.
+                "url": None,
+                "filename": "limmat_transport_fine_1m.zip",
+                "layer": None,  # zip of npz + json, no GIS layer
+                "readme_url": None,
+            },
             "flow_model_mf6": {
                 # Transport track: the 05f-CALIBRATED MF6/DISV flow model (mean K ~375 m/d, 2,160 m³/d pumping).
                 # ensure_flow_model() (model_io_utils) downloads + unzips this into
