@@ -8,12 +8,12 @@ requires-python = ">=3.12"
 
 dependencies = [
     # Core scientific computing
-    "numpy>=2.0",
-    "scipy>=1.15.2",
+    "numpy>=2.3.5",    # floor = uv.lock; numpy and flopy set the bit pattern of the frozen goldens
+    "scipy>=1.17.0",
     "pandas>=2.2.3",
     "statsmodels>=0.14.4",
     # Groundwater modeling
-    "flopy>=3.9.2",
+    "flopy>=3.9.5",    # floor = uv.lock (see _SUPPORT/src/golden/*.manifest.json "versions")
     "pyemu",
     # Geospatial
     "geopandas>=1.0.1",
