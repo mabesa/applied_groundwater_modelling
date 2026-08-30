@@ -472,7 +472,9 @@ The inherited flow grid has ~50 m cells; we **refine the source→well corridor 
 "task_t04_checkpoint_2": r"""
 ## Checkpoint 2 — Maximum Time Step on the Refined Grid
 
-On the refined corridor, the well-adjacent cell has seepage velocity $v = q/n_e \approx 28.3$ m/d (read from the NPF specific-discharge field — **not** the radial velocity singularity at the well itself) and size $\Delta s \approx 10.8$ m.
+⚠️ *Worked example with given numbers — these are **not** read from the model you run; its own Courant-binding cell is nearer 9 m/d, and 04t prints the value it actually used.*
+
+Take a well-adjacent cell with seepage velocity $v = q/n_e = 28.3$ m/d and size $\Delta s \approx 10.8$ m.
 
 The Courant accuracy criterion $Cr = v\,\Delta t / \Delta s \le 1$ sets the largest admissible time step:
 
@@ -484,7 +486,7 @@ $$\Delta t_{max} = \frac{\Delta s}{v}$$
 "task_t04_checkpoint_3": r"""
 ## Checkpoint 3 — Which Threshold Claim is Defensible?
 
-You report the spill→capture result to a regulator. Even on the **refined** grid the transverse grid Péclet stays $Pe_T \approx 12 \gg 2$, so lateral spreading is never fully resolved. **Which one of the following claims can you defend?**
+You report the spill→capture result to a regulator. On the **10 m refined corridor** the transverse grid Péclet stays $Pe_T \approx 12 \gg 2$, so lateral spreading is not resolved there. **Which one of the following claims can you defend?**
 """,
 
 "task_t04_checkpoint_predict": r"""
@@ -572,7 +574,7 @@ When transferring calibrated parameters from a heat transport model to a solute 
 "task_t08_checkpoint_1": r"""
 ## Checkpoint 1 — Which lever can change the *compliance verdict*?
 
-04t already built and verified this model and read the compliance breakthrough: the conservative spill **reaches the extraction (compliance) well and exceeds** the 1.0 mg/L threshold (peak ≈ 5.3 mg/L at ~day 39). Taking that verdict as given, the applications below vary three levers:
+04t already built and verified this model and read the compliance breakthrough: the conservative spill **reaches the extraction (compliance) well and exceeds** the 1.0 mg/L threshold (peak ≈ 6.1 mg/L at ~day 38 on the shipped 1 m reference; ≈ 5.3 mg/L at ~day 39 on the 10 m grid you run). Taking that verdict as given, the applications below vary three levers:
 
 - **Rung A** — reactive transport: retardation (sorption) and first-order decay.
 - **Rung B** — a larger dispersivity (α_L, and α_T in lockstep with it).
@@ -1181,13 +1183,13 @@ multiple_choice_options = {
     # Transport Track — Notebook 4 checkpoints
     "task_t04_checkpoint_3": [
         ("A) The well breakthrough & threshold timing",
-         "A) \"The plume reaches the monitoring well and exceeds the threshold at ~day D\" — a longitudinal receptor-breakthrough quantity resolved on the refined corridor (Pe_L <= 2): arrival time, peak and threshold-exceedance timing are defensible, unlike the transverse width/contour claims."),
+         "A) \"The plume reaches the monitoring well and exceeds the threshold at ~day D\" — a longitudinal receptor-breakthrough quantity resolved on the refined corridor (Pe_L <= 2): arrival time and threshold-exceedance timing are defensible, unlike the transverse width/contour claims."),
         ("B) Contaminated zone is exactly 80 m wide",
          "B) \"The contaminated zone is exactly 80 m wide at the 10% contour\" — lateral width is governed by transverse dispersion (Pe_T ≈ 12 ≫ 2 even refined): a numerical-dispersion artefact."),
         ("C) The 0.1 contour passes through a specific parcel",
          "C) \"The 0.1 concentration contour passes through this exact parcel\" — the precise contour position shifts with resolution; same unresolved transverse dispersion."),
         ("D) Refining removed all numerical error",
-         "D) \"Refining the grid removed all numerical error\" — refining recovered longitudinal/peak accuracy but transverse stays Pe_T ≫ 2."),
+         "D) \"Refining the grid removed all numerical error\" — refining recovered longitudinal timing (the peak magnitude is still grid-dependent) and transverse stays Pe_T ≫ 2 on this grid."),
     ],
     "task_t04_checkpoint_predict": [
         ("A) Yes, exceeds within ~1-2 months",
@@ -2335,10 +2337,10 @@ Quantities fall into two camps by how they respond to refinement:
 | Quantity | Grid behaviour | Defensible? |
 |---|---|---|
 | **Receptor breakthrough / threshold timing** (A) | longitudinal; resolved on the refined corridor ($Pe_L \le 2$) | **Yes** |
-| **Peak concentration at the well** | grid-sensitive; under-predicted on coarse grids, recovers once the corridor is refined | With caution — refine first |
+| **Peak concentration at the well** | grid-sensitive; under-predicted on coarse grids, and refining to the 10 m corridor does **not** recover it — still ~14 % below the 1 m reference | With caution — quote it *with its grid* |
 | **Lateral plume width / exact contour** (B, C) | numerical: the physical plume is **sub-cell** and the convergent flow is **oblique to the grid** (cross-wind dispersion); $Pe_T \gg 2$ | **No** — numerical artefact |
 
-A coarse grid dilutes concentration (large cells), so it under-reads the **peak at the well**; refining the source→well corridor **recovers the longitudinal breakthrough** — but it **cannot** fix the transverse under-resolution (so D is wrong): $Pe_T$ stays far above 2 at any affordable grid. So *whether and when* the plume reaches the well above the threshold is defensible once the corridor is refined; the *exact width or contour* of the contaminated area is not. For the genuine **lateral / wellfield-protection** question, use **particle tracking** (a capture zone) — advective and free of the numerical-dispersion artefact — not the smeared concentration field (Step 8). This "which claims does the grid support?" judgment is exactly what you carry into your project's interpretation and limitations.
+A coarse grid dilutes concentration (large cells), so it under-reads the **peak at the well**; refining the source→well corridor **recovers the longitudinal timing** — but the peak's *magnitude* is still grid-dependent, and refining does not fix the transverse under-resolution on this grid (so D is wrong): $Pe_T$ stays far above 2 on the 10 m corridor, falling to about 1 only at the shipped 1 m. So *whether and when* the plume reaches the well above the threshold is defensible once the corridor is refined; the *exact width or contour* of the contaminated area is not. For the genuine **lateral / wellfield-protection** question, use **particle tracking** (a capture zone) — advective and free of the numerical-dispersion artefact — not the smeared concentration field (Step 8). This "which claims does the grid support?" judgment is exactly what you carry into your project's interpretation and limitations.
 <br>
 """,
 
@@ -2352,7 +2354,7 @@ Two features of the setup make this the physical expectation *before* any number
 - **The source is close and upgradient.** The spill sits only ~90 m from the extraction well, directly up the local flow direction — so the ambient gradient alone carries it toward the well.
 - **The well pulls the flow toward itself.** The extraction well removes ~1370 m³/d; even though it carries no solute of its own (option D), it bends the flow field so that upgradient water — and the dissolved mass it carries — converges on the well. That is exactly why the extraction well is the *compliance / monitoring* well.
 
-With a mean water velocity of order a few metres per day over ~90 m, an arrival on the scale of **weeks-to-a-couple-of-months** is expected, and because a large finite mass is released the peak comfortably clears the stated threshold. When you run the next cell you should see a **peak of ≈ 5.3 mg/L at ~day 39** — an early, clear exceedance, matching prediction A. (Options B and C under-estimate how fast a forced-gradient doublet delivers a nearby upgradient spill.)
+With a mean water velocity of order a few metres per day over ~90 m, an arrival on the scale of **weeks-to-a-couple-of-months** is expected, and because a large finite mass is released the peak comfortably clears the stated threshold. When you run the next cell you should see a **peak of ≈ 5.3 mg/L at ~day 39** (your own 10 m grid; the shipped 1 m reference peaks higher, at ≈ 6.1 mg/L — see *What the grid costs you* in 04t) — an early, clear exceedance, matching prediction A. (Options B and C under-estimate how fast a forced-gradient doublet delivers a nearby upgradient spill.)
 <br>
 """,
 
@@ -2491,7 +2493,7 @@ Dispersivity and porosity transfer directly because they describe the physical p
 **Correct answer: A.** The three levers are not the same *kind* of knob. Reactions can move the *verdict* (they remove mass); capture geometry categorically cannot (it carries no concentration information); a larger dispersivity conserves mass and mainly reshapes the curve — at realistic values it eases the peak without clearing the threshold here.
 
 - **Reactions remove mass.** Sorption (retardation R) and first-order decay (λ) both take mass out of the mobile aqueous phase — decay destroys it, sorption parks it on the solid. Strong enough reactions therefore lower the *peak concentration*, and enough attenuation crosses below the threshold and flips the verdict. (At the specific values Rung A explores — R = 2, a 30-day half-life — the peak only drops to ≈3.4 / ≈3.2 mg/L, so the exceedance survives; but the *type* of lever is the one that can eliminate it.)
-- **Dispersivity reshapes; it does not remove mass (B is C's overstatement).** Doubling α_L (and α_T with it) spreads the finite pulse in time and across the corridor — earlier toe, broader front, longer tail, and a lower peak by dilution — but mass is conserved, and here the peak only eases from ≈5.3 to ≈4.5 mg/L. It reshapes the breakthrough far more than it moves the verdict, so "always dilutes below any threshold" (option C) is an overstatement.
+- **Dispersivity reshapes; it does not remove mass (B is C's overstatement).** Doubling α_L (and α_T with it) spreads the finite pulse in time and across the corridor — earlier toe, broader front, longer tail, and a lower peak by dilution — but mass is conserved, and here the peak only eases from ≈5.3 to ≈4.5 mg/L (both on the 10 m grid). It reshapes the breakthrough far more than it moves the verdict, so "always dilutes below any threshold" (option C) is an overstatement.
 - **Capture geometry carries no concentration information (this is why B is wrong).** PRT tracks *which advective particles are captured* — arrival and timing — not *how much mass at what concentration*. A fully captured footprint says the water gets to the well; it can never say the concentration exceeds a limit. So Rung D cannot set or change the compliance verdict.
 - **D is wrong** because reactions genuinely can flip the verdict (first bullet); the levers are not all timing/shape-only.
 
@@ -2506,7 +2508,7 @@ That is the whole point of the applications: keep straight which knob moves the 
 
 Retardation slows the *plume's* velocity to $u/R$ (R=2 halves it), so the arrival is delayed. Sorption (via R) removes mass from the mobile (aqueous) phase before it reaches the well, so the peak concentration also drops. Running Rung A confirms this:
 
-- **R = 2, sorption-only**: peak ≈ **3.4 mg/L at ≈ day 54** (vs. the conservative ≈5.3 mg/L @ day 39) — later AND lower.
+- **R = 2, sorption-only**: peak ≈ **3.4 mg/L at ≈ day 54** (vs. the conservative ≈5.3 mg/L @ day 39, both on the 10 m grid) — later AND lower.
 
 Rung A also runs a **separate** decay-only variant ($\lambda = \ln 2/30$ d, R = 1, no sorption) — this checkpoint is not about that curve, but the contrast is the key teaching point: decay-only gives peak ≈ **3.2 mg/L**, at **essentially the same arrival time** as the conservative run. In other words, **retardation delays arrival** (it slows the plume itself), while **decay does not** (it only removes mass in transit, it does not slow anything) — both lower the peak, but only retardation shifts *when* the peak shows up.
 
@@ -2525,7 +2527,7 @@ Neither variant drops the peak below `THRESHOLD_MGL = 1.0` mg/L, but they do not
 
 More longitudinal dispersion spreads the finite pulse out **in time**: the **toe arrives earlier** (the leading edge of the plume outruns the mean advective front), the **rise and fall are more gradual**, and the pulse leaves a **longer tail** — and on its own, spreading the same released mass over more time already lowers the peak. Because the locked ratio keeps $\alpha_T = \alpha_L/10$, doubling $\alpha_L$ to 20 m also doubles $\alpha_T$ to 2 m, so **transverse dilution also contributes** to the lower peak (the same mass spread over a wider swath of the corridor). Both mechanisms act together here — and because this helper always moves $\alpha_L$ and $\alpha_T$ in lockstep (the locked 10:1 ratio), **this single run cannot apportion how much of the peak drop comes from longitudinal spreading vs. transverse dilution**; separating them would need a run that changes one dispersivity while holding the other fixed.
 
-Running Rung B confirms it: peak ≈ **4.5 mg/L at ≈ day 37** (vs. the α_L=10 m keystone's ≈5.3 mg/L @ day 39) — earlier and lower, with both grid Péclet numbers (Pe_L and Pe_T) halved (a larger dispersivity is easier to resolve on the same grid).
+Running Rung B confirms it: peak ≈ **4.5 mg/L at ≈ day 37** (vs. the α_L=10 m keystone's ≈5.3 mg/L @ day 39, both on the 10 m grid) — earlier and lower, with both grid Péclet numbers (Pe_L and Pe_T) halved (a larger dispersivity is easier to resolve on the same grid).
 
 - **B** is wrong: more dispersion spreads (does not sharpen) the front, and brings the toe *earlier*, not later.
 - **C** is wrong: dispersivity reshapes any breakthrough curve, pulse or plateau, doublet or 1D column.
@@ -2540,7 +2542,7 @@ Running Rung B confirms it: peak ≈ **4.5 mg/L at ≈ day 37** (vs. the α_L=10
 
 Running Rung D confirms it: every one of the 200 particles released across the realistic ~10 m spill footprint terminates in the extraction well's cell — capture fraction **1.000** (200/200) — with a median advective travel time of **≈20 d** (p10 18.1, p90 22.3). The spill sits entirely inside the doublet's capture zone.
 
-**What that verdict does — and does not — corroborate.** Full advective capture corroborates the Keystone's **arrival and timing**: the water carrying the spill really does reach *this* well, on an advective timescale of weeks. It says **nothing whatsoever about concentration**, so it cannot corroborate the **exceedance** verdict. That verdict (peak ≈5.3 mg/L at day 39) is, and remains, the ADE model's alone. It is tempting to argue that because the footprint stays inside the well's *advective* streamtube the lateral limitation cannot matter — but that argument is wrong: transverse dispersion is precisely what carries mass *across* an advective streamtube boundary, so full advective capture does **not** guarantee the peak concentration. PRT bounds advective connection; it does not measure concentration.
+**What that verdict does — and does not — corroborate.** Full advective capture corroborates the Keystone's **arrival and timing**: the water carrying the spill really does reach *this* well, on an advective timescale of weeks. It says **nothing whatsoever about concentration**, so it cannot corroborate the **exceedance** verdict. That verdict (peak ≈5.3 mg/L at day 39 on the 10 m grid PRT also uses) is, and remains, the ADE model's alone. It is tempting to argue that because the footprint stays inside the well's *advective* streamtube the lateral limitation cannot matter — but that argument is wrong: transverse dispersion is precisely what carries mass *across* an advective streamtube boundary, so full advective capture does **not** guarantee the peak concentration. PRT bounds advective connection; it does not measure concentration.
 
 **How PRT is verified here.** Not by arithmetic against the ADE's day-39 peak — an advective travel time and a dispersive concentration peak are different quantities, and no simple identity connects them in a converging 2-D flow field. PRT is checked against **the flow field it was handed**: integrating the mean water velocity $u = q/\phi_e$ straight from the GWF budget (`DATA-SPDIS`, locked porosity 0.20) along the spill→well axis gives a path-averaged **4.25 m/d**, and PRT's particles report **4.15 m/d** — a ~2% consistency check between two independent computations, nothing tuned. (They are different *averages* — a curved-path mean against a straight-axis integral — so treat this as a consistency check, not a percent-accurate verification.) (Note that PRT and the ADE share the same flow field, grid and porosity, so this verifies the *particle tracker*, not the flow solution; the track's end-to-end transport verification is 04t §8's analytical benchmark.)
 
