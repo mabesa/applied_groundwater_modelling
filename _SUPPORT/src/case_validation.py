@@ -66,7 +66,7 @@ DEFAULT_STAGE_TIMEOUT_S = 60.0
 # The canonical, closed set of case-study group ids (0-8). Used by the CLI to
 # reject out-of-domain --groups selections and to define what "all groups"
 # means for the --require-green release gate.
-CANONICAL_GROUPS: tuple[int, ...] = tuple(range(9))
+CANONICAL_GROUPS: tuple[int, ...] = tuple(range(13))
 
 # Maximum number of ids a single "lo-hi" range in a --groups spec may expand
 # to. Guards against a typo (or malicious input) like "0-999999999" silently

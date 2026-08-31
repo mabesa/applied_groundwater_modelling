@@ -295,6 +295,11 @@ def is_full_a16_evidence(records, expected_groups=None) -> bool:
         skipped as cross-platform is useful (it still checks radius and solver health)
         but it is NOT the pin, so it can never be the evidence.
     """
+    # DELIBERATELY nine, not N_GROUPS. This script is A16's regression evidence
+    # over the FROZEN golden set, and only groups 0-8 have frozen goldens. Groups
+    # 9-12 (added 2026-08-31) carry deferrals until their authoritative Linux
+    # goldens are generated; widening this default would silently report a pass
+    # over meshes that were never frozen. Pass expected_groups explicitly to widen.
     expected = tuple(range(9)) if expected_groups is None else tuple(expected_groups)
     seen = tuple(r["group"] for r in records)
     if sorted(seen) != sorted(expected):

@@ -133,6 +133,21 @@ from shapely.geometry import Point
 CONCESSIONS: Tuple[str, ...] = (
     "b010210", "b010219", "b010201", "b010236", "b010120",
     "b010223", "b010227", "b010213", "b010207",
+    # Added 2026-08-31 (groups 9-12). Selected from the registry by the same
+    # gates as the original nine, PLUS a boundary-clearance gate the original
+    # nine did not have: both wells >= 260 m from the model edge, so a spill at
+    # the usual 70-260 m offset plus the 40 m corridor pad plus an 84 m
+    # refinement circle still fits inside the domain. That is the check group 1
+    # failed (spill 10.5 m from the edge; refinement impossible at every radius).
+    # b010216 was the first pick for group 12 and was REJECTED by this pipeline:
+    # its licensed Q is 432 m3/d, a tenth of the 4320 every other group runs at.
+    # T0.5 1.1 relies on Q being uniform ("cannot discriminate"); a tenth-rate
+    # doublet would give group 12 a materially different flow field.
+    # b010205 was the first pick for group 9 and was REJECTED: it is group 0's
+    # ORIGINAL transport concession in the pre-reconcile pre-image, so reusing it
+    # as a canonical doublet collides with the "no orphaned transport concession
+    # reappears as canonical" invariant. b010204 is equivalent on every gate.
+    "b010204", "b010220", "b010226", "b010222",
 )
 
 SPREAD_LIMIT_M = 50.0     # max pairwise distance within a role before flag+fallback

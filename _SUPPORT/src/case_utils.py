@@ -205,7 +205,7 @@ def _lint_monitoring(entry, group):
     return monitoring
 
 
-def lint_transport_config(config_path=None, groups=range(9)):
+def lint_transport_config(config_path=None, groups=range(13)):
     """
     Validate per-group scenario coverage in the transport case-study config.
 
@@ -222,7 +222,7 @@ def lint_transport_config(config_path=None, groups=range(9)):
         Path to ``case_config_transport.yaml``. If None, uses the
         ``AGM_TRANSPORT_CONFIG`` env var if set, else the repo default at
         ``PROJECT/workspace/template/case_config_transport.yaml``.
-    groups : iterable of int, default range(9)
+    groups : iterable of int, default range(13)
         Group ids to validate.
 
     Returns

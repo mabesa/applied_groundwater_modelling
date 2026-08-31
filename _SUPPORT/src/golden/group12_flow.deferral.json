@@ -1,0 +1,10 @@
+{
+  "group": 12,
+  "reason": "Case added 2026-08-31 (roster 9 -> 13). The group builds and validates locally at the walked radius below, but its AUTHORITATIVE golden must be frozen on Linux -- the mesh is platform-dependent (M2a.5), so a macOS-frozen golden would pin the wrong topology. No golden is committed until the Linux generator has run.",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "mf6_version": "mf6: 6.7.0 02/05/2026",
+  "date": "2026-08-31",
+  "radius_walked": 70.0,
+  "authoritative_platform": "linux",
+  "status": "linux-pending"
+}
