@@ -369,70 +369,70 @@ canonical_mapping:
 repairing_ledger:
 - group: 0
   contaminant: Trichloroethylene (TCE)
-  original_transport_concession: b010210
+  original_transport_concession: b010205
   canonical_flow_concession: b010210
-  changed: false
-  note: contaminant 'Trichloroethylene (TCE)' re-homed from transport concession b010210
+  changed: true
+  note: contaminant 'Trichloroethylene (TCE)' re-homed from transport concession b010205
     onto canonical flow doublet b010210 (pedagogic re-homing, not physical inheritance).
 - group: 1
   contaminant: Nitrate (NO3-)
-  original_transport_concession: b010219
+  original_transport_concession: b010196
   canonical_flow_concession: b010219
-  changed: false
-  note: contaminant 'Nitrate (NO3-)' re-homed from transport concession b010219 onto
+  changed: true
+  note: contaminant 'Nitrate (NO3-)' re-homed from transport concession b010196 onto
     canonical flow doublet b010219 (pedagogic re-homing, not physical inheritance).
 - group: 2
   contaminant: Benzene
-  original_transport_concession: b010201
+  original_transport_concession: b010185
   canonical_flow_concession: b010201
-  changed: false
-  note: contaminant 'Benzene' re-homed from transport concession b010201 onto canonical
+  changed: true
+  note: contaminant 'Benzene' re-homed from transport concession b010185 onto canonical
     flow doublet b010201 (pedagogic re-homing, not physical inheritance).
 - group: 3
   contaminant: Chloride (conservative tracer)
-  original_transport_concession: b010236
+  original_transport_concession: b010211
   canonical_flow_concession: b010236
-  changed: false
+  changed: true
   note: contaminant 'Chloride (conservative tracer)' re-homed from transport concession
-    b010236 onto canonical flow doublet b010236 (pedagogic re-homing, not physical
+    b010211 onto canonical flow doublet b010236 (pedagogic re-homing, not physical
     inheritance).
 - group: 4
   contaminant: Chromium (Cr-VI)
-  original_transport_concession: b010120
+  original_transport_concession: b010223
   canonical_flow_concession: b010120
-  changed: false
-  note: contaminant 'Chromium (Cr-VI)' re-homed from transport concession b010120
+  changed: true
+  note: contaminant 'Chromium (Cr-VI)' re-homed from transport concession b010223
     onto canonical flow doublet b010120 (pedagogic re-homing, not physical inheritance).
 - group: 5
   contaminant: PFOA (perfluorooctanoic acid)
-  original_transport_concession: b010223
+  original_transport_concession: b010200
   canonical_flow_concession: b010223
-  changed: false
+  changed: true
   note: 'contaminant ''PFOA (perfluorooctanoic acid)'' re-homed from transport concession
-    b010223 onto canonical flow doublet b010223 (pedagogic re-homing, not physical
+    b010200 onto canonical flow doublet b010223 (pedagogic re-homing, not physical
     inheritance). NOTE: canonical concession b010223 is ALSO the transport config''s
     id4 (Chromium) concession -- b010223 appears in both source lists; group 5 canonically
     carries PFOA on this doublet.'
 - group: 6
   contaminant: Perchloroethylene (PCE)
-  original_transport_concession: b010227
+  original_transport_concession: b010224
   canonical_flow_concession: b010227
-  changed: false
-  note: contaminant 'Perchloroethylene (PCE)' re-homed from transport concession b010227
+  changed: true
+  note: contaminant 'Perchloroethylene (PCE)' re-homed from transport concession b010224
     onto canonical flow doublet b010227 (pedagogic re-homing, not physical inheritance).
 - group: 7
   contaminant: Ammonium (NH4+)
-  original_transport_concession: b010213
+  original_transport_concession: b010230
   canonical_flow_concession: b010213
-  changed: false
-  note: contaminant 'Ammonium (NH4+)' re-homed from transport concession b010213 onto
+  changed: true
+  note: contaminant 'Ammonium (NH4+)' re-homed from transport concession b010230 onto
     canonical flow doublet b010213 (pedagogic re-homing, not physical inheritance).
 - group: 8
   contaminant: Atrazine
-  original_transport_concession: b010207
+  original_transport_concession: b010199
   canonical_flow_concession: b010207
-  changed: false
-  note: contaminant 'Atrazine' re-homed from transport concession b010207 onto canonical
+  changed: true
+  note: contaminant 'Atrazine' re-homed from transport concession b010199 onto canonical
     flow doublet b010207 (pedagogic re-homing, not physical inheritance).
 threshold_sanity:
 - group: 0

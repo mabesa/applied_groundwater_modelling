@@ -475,9 +475,25 @@ _BAK_TR = _TEMPLATE / "case_config_transport.yaml.bak"
 
 
 def test_live_config_is_post_reconcile_state(mapping, ledger):
-    """The committed (live) config is POST-reconcile: build succeeds AND every
-    group's ledger `changed` is False (transport concession == canonical)."""
-    assert bool((~ledger["changed"]).all()), "live config should be fully reconciled (0 changed)"
+    """The committed (live) config is POST-reconcile, AND the ledger still records
+    the re-homing.
+
+    🔴 This test used to assert the OPPOSITE of what the ledger is for -- that
+    every `changed` is False, i.e. that regenerating against the live config
+    erases the record. That assertion passed only because the generator read the
+    "original" concession from the live (already reconciled) config, which is
+    exactly the bug that made the documented regenerate command destroy history.
+    `changed` now comes from the frozen pre-image and states HISTORY: all nine
+    groups WERE re-homed, whatever state the configs are in.
+    """
+    cfg = ccm._load_yaml(ccm.DEFAULT_TRANSPORT_CONFIG)
+    del cfg  # config state is asserted via the flow side, below
+    flow = ccm._load_yaml(ccm.DEFAULT_FLOW_CONFIG)
+    g4 = [o for o in flow["scenarios"]["options"] if o["id"] == 4][0]
+    assert ccm._flow_concession_str(g4["concession"]) == "b010120", "live flow config is post-reconcile"
+    assert bool(ledger["changed"].all()), (
+        "the ledger records a one-time re-homing: all nine groups were re-homed, "
+        "and regenerating must not erase that")
 
 
 @pytest.mark.skipif(not (_BAK_FLOW.exists() and _BAK_TR.exists()),
@@ -492,21 +508,55 @@ def test_pre_reconcile_state_accepted_from_bak():
 
 
 def test_mixed_state_rejected(monkeypatch):
-    """A THIRD/mixed state must FAIL: flow[4]=b010120 (post) but a transport
-    concession still non-canonical (so changed != 0)."""
+    """A flow config in NEITHER known state must FAIL.
+
+    The old check also required the ledger's `changed` count to agree with the
+    flow-G4 concession. That coupling was half of the reproducibility bug and is
+    removed; what remains -- flow[4] must be b010190 or b010120 -- was already
+    enforced upstream, which is the guard this test now targets.
+    """
     orig_load = ccm._load_yaml
 
     def _corrupt(path):
         cfg = orig_load(path)
-        if Path(path).name == "case_config_transport.yaml":
-            for opt in cfg["transport_scenarios"]["options"]:
-                if opt["id"] == 0:
-                    opt["concession"] = "b010999"  # non-canonical -> changed=True for g0
+        if Path(path).name == "case_config.yaml":
+            for opt in cfg["scenarios"]["options"]:
+                if opt["id"] == 4:
+                    opt["concession"] = 999            # -> b010999, neither b010190 nor b010120
         return cfg
 
     monkeypatch.setattr(ccm, "_load_yaml", _corrupt)
-    with pytest.raises(ValueError, match="unexpected reconcile state"):
+    with pytest.raises(ValueError, match="expected 'b010190'.*or 'b010120'"):
         ccm.build_canonical_mapping(write=False)
+
+
+def test_regeneration_is_idempotent_and_reproduces_the_ledger(tmp_path):
+    """🔴 The regression this whole change exists to prevent.
+
+    Running the documented regenerate command must reproduce the committed
+    repairing_ledger byte-for-byte, twice. Before the pre-image was frozen it
+    produced nine changed=False rows and overwrote the original concession ids.
+    """
+    import hashlib
+    led = ccm.DEFAULT_LEDGER_CSV
+    committed = hashlib.sha256(led.read_bytes()).hexdigest()
+    try:
+        ccm.build_canonical_mapping(write=True)
+        first = hashlib.sha256(led.read_bytes()).hexdigest()
+        ccm.build_canonical_mapping(write=True)
+        second = hashlib.sha256(led.read_bytes()).hexdigest()
+    finally:
+        pass
+    assert first == committed, "regeneration must reproduce the committed ledger"
+    assert second == first, "regeneration must be idempotent"
+
+
+def test_pre_image_covers_every_group_and_matches_the_ledger(ledger):
+    """The frozen pre-image is the ledger's only source of `original`."""
+    pre = ccm.load_pre_reconcile_concessions()
+    assert set(pre) == set(range(ccm.N_GROUPS)), "pre-image must cover every re-homed group"
+    for _, row in ledger.iterrows():
+        assert row["original_transport_concession"] == pre[int(row["group"])]
 
 
 # ===========================================================================
