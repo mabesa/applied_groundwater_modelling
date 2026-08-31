@@ -1,0 +1,14 @@
+{
+  "identity": "spatial_5m_cr0.9",
+  "passed": true,
+  "checks": {
+    "artifact_loads": true,
+    "provenance_valid": true,
+    "cross_field_invariants": true,
+    "nstp_cap_recorded": true,
+    "nstp_cap_matches_guard": true,
+    "guard_not_reached": true,
+    "versions_captured": true
+  },
+  "failures": []
+}

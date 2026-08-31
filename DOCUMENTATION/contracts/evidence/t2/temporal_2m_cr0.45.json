@@ -1,0 +1,197 @@
+{
+  "content_hash": "8a1bfcfcd9e133b673d4bc8eae8365d9449fc2846975445434d038c948e92feb",
+  "environment": {
+    "flopy_version": "3.9.5",
+    "mf6_path": "/Users/bea/.local/share/flopy/bin/mf6",
+    "mf6_sha256": "a0c46e7861175fbe6640f67181b62cdb7b6298b3363787b0ab37ba4ff770a636",
+    "numpy_version": "2.3.5",
+    "os_arch": "Darwin-arm64",
+    "python_version": "3.12.10",
+    "thread_pinning": {
+      "GDAL_NUM_THREADS": "ALL_CPUS",
+      "OMP_NUM_THREADS": "12"
+    },
+    "triangle_path": "/Users/bea/.local/share/flopy/bin/triangle",
+    "triangle_sha256": "4829bb1c168880ff2c9292de87099af754c18e1fb7925d356dea0884fba615ba"
+  },
+  "fingerprints": {
+    "flow_fingerprint": "6a9e27c455dcbb66",
+    "gis_hashes": {
+      "model_boundary": "97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29",
+      "rivers": "0e4f9601f0b8fb68103b61697b3e12ebbf0429b81fe0a1c8182fdcfad969412e"
+    },
+    "locked_params": {
+      "alh": 10.0,
+      "ath1": 1.0,
+      "base_cell_size": 50.0,
+      "diffc": 8.64e-05,
+      "porosity": 0.2,
+      "refined_cell_size": 10.0,
+      "scheme": "TVD",
+      "time_units": "DAYS",
+      "xt3d_off": false
+    },
+    "roster_hash": "da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f",
+    "src_sha": "c7d9bd4516ebc5f2"
+  },
+  "metrics": {
+    "peak_mgL": {
+      "algorithm_id": "max_breakthrough_v1",
+      "censored": false,
+      "interpolated": false,
+      "tie_broken": false,
+      "units": "mg/L",
+      "value": 6.116975051464959
+    },
+    "t_peak": {
+      "algorithm_id": "t_peak_quadratic_vertex_v1",
+      "censored": false,
+      "interpolated": true,
+      "tie_broken": false,
+      "units": "d",
+      "value": 37.67564207768915
+    }
+  },
+  "role": {
+    "counterpart_run_id": null,
+    "grid_role": null,
+    "is_feasibility_probe": false,
+    "run_role": "spatial_series"
+  },
+  "run_health": {
+    "cr_achieved": 0.4499366721172029,
+    "cr_capped": false,
+    "horizon_censored": false,
+    "ncpl": 15727,
+    "nstp": 3958,
+    "provenance_valid": true,
+    "solver_status": "solved"
+  },
+  "run_identity": {
+    "case_id": "t2_notebook_matrix",
+    "controls": {},
+    "courant_profile": "exp_v1",
+    "cr_target": 0.45,
+    "experimental": {
+      "derivation_version": "exp_marker_v1",
+      "is_experimental": true,
+      "knobs": {
+        "courant_profile": {
+          "deviates": true,
+          "sentinel": "legacy_srcpulse",
+          "value": "exp_v1"
+        },
+        "cr_target": {
+          "deviates": true,
+          "sentinel": 0.9,
+          "value": 0.45
+        },
+        "footprint_radius_m": {
+          "deviates": false,
+          "sentinel": 0.0,
+          "value": 0.0
+        },
+        "mesh_spec": {
+          "deviates": true,
+          "sentinel": {
+            "base_cell_size": 50.0,
+            "levels": [
+              {
+                "cell_size": 10.0,
+                "radius_m": null
+              }
+            ],
+            "retry_radii": [
+              70.0,
+              62.0,
+              78.0,
+              56.0,
+              84.0
+            ]
+          },
+          "value": {
+            "base_cell_size": 50.0,
+            "levels": [
+              {
+                "cell_size": 2.0,
+                "radius_m": null
+              }
+            ],
+            "retry_radii": [
+              70.0,
+              62.0,
+              78.0,
+              56.0,
+              84.0
+            ]
+          }
+        },
+        "sink_support_m": {
+          "deviates": false,
+          "sentinel": 0.0,
+          "value": 0.0
+        }
+      }
+    },
+    "grid_spec": {
+      "mesh_spec": {
+        "base_cell_size": 50.0,
+        "levels": [
+          {
+            "cell_size": 2.0,
+            "radius_m": null
+          }
+        ],
+        "retry_radii": [
+          70.0,
+          62.0,
+          78.0,
+          56.0,
+          84.0
+        ]
+      }
+    },
+    "nstp_cap": 40000,
+    "run_id": "t2_temporal_2m_cr0.45",
+    "source_footprint": {
+      "algorithm_id": "area_weighted_disc_v1",
+      "centre_xy_m": [
+        2681548.410601648,
+        1248915.2068544205
+      ],
+      "coverage": {
+        "covered_area_m2": 0.0,
+        "disc_area_m2": 0.0
+      },
+      "entries": [
+        {
+          "cell": 7600,
+          "intersection_area_m2": 0.0,
+          "rate_g_per_day": 10000.0
+        }
+      ],
+      "radius_m": 0.0,
+      "total_rate_g_per_day": 10000.0
+    }
+  },
+  "schema": {
+    "producer_module": "t1_artifact_producer",
+    "producer_version": "1.0.0",
+    "schema_version": "3.2.0"
+  },
+  "support": {
+    "claim_id": "85c05b6b5be4",
+    "claim_support_state": "null",
+    "diagnostics": {},
+    "envelope": {
+      "grid_series": [],
+      "stopping_rule": "tolerance_reached",
+      "threshold_record_id": null,
+      "timestep_series": [
+        0.45
+      ],
+      "tolerance": 0.05
+    },
+    "reason_code": "refinement_axis_untested"
+  }
+}
