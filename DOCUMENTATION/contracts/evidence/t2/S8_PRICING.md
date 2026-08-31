@@ -1,3 +1,9 @@
+> 🔴 **SUPERSEDED IN PART, 2026-08-31** by `S8_PILOT_AND_PROBE.md`. The pricing verdicts in
+> §2 below were for the **SERIES**, and the series is no longer ceiling-bound (`T0_2b…` §3
+> rule 4, amended 2026-08-27 — instructor-side precomputation). What S8 still owed is the
+> **PROBE** price, and that is now **measured, not predicted**: 503 s against a 600 s target.
+> §1's `exp_v1` requirement is resolved — `exp_v1` is the shipped default.
+
 # T2 · S8 — the pricing model, and a blocker it exposed
 
 **2026-08-26.** The model is fitted on the **five measured points** from S4 and S5 — never on the
