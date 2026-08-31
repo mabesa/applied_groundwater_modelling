@@ -1,3 +1,8 @@
+> 🔴 **SUPERSEDED 2026-08-31** by `HUB_MEASUREMENT_2026-08-31.md` (five pairs / ten
+> sides). `H = 2.30` here came from ONE pair and is **biased high by cold-start**: the
+> re-measurement shows the first pair runs +20.2% slower than the next four, which also
+> explains the 12.2% internal spread flagged below. Recorded value is now **`H = 2.169`**.
+
 # Hub measurement — 2026-08-26 (first Hub data recorded in this project)
 
 **Platform:** `Linux-6.8.0-136-generic-x86_64`, glibc 2.39, Python 3.12.9.
