@@ -32,6 +32,27 @@
 # of the transport model reads it, and the recirculation scenario is described
 # (not built) in 08t.  Do not base any conclusion on it.
 
+
+# -------------------------------------------------------------------------
+# ABOUT `submodel:` -- THE NAME IS MISLEADING AND THE BLOCK IS SMALL ON PURPOSE
+#
+# There is NO telescopic / cut-out submodel anywhere in this course. You run the
+# SAME regional model everyone else runs. What varies is how much of it is
+# refined: the shared mesh is refined locally in a circle around your own well
+# doublet (radius ~60-70 m), and `cell_size_m` is the cell size inside that
+# circle.
+#
+# The teaching notebooks in PROJECT/transport/ refine something different -- the
+# whole spill-to-well corridor, over its full length. That is why the 1 m
+# reference there costs ~96 minutes while your run costs minutes: same cell
+# size scale, vastly more area.
+#
+# You neither build nor refine the grid. It is provided and validated for you.
+#
+# (Removed 2026-08-31: `buffer_north/south/east/west_m`. They were read by NO
+#  code in the repo, yet carried a "TODO: adjust buffer size" telling students to
+#  tune a value that did nothing.)
+# -------------------------------------------------------------------------
 title: "Contaminant transport with well field interactions"  # TODO: Tailor with your contaminant
 
 description: >
@@ -138,14 +159,9 @@ transport_scenarios:
         # TODO: Adjust output times to capture key transport dynamics
         output_times_days: [6, 11, 21, 61]
 
-      submodel:
-        # TODO: Adjust buffer size based on estimated plume travel distance
-        # We accept smaller buffer zones to limit model size.
-        buffer_north_m: 100
-        buffer_south_m: 100
-        buffer_east_m: 100
-        buffer_west_m: 100
-        # Do not edit the cell size
+      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
+        # Cell size inside the refined zone around YOUR doublet.
+        # Instructor-set and validated -- do not edit.
         cell_size_m: 2
 
       monitoring:
@@ -214,13 +230,9 @@ transport_scenarios:
         # TODO: Adjust output times to capture key transport dynamics
         output_times_days: [2, 4, 6, 31]
 
-      submodel:
-        # TODO: Adjust buffer size based on estimated plume travel distance
-        # We accept smaller buffer zones to limit model size.
-        buffer_north_m: 100
-        buffer_south_m: 100
-        buffer_east_m: 100
-        buffer_west_m: 100
+      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
+        # Cell size inside the refined zone around YOUR doublet.
+        # Instructor-set and validated -- do not edit.
         cell_size_m: 2
 
       monitoring:
@@ -290,11 +302,9 @@ transport_scenarios:
         # TODO: Adjust output times to capture key transport dynamics
         output_times_days: [6, 11, 21, 31, 61]
 
-      submodel:
-        buffer_north_m: 100
-        buffer_south_m: 100
-        buffer_east_m: 100
-        buffer_west_m: 100
+      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
+        # Cell size inside the refined zone around YOUR doublet.
+        # Instructor-set and validated -- do not edit.
         cell_size_m: 2
 
       monitoring:
@@ -364,11 +374,9 @@ transport_scenarios:
         duration_days: 730
         output_times_days: [90, 180, 365, 548, 730]
 
-      submodel:
-        buffer_north_m: 700
-        buffer_south_m: 700
-        buffer_east_m: 700
-        buffer_west_m: 700
+      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
+        # Cell size inside the refined zone around YOUR doublet.
+        # Instructor-set and validated -- do not edit.
         cell_size_m: 5
 
       monitoring:
@@ -444,14 +452,9 @@ transport_scenarios:
         # TODO: Adjust output times to capture key transport dynamics
         output_times_days: [90, 180, 365, 548, 730]
 
-      submodel:
-        # TODO: Adjust buffer size based on estimated plume travel distance
-        # We accept smaller buffer zones to limit model size.
-        buffer_north_m: 100
-        buffer_south_m: 100
-        buffer_east_m: 100
-        buffer_west_m: 100
-        # Do not edit the cell size
+      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
+        # Cell size inside the refined zone around YOUR doublet.
+        # Instructor-set and validated -- do not edit.
         cell_size_m: 2
 
       monitoring:
@@ -521,14 +524,9 @@ transport_scenarios:
         # TODO: Adjust output times to capture key transport dynamics
         output_times_days: [5, 15, 21, 31]
 
-      submodel:
-        # TODO: Adjust buffer size based on estimated plume travel distance
-        # We accept smaller buffer zones to limit model size.
-        buffer_north_m: 100
-        buffer_south_m: 100
-        buffer_east_m: 100
-        buffer_west_m: 100
-        # Do not edit the cell size
+      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
+        # Cell size inside the refined zone around YOUR doublet.
+        # Instructor-set and validated -- do not edit.
         cell_size_m: 2
 
       monitoring:
@@ -600,11 +598,9 @@ transport_scenarios:
         duration_days: 1095
         output_times_days: [90, 180, 365, 548, 730, 1095]
 
-      submodel:
-        buffer_north_m: 500
-        buffer_south_m: 500
-        buffer_east_m: 500
-        buffer_west_m: 500
+      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
+        # Cell size inside the refined zone around YOUR doublet.
+        # Instructor-set and validated -- do not edit.
         cell_size_m: 5
 
       monitoring:
@@ -674,11 +670,9 @@ transport_scenarios:
         duration_days: 730
         output_times_days: [30, 90, 180, 365, 548, 730]
 
-      submodel:
-        buffer_north_m: 400
-        buffer_south_m: 400
-        buffer_east_m: 400
-        buffer_west_m: 400
+      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
+        # Cell size inside the refined zone around YOUR doublet.
+        # Instructor-set and validated -- do not edit.
         cell_size_m: 5
 
       monitoring:
@@ -746,12 +740,9 @@ transport_scenarios:
         duration_days: 60
         output_times_days: [30, 45, 60]
 
-      submodel:
-        buffer_north_m: 100
-        buffer_south_m: 100
-        buffer_east_m: 100
-        buffer_west_m: 100
-        # Do not change the cell size
+      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
+        # Cell size inside the refined zone around YOUR doublet.
+        # Instructor-set and validated -- do not edit.
         cell_size_m: 2
 
       monitoring:
