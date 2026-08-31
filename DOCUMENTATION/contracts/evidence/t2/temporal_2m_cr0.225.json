@@ -1,5 +1,5 @@
 {
-  "content_hash": "bd26d1488b7f148ab37630ac41d64e1744c241c9e875aefccdcb8cb57a1d2975",
+  "content_hash": "3a886cd6c8afe990c636afcc7fcaaa1786581454f119ffbd4ae7221f0fd569df",
   "environment": {
     "flopy_version": "3.9.5",
     "mf6_path": "/Users/bea/.local/share/flopy/bin/mf6",
@@ -56,7 +56,7 @@
     "counterpart_run_id": null,
     "grid_role": null,
     "is_feasibility_probe": false,
-    "run_role": "spatial_series"
+    "run_role": "temporal_series"
   },
   "run_health": {
     "cr_achieved": 0.22499675909537448,
