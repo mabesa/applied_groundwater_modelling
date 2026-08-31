@@ -337,9 +337,33 @@ below, which are recorded **so the same question is never re-litigated candidate
 | Matrix | Cardinality | Executed by |
 |---|---|---|
 | **`notebook_evidence_matrix`** | the §3 series: **5 spatial × 3 temporal**, plus the A diagnostic and the matched **B-control** arm at coarse and fine | **T2** |
-| **`case_study_release_matrix`** | **40 rough + 10 fine = 50 identities** (≥100 cold/warm executions), with `grid_role` and `counterpart_run_id`. 🔴 **The requirement is ≥10 cases (lecturer, 2026-08-20); the shipped roster has only 9** — the tenth is a BUILD GAP, not an arithmetic error. See `T0_5_feasibility_probe.md` §5. | **case-study M3/M6 — NOT T2** |
+| **`case_study_release_matrix`** | 🔴 **AMENDED 2026-08-31 — 65 identities, and stated as a RULE.** **5 identities per case**: the 2×2 radius robustness check (`baseline/r1`, `scenario/r1`, `baseline/r2`, `scenario/r2`; `refined_cell_size` locked at 10 m — the axis is corridor EXTENT, not resolution) **plus the one mandatory fine identity**. Over the **13-case roster** (`doublet_table.csv` sha256 `da80e86d01f9d2d4…`) that is **52 rough + 13 fine = 65 identities**, and **≥2 executions per identity** — the two cold runs, per `T0_5…` §3; the warm run is recorded and never gating — so **≥130 executions**. Carries `grid_role` and `counterpart_run_id`. ⚠️ **Adding or removing a case RE-OPENS this row.** The number is DERIVED from the roster, but it is not automatically whatever the roster happens to be — the same discipline `T0_5…` §1.2 applies to the probe ranking. | **case-study M3/M6 — NOT T2** |
 
-Recorded here so T2 is never read as owing 50 identities for cases that do not yet exist. Not reopened.
+Recorded here so T2 is never read as owing these identities for cases that do not yet exist.
+
+### 🔴 What the 2026-08-31 amendment changed, and why it is a SIGNATURE
+
+*(✅ **SIGNED 2026-08-31, Beatrice Marti.**)*
+
+The row read **"40 rough + 10 fine = 50 identities"** against a stated requirement of ≥10 cases while the
+shipped roster held **9** — recorded at the time as a build gap, not an arithmetic error. That gap closed:
+the roster reached **13** on 2026-08-31 (groups 9–12, `b010204` · `b010220` · `b010226` · `b010222`).
+
+**The decomposition was confirmed, not assumed.** 5 × 10 = 50 reproduces the previous figure exactly, and
+its two halves are pinned independently: *"Transport budget per group: 4 runs (the 2×2)"*, and
+*"applies the same frozen threshold to **every actual fine identity**"* (`T0_5…` §4, `T0_0…` §6) — one fine
+identity per case.
+
+🔴 **This is a signature, not an erratum.** 50 → 65 **enlarges the obligation** on case-study M3/M6,
+however the number is derived, so it is signed rather than corrected in place.
+
+⚠️ **And it is bounded on purpose.** An earlier draft said simply *"5 per case × the roster"*, which would
+have grown the obligation silently every time a case was added. The row now names the roster it was
+computed over and states that a change to the roster re-opens it.
+
+**The ≥ executions figure is derived from the protocol, not scaled.** `T0_5…` §3 requires **two cold runs**
+(the gating statistic is their maximum) plus a warm run that is *"recorded, never gating"*. Two per identity
+is therefore the floor: 65 × 2 = **130**. The previous "≥100" was the same floor at 50 identities.
 
 ---
 

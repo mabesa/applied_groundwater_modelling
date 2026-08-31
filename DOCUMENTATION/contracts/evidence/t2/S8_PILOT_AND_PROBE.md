@@ -1,3 +1,9 @@
+> 🔴 **RANKING SUPERSEDED 2026-08-31** by `S8b_PROBE_REOPENED_13_CASES.md`. This file ranks the
+> NINE-case roster. The roster reached thirteen on 2026-08-31, which `T0_5…` §1.2 says re-opens
+> both the proxy and the pilot. **The probe is unchanged — `b010236` still leads — but the margin
+> fell from 1.22× to 1.05×**, a new case landing within 4.6% of taking it. Everything else here
+> stands.
+
 # T2 · S8 — the roster pilot, and the probe it overturns
 
 **2026-08-31.** `T0_5…` §1.2 requires that T2's first act be a **same-code pilot** over the

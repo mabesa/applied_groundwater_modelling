@@ -132,7 +132,34 @@ different obligations sharing one threshold.
 
 ---
 
-## 5. 🔴 RESOLVED: ten cases are REQUIRED; the roster has nine — a build gap
+## 5. ✅ CLOSED 2026-08-31: the roster is THIRTEEN
+
+> ✅ **BUILD GAP CLOSED, 2026-08-31.** The roster went from nine to **thirteen** — groups 9–12 on
+> `b010204` · `b010220` · `b010226` · `b010222`. The requirement was ≥10; the shipped roster now
+> exceeds it. `doublet_table.csv` sha256 `da80e86d01f9d2d4…`.
+>
+> **Consequence 1 below is superseded**: `case_study_release_matrix` is now **52 rough + 13 fine =
+> 65 identities** (`T0_2b…` §5, signed 2026-08-31).
+>
+> 🔴 **Consequence 2 fired, and the probe SURVIVED — but the margin collapsed.** §1.2 requires the
+> ranking to be re-opened when a case is added. Re-measured over all thirteen:
+>
+> | | case | `W = ncpl × nstp` | wall (Mac) |
+> |---|---|---:|---:|
+> | 1 | **`b010236`** (g3) — incumbent | **14,502,750** | 231.8 s |
+> | 2 | `b010226` (g11) — **new** | 13,838,616 | 177.8 s |
+> | 3 | `b010120` (g4) | 11,892,540 | 153.3 s |
+>
+> `b010236` holds by **1.05×**. Over the nine-case roster it led by **1.22×**. A new case came
+> within 4.6% of taking the probe, so the next addition is materially likely to move it —
+> **re-run the pilot, do not assume the incumbent.**
+>
+> ⚠️ The nine original cases were measured at transport-config sha `c99b6037…` and the four new
+> ones at the current sha; a case's own build is unaffected by the existence of other cases, so
+> the two sets are comparable. Consequence 2's original wording — *"if its separation exceeds
+> 240.3 m"* — was the **retracted v1 separation rule** and does not govern; §1.2's measured pilot does.
+
+### Superseded — the gap as recorded 2026-08-20
 
 **Lecturer decision, 2026-08-20:** *"We ultimately need at least 10 cases. We currently only have 9 cases.
 That needs an update."*
