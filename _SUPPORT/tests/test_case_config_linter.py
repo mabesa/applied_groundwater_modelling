@@ -20,7 +20,6 @@ Surface under test
         numeric ``concentration_mg_L``;
       - a ``simulation`` with ``duration_days > 0`` and a non-empty,
         strictly-increasing ``output_times_days`` list;
-      - a ``submodel`` with a positive ``cell_size_m``;
       - a ``monitoring`` with a numeric ``threshold_mg_L``.
     On any missing/invalid field it raises a clear ``ValueError`` naming the
     group AND the offending field/reason. On success it returns a structured
@@ -142,7 +141,6 @@ def _valid_entry(gid):
             "duration_days": 60,
             "output_times_days": [6, 11, 21, 61],
         },
-        "submodel": {"cell_size_m": 2},
         "monitoring": {"threshold_mg_L": 5.0},
     }
 
@@ -506,22 +504,6 @@ class TestSimulationValidation:
         )
         with pytest.raises(ValueError):
             lint(config_path=str(path), groups=[gid])
-
-
-class TestSubmodelValidation:
-    def test_non_positive_cell_size_raises(self, tmp_path):
-        path = _broken_config_path(
-            tmp_path, lambda c, e: e["submodel"].__setitem__("cell_size_m", 0)
-        )
-        lint = _import_lint()
-        with pytest.raises(ValueError):
-            lint(config_path=str(path), groups=[0])
-
-    def test_missing_submodel_block_raises(self, tmp_path):
-        path = _broken_config_path(tmp_path, lambda c, e: e.pop("submodel"))
-        lint = _import_lint()
-        with pytest.raises(ValueError):
-            lint(config_path=str(path), groups=[0])
 
 
 class TestMonitoringValidation:

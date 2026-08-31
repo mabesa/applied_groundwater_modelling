@@ -60,9 +60,11 @@ gates:
     owner_milestone: M3b
     rationale: >
       No leftover submodel:/buffer_*_m telescoping blocks in the transport
-      config -- M3b removes them (the MF6 corridor-refined build replaces the
-      old submodel windowing). expected==0 is the M3b target state; the blocks
-      still exist pre-M3b.
+      config -- the MF6 corridor-refined build replaces the old submodel
+      windowing. ACHIEVED 2026-08-31: the nine blocks are removed. Nothing read
+      them -- the buffers had no consumer at all, and cell_size_m stated 2 m or
+      5 m while build_spill_scenario has always refined the corridor at 10 m,
+      so the field was not merely inert but wrong.
 
 # Physics gates are NOT duplicated here -- they are M1.4's. Reference only
 # (by id + the M1.4 schema version/hash so drift is caught); no thresholds.

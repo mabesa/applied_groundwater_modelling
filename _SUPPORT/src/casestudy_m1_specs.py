@@ -52,7 +52,6 @@ CASE_UTILS_ENFORCED_KEYS = (
     "source.location.easting", "source.location.northing", "source.location.layer",
     "source.duration_days", "source.concentration_mg_L",
     "simulation.duration_days", "simulation.output_times_days",
-    "submodel.cell_size_m",
     "monitoring.threshold_mg_L",
 )
 

@@ -109,8 +109,6 @@ configs:
           # simulation
           - {name: "simulation.duration_days", type: num, unit: "day", gt: 0}
           - {name: "simulation.output_times_days", type: list}
-          # submodel (removed in M3b; contract still records it for now)
-          - {name: "submodel.cell_size_m", type: num, unit: "m", gt: 0}
           # monitoring -- threshold is the REGULATORY value (not a difficulty lever)
           - {name: "monitoring.threshold_mg_L", type: num, unit: "mg/L"}
           - {name: "monitoring.compliance_location", type: str}

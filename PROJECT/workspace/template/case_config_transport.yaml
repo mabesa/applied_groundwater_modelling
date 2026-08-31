@@ -34,24 +34,24 @@
 
 
 # -------------------------------------------------------------------------
-# ABOUT `submodel:` -- THE NAME IS MISLEADING AND THE BLOCK IS SMALL ON PURPOSE
+# HOW YOUR GRID IS REFINED  (you do not configure this)
 #
-# There is NO telescopic / cut-out submodel anywhere in this course. You run the
-# SAME regional model everyone else runs. What varies is how much of it is
-# refined: the shared mesh is refined locally in a circle around your own well
-# doublet (radius ~60-70 m), and `cell_size_m` is the cell size inside that
-# circle.
+# There is NO telescopic / cut-out submodel in this course. You run the SAME
+# regional model as everyone else. The instructor-provided build refines it
+# locally -- the spill-to-well corridor plus the injection well -- at a 10 m
+# cell size, inside a circle of radius ~56-84 m chosen by a retry ladder. Your
+# notebook prints the radius it actually used.
 #
-# The teaching notebooks in PROJECT/transport/ refine something different -- the
-# whole spill-to-well corridor, over its full length. That is why the 1 m
-# reference there costs ~96 minutes while your run costs minutes: same cell
-# size scale, vastly more area.
+# The teaching notebooks in PROJECT/transport/ refine the same kind of corridor
+# but over its full length: 10 m for the run you do there, and 1 m for the
+# reference we ship. The 1 m one costs ~96 minutes, which is why we run it once
+# and give you the output instead of asking you to reproduce it.
 #
-# You neither build nor refine the grid. It is provided and validated for you.
-#
-# (Removed 2026-08-31: `buffer_north/south/east/west_m`. They were read by NO
-#  code in the repo, yet carried a "TODO: adjust buffer size" telling students to
-#  tune a value that did nothing.)
+# Removed 2026-08-31: the whole `submodel:` block -- `buffer_north/south/east/
+# west_m` AND `cell_size_m`. NONE of it was read by any code. `cell_size_m`
+# said 2 m or 5 m while the build has always used 10 m, so it did not merely do
+# nothing, it stated the wrong number. Target state of milestone M3b; the
+# structural gate `submodel_buffer_blocks` expects zero and now gets it.
 # -------------------------------------------------------------------------
 title: "Contaminant transport with well field interactions"  # TODO: Tailor with your contaminant
 
@@ -77,7 +77,7 @@ model:
   sim_name: "limmat_valley"               # MF6 GWF model name inside the simulation
   baseline_model_name: "limmat_valley"
 
-# Transport submodel output location
+# Transport scenario output location
 output:
   workspace: "~/applied_groundwater_modelling_data/limmat/transport/case_study_transport_group_"  # auto-expand with group number
 
@@ -159,10 +159,6 @@ transport_scenarios:
         # TODO: Adjust output times to capture key transport dynamics
         output_times_days: [6, 11, 21, 61]
 
-      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
-        # Cell size inside the refined zone around YOUR doublet.
-        # Instructor-set and validated -- do not edit.
-        cell_size_m: 2
 
       monitoring:
         threshold_mg_L: 0.005    # corrected 2026-07-19: was 5.0 (~1000x too high; TCE drinking-water standard ≈ 0.005 mg/L = 5 µg/L)
@@ -230,10 +226,6 @@ transport_scenarios:
         # TODO: Adjust output times to capture key transport dynamics
         output_times_days: [2, 4, 6, 31]
 
-      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
-        # Cell size inside the refined zone around YOUR doublet.
-        # Instructor-set and validated -- do not edit.
-        cell_size_m: 2
 
       monitoring:
         threshold_mg_L: 25.0            # Drinking water standard
@@ -302,10 +294,6 @@ transport_scenarios:
         # TODO: Adjust output times to capture key transport dynamics
         output_times_days: [6, 11, 21, 31, 61]
 
-      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
-        # Cell size inside the refined zone around YOUR doublet.
-        # Instructor-set and validated -- do not edit.
-        cell_size_m: 2
 
       monitoring:
         threshold_mg_L: 0.005           # Drinking water MCL
@@ -374,10 +362,6 @@ transport_scenarios:
         duration_days: 730
         output_times_days: [90, 180, 365, 548, 730]
 
-      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
-        # Cell size inside the refined zone around YOUR doublet.
-        # Instructor-set and validated -- do not edit.
-        cell_size_m: 5
 
       monitoring:
         threshold_mg_L: 100.0
@@ -452,10 +436,6 @@ transport_scenarios:
         # TODO: Adjust output times to capture key transport dynamics
         output_times_days: [90, 180, 365, 548, 730]
 
-      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
-        # Cell size inside the refined zone around YOUR doublet.
-        # Instructor-set and validated -- do not edit.
-        cell_size_m: 2
 
       monitoring:
         threshold_mg_L: 0.1             # Drinking water standard
@@ -524,10 +504,6 @@ transport_scenarios:
         # TODO: Adjust output times to capture key transport dynamics
         output_times_days: [5, 15, 21, 31]
 
-      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
-        # Cell size inside the refined zone around YOUR doublet.
-        # Instructor-set and validated -- do not edit.
-        cell_size_m: 2
 
       monitoring:
         threshold_mg_L: 0.0002          # Very low drinking water advisory (0.2 µg/L)
@@ -598,10 +574,6 @@ transport_scenarios:
         duration_days: 1095
         output_times_days: [90, 180, 365, 548, 730, 1095]
 
-      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
-        # Cell size inside the refined zone around YOUR doublet.
-        # Instructor-set and validated -- do not edit.
-        cell_size_m: 5
 
       monitoring:
         threshold_mg_L: 0.04            # Drinking water MCL
@@ -670,10 +642,6 @@ transport_scenarios:
         duration_days: 730
         output_times_days: [30, 90, 180, 365, 548, 730]
 
-      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
-        # Cell size inside the refined zone around YOUR doublet.
-        # Instructor-set and validated -- do not edit.
-        cell_size_m: 5
 
       monitoring:
         threshold_mg_L: 0.5             # Drinking water guideline
@@ -740,10 +708,6 @@ transport_scenarios:
         duration_days: 60
         output_times_days: [30, 45, 60]
 
-      submodel:   # LOCAL REFINEMENT on the shared model -- NOT a separate submodel
-        # Cell size inside the refined zone around YOUR doublet.
-        # Instructor-set and validated -- do not edit.
-        cell_size_m: 2
 
       monitoring:
         threshold_mg_L: 0.1             # Drinking water standard (EU)
