@@ -8,3 +8,7 @@ group,contaminant,cas_number,threshold_mg_L,ref_lo_mg_L,ref_hi_mg_L,basis,flagge
 6,Perchloroethylene (PCE),127-18-4,0.04,0.001,0.05,drinking_water_MCL,False,"within reference band [0.001, 0.05] mg/L (drinking_water_MCL)."
 7,Ammonium (NH4+),14798-03-9,0.5,0.1,1.5,drinking_water_guideline,False,"within reference band [0.1, 1.5] mg/L (drinking_water_guideline)."
 8,Atrazine,1912-24-9,0.1,0.0001,0.003,drinking_water_standard_EU,True,"threshold 0.1 mg/L is OUTSIDE reference band [0.0001, 0.003] mg/L (drinking_water_standard_EU). Atrazine EU single-pesticide limit 0.1 ug/L = 0.0001 mg/L. 0.1 mg/L is ~1000x above -- likely too high."
+9,MTBE (methyl tert-butyl ether),1634-04-4,0.015,0.005,0.2,taste_and_odour,False,"within reference band [0.005, 0.2] mg/L (taste_and_odour)."
+10,Carbamazepine,298-46-4,0.0001,5e-05,0.001,gwv_organic_trace,False,"within reference band [5e-05, 0.001] mg/L (gwv_organic_trace)."
+11,Boron (as B),7440-42-8,1,0.3,2.4,drinking_water_MCL,False,"within reference band [0.3, 2.4] mg/L (drinking_water_MCL)."
+12,Nickel (Ni2+),7440-02-0,0.02,0.005,0.07,drinking_water_MCL,False,"within reference band [0.005, 0.07] mg/L (drinking_water_MCL)."

@@ -27,6 +27,10 @@
 # Group 6: concession b010227 - PCE        - Dry cleaning (sorption) - Q=4320 m3/d
 # Group 7: concession b010213 - Ammonium   - Leaking sewer (decay) - Q=4320 m3/d
 # Group 8: concession b010207 - Atrazine   - Garden allotment - Q=4320 m3/d
+# Group 9: concession b010204 - MTBE       - Filling-station tank leak - Q=4320 m3/d
+# Group 10: concession b010220 - Carbamazepine - Combined-sewer overflow - Q=4320 m3/d
+# Group 11: concession b010226 - Boron      - Demolition-waste landfill - Q=4320 m3/d
+# Group 12: concession b010222 - Nickel     - Electroplating soakaway - Q=4320 m3/d
 #
 # NOTE: `recirculation_fraction` below is carried for reference only -- no part
 # of the transport model reads it, and the recirculation scenario is described
@@ -209,14 +213,6 @@ transport_scenarios:
           # extraction well: this places your spill upgradient of it. Whether the
           # plume is then CAPTURED and whether it EXCEEDS the threshold is the
           # question you answer -- it is deliberately not given to you here.
-          # MOVED 2026-08-31. The old offset (-60, -169) put the spill 10.5 m
-          # from the model boundary, so every refinement circle (radius 56-84 m)
-          # straddled the edge and Triangle failed at ALL radii -- group 1 could
-          # not build its model at all. The wells are the real licensed AWEL ones
-          # and have NOT moved; only this hypothetical spill has. The new bearing
-          # is also 1 deg off the local upgradient direction (329 deg), where the
-          # old one was 79 deg off -- so this is a better placement hydraulically
-          # as well as geometrically. Same distance from the well: 179.3 m.
           easting: 155.3             # m, E offset from extraction well
           northing: -89.7            # m, -N offset from extraction well
           layer: 1
@@ -721,3 +717,253 @@ transport_scenarios:
         threshold_mg_L: 0.1             # Drinking water standard (EU)
         compliance_location: "Groundwater monitoring network"
 
+    # ========== GROUP 9: MTBE - Filling-station tank leak ==========
+    - id: 9
+      concession: "b010204"
+      title: "Filling-station tank leak"
+      contaminant: "MTBE (methyl tert-butyl ether)"
+      description: >
+        A corroded underground tank at a filling station has released the petrol oxygenate MTBE into the groundwater over a one-week period. MTBE is far more soluble and far less retarded than the fuel hydrocarbons beside it, so it outruns them. Determine whether it reaches the extraction well above the taste-and-odour limit.
+
+      properties:
+        cas_number: "1634-04-4"
+        molecular_weight_g_mol: 88.15
+        solubility_mg_L: 42000.0
+        conservative: false
+
+      transport:
+        porosity: 0.20
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 1.9e-9
+        sorption: true
+        distribution_coefficient_mL_g: 0.03        # R ~ 1.3
+        decay: true
+        first_order_decay_constant_1_per_day: 0.00198042
+        half_life_days: 350.0
+
+      # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
+      # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
+      doublet:
+        concession_id: "b010204"
+        injection_easting: 2678858.5      # m (LV95)
+        injection_northing: 1250067.4     # m (LV95)
+        extraction_easting: 2678967.0      # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1250021.4    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
+        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, like all nine others);
+                                          # reference only -- no part of the transport model reads it
+      source:
+        type: "point"
+        release_type: "pulse"
+        location:
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
+          easting: 179.7
+          northing: -187.9
+          layer: 1
+        start_time_days: 0
+        duration_days: 7
+        concentration_mg_L: 4.0
+        ssm_itype: -1
+
+      simulation:
+        duration_days: 365
+        output_times_days: [14, 60, 120, 366]
+
+      monitoring:
+        threshold_mg_L: 0.015    # taste-and-odour threshold (no Swiss numeric GwV limit)
+        compliance_location: "Well"
+
+    # ========== GROUP 10: Carbamazepine - Combined-sewer overflow ==========
+    - id: 10
+      concession: "b010220"
+      title: "Combined-sewer overflow"
+      contaminant: "Carbamazepine"
+      description: >
+        A combined-sewer overflow has discharged untreated wastewater to a soakaway for three months. Carbamazepine is an anti-epileptic drug that neither sorbs strongly nor degrades, which is why it is used as a marker for wastewater in groundwater. The source is weak but the limit is very low. Determine whether it exceeds.
+
+      properties:
+        cas_number: "298-46-4"
+        molecular_weight_g_mol: 236.27
+        solubility_mg_L: 18.0
+        # NOT conservative: carbamazepine is PERSISTENT (no decay) but it does sorb
+        # weakly (Kd 0.1 -> R ~ 1.9). "Conservative" here means non-reactive in both
+        # senses, which the config linter enforces.
+        conservative: false
+
+      transport:
+        porosity: 0.20
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 1.9e-9
+        sorption: true
+        distribution_coefficient_mL_g: 0.1        # R ~ 1.9
+        decay: false
+        first_order_decay_constant_1_per_day: 0
+        half_life_days: null
+
+      # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
+      # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
+      doublet:
+        concession_id: "b010220"
+        injection_easting: 2681128.0      # m (LV95)
+        injection_northing: 1249224.0     # m (LV95)
+        extraction_easting: 2681225.0      # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1249229.0    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
+        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, like all nine others);
+                                          # reference only -- no part of the transport model reads it
+      source:
+        type: "point"
+        release_type: "pulse"
+        location:
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
+          easting: 92.3
+          northing: -118.2
+          layer: 1
+        start_time_days: 0
+        duration_days: 90
+        concentration_mg_L: 0.002
+        ssm_itype: -1
+
+      simulation:
+        duration_days: 365
+        output_times_days: [30, 90, 180, 366]
+
+      monitoring:
+        threshold_mg_L: 0.0001    # GwV general limit for organic trace substances (0.1 ug/L)
+        compliance_location: "Well"
+
+    # ========== GROUP 11: Boron - Demolition-waste landfill leachate ==========
+    - id: 11
+      concession: "b010226"
+      title: "Demolition-waste landfill leachate"
+      contaminant: "Boron (as B)"
+      description: >
+        An old demolition-waste landfill leaches boron from gypsum plasterboard continuously. Boron is conservative -- it neither sorbs nor decays -- so it travels at the velocity of the water. The source is close and the release does not stop. Determine whether the well exceeds the limit within the study period, and whether it would afterwards.
+
+      properties:
+        cas_number: "7440-42-8"
+        molecular_weight_g_mol: 10.81
+        solubility_mg_L: 55000.0
+        conservative: true
+
+      transport:
+        porosity: 0.20
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 1.9e-9
+        sorption: false
+        distribution_coefficient_mL_g: 0.0        # R ~ 1.0
+        decay: false
+        first_order_decay_constant_1_per_day: 0
+        half_life_days: null
+
+      # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
+      # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
+      doublet:
+        concession_id: "b010226"
+        injection_easting: 2680207.0      # m (LV95)
+        injection_northing: 1248955.0     # m (LV95)
+        extraction_easting: 2680191.0      # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1248880.0    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
+        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, like all nine others);
+                                          # reference only -- no part of the transport model reads it
+      source:
+        type: "point"
+        release_type: "continuous"
+        location:
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
+          easting: 52.8
+          northing: -45.9
+          layer: 1
+        start_time_days: 0
+        duration_days: 3650
+        concentration_mg_L: 15.0
+        ssm_itype: -1
+
+      simulation:
+        duration_days: 365
+        output_times_days: [60, 150, 270, 366]
+
+      monitoring:
+        threshold_mg_L: 1.0    # TBDV drinking-water value for boron
+        compliance_location: "Well"
+
+    # ========== GROUP 12: Nickel - Electroplating rinse-water soakaway ==========
+    - id: 12
+      concession: "b010222"
+      title: "Electroplating rinse-water soakaway"
+      contaminant: "Nickel (Ni2+)"
+      description: >
+        Rinse water from an electroplating shop was discharged to a soakaway in a single incident. Nickel sorbs to the aquifer matrix, so the plume travels roughly ten times slower than the water. Determine whether the retarded front reaches the well inside the three-year study period, and whether it exceeds the limit when it does.
+
+      properties:
+        cas_number: "7440-02-0"
+        molecular_weight_g_mol: 58.69
+        solubility_mg_L: 1000.0
+        conservative: false
+
+      transport:
+        porosity: 0.20
+        bulk_density_kg_m3: 1800.0
+        longitudinal_dispersivity_m: 10.0
+        transverse_dispersivity_m: 1.0
+        vertical_dispersivity_m: 0.1
+        molecular_diffusion_m2_s: 1.9e-9
+        sorption: true
+        distribution_coefficient_mL_g: 1.0        # R ~ 10.0
+        decay: false
+        first_order_decay_constant_1_per_day: 0
+        half_life_days: null
+
+      # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
+      # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
+      doublet:
+        concession_id: "b010222"
+        injection_easting: 2682236.9      # m (LV95)
+        injection_northing: 1247838.9     # m (LV95)
+        extraction_easting: 2682181.9      # m (LV95) - compliance/monitoring Well
+        extraction_northing: 1247873.9    # m (LV95)
+        pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
+        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, like all nine others);
+                                          # reference only -- no part of the transport model reads it
+      source:
+        type: "point"
+        release_type: "pulse"
+        location:
+          # Source position is an easting/northing OFFSET relative to the
+          # extraction well: this places your spill upgradient of it. Whether the
+          # plume is then CAPTURED and whether it EXCEEDS the threshold is the
+          # question you answer -- it is deliberately not given to you here.
+          easting: 88.2
+          northing: -108.7
+          layer: 1
+        start_time_days: 0
+        duration_days: 1
+        concentration_mg_L: 8.0
+        ssm_itype: -1
+
+      simulation:
+        duration_days: 1095
+        output_times_days: [180, 365, 730, 1095]
+
+      monitoring:
+        threshold_mg_L: 0.02    # TBDV drinking-water value for nickel
+        compliance_location: "Well"

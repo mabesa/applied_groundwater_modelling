@@ -30,11 +30,17 @@ N = ccm.N_GROUPS
 EXPECTED_CONCESSIONS = [
     "b010210", "b010219", "b010201", "b010236", "b010120",
     "b010223", "b010227", "b010213", "b010207",
+    # groups 9-12, added 2026-08-31
+    "b010204", "b010220", "b010226", "b010222",
 ]
 EXPECTED_FLOW_TYPES = [
     "chd_head_change", "river_conductance", "river_conductance", "recharge_scale",
     "recharge_scale", "river_stage", "river_width_and_stage",
     "aquifer_transmissivity", "aquifer_transmissivity",
+    # groups 9-12 CLOSE the pairs the first nine left open: 0's -1 m boundary
+    # head, 5's +1.5 m stage, 6's widen-and-lower. 12 is not a pair -- it is a
+    # magnitude probe against 4's recharge x0.8.
+    "chd_head_change", "river_stage", "river_width_and_stage", "recharge_scale",
 ]
 
 
@@ -169,8 +175,11 @@ def test_r_factor_not_stored(mapping):
 def test_decay_and_sorption_groups(mapping):
     decay_groups = set(mapping.loc[mapping["decay"], "group"])
     sorb_groups = set(mapping.loc[mapping["sorption"], "group"])
-    assert decay_groups == {2, 7}          # Benzene, Ammonium
-    assert sorb_groups == {4, 6, 8}        # Chromium, PCE, Atrazine
+    assert decay_groups == {2, 7, 9}                 # Benzene, Ammonium, MTBE
+    assert sorb_groups == {4, 6, 8, 9, 10, 12}      # Cr, PCE, Atrazine, MTBE,
+                                                    # Carbamazepine, Nickel
+    # group 11 (Boron) is neither -- it is the only strictly conservative one
+    # of the four new cases.
 
 
 # ---------------------------------------------------------------------------
@@ -234,9 +243,20 @@ def _committed_repairing_ledger() -> pd.DataFrame:
 
 
 def test_committed_ledger_nine_rows_all_changed():
+    """The NINE re-homed groups are recorded as changed; later additions are not.
+
+    Was `changed.all()` over nine rows. The roster grew to 13 on 2026-08-31, and
+    groups 9-12 were assigned directly to their canonical doublets -- they were
+    never re-homed, so `changed` is False for them BY DESIGN (see
+    pre_reconcile_concessions.csv). Asserting `.all()` here would force the
+    generator to invent a re-homing that never happened.
+    """
     led = _committed_repairing_ledger()
     assert len(led) == N
-    assert bool(led["changed"].all()), "the frozen pre-reconcile ledger records every re-homing"
+    rehomed = led[led["group"] < 9]
+    assert bool(rehomed["changed"].all()), "every one of the nine re-homings is recorded"
+    added = led[led["group"] >= 9]
+    assert not bool(added["changed"].any()), "groups added after the reconcile were never re-homed"
 
 
 def test_committed_ledger_original_transport_concessions():
@@ -410,7 +430,7 @@ def test_doublet_duplicate_group_raises(tmp_path):
         df.loc[df["group"] == "G8", "group"] = "G3"  # now two G3, no G8
         return df
     p = _write_doublet_variant(tmp_path, _dup)
-    with pytest.raises(ValueError, match=r"not exactly \{0\.\.8\}"):
+    with pytest.raises(ValueError, match=r"not exactly \{0\.\." + str(N - 1) + r"\}"):
         ccm.build_canonical_mapping(doublet_table=p, write=False)
 
 
@@ -418,7 +438,7 @@ def test_doublet_missing_group_via_short_table_raises(tmp_path):
     def _drop(df):
         return df[df["group"] != "G8"]  # only 8 rows
     p = _write_doublet_variant(tmp_path, _drop)
-    with pytest.raises(ValueError, match="expected 9"):
+    with pytest.raises(ValueError, match=f"expected {N}"):
         ccm.build_canonical_mapping(doublet_table=p, write=False)
 
 
@@ -491,9 +511,12 @@ def test_live_config_is_post_reconcile_state(mapping, ledger):
     flow = ccm._load_yaml(ccm.DEFAULT_FLOW_CONFIG)
     g4 = [o for o in flow["scenarios"]["options"] if o["id"] == 4][0]
     assert ccm._flow_concession_str(g4["concession"]) == "b010120", "live flow config is post-reconcile"
-    assert bool(ledger["changed"].all()), (
-        "the ledger records a one-time re-homing: all nine groups were re-homed, "
-        "and regenerating must not erase that")
+    rehomed = ledger[ledger["group"] < 9]
+    assert bool(rehomed["changed"].all()), (
+        "the ledger records a one-time re-homing: all NINE re-homed groups are "
+        "recorded, and regenerating must not erase that")
+    # groups 9-12 post-date the reconcile and were never re-homed
+    assert not bool(ledger[ledger["group"] >= 9]["changed"].any())
 
 
 @pytest.mark.skipif(not (_BAK_FLOW.exists() and _BAK_TR.exists()),
@@ -554,9 +577,13 @@ def test_regeneration_is_idempotent_and_reproduces_the_ledger(tmp_path):
 def test_pre_image_covers_every_group_and_matches_the_ledger(ledger):
     """The frozen pre-image is the ledger's only source of `original`."""
     pre = ccm.load_pre_reconcile_concessions()
-    assert set(pre) == set(range(ccm.N_GROUPS)), "pre-image must cover every re-homed group"
+    # The pre-image covers the groups that EXISTED at the reconcile -- 0-8. Groups
+    # added later are deliberately absent and are recorded as unchanged.
+    assert set(pre) == set(range(9)), "pre-image must cover every re-homed group"
     for _, row in ledger.iterrows():
-        assert row["original_transport_concession"] == pre[int(row["group"])]
+        g = int(row["group"])
+        expected = pre[g] if g in pre else row["canonical_flow_concession"]
+        assert row["original_transport_concession"] == expected
 
 
 # ===========================================================================
@@ -574,6 +601,7 @@ def test_golden_table_matches_build(mapping):
 
 
 def test_golden_covers_all_nine_groups():
+    # named for the original roster; the content table must cover EVERY group
     assert set(ccm.GOLDEN_MAPPING) == set(range(N))
 
 

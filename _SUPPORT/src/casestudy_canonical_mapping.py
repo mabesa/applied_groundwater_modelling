@@ -105,7 +105,7 @@ def load_pre_reconcile_concessions(path: Optional[Path] = None) -> Dict[int, str
         return {int(r["group"]): str(r["original_transport_concession"]) for r in rdr}
 DEFAULT_SANITY_CSV = _SCENARIO_DIR / "threshold_sanity.csv"
 
-N_GROUPS = 9
+N_GROUPS = 13
 _LN2 = math.log(2.0)
 _DECAY_LAMBDA_RTOL = 0.02   # lambda ~ ln2 / half_life within 2%
 _CHUNK_SIZE = 65536
@@ -127,6 +127,22 @@ _CHUNK_SIZE = 65536
 # Chloride=100 are flagged/surfaced; all others sit inside their bands.
 # ---------------------------------------------------------------------------
 REFERENCE_BOUNDS: Dict[str, Tuple[float, float, str, str]] = {
+    # --- added 2026-08-31 with groups 9-12 -----------------------------------
+    "1634-04-4":  (0.005,   0.20,   "taste_and_odour",
+                   "MTBE has no Swiss GwV numeric limit. Regulation is by taste/odour, "
+                   "reported between ~5 and ~200 ug/L depending on panel; the US EPA "
+                   "advisory band is 20-40 ug/L. A 15 ug/L compliance threshold sits "
+                   "inside that band -- it is an advisory value, not a health limit."),
+    "298-46-4":   (0.00005, 0.001,  "gwv_organic_trace",
+                   "Carbamazepine falls under the GwV general limit for organic trace "
+                   "substances, 0.1 ug/L. The band spans the detection-limit end "
+                   "(0.05 ug/L) to values reported in wastewater-influenced groundwater."),
+    "7440-42-8":  (0.3,     2.4,    "drinking_water_MCL",
+                   "Boron: Swiss/EU drinking-water value 1.0 mg/L; WHO guideline 2.4 mg/L. "
+                   "The band spans typical natural background to the WHO value."),
+    "7440-02-0":  (0.005,   0.07,   "drinking_water_MCL",
+                   "Nickel: Swiss/EU drinking-water value 0.02 mg/L; WHO guideline "
+                   "0.07 mg/L. The band spans the detection-limit end to the WHO value."),
     "79-01-6":    (0.001,   0.02,   "drinking_water_MCL",
                    "TCE drinking-water standard ~0.005 mg/L (5 ug/L)."),
     "14797-55-8": (1.0,     11.3,   "drinking_water_as_N",
@@ -162,6 +178,11 @@ REFERENCE_BOUNDS: Dict[str, Tuple[float, float, str, str]] = {
 # name spelling. A build whose content drifts from this fails acceptance.
 # ---------------------------------------------------------------------------
 GOLDEN_MAPPING: Dict[int, Tuple[str, str, float, bool, bool]] = {
+    # groups 9-12, added 2026-08-31: (concession, CAS, threshold_mg_L, sorption, decay)
+    9:  ("b010204", "1634-04-4", 0.015,  True,  True),   # MTBE
+    10: ("b010220", "298-46-4",  0.0001, True,  False),  # Carbamazepine
+    11: ("b010226", "7440-42-8", 1.0,    False, False),  # Boron -- conservative
+    12: ("b010222", "7440-02-0", 0.02,   True,  False),  # Nickel
     0: ("b010210", "79-01-6",    0.005,  False, False),   # TCE, conservative
     1: ("b010219", "14797-55-8", 25.0,   False, False),   # Nitrate, conservative
     2: ("b010201", "71-43-2",    0.005,  False, True),    # Benzene, decay
@@ -367,7 +388,7 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
 
     # Canonical concession list comes from the doublet_table (G0..G8 order).
     # The `group N -> doublet_table[N]` position rule is only valid if the
-    # doublet_table's group indices are EXACTLY {0..8}, unique, and each row's
+    # doublet_table's group indices are EXACTLY {0..N_GROUPS-1}, unique, and each row's
     # group label is the canonical `f"G{gidx}"`. A duplicate/missing group
     # (e.g. two G3 + no G8) would still give 9 rows / 9 concessions but silently
     # break the positional mapping -- so validate it before trusting the order.
@@ -404,9 +425,9 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
     flow_opts = _index_flow_scenarios(flow_cfg)
     tr_opts = _index_transport_scenarios(tr_cfg)
     if set(flow_opts) != set(range(N_GROUPS)):
-        raise ValueError(f"flow scenario ids {sorted(flow_opts)} != {{0..8}}.")
+        raise ValueError(f"flow scenario ids {sorted(flow_opts)} != {{0..{N_GROUPS - 1}}}.")
     if set(tr_opts) != set(range(N_GROUPS)):
-        raise ValueError(f"transport scenario ids {sorted(tr_opts)} != {{0..8}}.")
+        raise ValueError(f"transport scenario ids {sorted(tr_opts)} != {{0..{N_GROUPS - 1}}}.")
 
     # Frozen pre-image for the repairing_ledger's "original" column (see
     # DEFAULT_PRE_RECONCILE_CSV). Loaded once, before the loop.
@@ -627,12 +648,12 @@ def _assert_acceptance(mapping: pd.DataFrame, ledger: pd.DataFrame,
     # no stray pre-swap b0101xx transport concessions leaked in as the canonical id
     assert mapping["concession"].nunique() == N_GROUPS, "duplicate concession across groups"
 
-    # group == flow_scenario_id == contaminant_id, ids exactly {0..8}, no dups
-    assert list(mapping["group"]) == list(range(N_GROUPS)), "groups not 0..8 in order"
+    # group == flow_scenario_id == contaminant_id, ids exactly {0..N_GROUPS-1}, no dups
+    assert list(mapping["group"]) == list(range(N_GROUPS)), "groups not 0..N-1 in order"
     assert (mapping["group"] == mapping["flow_scenario_id"]).all(), "group != flow_scenario_id"
     assert (mapping["group"] == mapping["contaminant_id"]).all(), "group != contaminant_id"
-    assert set(mapping["flow_scenario_id"]) == set(range(N_GROUPS)), "flow ids != {0..8}"
-    assert set(mapping["contaminant_id"]) == set(range(N_GROUPS)), "contaminant ids != {0..8}"
+    assert set(mapping["flow_scenario_id"]) == set(range(N_GROUPS)), "flow ids != 0..N-1"
+    assert set(mapping["contaminant_id"]) == set(range(N_GROUPS)), "contaminant ids != 0..N-1"
     assert mapping["flow_scenario_id"].nunique() == N_GROUPS, "duplicate flow scenario id"
     assert mapping["contaminant_id"].nunique() == N_GROUPS, "duplicate contaminant id"
 

@@ -22,7 +22,7 @@ canonical_mapping:
   transverse_dispersivity_m: 1.0
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.0e-09
-  solubility_mg_L: 1100
+  solubility_mg_L: 1100.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 51.0
@@ -34,11 +34,11 @@ canonical_mapping:
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
-  flow_config_sha256: d093c031ed759c2d1c9440cedbd7224a4a061a84d2d6f2a485011af70f9e672b
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: c99b603784a911e9fb1eefe9bf33895410ff94f60a07dd4903f28bfc9611f4aa
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
-  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 1
   concession: b010219
   flow_scenario_id: 1
@@ -63,7 +63,7 @@ canonical_mapping:
   transverse_dispersivity_m: 1.0
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.9e-09
-  solubility_mg_L: 850000
+  solubility_mg_L: 850000.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 155.3
@@ -75,11 +75,11 @@ canonical_mapping:
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
-  flow_config_sha256: d093c031ed759c2d1c9440cedbd7224a4a061a84d2d6f2a485011af70f9e672b
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: c99b603784a911e9fb1eefe9bf33895410ff94f60a07dd4903f28bfc9611f4aa
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
-  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 2
   concession: b010201
   flow_scenario_id: 2
@@ -104,7 +104,7 @@ canonical_mapping:
   transverse_dispersivity_m: 1.0
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.0e-09
-  solubility_mg_L: 1780
+  solubility_mg_L: 1780.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 50.0
@@ -116,11 +116,11 @@ canonical_mapping:
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
-  flow_config_sha256: d093c031ed759c2d1c9440cedbd7224a4a061a84d2d6f2a485011af70f9e672b
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: c99b603784a911e9fb1eefe9bf33895410ff94f60a07dd4903f28bfc9611f4aa
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
-  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 3
   concession: b010236
   flow_scenario_id: 3
@@ -144,7 +144,7 @@ canonical_mapping:
   transverse_dispersivity_m: 1.0
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 2.0e-09
-  solubility_mg_L: 350000
+  solubility_mg_L: 350000.0
   source_type: area
   source_release_type: continuous
   source_easting_offset_m: 100.0
@@ -156,11 +156,11 @@ canonical_mapping:
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
-  flow_config_sha256: d093c031ed759c2d1c9440cedbd7224a4a061a84d2d6f2a485011af70f9e672b
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: c99b603784a911e9fb1eefe9bf33895410ff94f60a07dd4903f28bfc9611f4aa
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
-  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 4
   concession: b010120
   flow_scenario_id: 4
@@ -184,7 +184,7 @@ canonical_mapping:
   transverse_dispersivity_m: 1.0
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.1e-09
-  solubility_mg_L: 10000
+  solubility_mg_L: 10000.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 53.0
@@ -196,11 +196,11 @@ canonical_mapping:
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
-  flow_config_sha256: d093c031ed759c2d1c9440cedbd7224a4a061a84d2d6f2a485011af70f9e672b
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: c99b603784a911e9fb1eefe9bf33895410ff94f60a07dd4903f28bfc9611f4aa
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
-  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 5
   concession: b010223
   flow_scenario_id: 5
@@ -226,7 +226,7 @@ canonical_mapping:
   transverse_dispersivity_m: 1.0
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 7.0e-10
-  solubility_mg_L: 9500
+  solubility_mg_L: 9500.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 32.0
@@ -238,11 +238,11 @@ canonical_mapping:
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
-  flow_config_sha256: d093c031ed759c2d1c9440cedbd7224a4a061a84d2d6f2a485011af70f9e672b
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: c99b603784a911e9fb1eefe9bf33895410ff94f60a07dd4903f28bfc9611f4aa
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
-  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 6
   concession: b010227
   flow_scenario_id: 6
@@ -269,7 +269,7 @@ canonical_mapping:
   transverse_dispersivity_m: 1.0
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 9.0e-10
-  solubility_mg_L: 200
+  solubility_mg_L: 200.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 56.0
@@ -281,11 +281,11 @@ canonical_mapping:
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
-  flow_config_sha256: d093c031ed759c2d1c9440cedbd7224a4a061a84d2d6f2a485011af70f9e672b
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: c99b603784a911e9fb1eefe9bf33895410ff94f60a07dd4903f28bfc9611f4aa
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
-  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 7
   concession: b010213
   flow_scenario_id: 7
@@ -309,7 +309,7 @@ canonical_mapping:
   transverse_dispersivity_m: 1.0
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.9e-09
-  solubility_mg_L: 1000000
+  solubility_mg_L: 1000000.0
   source_type: line
   source_release_type: continuous
   source_easting_offset_m: 75.0
@@ -321,11 +321,11 @@ canonical_mapping:
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
-  flow_config_sha256: d093c031ed759c2d1c9440cedbd7224a4a061a84d2d6f2a485011af70f9e672b
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: c99b603784a911e9fb1eefe9bf33895410ff94f60a07dd4903f28bfc9611f4aa
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
-  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 8
   concession: b010207
   flow_scenario_id: 8
@@ -349,7 +349,7 @@ canonical_mapping:
   transverse_dispersivity_m: 1.0
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 8.0e-10
-  solubility_mg_L: 35
+  solubility_mg_L: 35.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: -53.0
@@ -361,11 +361,176 @@ canonical_mapping:
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
-  flow_config_sha256: d093c031ed759c2d1c9440cedbd7224a4a061a84d2d6f2a485011af70f9e672b
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: c99b603784a911e9fb1eefe9bf33895410ff94f60a07dd4903f28bfc9611f4aa
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
-  doublet_table_sha256: d5296ece7554f6cf635a8204b29ef487ff93270e036083385fbb3db922ceba7b
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
+- group: 9
+  concession: b010204
+  flow_scenario_id: 9
+  contaminant_id: 9
+  flow_scenario_type: chd_head_change
+  flow_scenario_params:
+    chd_head_change_m: 1
+  contaminant: MTBE (methyl tert-butyl ether)
+  cas_number: 1634-04-4
+  threshold_mg_L: 0.015
+  threshold_basis: taste_and_odour
+  conservative: false
+  sorption: true
+  distribution_coefficient_mL_g: 0.03
+  bulk_density_kg_m3: 1800.0
+  decay: true
+  first_order_decay_constant_1_per_day: 0.00198042
+  half_life_days: 350.0
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 1.9e-09
+  solubility_mg_L: 42000.0
+  source_type: point
+  source_release_type: pulse
+  source_easting_offset_m: 179.7
+  source_northing_offset_m: -187.9
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 7
+  source_value: 4.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
+- group: 10
+  concession: b010220
+  flow_scenario_id: 10
+  contaminant_id: 10
+  flow_scenario_type: river_stage
+  flow_scenario_params:
+    stage_change_m: -1.5
+    stage_zone: 1
+    target: Limmat & Sihl
+  contaminant: Carbamazepine
+  cas_number: 298-46-4
+  threshold_mg_L: 0.0001
+  threshold_basis: gwv_organic_trace
+  conservative: false
+  sorption: true
+  distribution_coefficient_mL_g: 0.1
+  bulk_density_kg_m3: 1800.0
+  decay: false
+  first_order_decay_constant_1_per_day: 0.0
+  half_life_days: null
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 1.9e-09
+  solubility_mg_L: 18.0
+  source_type: point
+  source_release_type: pulse
+  source_easting_offset_m: 92.3
+  source_northing_offset_m: -118.2
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 90
+  source_value: 0.002
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
+- group: 11
+  concession: b010226
+  flow_scenario_id: 11
+  contaminant_id: 11
+  flow_scenario_type: river_width_and_stage
+  flow_scenario_params:
+    stage_change_factor: 0.5
+    stage_zone: 1
+    target: Limmat & Sihl
+    width_factor: 0.7
+  contaminant: Boron (as B)
+  cas_number: 7440-42-8
+  threshold_mg_L: 1.0
+  threshold_basis: drinking_water_MCL
+  conservative: true
+  sorption: false
+  distribution_coefficient_mL_g: 0.0
+  bulk_density_kg_m3: 1800.0
+  decay: false
+  first_order_decay_constant_1_per_day: 0.0
+  half_life_days: null
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 1.9e-09
+  solubility_mg_L: 55000.0
+  source_type: point
+  source_release_type: continuous
+  source_easting_offset_m: 52.8
+  source_northing_offset_m: -45.9
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 3650
+  source_value: 15.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
+- group: 12
+  concession: b010222
+  flow_scenario_id: 12
+  contaminant_id: 12
+  flow_scenario_type: recharge_scale
+  flow_scenario_params:
+    recharge_factor: 0.6
+  contaminant: Nickel (Ni2+)
+  cas_number: 7440-02-0
+  threshold_mg_L: 0.02
+  threshold_basis: drinking_water_MCL
+  conservative: false
+  sorption: true
+  distribution_coefficient_mL_g: 1.0
+  bulk_density_kg_m3: 1800.0
+  decay: false
+  first_order_decay_constant_1_per_day: 0.0
+  half_life_days: null
+  porosity: 0.2
+  longitudinal_dispersivity_m: 10.0
+  transverse_dispersivity_m: 1.0
+  vertical_dispersivity_m: 0.1
+  molecular_diffusion_m2_s: 1.9e-09
+  solubility_mg_L: 1000.0
+  source_type: point
+  source_release_type: pulse
+  source_easting_offset_m: 88.2
+  source_northing_offset_m: -108.7
+  source_layer: 1
+  source_start_time_days: 0
+  source_duration_days: 1
+  source_value: 8.0
+  source_value_field: concentration_mg_L
+  source_value_unit: mg_L
+  flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
+  flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
+  transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
+  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
+  doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 repairing_ledger:
 - group: 0
   contaminant: Trichloroethylene (TCE)
@@ -434,6 +599,38 @@ repairing_ledger:
   changed: true
   note: contaminant 'Atrazine' re-homed from transport concession b010199 onto canonical
     flow doublet b010207 (pedagogic re-homing, not physical inheritance).
+- group: 9
+  contaminant: MTBE (methyl tert-butyl ether)
+  original_transport_concession: b010204
+  canonical_flow_concession: b010204
+  changed: false
+  note: contaminant 'MTBE (methyl tert-butyl ether)' assigned directly to canonical
+    flow doublet b010204; this case post-dates the M1.3a reconcile and was never re-homed,
+    so there is no prior transport concession.
+- group: 10
+  contaminant: Carbamazepine
+  original_transport_concession: b010220
+  canonical_flow_concession: b010220
+  changed: false
+  note: contaminant 'Carbamazepine' assigned directly to canonical flow doublet b010220;
+    this case post-dates the M1.3a reconcile and was never re-homed, so there is no
+    prior transport concession.
+- group: 11
+  contaminant: Boron (as B)
+  original_transport_concession: b010226
+  canonical_flow_concession: b010226
+  changed: false
+  note: contaminant 'Boron (as B)' assigned directly to canonical flow doublet b010226;
+    this case post-dates the M1.3a reconcile and was never re-homed, so there is no
+    prior transport concession.
+- group: 12
+  contaminant: Nickel (Ni2+)
+  original_transport_concession: b010222
+  canonical_flow_concession: b010222
+  changed: false
+  note: contaminant 'Nickel (Ni2+)' assigned directly to canonical flow doublet b010222;
+    this case post-dates the M1.3a reconcile and was never re-homed, so there is no
+    prior transport concession.
 threshold_sanity:
 - group: 0
   contaminant: Trichloroethylene (TCE)
@@ -522,3 +719,39 @@ threshold_sanity:
   note: threshold 0.1 mg/L is OUTSIDE reference band [0.0001, 0.003] mg/L (drinking_water_standard_EU).
     Atrazine EU single-pesticide limit 0.1 ug/L = 0.0001 mg/L. 0.1 mg/L is ~1000x
     above -- likely too high.
+- group: 9
+  contaminant: MTBE (methyl tert-butyl ether)
+  cas_number: 1634-04-4
+  threshold_mg_L: 0.015
+  ref_lo_mg_L: 0.005
+  ref_hi_mg_L: 0.2
+  basis: taste_and_odour
+  flagged: false
+  note: within reference band [0.005, 0.2] mg/L (taste_and_odour).
+- group: 10
+  contaminant: Carbamazepine
+  cas_number: 298-46-4
+  threshold_mg_L: 0.0001
+  ref_lo_mg_L: 5.0e-05
+  ref_hi_mg_L: 0.001
+  basis: gwv_organic_trace
+  flagged: false
+  note: within reference band [5e-05, 0.001] mg/L (gwv_organic_trace).
+- group: 11
+  contaminant: Boron (as B)
+  cas_number: 7440-42-8
+  threshold_mg_L: 1.0
+  ref_lo_mg_L: 0.3
+  ref_hi_mg_L: 2.4
+  basis: drinking_water_MCL
+  flagged: false
+  note: within reference band [0.3, 2.4] mg/L (drinking_water_MCL).
+- group: 12
+  contaminant: Nickel (Ni2+)
+  cas_number: 7440-02-0
+  threshold_mg_L: 0.02
+  ref_lo_mg_L: 0.005
+  ref_hi_mg_L: 0.07
+  basis: drinking_water_MCL
+  flagged: false
+  note: within reference band [0.005, 0.07] mg/L (drinking_water_MCL).

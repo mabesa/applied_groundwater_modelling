@@ -111,6 +111,31 @@ scenarios:
       label: New exploration data shows that aquifer transmissivity is 20% lower than previously thought
       type: aquifer_transmissivity
       transmissivity_factor: 0.8
+    - id: 9
+      concession: 204
+      label: A rising regional outflow boundary lifts heads by 1 m
+      type: chd_head_change
+      chd_head_change_m: 1
+    - id: 10
+      concession: 220
+      label: The weir is removed and average water levels in zone 1 fall by 1.5 m
+      type: river_stage
+      target: Limmat & Sihl
+      stage_change_m: -1.5
+      stage_zone: 1
+    - id: 11
+      concession: 226
+      label: Channelisation narrows the rivers and deepens them in zone 1
+      type: river_width_and_stage
+      target: Limmat & Sihl
+      width_factor: 0.7
+      stage_change_factor: 0.5
+      stage_zone: 1
+    - id: 12
+      concession: 222
+      label: A severe multi-year drought decreases recharge -40%
+      type: recharge_scale
+      recharge_factor: 0.6
 
 implementation_plan: >
   TODO: Bullet the concrete steps you will perform (baseline load, add wells, run

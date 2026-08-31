@@ -34,14 +34,26 @@ GOLDEN_DIR = REPO / "_SUPPORT" / "src" / "golden"
 
 # --- 1. the mechanism covers all nine, not just group 0 ---------------------
 def test_default_group_set_is_all_nine():
-    assert tuple(b.ALL_GROUPS) == tuple(range(9))
-    assert len(b.ALL_GROUPS) == 9
+    """A16's evidence set is the NINE frozen meshes -- not the roster.
+
+    Was asserted against `b.ALL_GROUPS`, which is the ROSTER and grew to 13 on
+    2026-08-31. The frozen-golden set did NOT grow with it: groups 9-12 carry
+    deferrals until their authoritative Linux goldens exist.
+    """
+    assert nine.FROZEN_GOLDEN_GROUPS == tuple(range(9))
+    assert len(nine.FROZEN_GOLDEN_GROUPS) == 9
+    # the roster is a superset -- every frozen group is still a real group
+    assert set(nine.FROZEN_GOLDEN_GROUPS) <= set(b.ALL_GROUPS)
 
 
 def test_every_group_has_a_committed_golden():
     """A16 names NINE frozen meshes; the checker must have something to check."""
-    missing = [g for g in b.ALL_GROUPS if b._frozen_golden_manifest(g) is None]
+    missing = [g for g in nine.FROZEN_GOLDEN_GROUPS if b._frozen_golden_manifest(g) is None]
     assert not missing, f"groups without a committed golden manifest: {missing}"
+    # every group OUTSIDE the frozen set must be anchored by a DEFERRAL instead,
+    # so a group can never be silently unanchored
+    for g in set(b.ALL_GROUPS) - set(nine.FROZEN_GOLDEN_GROUPS):
+        assert b._load_deferral(g) is not None, f"group {g}: neither golden nor deferral"
 
 
 # --- 2. NEGATIVE CONTROLS -- the check must be able to fail ------------------

@@ -163,7 +163,7 @@ def _frozen_golden_manifest(group) -> Any:
 
 
 # --- M2a.5: Linux-golden-or-deferral anchoring (review #3, Codex #5) --------
-ALL_GROUPS = tuple(range(9))
+ALL_GROUPS = tuple(range(13))
 DEFERRAL_KEYS = (
     "group", "reason", "platform", "mf6_version", "date",
     "radius_walked", "authoritative_platform", "status",

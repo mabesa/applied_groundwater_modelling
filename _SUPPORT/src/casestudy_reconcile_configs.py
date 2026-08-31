@@ -93,7 +93,7 @@ DEFAULT_DOUBLET_TABLE = _SCENARIO_DIR / "doublet_table.csv"
 DEFAULT_CANONICAL_MAPPING = _SCENARIO_DIR / "canonical_mapping.csv"
 DEFAULT_LEDGER_CSV = _SCENARIO_DIR / "coherence_ledger.csv"
 
-N_GROUPS = 9
+N_GROUPS = 13
 
 # LV95 / EPSG:2056 numeric envelope (metres) -- a coordinate outside this band
 # is not LV95 (guards against a mixed-CRS write). Zurich/Limmat sits ~2.68e6 /
