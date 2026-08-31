@@ -76,7 +76,14 @@ LOCKED_PARAMS: Dict[str, Any] = {
 _GWF_NEWTON = "NEWTON"
 _GWF_IMS = dict(complexity="COMPLEX", outer_maximum=200, inner_maximum=100,
                 outer_dvclose=1e-4, inner_dvclose=1e-5, linear_acceleration="BICGSTAB")
-_GWT_IMS = dict(complexity="MODERATE", linear_acceleration="BICGSTAB",
+# COMPLEX, not MODERATE: C1 A18 (lecturer authorisation 2026-08-31). This is the same
+# preconditioner change A17 made in `transport_srcpulse_demo`, applied to the STUDENT
+# case-study track, which A17 did not reach. Under MODERATE the group-4 scenario
+# (chromium, R ~ 19) fails to converge in the PILOT solve -- deterministically, in 3 s --
+# so that group cannot build its model at all. Tolerances are UNCHANGED at 1e-6/1e-7;
+# only the linear preconditioner differs. Measured output-neutral on group 0:
+# peak_mgL moves 8.5e-9 relative, t_peak not at all. Costs ~24% wall on a small case.
+_GWT_IMS = dict(complexity="COMPLEX", linear_acceleration="BICGSTAB",
                 outer_dvclose=1e-6, inner_dvclose=1e-7)
 
 
