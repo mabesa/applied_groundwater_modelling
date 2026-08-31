@@ -209,8 +209,16 @@ transport_scenarios:
           # extraction well: this places your spill upgradient of it. Whether the
           # plume is then CAPTURED and whether it EXCEEDS the threshold is the
           # question you answer -- it is deliberately not given to you here.
-          easting: -60.0             # m, -E offset from extraction well
-          northing: -169.0           # m, -N offset from extraction well
+          # MOVED 2026-08-31. The old offset (-60, -169) put the spill 10.5 m
+          # from the model boundary, so every refinement circle (radius 56-84 m)
+          # straddled the edge and Triangle failed at ALL radii -- group 1 could
+          # not build its model at all. The wells are the real licensed AWEL ones
+          # and have NOT moved; only this hypothetical spill has. The new bearing
+          # is also 1 deg off the local upgradient direction (329 deg), where the
+          # old one was 79 deg off -- so this is a better placement hydraulically
+          # as well as geometrically. Same distance from the well: 179.3 m.
+          easting: 155.3             # m, E offset from extraction well
+          northing: -89.7            # m, -N offset from extraction well
           layer: 1
         start_time_days: 0
         # TODO: Adjust duration of source activation based on model runs to 
