@@ -178,6 +178,11 @@ REFERENCE_BOUNDS: Dict[str, Tuple[float, float, str, str]] = {
 # name spelling. A build whose content drifts from this fails acceptance.
 # ---------------------------------------------------------------------------
 GOLDEN_MAPPING: Dict[int, Tuple[str, str, float, bool, bool]] = {
+    # groups 9-12, added 2026-08-31: (concession, CAS, threshold_mg_L, sorption, decay)
+    9:  ("b010204", "1634-04-4", 0.015,  True,  True),   # MTBE
+    10: ("b010220", "298-46-4",  0.0001, True,  False),  # Carbamazepine
+    11: ("b010226", "7440-42-8", 1.0,    False, False),  # Boron -- conservative
+    12: ("b010222", "7440-02-0", 0.02,   True,  False),  # Nickel
     0: ("b010210", "79-01-6",    0.005,  False, False),   # TCE, conservative
     1: ("b010219", "14797-55-8", 25.0,   False, False),   # Nitrate, conservative
     2: ("b010201", "71-43-2",    0.005,  False, True),    # Benzene, decay

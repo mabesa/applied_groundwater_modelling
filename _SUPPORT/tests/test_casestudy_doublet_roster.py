@@ -32,7 +32,10 @@ import casestudy_doublet_roster as cdr  # noqa: E402
 EXPECTED_CONCESSIONS = {
     "b010210", "b010219", "b010201", "b010236", "b010120",
     "b010223", "b010227", "b010213", "b010207",
+    # groups 9-12, added 2026-08-31
+    "b010204", "b010220", "b010226", "b010222",
 }
+N_EXPECTED = len(EXPECTED_CONCESSIONS)
 EXCLUDED_CONCESSION = "b010190"  # gallery-only well the G4 swap replaces
 # b010005 was an earlier G4 candidate, dropped (river/spread gate) in favour of
 # b010120; it must no longer appear in the roster.
@@ -52,7 +55,8 @@ def table() -> pd.DataFrame:
 # roster shape / identity
 # ---------------------------------------------------------------------------
 def test_nine_rows(table):
-    assert len(table) == 9
+    # named for the original roster; the count now follows N_EXPECTED
+    assert len(table) == N_EXPECTED
 
 
 def test_b010120_present_b010190_and_b010005_absent(table):
@@ -407,14 +411,14 @@ def test_deliverable_files_exist_and_parse():
         "from _SUPPORT/src to (re)generate it"
     )
     df = pd.read_csv(cdr.DEFAULT_OUT_CSV)
-    assert len(df) == 9
+    assert len(df) == N_EXPECTED
     assert set(df["concession"]) == EXPECTED_CONCESSIONS
 
     if cdr.DEFAULT_OUT_YAML.exists():
         import yaml
         with open(cdr.DEFAULT_OUT_YAML) as fh:
             data = yaml.safe_load(fh)
-        assert len(data["doublet_table"]) == 9
+        assert len(data["doublet_table"]) == N_EXPECTED
 
 
 # ---------------------------------------------------------------------------
@@ -461,7 +465,7 @@ def test_flow_model_load_failure_degrades_to_boundary_river_only(monkeypatch):
 def test_strict_default_builds_clean_roster(table):
     """The clean roster must build under strict=True without raising (the
     module-scope `table` fixture already uses the default strict=True)."""
-    assert len(table) == 9
+    assert len(table) == N_EXPECTED
     assert (table["flags"] == "").all()
 
 
@@ -506,7 +510,7 @@ def test_non_strict_records_instead_of_raising(monkeypatch):
 
     monkeypatch.setattr(cdr, "_build_cell_validity_context", _fake_ctx)
     df = cdr.build_doublet_table(write=False, strict=False)
-    assert len(df) == 9
+    assert len(df) == N_EXPECTED
     assert (df["flags"] != "").all()  # every row carries a river/gate flag
 
 

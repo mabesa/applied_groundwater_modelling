@@ -740,6 +740,17 @@ def freeze_group_flow_artifact(
 # a machine-readable per-group JSON report.
 # =============================================================================
 
+#: 🔴 The domain THIS script accepts -- deliberately NOT cv.CANONICAL_GROUPS.
+#:
+#: This script reads FROZEN mesh artifacts, and only groups 0-8 have them.
+#: When the roster grew to 13 on 2026-08-31, groups 9-12 were added with
+#: DEFERRALS (their authoritative Linux goldens are pending), so following
+#: CANONICAL_GROUPS would make the CLI accept ids whose artifacts do not exist
+#: and report on nothing. Widen this only when those goldens are frozen --
+#: the same reasoning pins check_nine_mesh_goldens at nine.
+FROZEN_MESH_GROUPS = tuple(range(9))
+
+
 def _parse_groups(spec: str) -> List[int]:
     """Parse ``--groups`` into a sorted, de-duplicated list of group ids,
     restricted to the canonical group domain.
@@ -750,10 +761,10 @@ def _parse_groups(spec: str) -> List[int]:
     instructor validation harness CLI uses, so the two tools can never drift
     on what a valid ``--groups`` spec means. On top of that shared parser,
     every resulting id is additionally checked against
-    ``case_validation.CANONICAL_GROUPS`` (0-8) -- this script's frozen
-    artifacts only ever cover that closed set of case-study groups, so an
-    out-of-domain id (e.g. ``"9"``) is rejected here too, not just an
-    oversized range.
+    ``FROZEN_MESH_GROUPS`` (0-8) -- NOT ``case_validation.CANONICAL_GROUPS``,
+    which grew to 13 in 2026-08. This script's frozen artifacts only ever cover
+    that closed set of case-study groups, so an out-of-domain id (e.g. ``"9"``)
+    is rejected here too, not just an oversized range.
 
     Raises
     ------
@@ -768,11 +779,11 @@ def _parse_groups(spec: str) -> List[int]:
     if not groups:
         raise ValueError(f"--groups produced no group ids from {spec!r}")
 
-    out_of_domain = sorted(g for g in groups if g not in cv.CANONICAL_GROUPS)
+    out_of_domain = sorted(g for g in groups if g not in FROZEN_MESH_GROUPS)
     if out_of_domain:
         raise ValueError(
-            f"--groups {spec!r} selected group id(s) outside the canonical "
-            f"domain {cv.CANONICAL_GROUPS}: {out_of_domain}"
+            f"--groups {spec!r} selected group id(s) outside this script's "
+            f"frozen-mesh domain {FROZEN_MESH_GROUPS}: {out_of_domain}"
         )
     return groups
 

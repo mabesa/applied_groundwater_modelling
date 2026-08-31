@@ -42,6 +42,8 @@ CANONICAL = crc.DEFAULT_CANONICAL_MAPPING
 EXPECTED_CONCESSIONS = [
     "b010210", "b010219", "b010201", "b010236", "b010120",
     "b010223", "b010227", "b010213", "b010207",
+    # groups 9-12, added 2026-08-31
+    "b010204", "b010220", "b010226", "b010222",
 ]
 
 
@@ -483,7 +485,13 @@ def test_transport_header_regenerated_current():
 
 def test_inline_spill_comments_neutralised():
     """The OLD-doublet / OLD-Q spill-outcome claims must be replaced with
-    neutral, student-facing wording -- across all 9 source.location blocks.
+    neutral, student-facing wording -- across ALL source.location blocks.
+
+    🔴 This test earns its keep. Re-running `reconcile_configs` REGRESSES these
+    comments: it rewrites every source.location block with the M1.3a bookkeeping
+    wording, which re-introduces "pending M4", "upgradient_unverified" and
+    "coherence_ledger" into a file students copy. That happened on 2026-08-31
+    while regenerating for groups 9-12 and this test caught it.
 
     "Neutral" means it states what the offset IS without pre-announcing the
     capture / threshold outcome (that is the question the student answers), and

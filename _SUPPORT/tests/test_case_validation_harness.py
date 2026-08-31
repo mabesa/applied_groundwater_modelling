@@ -333,8 +333,12 @@ class TestFalseGreenClosed:
 # =============================================================================
 
 class TestGroupDomain:
-    def test_canonical_groups_is_0_through_8(self):
-        assert cv.CANONICAL_GROUPS == tuple(range(9))
+    def test_canonical_groups_is_contiguous_from_zero(self):
+        # Was `== tuple(range(9))`. The roster grew to 13 on 2026-08-31; what the
+        # harness actually needs is that the domain is contiguous and starts at 0,
+        # not that it has a particular length.
+        assert cv.CANONICAL_GROUPS == tuple(range(len(cv.CANONICAL_GROUPS)))
+        assert len(cv.CANONICAL_GROUPS) == 13
 
     def test_cli_rejects_out_of_domain_group_id(self):
         import importlib
