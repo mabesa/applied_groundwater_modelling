@@ -43,11 +43,16 @@ floors.
 `T0_5…` §1.1 ranks by `spill_to_extraction_distance × simulation_horizon_days`, giving
 `b010227` **274,126 — 2.75× the runner-up**. Measured, `b010227` is third.
 
-The proxy over-weights the **horizon**. `b010236` has the *shorter* horizon (730 d against
-1095 d) but needs **3050 steps against 2356**, because step demand is set by
-`total_time × max(v/ds)` — and its velocity field is faster. Corridor length and horizon are
-both real cost factors, but they are not the only ones, and the margin the proxy reported
-(2.75×) was **not** wide enough to survive the one it omitted.
+**What the data show, stated no more strongly than that:** the proxy's two inputs do not
+capture step demand. `b010236` has the *shorter* horizon (730 d against 1095 d) and still
+needs **3050 steps against 2356**. Since `nstp` is sized as `total_time × max(v/ds)`, a
+shorter horizon producing more steps means the remaining terms more than compensate — but
+this pilot measures `ncpl` and `nstp`, not `v` or `ds`, so **it does not isolate which**.
+
+⚠️ An earlier draft of this section said the proxy *"over-weights the horizon"* and blamed a
+faster velocity field. **That is not demonstrated** — it is a plausible mechanism, not a
+measurement, and this file should not assert it. What IS demonstrated: the proxy's ranking
+is wrong, and its reported 2.75× margin did not survive contact with the measurement.
 
 🔴 **This is the second time a static proxy has mis-ranked this roster.** v1 of `T0_5…` ranked
 by well separation and named `b010210` — which is the **eighth** cheapest of nine here. §1.1
@@ -70,8 +75,20 @@ exactly why §1.2 mandates the pilot rather than trusting the ranking.
 
 `T0_5…` §1.1's frozen rule is **not** edited by this file. The rule selected `b010227`
 correctly *by its own terms*; what the pilot establishes is that the rule's output is not the
-most expensive identity. Both readings — re-name the probe, or amend the selection rule so it
-accounts for step demand — are the lecturer's, not mine.
+most expensive identity.
+
+**Re-name the probe; do not rewrite the rule.** §1.2 exists precisely to correct the proxy
+after measurement, and rewriting a signed selection rule *after seeing the results it got
+wrong* is the weaker move — it fits the rule to this roster rather than leaving the pilot to
+do its job on the next one.
+
+⚠️ **And say plainly what this changes: nothing, materially.** All nine identities pass
+cleanly, so the re-naming is **contractual bookkeeping**, not a feasibility correction. It
+matters because §1.2 forbids a silent substitution, not because the answer moves.
+
+Note also that `b010236` wins on **both** statistics — highest `W` (14.5 M) *and* longest
+wall time (231.8 s) — so the W-versus-wall disagreement visible at ranks 2 and 3 does not
+touch the choice of probe.
 
 ---
 
