@@ -1,0 +1,29 @@
+# Pre-reconcile transport concession per group -- the INPUT that makes
+# repairing_ledger.csv reproducible.
+#
+# Provenance: PROJECT/workspace/template/case_config_transport.yaml at commit
+# d4e30e0^ -- the state immediately BEFORE 'M1.3a: reconcile both configs to the
+# canonical mapping (first config-mutating step)'. Verified 2026-08-31 to match
+# all nine `original_transport_concession` values in the committed ledger.
+#
+# WHY THIS FILE EXISTS. The ledger records a ONE-TIME re-homing: each contaminant
+# scenario was moved off its original transport concession onto the canonical flow
+# doublet. The generator used to read the ORIGINAL concession from the LIVE config,
+# which is now the reconciled one -- so re-running it produced nine changed=False
+# rows and overwrote the original ids. The README says the ledger is generated; the
+# tests say it is a frozen pre-reconcile snapshot. Both were true, and following the
+# README destroyed history. Reading the pre-image from here makes it genuinely
+# generated, and idempotent.
+#
+# A group ABSENT from this file was never re-homed (a case added after the
+# reconcile): it is recorded with changed=False and a note saying so.
+group,original_transport_concession
+0,b010205
+1,b010196
+2,b010185
+3,b010211
+4,b010223
+5,b010200
+6,b010224
+7,b010230
+8,b010199

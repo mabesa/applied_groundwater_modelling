@@ -81,6 +81,28 @@ DEFAULT_DOUBLET_TABLE = _SCENARIO_DIR / "doublet_table.csv"
 DEFAULT_OUT_CSV = _SCENARIO_DIR / "canonical_mapping.csv"
 DEFAULT_OUT_YAML = _SCENARIO_DIR / "canonical_mapping.yaml"
 DEFAULT_LEDGER_CSV = _SCENARIO_DIR / "repairing_ledger.csv"
+#: The pre-reconcile transport concession per group. The repairing_ledger records a
+#: ONE-TIME re-homing, so its "original" column CANNOT come from the live config --
+#: that config IS the reconciled state, and reading it made regeneration destroy the
+#: record (nine changed=False rows, original ids overwritten). Frozen input instead.
+DEFAULT_PRE_RECONCILE_CSV = _SCENARIO_DIR / "pre_reconcile_concessions.csv"
+
+
+def load_pre_reconcile_concessions(path: Optional[Path] = None) -> Dict[int, str]:
+    """group -> pre-reconcile transport concession, from the frozen pre-image.
+
+    A group absent from the file was never re-homed (added after the reconcile);
+    callers record it as unchanged.
+    """
+    import csv as _csv
+    p = Path(path) if path is not None else DEFAULT_PRE_RECONCILE_CSV
+    if not p.exists():
+        raise FileNotFoundError(
+            f"pre-image {p} is missing -- repairing_ledger.csv cannot be reproduced "
+            "without it; recover from d4e30e0^ (see the file's own header)")
+    with p.open(encoding="utf-8") as fh:
+        rdr = _csv.DictReader(ln for ln in fh if not ln.lstrip().startswith("#"))
+        return {int(r["group"]): str(r["original_transport_concession"]) for r in rdr}
 DEFAULT_SANITY_CSV = _SCENARIO_DIR / "threshold_sanity.csv"
 
 N_GROUPS = 9
@@ -386,6 +408,10 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
     if set(tr_opts) != set(range(N_GROUPS)):
         raise ValueError(f"transport scenario ids {sorted(tr_opts)} != {{0..8}}.")
 
+    # Frozen pre-image for the repairing_ledger's "original" column (see
+    # DEFAULT_PRE_RECONCILE_CSV). Loaded once, before the loop.
+    _pre_reconcile = load_pre_reconcile_concessions()
+
     rows: List[Dict[str, Any]] = []
     ledger_rows: List[Dict[str, Any]] = []
     sanity_rows: List[Dict[str, Any]] = []
@@ -455,11 +481,21 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
             source_value_unit = None
 
         # --- original transport concession (superseded) + ledger ---
-        original_transport_concession = str(tr_opt.get("concession"))
-        changed = bool(original_transport_concession != concession)
-        note = (f"contaminant '{contaminant}' re-homed from transport concession "
-                f"{original_transport_concession} onto canonical flow doublet {concession} "
-                "(pedagogic re-homing, not physical inheritance).")
+        # From the FROZEN pre-image, never from tr_opt: the live config is the
+        # RECONCILED state, so reading it here made regeneration erase the record.
+        original_transport_concession = _pre_reconcile.get(group)
+        if original_transport_concession is None:
+            # a case added after the reconcile -- it was never re-homed
+            original_transport_concession = concession
+            changed = False
+            note = (f"contaminant '{contaminant}' assigned directly to canonical flow "
+                    f"doublet {concession}; this case post-dates the M1.3a reconcile and "
+                    "was never re-homed, so there is no prior transport concession.")
+        else:
+            changed = bool(original_transport_concession != concession)
+            note = (f"contaminant '{contaminant}' re-homed from transport concession "
+                    f"{original_transport_concession} onto canonical flow doublet {concession} "
+                    "(pedagogic re-homing, not physical inheritance).")
         if group == 5:
             note += (" NOTE: canonical concession b010223 is ALSO the transport config's "
                      "id4 (Chromium) concession -- b010223 appears in both source lists; "
@@ -546,20 +582,23 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
     ledger = pd.DataFrame(ledger_rows, columns=ledger_columns)
     sanity = pd.DataFrame(sanity_rows, columns=sanity_columns)
 
-    # STATE-AWARE reconcile check (not broadly permissive): the config pair is
-    # valid in exactly TWO states, and the flow-G4 concession must AGREE with
-    # the re-homing ledger. Any third/mixed state fails.
-    #   * PRE-reconcile : flow[4] == b010190 AND every group changed (re-homed).
-    #   * POST-reconcile: flow[4] == b010120 AND no group changed (already canonical).
-    g4_flow = _flow_concession_str(flow_opts[4]["concession"])
-    n_changed = int(ledger["changed"].sum())
-    pre = (g4_flow == "b010190" and n_changed == N_GROUPS)
-    post = (g4_flow == "b010120" and n_changed == 0)
-    if not (pre or post):
-        raise ValueError(
-            f"config pair is in an unexpected reconcile state: flow[4]={g4_flow!r}, "
-            f"changed={n_changed}/{N_GROUPS}. Expected either PRE-reconcile "
-            "(flow[4]=b010190, all 9 changed) or POST-reconcile (flow[4]=b010120, 0 changed).")
+    # NOTE: the config-pair state check that used to sit here is GONE, and
+    # deliberately.
+    #
+    # It required the ledger's `changed` count to agree with the flow-G4
+    # concession -- pre => all changed, post => none changed. That coupling was
+    # half of the reproducibility bug: it held only while
+    # `original_transport_concession` was read from the LIVE transport config,
+    # which is what made regenerating after the reconcile erase the record.
+    # `changed` now comes from the frozen pre-image and states HISTORY, so
+    # "post-reconcile config WITH all nine changed" is the CORRECT state, not a
+    # mixed one. Asserting any relationship between the two would re-introduce
+    # the bug.
+    #
+    # What survives is the part that was doing real work: the flow-G4 concession
+    # must be b010190 or b010120, and that is already enforced upstream where
+    # `canonical_concessions` is validated. Row-wise consistency of `changed`
+    # is checked in _assert_acceptance.
 
     _assert_acceptance(mapping, ledger, sanity, doublet_set)
 
