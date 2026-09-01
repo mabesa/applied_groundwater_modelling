@@ -626,12 +626,12 @@ def _courant_nstp_corrected(v_cells: np.ndarray, size_cells: np.ndarray, mask: n
     """The `"exp_v1"` policy (brief Sections 1-3), four corrections over both
     legacy profiles:
 
-    1. The sliver floor is keyed off the FINEST INTENDED cell size --
-       ``min(level.cell_size for level in mesh_spec.levels)`` -- not a single
-       achieved ``refined_cell_size``. ``mesh_spec`` is REQUIRED here (unlike
-       the legacy profiles, which take a plain ``refined_cell_size`` float);
-       an empty/missing ``mesh_spec`` or a non-finite/nonpositive
-       ``cell_size`` on any level raises.
+    1. ⚠️ SUPERSEDED by correction 5 (2026-09-01): there is NO sliver floor.
+       This correction keyed the floor off the finest INTENDED cell size, which
+       is precisely what discarded genuine corridor cells at 20 m and coarser.
+       ``mesh_spec`` is now accepted but IGNORED (a non-finite/nonpositive
+       ``cell_size`` still raises if one is supplied, since that is a malformed
+       input either way).
     2. ``exclusions`` is accepted (not an error) but IGNORED: source and well
        cells are included in the floor-filtered selection that sizes `nstp`.
     3. The reported Courant number is the MEASURED MAXIMUM over every cell of
@@ -657,12 +657,13 @@ def _courant_nstp_corrected(v_cells: np.ndarray, size_cells: np.ndarray, mask: n
     re-hardcoded, so a future edit to `CourantSpec`'s own defaults cannot
     silently diverge from this profile's.
     """
-    if mesh_spec is None or not getattr(mesh_spec, "levels", ()):
-        raise ValueError(
-            "courant_nstp profile 'exp_v1' requires mesh_spec=MeshSpec(...) "
-            "with at least one MeshLevel -- unlike legacy_base/legacy_srcpulse, "
-            f"which take a single refined_cell_size directly; got mesh_spec={mesh_spec!r}")
-    level_sizes = [float(level.cell_size) for level in mesh_spec.levels]
+    # 🔴 `mesh_spec` is ACCEPTED BUT IGNORED since correction 5 (2026-09-01).
+    # Its ONLY use was `min(level.cell_size)` -> the sliver floor, and the floor
+    # is gone. Requiring and validating an input that cannot affect the result
+    # is misleading: it implies the answer depends on it. Kept in the signature
+    # so every caller keeps working; passing None is now fine.
+    level_sizes = [float(level.cell_size)
+                   for level in getattr(mesh_spec, "levels", ()) or ()]
     if any((not math.isfinite(s)) or s <= 0.0 for s in level_sizes):
         raise ValueError(
             "courant_nstp profile 'exp_v1': every mesh_spec.levels[*].cell_size "
@@ -701,11 +702,12 @@ def _courant_nstp_corrected(v_cells: np.ndarray, size_cells: np.ndarray, mask: n
     # Sizing on the whole corridor reproduces S4's recorded nstp exactly
     # (86 / 85 / 122 at 50 / 20 / 10 m).
     #
-    # What this trades: a degenerate sliver can now bind the timestep. It is NOT
-    # prevented -- `nstp_cap` only makes the failure LOUD (correction 4 raises,
-    # naming the nstp that would have been needed) rather than silent. A visible
-    # failure is better than silently under-resolving every coarse mesh; that is
-    # the whole argument, not a claim of equivalent protection.
+    # What this trades: a degenerate sliver can now bind the timestep. That is
+    # NOT prevented. The outcome is either a run that is CORRECTLY RESOLVED but
+    # expensive -- which is not a failure, just a cost -- or, past `nstp_cap`, a
+    # raised error naming the nstp that would have been needed (correction 4).
+    # Neither is silent. That is the whole argument: no silent under-resolution,
+    # NOT a claim that the cap protects against slivers.
     floor = 0.0
     sel = corridor                                  # exclusions ignored by design (correction 2)
     # (The empty-selection raise that stood here is REMOVED with correction 5.

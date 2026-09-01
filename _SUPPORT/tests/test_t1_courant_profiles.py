@@ -206,9 +206,14 @@ def test_exp_v1_is_a_known_profile_not_an_unknown_one():
     policy, NOT the unknown-profile branch. Asserted on the error identity, so
     it stays meaningful whatever the corrected policy later requires.
     """
+    # 🔴 The trigger CHANGED 2026-09-01 (correction 5): a missing `mesh_spec` no
+    # longer raises, because exp_v1 no longer uses it. The test's own intent --
+    # "asserted on the error identity, so it stays meaningful whatever the
+    # corrected policy later requires" -- is preserved by using a condition
+    # exp_v1 DOES still reject: an all-zero velocity field.
     v, size, mask = _fields(4)
     with pytest.raises(ValueError) as excinfo:
-        tsd._courant_nstp_canonical(v, size, mask, 365.0, nstp_cap=1000,
+        tsd._courant_nstp_canonical(np.zeros_like(v), size, mask, 365.0, nstp_cap=1000,
                                     refined_cell_size=REFINED_CELL_SIZE, profile="exp_v1")
     assert "unknown courant_nstp profile" not in str(excinfo.value)
     assert "exp_v1" in str(excinfo.value)

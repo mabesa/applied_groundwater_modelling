@@ -462,17 +462,29 @@ def test_exp_v1_raises_on_nonpositive_critical():
                                     profile="exp_v1")
 
 
-def test_exp_v1_raises_on_invalid_mesh_spec():
+def test_exp_v1_accepts_a_missing_mesh_spec_but_still_rejects_a_malformed_one():
+    """🔴 REWRITTEN 2026-09-01 (correction 5).
+
+    `mesh_spec` fed exactly one thing: the sliver floor. The floor is gone, so
+    REQUIRING `mesh_spec` would imply the answer depends on an input that cannot
+    affect it. Missing and empty are now accepted; a malformed `cell_size` still
+    raises, because that is a broken input either way.
+    """
     v, size, mask = _fields(4)
 
-    with pytest.raises(ValueError, match="mesh_spec"):
-        tsd._courant_nstp_canonical(v, size, mask.copy(), 100.0, nstp_cap=2000,
-                                    refined_cell_size=REFINED_CELL_SIZE, profile="exp_v1")
+    n_none, _, _, d_none = tsd._courant_nstp_canonical(
+        v, size, mask.copy(), 100.0, nstp_cap=2000,
+        refined_cell_size=REFINED_CELL_SIZE, profile="exp_v1")
+    n_empty, _, _, _ = tsd._courant_nstp_canonical(
+        v, size, mask.copy(), 100.0, nstp_cap=2000,
+        refined_cell_size=REFINED_CELL_SIZE, mesh_spec=MeshSpec(levels=()),
+        profile="exp_v1")
+    assert n_none == n_empty and d_none["floor"] == 0.0
 
-    empty_levels = MeshSpec(levels=())
-    with pytest.raises(ValueError, match="mesh_spec"):
+    bad = MeshSpec(levels=(MeshLevel(cell_size=float("nan")),))
+    with pytest.raises(ValueError, match="must be finite"):
         tsd._courant_nstp_canonical(v, size, mask.copy(), 100.0, nstp_cap=2000,
-                                    refined_cell_size=REFINED_CELL_SIZE, mesh_spec=empty_levels,
+                                    refined_cell_size=REFINED_CELL_SIZE, mesh_spec=bad,
                                     profile="exp_v1")
 
     for bad_cell_size in (0.0, -5.0, float("nan"), float("inf")):
