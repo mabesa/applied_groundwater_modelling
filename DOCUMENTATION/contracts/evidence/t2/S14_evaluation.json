@@ -1,0 +1,281 @@
+{
+ "evaluated": [
+  {
+   "id": "46797c72d3c5-a",
+   "metric": "peak_mgL",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "PROJECT/transport/04t_model_implementation.ipynb"
+  },
+  {
+   "id": "46797c72d3c5-b",
+   "metric": "t_peak",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "PROJECT/transport/04t_model_implementation.ipynb"
+  },
+  {
+   "id": "80d99a547e00",
+   "metric": "peak_mgL",
+   "claim_type": "threshold-decision",
+   "n_runs": 12,
+   "missing_identities": [],
+   "state": "decision_supported_magnitude_sensitive",
+   "reason": "decision_stable_metric_over_tolerance",
+   "source_path": "PROJECT/transport/04t_model_implementation.ipynb"
+  },
+  {
+   "id": "839c21e66350-a",
+   "metric": "t_peak",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "PROJECT/transport/05t_calibration.ipynb"
+  },
+  {
+   "id": "3fbed8ea5f54-a",
+   "metric": "peak_mgL",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "PROJECT/transport/08t_model_application.ipynb"
+  },
+  {
+   "id": "3fbed8ea5f54-b",
+   "metric": "t_peak",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "PROJECT/transport/08t_model_application.ipynb"
+  },
+  {
+   "id": "3fbed8ea5f54-c",
+   "metric": "peak_mgL",
+   "claim_type": "threshold-decision",
+   "n_runs": 12,
+   "missing_identities": [],
+   "state": "decision_supported_magnitude_sensitive",
+   "reason": "decision_stable_metric_over_tolerance",
+   "source_path": "PROJECT/transport/08t_model_application.ipynb"
+  },
+  {
+   "id": "ae428ccdc171",
+   "metric": "peak_mgL",
+   "claim_type": "threshold-decision",
+   "n_runs": 12,
+   "missing_identities": [],
+   "state": "decision_supported_magnitude_sensitive",
+   "reason": "decision_stable_metric_over_tolerance",
+   "source_path": "PROJECT/transport/08t_model_application.ipynb"
+  },
+  {
+   "id": "2b4bf3863381-a",
+   "metric": "peak_mgL",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "PROJECT/transport/08t_model_application.ipynb"
+  },
+  {
+   "id": "2b4bf3863381-b",
+   "metric": "t_peak",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "PROJECT/transport/08t_model_application.ipynb"
+  },
+  {
+   "id": "2b4bf3863381-c",
+   "metric": "peak_mgL",
+   "claim_type": "threshold-decision",
+   "n_runs": 12,
+   "missing_identities": [],
+   "state": "decision_supported_magnitude_sensitive",
+   "reason": "decision_stable_metric_over_tolerance",
+   "source_path": "PROJECT/transport/08t_model_application.ipynb"
+  },
+  {
+   "id": "8f746af1d653-a",
+   "metric": "peak_mgL",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "PROJECT/transport/08t_model_application.ipynb"
+  },
+  {
+   "id": "714229b12fbe-a",
+   "metric": "peak_mgL",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+  },
+  {
+   "id": "714229b12fbe-b",
+   "metric": "t_peak",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+  },
+  {
+   "id": "714229b12fbe-c",
+   "metric": "peak_mgL",
+   "claim_type": "threshold-decision",
+   "n_runs": 12,
+   "missing_identities": [],
+   "state": "decision_supported_magnitude_sensitive",
+   "reason": "decision_stable_metric_over_tolerance",
+   "source_path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+  },
+  {
+   "id": "be18c404f9dc",
+   "metric": "peak_mgL",
+   "claim_type": "threshold-decision",
+   "n_runs": 12,
+   "missing_identities": [],
+   "state": "decision_supported_magnitude_sensitive",
+   "reason": "decision_stable_metric_over_tolerance",
+   "source_path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+  },
+  {
+   "id": "ada2525365eb",
+   "metric": "peak_mgL",
+   "claim_type": "threshold-decision",
+   "n_runs": 12,
+   "missing_identities": [],
+   "state": "decision_supported_magnitude_sensitive",
+   "reason": "decision_stable_metric_over_tolerance",
+   "source_path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+  },
+  {
+   "id": "7bed406a174c-a",
+   "metric": "peak_mgL",
+   "claim_type": "threshold-decision",
+   "n_runs": 12,
+   "missing_identities": [],
+   "state": "decision_supported_magnitude_sensitive",
+   "reason": "decision_stable_metric_over_tolerance",
+   "source_path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+  },
+  {
+   "id": "423f1171e9ad",
+   "metric": "peak_mgL",
+   "claim_type": "threshold-decision",
+   "n_runs": 12,
+   "missing_identities": [],
+   "state": "decision_supported_magnitude_sensitive",
+   "reason": "decision_stable_metric_over_tolerance",
+   "source_path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+  },
+  {
+   "id": "d114fb7bc4cd-a",
+   "metric": "peak_mgL",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+  },
+  {
+   "id": "d114fb7bc4cd-b",
+   "metric": "t_peak",
+   "claim_type": "numeric",
+   "n_runs": 10,
+   "missing_identities": [],
+   "state": "grid_supported",
+   "reason": "converged_both_axes",
+   "source_path": "_SUPPORT/src/scripts/scripts_exercises/tasks_data.py"
+  }
+ ],
+ "not_evaluable": [
+  {
+   "id": "85c05b6b5be4-a",
+   "metric": "capture_halfwidth_m",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "3fbed8ea5f54-d",
+   "metric": "t_first_exceedance",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "3fbed8ea5f54-e",
+   "metric": "t_last_exceedance",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "e062f57f9551-a",
+   "metric": "t_first_exceedance",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "caa7f150d729-a",
+   "metric": "capture_halfwidth_m",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "2b4bf3863381-d",
+   "metric": "t_first_exceedance",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "2b4bf3863381-e",
+   "metric": "t_last_exceedance",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "1a1c1eb941f3-b",
+   "metric": "capture_halfwidth_m",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "2cab46ef88ab",
+   "metric": "t_first_exceedance",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "8c5bbc9b9fe2-a",
+   "metric": "t_first_exceedance",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "cd7ef2bee3c0",
+   "metric": "t_first_exceedance",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "05ef08be625b",
+   "metric": "t_first_exceedance",
+   "reason": "no producer emits this metric"
+  },
+  {
+   "id": "30c19473b919-a",
+   "metric": "capture_halfwidth_m",
+   "reason": "no producer emits this metric"
+  }
+ ]
+}
