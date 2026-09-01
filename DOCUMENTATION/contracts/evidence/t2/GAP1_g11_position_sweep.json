@@ -1,0 +1,62 @@
+[
+ {
+  "tag": "current",
+  "dist": 70.0,
+  "lateral": 61.2,
+  "ok": true,
+  "offset_E": 52.8,
+  "offset_N": -45.9,
+  "radius": 84.0,
+  "min_cell": 5.088,
+  "ratio": 0.6187,
+  "t_peak": 365.0,
+  "c_src_for_1_42x": 34.4,
+  "wall": 125.4,
+  "hub": 272.0
+ },
+ {
+  "tag": "70m_lat30",
+  "dist": 70.0,
+  "lateral": 30.0,
+  "ok": true,
+  "offset_E": -16.1,
+  "offset_N": 68.1,
+  "radius": 90.0,
+  "min_cell": 2.223,
+  "ratio": 2.0174,
+  "t_peak": 365.0,
+  "c_src_for_1_42x": 10.6,
+  "wall": 212.0,
+  "hub": 460.0
+ },
+ {
+  "tag": "70m_lat0",
+  "dist": 70.0,
+  "lateral": 0.0,
+  "ok": true,
+  "offset_E": 14.6,
+  "offset_N": 68.5,
+  "radius": 84.0,
+  "min_cell": 2.029,
+  "ratio": 4.1171,
+  "t_peak": 365.0,
+  "c_src_for_1_42x": 5.2,
+  "wall": 178.4,
+  "hub": 387.0
+ },
+ {
+  "tag": "50m_lat0",
+  "dist": 50.0,
+  "lateral": 0.0,
+  "ok": true,
+  "offset_E": 10.4,
+  "offset_N": 48.9,
+  "radius": 90.0,
+  "min_cell": 4.616,
+  "ratio": 3.1661,
+  "t_peak": 365.0,
+  "c_src_for_1_42x": 6.7,
+  "wall": 165.0,
+  "hub": 358.0
+ }
+]

@@ -1,0 +1,14 @@
+[
+ {
+  "tag": "MODERATE",
+  "ok": false,
+  "err": "RuntimeError: production run failed; listing tail:\n--- mfsim.lst (last 40 lines) ---\n    Solving:  Stress period:     2    Time step:  1048\n\n\n\n\n PSEUDO-TRANSIENT CONTINUATION WILL BE APPLIED TO MODEL 1 (\"GWF\") DURI",
+  "wall": 115.6
+ },
+ {
+  "tag": "COMPLEX",
+  "ok": false,
+  "err": "RuntimeError: production run failed; listing tail:\n--- mfsim.lst (last 40 lines) ---\n    Solving:  Stress period:     2    Time step:  1043\n\n\n\n\n PSEUDO-TRANSIENT CONTINUATION WILL BE APPLIED TO MODEL 1 (\"GWF\") DURI",
+  "wall": 150.3
+ }
+]

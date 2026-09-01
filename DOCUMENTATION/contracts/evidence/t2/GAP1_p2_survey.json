@@ -1,0 +1,1072 @@
+[
+  {
+    "g": 0,
+    "contaminant": "Trichloroethylene (TCE)",
+    "threshold": 0.005,
+    "g1_passers": [
+      62.0,
+      70.0,
+      84.0,
+      90.0
+    ],
+    "meshes": [
+      {
+        "radius": 56.0,
+        "builds": true,
+        "ncpl": 4696,
+        "min_cell": 0.602,
+        "n_below_1m": 24,
+        "g1": false
+      },
+      {
+        "radius": 62.0,
+        "builds": true,
+        "ncpl": 4408,
+        "min_cell": 4.982,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 70.0,
+        "builds": true,
+        "ncpl": 4512,
+        "min_cell": 1.702,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 78.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (78.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 84.0,
+        "builds": true,
+        "ncpl": 4434,
+        "min_cell": 6.939,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 90.0,
+        "builds": true,
+        "ncpl": 4543,
+        "min_cell": 5.318,
+        "n_below_1m": 0,
+        "g1": true
+      }
+    ],
+    "pair": [
+      62.0,
+      90.0
+    ],
+    "runs": [
+      {
+        "radius": 62.0,
+        "ok": true,
+        "horizon": 60.0,
+        "nstp": 92,
+        "peak": 0.6006050311096727,
+        "ratio": 120.121,
+        "t_peak": 17.208791208791204,
+        "frac_horizon": 0.287,
+        "bounded": true,
+        "field_max": 100.0,
+        "c_src": 100.0,
+        "wall": 15.3,
+        "hub": 33.0
+      },
+      {
+        "radius": 90.0,
+        "ok": true,
+        "horizon": 60.0,
+        "nstp": 113,
+        "peak": 0.692265796283024,
+        "ratio": 138.4532,
+        "t_peak": 16.276785714285705,
+        "frac_horizon": 0.271,
+        "bounded": true,
+        "field_max": 100.0,
+        "c_src": 100.0,
+        "wall": 17.7,
+        "hub": 38.0
+      }
+    ],
+    "spread": 0.1526,
+    "same_side": true,
+    "verdict_robust": true,
+    "bounded": true,
+    "hub_ok": true,
+    "truncated": false,
+    "status": "OK"
+  },
+  {
+    "g": 1,
+    "contaminant": "Nitrate (NO3-)",
+    "threshold": 25.0,
+    "g1_passers": [
+      44.0
+    ],
+    "meshes": [
+      {
+        "radius": 56.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (56.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 62.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (62.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 70.0,
+        "builds": true,
+        "ncpl": 4462,
+        "min_cell": 0.99,
+        "n_below_1m": 1,
+        "g1": false
+      },
+      {
+        "radius": 78.0,
+        "builds": true,
+        "ncpl": 4560,
+        "min_cell": 0.937,
+        "n_below_1m": 1,
+        "g1": false
+      },
+      {
+        "radius": 84.0,
+        "builds": true,
+        "ncpl": 5050,
+        "min_cell": 0.149,
+        "n_below_1m": 224,
+        "g1": false
+      },
+      {
+        "radius": 90.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (90.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 44.0,
+        "builds": true,
+        "ncpl": 4738,
+        "min_cell": 3.481,
+        "g1": true
+      },
+      {
+        "radius": 48.0,
+        "builds": true,
+        "ncpl": 4874,
+        "min_cell": 0.821,
+        "g1": false
+      },
+      {
+        "radius": 52.0,
+        "builds": true,
+        "ncpl": 5117,
+        "min_cell": 0.06,
+        "g1": false
+      },
+      {
+        "radius": 66.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (66.0,); last error: RuntimeEr"
+      },
+      {
+        "radius": 74.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (74.0,); last error: RuntimeEr"
+      },
+      {
+        "radius": 88.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (88.0,); last error: RuntimeEr"
+      },
+      {
+        "radius": 96.0,
+        "builds": true,
+        "ncpl": 5217,
+        "min_cell": 0.146,
+        "g1": false
+      }
+    ],
+    "status": "NO_TWO_CLEAN_MESHES"
+  },
+  {
+    "g": 2,
+    "contaminant": "Benzene",
+    "threshold": 0.005,
+    "g1_passers": [
+      62.0,
+      78.0,
+      84.0
+    ],
+    "meshes": [
+      {
+        "radius": 56.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (56.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 62.0,
+        "builds": true,
+        "ncpl": 4508,
+        "min_cell": 4.515,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 70.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (70.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 78.0,
+        "builds": true,
+        "ncpl": 4471,
+        "min_cell": 6.881,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 84.0,
+        "builds": true,
+        "ncpl": 4551,
+        "min_cell": 4.3,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 90.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (90.0,); last error: RuntimeError('Refin"
+      }
+    ],
+    "pair": [
+      62.0,
+      84.0
+    ],
+    "runs": [
+      {
+        "radius": 62.0,
+        "ok": true,
+        "horizon": 60.0,
+        "nstp": 507,
+        "peak": 0.11825169950195585,
+        "ratio": 23.6503,
+        "t_peak": 14.255319148936152,
+        "frac_horizon": 0.238,
+        "bounded": true,
+        "field_max": 10.0,
+        "c_src": 10.0,
+        "wall": 45.1,
+        "hub": 98.0
+      },
+      {
+        "radius": 84.0,
+        "ok": true,
+        "horizon": 60.0,
+        "nstp": 514,
+        "peak": 0.14418411759985134,
+        "ratio": 28.8368,
+        "t_peak": 12.680652680652697,
+        "frac_horizon": 0.211,
+        "bounded": true,
+        "field_max": 10.0,
+        "c_src": 10.0,
+        "wall": 43.6,
+        "hub": 95.0
+      }
+    ],
+    "spread": 0.2193,
+    "same_side": true,
+    "verdict_robust": true,
+    "bounded": true,
+    "hub_ok": true,
+    "truncated": false,
+    "status": "OK"
+  },
+  {
+    "g": 3,
+    "contaminant": "Chloride (conservative tracer)",
+    "threshold": 100.0,
+    "g1_passers": [
+      56.0,
+      90.0
+    ],
+    "meshes": [
+      {
+        "radius": 56.0,
+        "builds": true,
+        "ncpl": 4324,
+        "min_cell": 3.125,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 62.0,
+        "builds": true,
+        "ncpl": 4486,
+        "min_cell": 0.365,
+        "n_below_1m": 30,
+        "g1": false
+      },
+      {
+        "radius": 70.0,
+        "builds": true,
+        "ncpl": 4755,
+        "min_cell": 0.634,
+        "n_below_1m": 50,
+        "g1": false
+      },
+      {
+        "radius": 78.0,
+        "builds": true,
+        "ncpl": 4417,
+        "min_cell": 0.633,
+        "n_below_1m": 10,
+        "g1": false
+      },
+      {
+        "radius": 84.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (84.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 90.0,
+        "builds": true,
+        "ncpl": 4421,
+        "min_cell": 4.394,
+        "n_below_1m": 0,
+        "g1": true
+      }
+    ],
+    "pair": [
+      56.0,
+      90.0
+    ],
+    "runs": [
+      {
+        "radius": 56.0,
+        "ok": true,
+        "horizon": 730.0,
+        "nstp": 3248,
+        "peak": 51.461603827051675,
+        "ratio": 0.5146,
+        "t_peak": 729.7752463054417,
+        "frac_horizon": 1.0,
+        "bounded": true,
+        "field_max": 200.0,
+        "c_src": 200.0,
+        "wall": 220.4,
+        "hub": 478.0
+      },
+      {
+        "radius": 90.0,
+        "ok": true,
+        "horizon": 730.0,
+        "nstp": 3497,
+        "peak": 52.17335256574373,
+        "ratio": 0.5217,
+        "t_peak": 678.4386617100398,
+        "frac_horizon": 0.929,
+        "bounded": true,
+        "field_max": 200.12972646801288,
+        "c_src": 200.0,
+        "wall": 254.1,
+        "hub": 551.0
+      }
+    ],
+    "spread": 0.0138,
+    "same_side": true,
+    "verdict_robust": true,
+    "bounded": true,
+    "hub_ok": true,
+    "truncated": true,
+    "status": "OK"
+  },
+  {
+    "g": 5,
+    "contaminant": "PFOA (perfluorooctanoic acid)",
+    "threshold": 0.0002,
+    "g1_passers": [
+      56.0,
+      62.0,
+      70.0
+    ],
+    "meshes": [
+      {
+        "radius": 56.0,
+        "builds": true,
+        "ncpl": 4216,
+        "min_cell": 1.479,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 62.0,
+        "builds": true,
+        "ncpl": 4090,
+        "min_cell": 4.348,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 70.0,
+        "builds": true,
+        "ncpl": 4120,
+        "min_cell": 2.539,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 78.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (78.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 84.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (84.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 90.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (90.0,); last error: RuntimeError('Refin"
+      }
+    ],
+    "pair": [
+      56.0,
+      70.0
+    ],
+    "runs": [
+      {
+        "radius": 56.0,
+        "ok": true,
+        "horizon": 30.0,
+        "nstp": 56,
+        "peak": 0.011530452568099498,
+        "ratio": 57.6523,
+        "t_peak": 12.072727272727274,
+        "frac_horizon": 0.402,
+        "bounded": true,
+        "field_max": 1.0,
+        "c_src": 1.0,
+        "wall": 8.5,
+        "hub": 18.0
+      },
+      {
+        "radius": 70.0,
+        "ok": true,
+        "horizon": 30.0,
+        "nstp": 65,
+        "peak": 0.009952714760232403,
+        "ratio": 49.7636,
+        "t_peak": 12.04761904761905,
+        "frac_horizon": 0.402,
+        "bounded": true,
+        "field_max": 1.0,
+        "c_src": 1.0,
+        "wall": 8.8,
+        "hub": 19.0
+      }
+    ],
+    "spread": 0.1585,
+    "same_side": true,
+    "verdict_robust": true,
+    "bounded": true,
+    "hub_ok": true,
+    "truncated": false,
+    "status": "OK"
+  },
+  {
+    "g": 6,
+    "contaminant": "Perchloroethylene (PCE)",
+    "threshold": 0.04,
+    "g1_passers": [
+      44.0,
+      48.0,
+      56.0
+    ],
+    "meshes": [
+      {
+        "radius": 56.0,
+        "builds": true,
+        "ncpl": 4785,
+        "min_cell": 1.358,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 62.0,
+        "builds": true,
+        "ncpl": 4900,
+        "min_cell": 0.555,
+        "n_below_1m": 14,
+        "g1": false
+      },
+      {
+        "radius": 70.0,
+        "builds": true,
+        "ncpl": 4736,
+        "min_cell": 0.445,
+        "n_below_1m": 13,
+        "g1": false
+      },
+      {
+        "radius": 78.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (78.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 84.0,
+        "builds": true,
+        "ncpl": 4799,
+        "min_cell": 0.506,
+        "n_below_1m": 12,
+        "g1": false
+      },
+      {
+        "radius": 90.0,
+        "builds": true,
+        "ncpl": 5186,
+        "min_cell": 0.399,
+        "n_below_1m": 14,
+        "g1": false
+      },
+      {
+        "radius": 44.0,
+        "builds": true,
+        "ncpl": 4883,
+        "min_cell": 2.033,
+        "g1": true
+      },
+      {
+        "radius": 48.0,
+        "builds": true,
+        "ncpl": 5095,
+        "min_cell": 1.785,
+        "g1": true
+      }
+    ],
+    "pair": [
+      44.0,
+      56.0
+    ],
+    "runs": [
+      {
+        "radius": 44.0,
+        "ok": true,
+        "horizon": 1095.0,
+        "nstp": 2071,
+        "peak": 1.5287793769657996,
+        "ratio": 38.2195,
+        "t_peak": 190.44713308784725,
+        "frac_horizon": 0.174,
+        "bounded": true,
+        "field_max": 50.0,
+        "c_src": 50.0,
+        "wall": 166.2,
+        "hub": 360.0
+      },
+      {
+        "radius": 56.0,
+        "ok": true,
+        "horizon": 1095.0,
+        "nstp": 1757,
+        "peak": 1.737266545520531,
+        "ratio": 43.4317,
+        "t_peak": 195.9206447613147,
+        "frac_horizon": 0.179,
+        "bounded": true,
+        "field_max": 50.0,
+        "c_src": 50.0,
+        "wall": 141.1,
+        "hub": 306.0
+      }
+    ],
+    "spread": 0.1364,
+    "same_side": true,
+    "verdict_robust": true,
+    "bounded": true,
+    "hub_ok": true,
+    "truncated": false,
+    "status": "OK"
+  },
+  {
+    "g": 7,
+    "contaminant": "Ammonium (NH4+)",
+    "threshold": 0.5,
+    "g1_passers": [
+      56.0,
+      70.0,
+      84.0
+    ],
+    "meshes": [
+      {
+        "radius": 56.0,
+        "builds": true,
+        "ncpl": 4369,
+        "min_cell": 1.135,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 62.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (62.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 70.0,
+        "builds": true,
+        "ncpl": 4302,
+        "min_cell": 1.606,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 78.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (78.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 84.0,
+        "builds": true,
+        "ncpl": 4227,
+        "min_cell": 4.563,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 90.0,
+        "builds": true,
+        "ncpl": 4376,
+        "min_cell": 0.383,
+        "n_below_1m": 20,
+        "g1": false
+      }
+    ],
+    "pair": [
+      56.0,
+      84.0
+    ],
+    "runs": [
+      {
+        "radius": 56.0,
+        "ok": false,
+        "err": "RuntimeError: pilot run failed; listing tail:\n--- mfsim.lst (last 40 lines) ---\n\n    Solving:  Stress period:     1    Time step:     1\n\n1\n STRESS PERIOD NO. 1, LENGTH =   730.0000    \n ----------------------------",
+        "wall": 3.1
+      },
+      {
+        "radius": 84.0,
+        "ok": true,
+        "horizon": 730.0,
+        "nstp": 1670,
+        "peak": 3.2888515856814586,
+        "ratio": 6.5777,
+        "t_peak": 695.9041916167786,
+        "frac_horizon": 0.953,
+        "bounded": true,
+        "field_max": 30.0,
+        "c_src": 30.0,
+        "wall": 96.1,
+        "hub": 208.0
+      }
+    ],
+    "status": "RUN_FAILED"
+  },
+  {
+    "g": 8,
+    "contaminant": "Atrazine",
+    "threshold": 0.1,
+    "g1_passers": [
+      44.0,
+      74.0,
+      78.0
+    ],
+    "meshes": [
+      {
+        "radius": 56.0,
+        "builds": true,
+        "ncpl": 4759,
+        "min_cell": 0.123,
+        "n_below_1m": 183,
+        "g1": false
+      },
+      {
+        "radius": 62.0,
+        "builds": true,
+        "ncpl": 4424,
+        "min_cell": 0.559,
+        "n_below_1m": 10,
+        "g1": false
+      },
+      {
+        "radius": 70.0,
+        "builds": true,
+        "ncpl": 4512,
+        "min_cell": 0.139,
+        "n_below_1m": 41,
+        "g1": false
+      },
+      {
+        "radius": 78.0,
+        "builds": true,
+        "ncpl": 4447,
+        "min_cell": 1.379,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 84.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (84.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 90.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (90.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 44.0,
+        "builds": true,
+        "ncpl": 4526,
+        "min_cell": 1.672,
+        "g1": true
+      },
+      {
+        "radius": 48.0,
+        "builds": true,
+        "ncpl": 4774,
+        "min_cell": 0.364,
+        "g1": false
+      },
+      {
+        "radius": 52.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (52.0,); last error: RuntimeEr"
+      },
+      {
+        "radius": 66.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (66.0,); last error: RuntimeEr"
+      },
+      {
+        "radius": 74.0,
+        "builds": true,
+        "ncpl": 4411,
+        "min_cell": 3.148,
+        "g1": true
+      }
+    ],
+    "pair": [
+      44.0,
+      78.0
+    ],
+    "runs": [
+      {
+        "radius": 44.0,
+        "ok": true,
+        "horizon": 365.0,
+        "nstp": 401,
+        "peak": 0.009634664696638682,
+        "ratio": 0.0963,
+        "t_peak": 149.3299999999996,
+        "frac_horizon": 0.409,
+        "bounded": true,
+        "field_max": 5.0,
+        "c_src": 5.0,
+        "wall": 33.5,
+        "hub": 73.0
+      },
+      {
+        "radius": 78.0,
+        "ok": true,
+        "horizon": 365.0,
+        "nstp": 415,
+        "peak": 0.013258857234217221,
+        "ratio": 0.1326,
+        "t_peak": 128.48792270531422,
+        "frac_horizon": 0.352,
+        "bounded": true,
+        "field_max": 5.0,
+        "c_src": 5.0,
+        "wall": 33.4,
+        "hub": 72.0
+      }
+    ],
+    "spread": 0.3769,
+    "same_side": true,
+    "verdict_robust": true,
+    "bounded": true,
+    "hub_ok": true,
+    "truncated": false,
+    "status": "OK"
+  },
+  {
+    "g": 9,
+    "contaminant": "MTBE (methyl tert-butyl ether)",
+    "threshold": 0.015,
+    "g1_passers": [
+      56.0,
+      70.0,
+      84.0
+    ],
+    "meshes": [
+      {
+        "radius": 56.0,
+        "builds": true,
+        "ncpl": 4891,
+        "min_cell": 1.917,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 62.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (62.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 70.0,
+        "builds": true,
+        "ncpl": 4615,
+        "min_cell": 2.413,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 78.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (78.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 84.0,
+        "builds": true,
+        "ncpl": 4656,
+        "min_cell": 1.536,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 90.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (90.0,); last error: RuntimeError('Refin"
+      }
+    ],
+    "pair": [
+      56.0,
+      84.0
+    ],
+    "runs": [
+      {
+        "radius": 56.0,
+        "ok": true,
+        "horizon": 365.0,
+        "nstp": 1683,
+        "peak": 0.028952664622576563,
+        "ratio": 1.9302,
+        "t_peak": 48.19927316777699,
+        "frac_horizon": 0.132,
+        "bounded": true,
+        "field_max": 4.0,
+        "c_src": 4.0,
+        "wall": 113.6,
+        "hub": 246.0
+      },
+      {
+        "radius": 84.0,
+        "ok": true,
+        "horizon": 365.0,
+        "nstp": 2043,
+        "peak": 0.026749116254154735,
+        "ratio": 1.7833,
+        "t_peak": 48.802395209580666,
+        "frac_horizon": 0.134,
+        "bounded": true,
+        "field_max": 4.0,
+        "c_src": 4.0,
+        "wall": 130.7,
+        "hub": 283.0
+      }
+    ],
+    "spread": 0.0824,
+    "same_side": true,
+    "verdict_robust": true,
+    "bounded": true,
+    "hub_ok": true,
+    "truncated": false,
+    "status": "OK"
+  },
+  {
+    "g": 10,
+    "contaminant": "Carbamazepine",
+    "threshold": 0.0001,
+    "g1_passers": [
+      74.0,
+      78.0,
+      96.0
+    ],
+    "meshes": [
+      {
+        "radius": 56.0,
+        "builds": true,
+        "ncpl": 4791,
+        "min_cell": 0.24,
+        "n_below_1m": 46,
+        "g1": false
+      },
+      {
+        "radius": 62.0,
+        "builds": true,
+        "ncpl": 4641,
+        "min_cell": 0.246,
+        "n_below_1m": 14,
+        "g1": false
+      },
+      {
+        "radius": 70.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (70.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 78.0,
+        "builds": true,
+        "ncpl": 4382,
+        "min_cell": 1.462,
+        "n_below_1m": 0,
+        "g1": true
+      },
+      {
+        "radius": 84.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (84.0,); last error: RuntimeError('Refin"
+      },
+      {
+        "radius": 90.0,
+        "builds": true,
+        "ncpl": 4485,
+        "min_cell": 0.154,
+        "n_below_1m": 24,
+        "g1": false
+      },
+      {
+        "radius": 44.0,
+        "builds": true,
+        "ncpl": 4666,
+        "min_cell": 0.64,
+        "g1": false
+      },
+      {
+        "radius": 48.0,
+        "builds": true,
+        "ncpl": 4660,
+        "min_cell": 0.227,
+        "g1": false
+      },
+      {
+        "radius": 52.0,
+        "builds": true,
+        "ncpl": 4513,
+        "min_cell": 0.509,
+        "g1": false
+      },
+      {
+        "radius": 66.0,
+        "builds": false,
+        "g1": false,
+        "err": "corridor refinement failed at all radii (66.0,); last error: RuntimeEr"
+      },
+      {
+        "radius": 74.0,
+        "builds": true,
+        "ncpl": 4392,
+        "min_cell": 1.583,
+        "g1": true
+      },
+      {
+        "radius": 88.0,
+        "builds": true,
+        "ncpl": 4492,
+        "min_cell": 0.558,
+        "g1": false
+      },
+      {
+        "radius": 96.0,
+        "builds": true,
+        "ncpl": 4487,
+        "min_cell": 1.183,
+        "g1": true
+      }
+    ],
+    "pair": [
+      74.0,
+      96.0
+    ],
+    "runs": [
+      {
+        "radius": 74.0,
+        "ok": true,
+        "horizon": 365.0,
+        "nstp": 597,
+        "peak": 0.00015064794083683556,
+        "ratio": 1.5065,
+        "t_peak": 118.72222222222237,
+        "frac_horizon": 0.325,
+        "bounded": true,
+        "field_max": 0.002,
+        "c_src": 0.002,
+        "wall": 36.2,
+        "hub": 79.0
+      },
+      {
+        "radius": 96.0,
+        "ok": true,
+        "horizon": 365.0,
+        "nstp": 560,
+        "peak": 0.0001383197552960004,
+        "ratio": 1.3832,
+        "t_peak": 118.02132701421823,
+        "frac_horizon": 0.323,
+        "bounded": true,
+        "field_max": 0.002,
+        "c_src": 0.002,
+        "wall": 35.0,
+        "hub": 76.0
+      }
+    ],
+    "spread": 0.0891,
+    "same_side": true,
+    "verdict_robust": true,
+    "bounded": true,
+    "hub_ok": true,
+    "truncated": false,
+    "status": "OK"
+  }
+]

@@ -1,0 +1,36 @@
+[
+ {
+  "g": 4,
+  "radius": 90.0,
+  "c_src": 9.0,
+  "min_cell": 4.062,
+  "n_below_1m": 0,
+  "ratio": 0.6564,
+  "predicted_by_linearity": 0.6564,
+  "linearity_err_pct": -0.0,
+  "rule_pass": true,
+  "verdict": "COMPLIANT",
+  "field_max": 9.0,
+  "c_src_check": 9.0,
+  "t_peak": 135.7973133148952,
+  "wall": 160.7,
+  "hub": 349.0
+ },
+ {
+  "g": 12,
+  "radius": 48.0,
+  "c_src": 5.5,
+  "min_cell": 1.194,
+  "n_below_1m": 0,
+  "ratio": 0.5682,
+  "predicted_by_linearity": 0.5679,
+  "linearity_err_pct": 0.06,
+  "rule_pass": true,
+  "verdict": "COMPLIANT",
+  "field_max": 5.5,
+  "c_src_check": 5.5,
+  "t_peak": 634.4343511450566,
+  "wall": 159.7,
+  "hub": 346.0
+ }
+]

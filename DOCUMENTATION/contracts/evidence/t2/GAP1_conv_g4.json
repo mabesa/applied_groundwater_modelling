@@ -1,0 +1,40 @@
+[
+ {
+  "g": 4,
+  "radius": 56.0,
+  "ok": true,
+  "ncpl": 4437,
+  "min_cell": 2.324,
+  "n_below_1m": 0,
+  "peak": 0.0909673019531889,
+  "ratio": 0.91,
+  "t_peak": 107.09985261606575,
+  "wall": 174.4
+ },
+ {
+  "g": 4,
+  "radius": 84.0,
+  "ok": true,
+  "ncpl": 4344,
+  "min_cell": 1.393,
+  "n_below_1m": 0,
+  "peak": 0.08205336104896573,
+  "ratio": 0.821,
+  "t_peak": 140.45182012848107,
+  "wall": 173.9
+ },
+ {
+  "g": 4,
+  "radius": 88.0,
+  "ok": false,
+  "err": "RuntimeError: corridor refinement failed at all radii (88.0,); last error: RuntimeError('Refined GWF model failed \u2014 check listing file",
+  "wall": 1.1
+ },
+ {
+  "g": 4,
+  "radius": 95.0,
+  "ok": false,
+  "err": "RuntimeError: corridor refinement failed at all radii (95.0,); last error: RuntimeError('Refined GWF model failed \u2014 check listing file",
+  "wall": 1.0
+ }
+]

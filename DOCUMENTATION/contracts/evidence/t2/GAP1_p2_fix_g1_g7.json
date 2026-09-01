@@ -1,0 +1,50 @@
+[
+  {
+    "g": 1,
+    "radius": 42.0,
+    "ok": true,
+    "ratio": 0.0078,
+    "t_peak": 18.774193548387075,
+    "horizon": 30.0,
+    "frac_horizon": 0.626,
+    "bounded": true,
+    "wall": 28.8,
+    "hub": 62.0
+  },
+  {
+    "g": 1,
+    "radius": 50.0,
+    "ok": true,
+    "ratio": 0.0089,
+    "t_peak": 17.259414225941427,
+    "horizon": 30.0,
+    "frac_horizon": 0.575,
+    "bounded": true,
+    "wall": 28.9,
+    "hub": 63.0
+  },
+  {
+    "g": 7,
+    "radius": 70.0,
+    "ok": true,
+    "ratio": 5.7416,
+    "t_peak": 635.5791505791424,
+    "horizon": 730.0,
+    "frac_horizon": 0.871,
+    "bounded": true,
+    "wall": 92.3,
+    "hub": 200.0
+  },
+  {
+    "g": 7,
+    "radius": 84.0,
+    "ok": true,
+    "ratio": 6.5777,
+    "t_peak": 695.9041916167786,
+    "horizon": 730.0,
+    "frac_horizon": 0.953,
+    "bounded": true,
+    "wall": 96.5,
+    "hub": 209.0
+  }
+]

@@ -1,0 +1,73 @@
+[
+ {
+  "radius": 48.0,
+  "ok": true,
+  "ncpl": 4284,
+  "min_cell": 1.194,
+  "n_below_1m": 0,
+  "n_below_2m": 4
+ },
+ {
+  "radius": 50.0,
+  "ok": true,
+  "ncpl": 4380,
+  "min_cell": 0.259,
+  "n_below_1m": 31,
+  "n_below_2m": 61
+ },
+ {
+  "radius": 52.0,
+  "ok": true,
+  "ncpl": 4396,
+  "min_cell": 0.225,
+  "n_below_1m": 31,
+  "n_below_2m": 53
+ },
+ {
+  "radius": 58.0,
+  "ok": true,
+  "ncpl": 4696,
+  "min_cell": 0.031,
+  "n_below_1m": 149,
+  "n_below_2m": 283
+ },
+ {
+  "radius": 66.0,
+  "ok": false,
+  "err": "corridor refinement failed at all radii (66.0,); last error: RuntimeEr"
+ },
+ {
+  "radius": 74.0,
+  "ok": true,
+  "ncpl": 4614,
+  "min_cell": 0.123,
+  "n_below_1m": 140,
+  "n_below_2m": 246
+ },
+ {
+  "radius": 80.0,
+  "ok": false,
+  "err": "corridor refinement failed at all radii (80.0,); last error: RuntimeEr"
+ },
+ {
+  "radius": 88.0,
+  "ok": true,
+  "ncpl": 4270,
+  "min_cell": 1.069,
+  "n_below_1m": 0,
+  "n_below_2m": 5
+ },
+ {
+  "radius": 96.0,
+  "ok": true,
+  "ncpl": 4342,
+  "min_cell": 0.601,
+  "n_below_1m": 4,
+  "n_below_2m": 14
+ },
+ {
+  "radius": 100.0,
+  "ok": false,
+  "err": "corridor refinement failed at all radii (100.0,); last error: RuntimeE"
+ }
+]

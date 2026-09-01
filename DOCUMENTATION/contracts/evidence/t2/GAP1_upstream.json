@@ -1,0 +1,22 @@
+[
+ {
+  "g": 4,
+  "scheme": "UPSTREAM",
+  "ok": false,
+  "err": "RuntimeError: production run failed; listing tail:\n--- mfsim.lst (last 40 lines) ---\n    Solving:  Stress period:     2    Time step:   842\n\n\n\n\n PSEUDO-TRANSIENT CO",
+  "wall": 54.9
+ },
+ {
+  "g": 12,
+  "scheme": "UPSTREAM",
+  "ok": true,
+  "peak": 0.02067349616695453,
+  "thr": 0.02,
+  "ratio": 1.034,
+  "t_peak": 486.01699716714575,
+  "field_max": 8.0,
+  "field_min": -0.04152025298676575,
+  "c_src": 8.0,
+  "wall": 116.0
+ }
+]

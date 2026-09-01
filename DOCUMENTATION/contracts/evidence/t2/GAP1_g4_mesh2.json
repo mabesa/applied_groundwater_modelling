@@ -1,0 +1,57 @@
+[
+ {
+  "radius": 70.0,
+  "ok": true,
+  "ncpl": 4884,
+  "min_size": 0.068,
+  "n_below_1m": 225,
+  "n_below_2m": 403,
+  "n_below_4m": 554
+ },
+ {
+  "radius": 62.0,
+  "ok": true,
+  "ncpl": 4398,
+  "min_size": 2.441,
+  "n_below_1m": 0,
+  "n_below_2m": 0,
+  "n_below_4m": 18
+ },
+ {
+  "radius": 78.0,
+  "ok": false,
+  "err": "RuntimeError: corridor refinement failed at all radii (78.0,); last error: RuntimeError('Refined GWF model failed "
+ },
+ {
+  "radius": 56.0,
+  "ok": true,
+  "ncpl": 4437,
+  "min_size": 2.324,
+  "n_below_1m": 0,
+  "n_below_2m": 0,
+  "n_below_4m": 24
+ },
+ {
+  "radius": 84.0,
+  "ok": true,
+  "ncpl": 4344,
+  "min_size": 1.393,
+  "n_below_1m": 0,
+  "n_below_2m": 4,
+  "n_below_4m": 15
+ },
+ {
+  "radius": 90.0,
+  "ok": true,
+  "ncpl": 4371,
+  "min_size": 4.062,
+  "n_below_1m": 0,
+  "n_below_2m": 0,
+  "n_below_4m": 0
+ },
+ {
+  "radius": 100.0,
+  "ok": false,
+  "err": "RuntimeError: corridor refinement failed at all radii (100.0,); last error: RuntimeError('Refined GWF model failed"
+ }
+]
