@@ -105,6 +105,12 @@ class Acceptance:
                 "checks": self.checks, "failures": self.failures}
 
 
+#: How far above its target an identity's achieved Courant may sit and still
+#: pass. 5% absorbs the discretisation of `nstp` to a whole number; it does
+#: not absorb a sizing error (the observed failures were 45%-242% over).
+CR_TOL_REL = 0.05
+
+
 def accept_run(artifact_path: Path, *, identity: str,
                requested_guard: int) -> Acceptance:
     """T2_steps Sec 4. Returns PASS/FAIL and writes the verdict beside the
@@ -148,6 +154,21 @@ def accept_run(artifact_path: Path, *, identity: str,
         nstp = record.nstp
         _check("guard_not_reached", nstp is not None and cap is not None and nstp < cap,
                f"nstp={nstp!r} reached the guard {cap!r} -- a capped run is not a feasible run")
+        # 🔴 The achieved Courant number against the target this identity is
+        # NAMED for. Added 2026-09-01 after four coarse identities were stamped
+        # `passed` while running at Cr up to 3.076 against a 0.9 target -- the
+        # gate checked seven things and not one of them looked at the quantity
+        # the identity is defined by. A run whose time-stepping missed its own
+        # target is not an acceptable run, whatever else is well-formed.
+        raw = json.loads(Path(artifact_path).read_text(encoding="utf-8"))
+        cr_ach = (raw.get("run_health") or {}).get("cr_achieved")
+        cr_target = (raw.get("run_identity") or {}).get("cr_target")
+        _check("cr_meets_target",
+               cr_ach is not None and cr_target is not None
+               and float(cr_ach) <= float(cr_target) * (1.0 + CR_TOL_REL),
+               f"achieved Cr {cr_ach} vs target {cr_target} "
+               f"(+{CR_TOL_REL:.0%} tolerance)")
+
         _check("versions_captured",
                all(getattr(record, f) for f in
                    ("flopy_version", "numpy_version", "python_version", "mf6_sha256")),
