@@ -1,5 +1,5 @@
 {
-  "content_hash": "c4853159e404ff3daf51f078ad0c17f623460fb95d40bf864e2a2ee8cabd43ee",
+  "content_hash": "c56fe62b7c1bf62ea88dbae9e73576fb88559ded7e4dfa89964ae2e19166e002",
   "environment": {
     "flopy_version": "3.9.5",
     "mf6_path": "/Users/bea/.local/share/flopy/bin/mf6",
@@ -41,7 +41,7 @@
       "interpolated": false,
       "tie_broken": false,
       "units": "mg/L",
-      "value": 6.116975051464959
+      "value": 5.77707366539357
     },
     "t_peak": {
       "algorithm_id": "t_peak_quadratic_vertex_v1",
@@ -49,29 +49,37 @@
       "interpolated": true,
       "tie_broken": false,
       "units": "d",
-      "value": 37.67564207768915
+      "value": 38.24504163066753
     }
   },
   "role": {
-    "counterpart_run_id": null,
-    "grid_role": null,
+    "counterpart_run_id": "t2_bcontrol_coarse",
+    "grid_role": "fine",
     "is_feasibility_probe": false,
-    "run_role": "temporal_series"
+    "run_role": "b_control"
   },
   "run_health": {
-    "cr_achieved": 0.4499366721172029,
+    "cr_achieved": 0.898048654356277,
     "cr_capped": false,
     "horizon_censored": false,
     "ncpl": 15727,
-    "nstp": 3958,
+    "nstp": 371,
     "provenance_valid": true,
     "solver_status": "solved"
   },
   "run_identity": {
     "case_id": "t2_notebook_matrix",
-    "controls": {},
+    "controls": {
+      "sink_support_controlled": {
+        "causal_isolation_eligible": false,
+        "label": "sink_support_controlled",
+        "prt_capture_diverges": true,
+        "sink_support_m": 25.0,
+        "uncontrolled_counterpart_run_id": "t2_spatial_2m_cr0.9"
+      }
+    },
     "courant_profile": "exp_v1",
-    "cr_target": 0.45,
+    "cr_target": 0.9,
     "experimental": {
       "derivation_version": "exp_marker_v1",
       "is_experimental": true,
@@ -82,9 +90,9 @@
           "value": "exp_v1"
         },
         "cr_target": {
-          "deviates": true,
+          "deviates": false,
           "sentinel": 0.9,
-          "value": 0.45
+          "value": 0.9
         },
         "footprint_radius_m": {
           "deviates": false,
@@ -127,9 +135,9 @@
           }
         },
         "sink_support_m": {
-          "deviates": false,
+          "deviates": true,
           "sentinel": 0.0,
-          "value": 0.0
+          "value": 25.0
         }
       }
     },
@@ -152,7 +160,7 @@
       }
     },
     "nstp_cap": 40000,
-    "run_id": "t2_temporal_2m_cr0.45",
+    "run_id": "t2_bcontrol_fine",
     "source_footprint": {
       "algorithm_id": "area_weighted_disc_v1",
       "centre_xy_m": [
@@ -184,12 +192,12 @@
     "claim_support_state": "null",
     "diagnostics": {},
     "envelope": {
-      "grid_series": [],
+      "grid_series": [
+        "{\"mesh_spec\": {\"base_cell_size\": 50.0, \"levels\": [{\"cell_size\": 2.0, \"radius_m\": null}], \"retry_radii\": [70.0, 62.0, 78.0, 56.0, 84.0]}}"
+      ],
       "stopping_rule": "tolerance_reached",
       "threshold_record_id": null,
-      "timestep_series": [
-        0.45
-      ],
+      "timestep_series": [],
       "tolerance": 0.05
     },
     "reason_code": "refinement_axis_untested"

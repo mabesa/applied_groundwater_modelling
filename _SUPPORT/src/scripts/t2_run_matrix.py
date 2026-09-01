@@ -40,10 +40,57 @@ SPATIAL_CELL_SIZE = {
     "spatial_1m_cr0.9": 1.0,
 }
 CR_TARGET = {**{k: 0.9 for k in SPATIAL_CELL_SIZE},
+             "bcontrol_coarse": 0.9, "bcontrol_fine": 0.9,
              "temporal_50m_cr0.45": 0.45, "temporal_50m_cr0.225": 0.225,
              "temporal_2m_cr0.45": 0.45, "temporal_2m_cr0.225": 0.225}
 TEMPORAL_CELL_SIZE = {"temporal_50m_cr0.45": 50.0, "temporal_50m_cr0.225": 50.0,
                       "temporal_2m_cr0.45": 2.0, "temporal_2m_cr0.225": 2.0}
+
+# --- B-control: the matched sink-support arm -------------------------------
+#
+# 🔴 `sink_support_m` was never frozen, which is what blocked these two
+# identities. It is frozen HERE at operator A's already-frozen radius, under
+# operator A's already-frozen applicability rule -- rather than inventing a
+# second, inconsistent number for the same geometric question.
+#
+#   transport_operator_a.RADIUS_M = 25.0, applicable iff
+#   `cell_size_m <= radius_m` ("the disc diameter spans at least two nominal
+#   cells").
+#
+# That rule IS the degeneracy that blocked B-control: at 50 m cells `50 <= 25`
+# is false, the disc falls inside a single cell, the apportionment
+# `q_i = Q * area(cell_i ^ disc)/area(disc)` returns the whole rate to one cell,
+# and the "control" controls nothing.
+#
+# So the matched pair is **10 m + 2 m**, NOT 50 m + 2 m. Both satisfy the rule,
+# both are registered spatial identities, and 10 m is the meaningful coarse case
+# -- it is the teaching default students actually run. Nothing in the contracts
+# pins B's coarse mesh to 50 m; `T0_2b…` §5 says only "matched coarse + fine".
+SINK_SUPPORT_M = 25.0
+BCONTROL_CELL_SIZE = {"bcontrol_coarse": 10.0, "bcontrol_fine": 2.0}
+BCONTROL_GRID_ROLE = {"bcontrol_coarse": "coarse", "bcontrol_fine": "fine"}
+#: the OTHER half of the matched pair
+BCONTROL_COUNTERPART = {"bcontrol_coarse": "t2_bcontrol_fine",
+                        "bcontrol_fine": "t2_bcontrol_coarse"}
+#: the same mesh WITHOUT the sink control -- what the arm is a control FOR
+BCONTROL_UNCONTROLLED = {"bcontrol_coarse": "t2_spatial_10m_cr0.9",
+                         "bcontrol_fine": "t2_spatial_2m_cr0.9"}
+
+
+def run_role_for(identity: str) -> str:
+    """🔴 The role was HARD-CODED to `spatial_series` for every identity.
+
+    `T0_2b…` §5.1 freezes `run_role` as a closed enum and makes it mandatory
+    precisely so a run's role cannot be confused -- and the two temporal
+    identities were emitted mislabelled as `spatial_series` on 2026-08-31
+    before this was caught. Derive it from the identity instead.
+    """
+    if identity.startswith("temporal"):
+        return "temporal_series"
+    if identity.startswith("bcontrol"):
+        return "b_control"
+    return "spatial_series"
+
 
 # One representative claim per run. The artifact records the RUN; `claim_id`
 # is one field of it, and S14 produces the per-(claim, run) records the
@@ -72,9 +119,17 @@ def run_identity(identity: str, workdir: Path, *,
     ctl.require_registered(identity)
     guard = ctl.guard_for(identity, measured_cr09_demand)
 
-    cell = SPATIAL_CELL_SIZE.get(identity) or TEMPORAL_CELL_SIZE.get(identity)
+    cell = (SPATIAL_CELL_SIZE.get(identity) or TEMPORAL_CELL_SIZE.get(identity)
+            or BCONTROL_CELL_SIZE.get(identity))
     if cell is None:
         raise ctl.ControlRefusal(f"no cell size known for identity {identity!r}")
+    is_b = identity in BCONTROL_CELL_SIZE
+    if is_b and cell > SINK_SUPPORT_M:
+        # operator A's applicability rule, applied to the sink disc
+        raise ctl.ControlRefusal(
+            f"{identity}: cell size {cell} m exceeds sink_support_m "
+            f"{SINK_SUPPORT_M} m -- the disc would fall inside a single cell "
+            "and the control would be a no-op")
     spec = tsd.MeshSpec(levels=(tsd.MeshLevel(cell_size=cell),))
 
     case_ws = workdir / identity
@@ -83,8 +138,12 @@ def run_identity(identity: str, workdir: Path, *,
         run_id=f"t2_{identity}", case_id="t2_notebook_matrix",
         claim_id=REPRESENTATIVE_CLAIM, claim_type="numeric",
         metric="capture_halfwidth_m", tolerance=0.05,
-        run_role="spatial_series",
-        axis="spatial" if identity.startswith("spatial") else "temporal",
+        run_role=run_role_for(identity),
+        axis="temporal" if identity.startswith("temporal") else "spatial",
+        grid_role=BCONTROL_GRID_ROLE.get(identity),
+        counterpart_run_id=BCONTROL_COUNTERPART.get(identity),
+        uncontrolled_counterpart_run_id=BCONTROL_UNCONTROLLED.get(identity),
+        sink_support_m=SINK_SUPPORT_M if is_b else 0.0,
         mesh_spec=spec, cr_target=CR_TARGET[identity], nstp_cap=guard,
         courant_profile=courant_profile, case_ws=case_ws, force=True,
     )
