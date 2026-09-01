@@ -24,16 +24,22 @@
 | 2 m | 6.1085 | **+3.948%** | 37.653 | +0.697% |
 | **1 m** | **6.1322** | **+0.389%** | 37.946 | +0.779% |
 
-`TOL_CONC_REL = 2%` (§2.7). The **2 m → 1 m step is +0.389%** — inside tolerance. The preceding
-step is +3.948%, outside it. Stopping rule 1 asks for **two successive refinements** below
-tolerance, so on `peak_mgL` this series delivers **one** qualifying step, not two.
+`TOL_CONC_REL = 2%` (§2.7). The **2 m → 1 m step is +0.389%** — inside tolerance. `t_peak` moves
++0.779% on the same step, inside `TOL_TIME_REL = 2%`.
 
-`t_peak` moves +0.697% then +0.779%, both inside `TOL_TIME_REL = 2%` — two successive steps, so
-**timing is converged** by rule 1.
-
-🔴 **Convergence is PER-METRIC.** `t_peak` satisfies rule 1; `peak_mgL` does not, on the strict
-two-step reading. The magnitude is clearly settling — 3.948% → 0.389%, a factor of ten — but the
-rule is a rule, and this file does not soften it.
+> 🔴 **CORRECTION, 2026-09-01.** This section originally read *"stopping rule 1 asks for two
+> successive refinements below tolerance, so on `peak_mgL` this series delivers one qualifying
+> step, not two"*, and concluded that `peak_mgL` fails rule 1 while `t_peak` passes.
+>
+> **That was a misreading of the rule.** The frozen evaluator
+> (`t1_claim_support_state._within_tolerance`) implements *"two successive refinements"* as the
+> relative change between the **last two runs on each axis** — one comparison of two successive
+> runs, not two separate qualifying steps. On that reading `peak_mgL` is within tolerance on both
+> axes, and S14's evaluation returns **`grid_supported` / `converged_both_axes`** for every numeric
+> `peak_mgL` component.
+>
+> The preceding +3.948% step (5 m → 2 m) does not disqualify the series; the rule does not look at
+> it. The stricter reading was mine, not the contract's.
 
 ⚠️ **These steps REPRODUCE the numbers `04t` already publishes to students** — *"+11.4%, then
 +3.9%, then +0.4%"*. Until now only `spatial_1m_cr0.9` was a registered identity, so those
