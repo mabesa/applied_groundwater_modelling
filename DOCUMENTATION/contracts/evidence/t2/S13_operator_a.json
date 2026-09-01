@@ -1,0 +1,37 @@
+[
+ {
+  "identity": "spatial_10m_cr0.9",
+  "cell_size_m": 10.0,
+  "status": "computed",
+  "A_peak_mgL": 3.9870799617887633,
+  "A_t_peak_d": 38.80434782608697
+ },
+ {
+  "identity": "spatial_5m_cr0.9",
+  "cell_size_m": 5.0,
+  "status": "computed",
+  "A_peak_mgL": 4.019837067145916,
+  "A_t_peak_d": 37.4460431654676
+ },
+ {
+  "identity": "spatial_2m_cr0.9",
+  "cell_size_m": 2.0,
+  "status": "computed",
+  "A_peak_mgL": 4.000917640645924,
+  "A_t_peak_d": 37.57575757575779
+ },
+ {
+  "identity": "bcontrol_coarse",
+  "cell_size_m": 10.0,
+  "status": "computed",
+  "A_peak_mgL": 4.696520259542803,
+  "A_t_peak_d": 39.6923076923077
+ },
+ {
+  "identity": "bcontrol_fine",
+  "cell_size_m": 2.0,
+  "status": "computed",
+  "A_peak_mgL": 5.523159482612892,
+  "A_t_peak_d": 38.387096774193516
+ }
+]
