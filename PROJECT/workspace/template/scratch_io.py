@@ -32,7 +32,7 @@ Export bundle (schema 1.0)
     pathlines_summary.csv          MODPATH summary (optional)
 
 Head GeoPackages carry polygon cell geometry in Swiss LV95 (EPSG:2056) with columns
-``cellid`` (``"row_col"``), ``row``, ``col`` and ``head_m`` (NaN where the cell was
+``cellid`` (the DISV cell index, as a string) and ``head_m`` (NaN where the cell was
 dry / no-flow). Because area is intrinsic to the polygons, drawdown areas are computed
 directly from the geometry — no cell-size assumption is baked in here.
 """
@@ -75,7 +75,12 @@ _HEADS_FILES = {
 }
 
 #: Columns every head GeoPackage must carry (besides geometry).
-_HEADS_REQUIRED_COLS = ("cellid", "row", "col", "head_m")
+# 🔴 `row`/`col` were REQUIRED here but consumed by nothing: the cards and
+# `compute_drawdown` join on `cellid` alone. They are a structured-grid fossil --
+# the course model is MF6/DISV, which has `ncpl` cells and no rows or columns.
+# Requiring them would have forced the exporter to invent two meaningless numbers.
+# Extra columns are still accepted, so older bundles that carry them still load.
+_HEADS_REQUIRED_COLS = ("cellid", "head_m")
 
 
 # ---------------------------------------------------------------------------
