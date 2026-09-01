@@ -29,7 +29,31 @@ recorded · cap matches the guard · guard not reached · versions captured.
 number and nothing more — the observed failures were 49%–249% over. Verified both ways: it fails
 the 50 m run and passes the 2 m run.
 
-## 3. The cause is the SIZING, and it is not the sliver floor
+## 3. 🔴 CORRECTED — the sliver floor IS the cause
+
+⚠️ **This section originally concluded the floor was "ruled out by measurement". That was wrong.**
+The probe took `max(v/ds)` over **all 4 221 cells**, where the global maximum sits outside the
+corridor and the floor cannot touch it. The sizing works on the **corridor mask** — 116 cells at
+50 m. Measured on the right set, the floor is decisive:
+
+| mesh | floor | corridor cells | dropped | max `v/ds` corridor | floor-kept | understated |
+|---:|---:|---:|---:|---:|---:|---:|
+| **50 m** | 20.0 | 116 | **89** | 0.6409 | 0.1832 | **3.50×** |
+| **20 m** | 8.0 | 128 | **32** | 0.6360 | 0.4212 | **1.51×** |
+| 10 m | 4.0 | 255 | 0 | 0.9133 | 0.9133 | 1.00× |
+
+The 3.50× understatement matches the 3.42× Courant overshoot. `ds_bind = 20.54` sits just above
+the 20 m floor while the smallest real corridor cell is **5.478 m**.
+
+**The root cause:** the floor was keyed to the **requested** cell size, but the realised corridor
+minimum comes from the base grid and is ~5.48 m at *every* mesh. So whenever
+`0.4 × requested > 5.48` — 20 m and coarser — it discarded genuine corridor cells.
+
+**Fixed 2026-09-01** (correction 5, lecturer authorised): `exp_v1` applies no floor. Re-running the
+four identities reproduces S4/S5 exactly — `nstp` 86 / 85 / 171 / 342 and `Cr` 0.894 / 0.898 /
+0.450 / 0.225 — and all four now pass `cr_meets_target`.
+
+### Superseded — the original (wrong) section 3
 
 The obvious suspect was `exp_v1`'s sliver floor, which is keyed off the mesh's own cell size
 (`refined_cell_size=level.cell_size`) — 20 m at a 50 m mesh against legacy's constant 4 m — so it

@@ -101,24 +101,35 @@ def test_legacy_profiles_unchanged_against_the_pinned_cases(wrapper, default_cap
 # ---------------------------------------------------------------------------
 # 2. correction 1: floor keyed off the finest INTENDED cell size
 # ---------------------------------------------------------------------------
-def test_exp_v1_floor_uses_the_finest_intended_cell_size():
-    """A graded MeshSpec (outer level 10 m, inner level 2 m) must floor at
-    0.4*2=0.8, not 0.4*10=4.0 -- the finest level, via `min()`, wins."""
+def test_exp_v1_applies_no_sliver_floor():
+    """🔴 REWRITTEN 2026-09-01 (correction 5, lecturer authorised).
+
+    exp_v1 no longer applies a sliver floor. The floor was keyed to the
+    REQUESTED cell size while the realised corridor minimum comes from the
+    base grid (~5.48 m at every mesh), so at 20 m and coarser it discarded
+    genuine corridor cells: at 50 m it dropped 89 of 116 and under-sized
+    nstp by 3.50x, producing Cr 3.076 against a 0.9 target.
+
+    This test pinned the floor behaviour, so it pins the bug. Rewritten to
+    assert the corrected policy.
+    """
     v = np.full(4, 1.0)
-    size = np.full(4, 1.0)   # below 0.4*10=4.0, above 0.4*2=0.8
+    size = np.full(4, 1.0)   # would be BELOW the old 0.4*10=4.0 floor
     mask = np.ones(4, dtype=bool)
     coarse_only = MeshSpec(levels=(MeshLevel(cell_size=10.0),))
     graded = MeshSpec(levels=(MeshLevel(cell_size=10.0), MeshLevel(cell_size=2.0, radius_m=20.0)))
 
-    with pytest.raises(ValueError, match="floor-filtered selection is empty"):
-        tsd._courant_nstp_canonical(v, size, mask.copy(), 100.0, nstp_cap=2000,
-                                    refined_cell_size=REFINED_CELL_SIZE,
-                                    mesh_spec=coarse_only, profile="exp_v1")
+    # the coarse spec no longer empties the selection -- these cells are real
+    n_coarse, _, _, d_coarse = tsd._courant_nstp_canonical(
+        v, size, mask.copy(), 100.0, nstp_cap=2000,
+        refined_cell_size=REFINED_CELL_SIZE, mesh_spec=coarse_only, profile="exp_v1")
+    n_graded, _, _, d_graded = tsd._courant_nstp_canonical(
+        v, size, mask.copy(), 100.0, nstp_cap=2000,
+        refined_cell_size=REFINED_CELL_SIZE, mesh_spec=graded, profile="exp_v1")
 
-    nstp, dt, cr, diag = tsd._courant_nstp_canonical(
-        v, size, mask.copy(), 100.0, nstp_cap=2000, refined_cell_size=REFINED_CELL_SIZE,
-        mesh_spec=graded, profile="exp_v1")
-    assert diag["floor"] == pytest.approx(0.4 * 2.0)
+    assert d_coarse["floor"] == 0.0 and d_graded["floor"] == 0.0
+    # and the MeshSpec no longer changes the sizing, because nothing is excluded
+    assert n_coarse == n_graded
 
 
 # ---------------------------------------------------------------------------
@@ -314,9 +325,20 @@ def test_exp_v1_degenerate_cases_follow_srcpulse_not_base():
         v, size, mask.copy(), total_time, nstp_cap=2000,
         refined_cell_size=REFINED_CELL_SIZE, profile="legacy_srcpulse")
     assert result is not None
-    with pytest.raises(ValueError, match="floor-filtered selection is empty"):
+    # 🔴 CHANGED 2026-09-01 (correction 5): all-cells-below-the-old-floor is no
+    # longer a degenerate case at all -- exp_v1 has no floor, so it simply SIZES
+    # these cells. legacy_srcpulse still needs its whole-mask fallback here.
+    nstp_e, _, cr_e, diag_e = tsd._courant_nstp_canonical(
+        v, size, mask.copy(), total_time, nstp_cap=500000,
+        refined_cell_size=REFINED_CELL_SIZE, mesh_spec=spec, profile="exp_v1")
+    assert diag_e["floor"] == 0.0 and cr_e == pytest.approx(0.9, rel=1e-3)
+
+    # an empty mask is still refused -- by the upstream corridor guard, which is
+    # now the ONLY path to that error (correction 5 made the floor's own raise
+    # unreachable, so it was removed rather than left as a dead branch)
+    with pytest.raises(ValueError, match="no active corridor cells"):
         tsd._courant_nstp_canonical(
-            v, size, mask.copy(), total_time, nstp_cap=2000,
+            v, size, np.zeros(5, dtype=bool), total_time, nstp_cap=2000,
             refined_cell_size=REFINED_CELL_SIZE, mesh_spec=spec, profile="exp_v1")
 
     # (b) zero velocity: legacy_srcpulse returns the cap with Cr=0; exp_v1 raises.
@@ -364,45 +386,62 @@ def test_selected_policy_id_is_recorded(monkeypatch):
 # id -- without this, every other test here could pass while global
 # reporting is still wrong for floor-excluded cells.
 # ---------------------------------------------------------------------------
-def test_global_max_cr_comes_from_a_floor_excluded_cell():
+def test_the_small_fast_cell_now_binds_the_sizing():
+    """🔴 REWRITTEN 2026-09-01 (correction 5, lecturer authorised).
+
+    exp_v1 no longer applies a sliver floor. The floor was keyed to the
+    REQUESTED cell size while the realised corridor minimum comes from the
+    base grid (~5.48 m at every mesh), so at 20 m and coarser it discarded
+    genuine corridor cells: at 50 m it dropped 89 of 116 and under-sized
+    nstp by 3.50x, producing Cr 3.076 against a 0.9 target.
+
+    This test pinned the floor behaviour, so it pins the bug. Rewritten to
+    assert the corrected policy.
+    """
     v = np.full(6, 1.0)
     size = np.full(6, 10.0)
-    size[2] = 1.0     # below 0.4*10=4.0 -> excluded from selection by the FLOOR ALONE
-    v[2] = 100.0      # the unique dominant ratio (100/1=100) if it were counted
+    size[2] = 1.0     # under the OLD 0.4*10=4.0 floor this was discarded
+    v[2] = 100.0      # ...even though it carries the dominant ratio, 100/1
     mask = np.ones(6, dtype=bool)
-    spec = MeshSpec()   # single level, cell_size=10.0 -> floor=4.0
-    total_time = 50.0
+    spec = MeshSpec()
 
     nstp, dt, cr, diag = tsd._courant_nstp_canonical(
-        v, size, mask.copy(), total_time, exclusions=[], nstp_cap=5000,
+        v, size, mask.copy(), 50.0, exclusions=[], nstp_cap=500000,
         refined_cell_size=REFINED_CELL_SIZE, mesh_spec=spec, profile="exp_v1")
 
-    # nstp/dt are sized off the SURVIVING (floor-filtered) selection
-    assert diag["v_bind"] != 100.0
-    assert diag["ds_bind"] >= diag["floor"]
-
-    # but the REPORTED Cr reflects the floor-excluded cell's huge ratio
-    expected_cr = float((v * dt / size).max())          # over the WHOLE corridor
-    assert cr == pytest.approx(expected_cr)
-    assert cr == pytest.approx(100.0 * dt)
-
-    sel_only = np.array([0, 1, 3, 4, 5])
-    sel_only_cr = float((v[sel_only] * dt / size[sel_only]).max())
-    assert cr != pytest.approx(sel_only_cr)
+    # the dominant cell binds: it sets ds_bind/v_bind, and Cr lands ON target
+    assert diag["ds_bind"] == pytest.approx(1.0)
+    assert diag["v_bind"] == pytest.approx(100.0)
+    assert cr == pytest.approx(0.9, rel=1e-3)
 
 
 # ---------------------------------------------------------------------------
 # 14-17. exp_v1 degenerate/invalid-input raises, named individually
 # ---------------------------------------------------------------------------
-def test_exp_v1_raises_on_empty_selection():
+def test_exp_v1_sizes_tiny_cells_instead_of_refusing_them():
+    """🔴 REWRITTEN 2026-09-01 (correction 5, lecturer authorised).
+
+    exp_v1 no longer applies a sliver floor. The floor was keyed to the
+    REQUESTED cell size while the realised corridor minimum comes from the
+    base grid (~5.48 m at every mesh), so at 20 m and coarser it discarded
+    genuine corridor cells: at 50 m it dropped 89 of 116 and under-sized
+    nstp by 3.50x, producing Cr 3.076 against a 0.9 target.
+
+    This test pinned the floor behaviour, so it pins the bug. Rewritten to
+    assert the corrected policy.
+    """
     v = np.full(4, 1.0)
-    size = np.full(4, 0.1)   # every cell below the floor
+    size = np.full(4, 0.1)   # EVERY cell under the old floor -> used to raise
     mask = np.ones(4, dtype=bool)
     spec = MeshSpec()
-    with pytest.raises(ValueError, match="floor-filtered selection is empty"):
-        tsd._courant_nstp_canonical(v, size, mask.copy(), 100.0, nstp_cap=2000,
-                                    refined_cell_size=REFINED_CELL_SIZE, mesh_spec=spec,
-                                    profile="exp_v1")
+    nstp, _, cr, diag = tsd._courant_nstp_canonical(
+        v, size, mask.copy(), 100.0, nstp_cap=500000,
+        refined_cell_size=REFINED_CELL_SIZE, mesh_spec=spec, profile="exp_v1")
+    assert diag["floor"] == 0.0
+    assert cr == pytest.approx(0.9, rel=1e-3)
+    # ⚠️ the cells still BIND -- nothing protects against a degenerate sliver.
+    # nstp_cap only makes that failure loud; see correction 5.
+    assert nstp > 1
 
 
 def test_exp_v1_raises_on_nonpositive_critical():

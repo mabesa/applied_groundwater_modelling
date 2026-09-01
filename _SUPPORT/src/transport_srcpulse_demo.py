@@ -616,6 +616,10 @@ def _courant_nstp_corrected(v_cells: np.ndarray, size_cells: np.ndarray, mask: n
                             total_time: float, *, exclusions: Sequence[int] = (),
                             cr_target: float = CourantSpec().cr_target,
                             nstp_cap: int = CourantSpec().nstp_cap,
+                            # ACCEPTED BUT IGNORED since 2026-09-01 (correction 5,
+                            # below): exp_v1 applies NO sliver floor. Kept in the
+                            # signature so every caller keeps working; tuning it
+                            # changes nothing. See correction 5 for why.
                             sliver_floor_frac: float = CourantSpec().sliver_floor_frac,
                             mesh_spec: Optional["MeshSpec"] = None
                             ) -> Tuple[int, float, float, Dict[str, float]]:
@@ -679,14 +683,36 @@ def _courant_nstp_corrected(v_cells: np.ndarray, size_cells: np.ndarray, mask: n
             "courant_nstp profile 'exp_v1': v_cells contains a non-finite "
             "entry within the corridor")
 
-    floor = sliver_floor_frac * min(level_sizes)
-    sel = corridor & (size_cells >= floor)          # exclusions ignored by design (correction 2)
-    if not sel.any():
-        raise ValueError(
-            "courant_nstp profile 'exp_v1': the floor-filtered selection is "
-            f"empty (every corridor cell is below sliver_floor_frac*min(level."
-            f"cell_size)={floor:g}); unlike legacy_srcpulse this does not fall "
-            "back to the whole mask (that would defeat the corrected floor policy)")
+    # 🔴 CORRECTION 5 (2026-09-01, lecturer authorised): NO SLIVER FLOOR.
+    #
+    # The floor was `sliver_floor_frac * min(level_sizes)` -- keyed to the
+    # REQUESTED cell size. The realised corridor minimum is ~5.48 m at EVERY
+    # mesh, because it comes from the base grid and not from the request. So
+    # whenever `0.4 * requested > 5.48` -- i.e. at 20 m and coarser -- the floor
+    # discarded genuine corridor cells, understated the binding velocity and
+    # under-sized `nstp`:
+    #
+    #   50 m mesh: floor 20.0 m dropped 89 of 116 corridor cells; corridor
+    #              max v/ds 0.6409 vs floor-kept 0.1832 -> understated 3.50x,
+    #              and the run came out at Cr 3.076 against a 0.9 target.
+    #   20 m mesh: floor  8.0 m dropped 32 of 128 -> understated 1.51x.
+    #   10 m / 2 m: dropped nothing, so those runs were never affected.
+    #
+    # Sizing on the whole corridor reproduces S4's recorded nstp exactly
+    # (86 / 85 / 122 at 50 / 20 / 10 m).
+    #
+    # What this trades: a degenerate sliver can now bind the timestep. It is NOT
+    # prevented -- `nstp_cap` only makes the failure LOUD (correction 4 raises,
+    # naming the nstp that would have been needed) rather than silent. A visible
+    # failure is better than silently under-resolving every coarse mesh; that is
+    # the whole argument, not a claim of equivalent protection.
+    floor = 0.0
+    sel = corridor                                  # exclusions ignored by design (correction 2)
+    # (The empty-selection raise that stood here is REMOVED with correction 5.
+    # `sel` is now exactly `corridor`, and an empty corridor is already refused
+    # upstream by the "mask has no active corridor cells" guard -- so the branch
+    # had become unreachable. A dead raise is worse than no raise: it implies a
+    # condition the code can no longer reach.)
 
     ratio = v_cells[sel] / size_cells[sel]
     critical = float(ratio.max())
