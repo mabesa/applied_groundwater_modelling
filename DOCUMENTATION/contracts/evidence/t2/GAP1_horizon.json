@@ -1,0 +1,38 @@
+[
+ {
+  "g": 8,
+  "shipped_horizon": 60,
+  "probe_horizon": 730.0,
+  "peak": 0.017828709442146908,
+  "thr": 0.1,
+  "ratio": 0.178,
+  "t_peak": 125.35882352941202,
+  "frac": 0.172,
+  "truly_peaked": true,
+  "wall": 51.4
+ },
+ {
+  "g": 11,
+  "shipped_horizon": 365,
+  "probe_horizon": 1095.0,
+  "peak": 0.4350565579581184,
+  "thr": 1.0,
+  "ratio": 0.435,
+  "t_peak": 523.1145610278631,
+  "frac": 0.478,
+  "truly_peaked": true,
+  "wall": 505.8
+ },
+ {
+  "g": 3,
+  "shipped_horizon": 730,
+  "probe_horizon": 1460.0,
+  "peak": 53.20786253974213,
+  "thr": 100.0,
+  "ratio": 0.532,
+  "t_peak": 1269.242622950853,
+  "frac": 0.869,
+  "truly_peaked": true,
+  "wall": 451.6
+ }
+]

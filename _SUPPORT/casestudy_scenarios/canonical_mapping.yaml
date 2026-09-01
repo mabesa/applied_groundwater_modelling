@@ -36,7 +36,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 1
@@ -77,7 +77,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 2
@@ -118,7 +118,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 3
@@ -158,7 +158,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 4
@@ -192,13 +192,13 @@ canonical_mapping:
   source_layer: 1
   source_start_time_days: 0
   source_duration_days: 1
-  source_value: 13.0
+  source_value: 9.0
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 5
@@ -240,7 +240,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 6
@@ -283,7 +283,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 7
@@ -323,7 +323,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 8
@@ -363,7 +363,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 9
@@ -403,7 +403,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 10
@@ -445,7 +445,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 11
@@ -488,7 +488,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 12
@@ -522,13 +522,13 @@ canonical_mapping:
   source_layer: 1
   source_start_time_days: 0
   source_duration_days: 1
-  source_value: 8.0
+  source_value: 5.5
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: ed444b17c6c9420acf26cecf0c8e610846f4d7e230ee355b4dffc03bd3aabe12
+  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 repairing_ledger:

@@ -1,0 +1,19 @@
+[
+ {
+  "g": 11,
+  "radius": 84.0,
+  "c_src": 15.0,
+  "min_cell": 5.088,
+  "n_below_1m": 0,
+  "ratio": 0.6187,
+  "predicted_by_linearity": 0.6187,
+  "linearity_err_pct": -0.0,
+  "rule_pass": true,
+  "verdict": "COMPLIANT",
+  "field_max": 15.0,
+  "c_src_check": 15.0,
+  "t_peak": 365.0,
+  "wall": 125.1,
+  "hub": 271.0
+ }
+]

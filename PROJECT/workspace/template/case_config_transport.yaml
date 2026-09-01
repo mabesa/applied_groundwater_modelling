@@ -129,6 +129,14 @@ transport_scenarios:
         first_order_decay_constant_1_per_day: 0.0
         half_life_days: null
 
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # Pinned, not rediscovered at runtime: the ladder's pick (r70) carried sub-metre cells; r90 is the cleanest measured for this corridor.
+      # Validated 2026-09-01: no cell below 1 m (min 5.32 m), runs in 38 s on the hub,
+      # receptor peak 138.5 x the threshold, and the verdict is unchanged on a second
+      # independent clean mesh. Students do not change this.
+      geometry:
+        refine_radius_m: 90.0
+
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
@@ -194,6 +202,14 @@ transport_scenarios:
         decay: false
         first_order_decay_constant_1_per_day: 0.0
         half_life_days: null
+
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # Pinned, not rediscovered at runtime: NO radius in the default ladder produced a clean mesh for this corridor; r50 was found by a wider search.
+      # Validated 2026-09-01: no cell below 1 m (min 1.79 m), runs in 63 s on the hub,
+      # receptor peak 0.0089 x the threshold, and the verdict is unchanged on a second
+      # independent clean mesh. Students do not change this.
+      geometry:
+        refine_radius_m: 50.0
 
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
@@ -263,6 +279,14 @@ transport_scenarios:
         first_order_decay_constant_1_per_day: 0.005  # Moderate biodegradation
         half_life_days: 138.6           # ~5 months half-life
 
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # Pinned, not rediscovered at runtime: the ladder's pick (r70) carried sub-metre cells; r62 is the cleanest measured for this corridor.
+      # Validated 2026-09-01: no cell below 1 m (min 4.51 m), runs in 98 s on the hub,
+      # receptor peak 23.65 x the threshold, and the verdict is unchanged on a second
+      # independent clean mesh. Students do not change this.
+      geometry:
+        refine_radius_m: 62.0
+
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
@@ -330,6 +354,14 @@ transport_scenarios:
         decay: false
         first_order_decay_constant_1_per_day: 0.0
         half_life_days: null
+
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # Pinned, not rediscovered at runtime: r90 is the cleanest measured for this corridor.
+      # Validated 2026-09-01: no cell below 1 m (min 4.39 m), runs in 551 s on the hub,
+      # receptor peak 0.5217 x the threshold, and the verdict is unchanged on a second
+      # independent clean mesh. Students do not change this.
+      geometry:
+        refine_radius_m: 90.0
 
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
@@ -399,6 +431,14 @@ transport_scenarios:
         first_order_decay_constant_1_per_day: 0.0
         half_life_days: null
 
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # The corridor mesh is pinned, not rediscovered at runtime. The default radius
+      # ladder keeps the first radius that BUILDS, which is not always one that is
+      # usable -- at radius 70 this group's mesh had 225 sub-metre cells and did not converge at all.
+      # Students do not change this.
+      geometry:
+        refine_radius_m: 90.0
+
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
@@ -424,13 +464,18 @@ transport_scenarios:
         # TODO: Adjust duration of source activation based on model runs to
         # ensure plume reaches monitoring point. Minimum 1 day.
         duration_days: 1               # 1-day spill
-        # Source concentration set to 13 mg/L so the delayed retarded front stays
-        # clearly (not marginally) below the 0.1 mg/L threshold. Transport is linear
-        # in source concentration (linear sorption, no decay), so peak ~ 0.079 mg/L
-        # (~21% below threshold). The lesson is the RETARDATION-delayed arrival, not
-        # a knife-edge threshold call. A 13 mg/L dissolved Cr-VI plume from a
-        # plating spill is realistic/conservative.
-        concentration_mg_L: 13.0
+        # SYNTHETIC scenario-design value (not a measured field concentration).
+        # Chosen so the delayed retarded front stays CLEARLY, not marginally, below
+        # the 0.1 mg/L threshold on EVERY validated mesh. Transport is linear in the
+        # source concentration here (linear sorption, no decay), so the peak scales
+        # proportionally.
+        #   2026-09-01: at 13.0 mg/L the four validated meshes gave 0.81-0.95 of the
+        #   threshold -- i.e. the "clearly below" intent this comment already claimed
+        #   was NOT met, and mesh choice alone could have decided compliance.
+        #   At 9.0 mg/L they give 0.56-0.66, inside the instructor acceptance rule
+        #   (every validated mesh below 0.8, or above 1.333, of the threshold).
+        # The lesson is the RETARDATION-delayed arrival, not a knife-edge call.
+        concentration_mg_L: 9.0
         ssm_itype: -1
 
       simulation:
@@ -472,6 +517,14 @@ transport_scenarios:
         decay: false                    # Persistent
         first_order_decay_constant_1_per_day: 0.0
         half_life_days: null
+
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # Pinned, not rediscovered at runtime: r70 is the cleanest measured for this corridor.
+      # Validated 2026-09-01: no cell below 1 m (min 2.54 m), runs in 19 s on the hub,
+      # receptor peak 49.76 x the threshold, and the verdict is unchanged on a second
+      # independent clean mesh. Students do not change this.
+      geometry:
+        refine_radius_m: 70.0
 
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
@@ -540,6 +593,14 @@ transport_scenarios:
         decay: false
         first_order_decay_constant_1_per_day: 0.0
         half_life_days: null
+
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # Pinned, not rediscovered at runtime: only ONE ladder radius (r56) was clean; r44 was found by a wider search and is cleaner still.
+      # Validated 2026-09-01: no cell below 1 m (min 2.03 m), runs in 360 s on the hub,
+      # receptor peak 38.22 x the threshold, and the verdict is unchanged on a second
+      # independent clean mesh. Students do not change this.
+      geometry:
+        refine_radius_m: 44.0
 
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
@@ -611,6 +672,14 @@ transport_scenarios:
         first_order_decay_constant_1_per_day: 0.02  # Fast nitrification
         half_life_days: 34.7            # ~1 month half-life
 
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # Pinned, not rediscovered at runtime: r56 fails its pilot solve outright; r84 is the cleanest measured that runs.
+      # Validated 2026-09-01: no cell below 1 m (min 4.56 m), runs in 209 s on the hub,
+      # receptor peak 6.578 x the threshold, and the verdict is unchanged on a second
+      # independent clean mesh. Students do not change this.
+      geometry:
+        refine_radius_m: 84.0
+
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
@@ -678,6 +747,14 @@ transport_scenarios:
         first_order_decay_constant_1_per_day: 0.0
         half_life_days: null
 
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # Pinned, not rediscovered at runtime: only ONE ladder radius (r78) was clean; r44 was found by a wider search.
+      # Validated 2026-09-01: no cell below 1 m (min 1.67 m), runs in 73 s on the hub,
+      # receptor peak 0.0963 x the threshold, and the verdict is unchanged on a second
+      # independent clean mesh. Students do not change this.
+      geometry:
+        refine_radius_m: 44.0
+
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
@@ -707,11 +784,13 @@ transport_scenarios:
         ssm_itype: -1
 
       simulation:
-        # TODO: Adjust simulation duration based on model runs to ensure plume
-        # reaches monitoring point. Minimum 30 days.
-        duration_days: 60
-        output_times_days: [30, 45, 60]
-
+        # 2026-09-01: extended 60 -> 365 d. At 60 days the run ended while the
+        # breakthrough curve was still RISING -- the reported peak was the last time
+        # step, not a peak, and it under-read the true maximum by ~2.5x. The peak
+        # actually occurs near day 130. The compliance verdict is unaffected (well
+        # under the threshold either way), but students now see the curve turn over.
+        duration_days: 365
+        output_times_days: [30, 90, 180, 270, 365]
 
       monitoring:
         threshold_mg_L: 0.1             # Drinking water standard (EU)
@@ -743,6 +822,14 @@ transport_scenarios:
         decay: true
         first_order_decay_constant_1_per_day: 0.00198042
         half_life_days: 350.0
+
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # Pinned, not rediscovered at runtime: the ladder's pick (r70) carried sub-metre cells; r56 is the cleanest measured for this corridor.
+      # Validated 2026-09-01: no cell below 1 m (min 1.92 m), runs in 246 s on the hub,
+      # receptor peak 1.93 x the threshold, and the verdict is unchanged on a second
+      # independent clean mesh. Students do not change this.
+      geometry:
+        refine_radius_m: 56.0
 
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
@@ -809,6 +896,14 @@ transport_scenarios:
         first_order_decay_constant_1_per_day: 0
         half_life_days: null
 
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # Pinned, not rediscovered at runtime: only ONE ladder radius (r78) was clean; r74 was found by a wider search.
+      # Validated 2026-09-01: no cell below 1 m (min 1.58 m), runs in 79 s on the hub,
+      # receptor peak 1.506 x the threshold, and the verdict is unchanged on a second
+      # independent clean mesh. Students do not change this.
+      geometry:
+        refine_radius_m: 74.0
+
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
@@ -870,6 +965,16 @@ transport_scenarios:
         decay: false
         first_order_decay_constant_1_per_day: 0
         half_life_days: null
+
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # The corridor mesh is pinned, not rediscovered at runtime. Radius 84 is chosen
+      # because it is simultaneously the CLEANEST mesh for this corridor (min cell
+      # 5.09 m, no sub-metre cells) and the FASTEST (272 s on the hub vs 385 s for the
+      # radius the default ladder picks). The ladder's pick carried 82 sub-metre cells
+      # and under-read this group's peak by ~30% (0.435x vs 0.60-0.62x of the limit).
+      # Students do not change this.
+      geometry:
+        refine_radius_m: 84.0
 
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
@@ -933,6 +1038,14 @@ transport_scenarios:
         first_order_decay_constant_1_per_day: 0
         half_life_days: null
 
+      # --- Prepared refinement geometry (INSTRUCTOR-VALIDATED; contract A19) ---
+      # The corridor mesh is pinned, not rediscovered at runtime. The default radius
+      # ladder keeps the first radius that BUILDS, which is not always one that is
+      # usable -- at radius 70 this group's mesh had sub-metre cells and flipped the compliance verdict.
+      # Students do not change this.
+      geometry:
+        refine_radius_m: 48.0
+
       # --- Geothermal doublet (REAL validated AWEL concession; both wells active) ---
       # Extraction well = the compliance/monitoring "Well". Absolute Swiss LV95 (EPSG:2056).
       doublet:
@@ -957,7 +1070,15 @@ transport_scenarios:
           layer: 1
         start_time_days: 0
         duration_days: 1
-        concentration_mg_L: 8.0
+        # SYNTHETIC scenario-design value (not a measured field concentration).
+        #   2026-09-01: at 8.0 mg/L the shipped geometry reported 1.155 of the
+        #   threshold (EXCEEDS), but that mesh carried sub-metre cells. On the two
+        #   validated meshes the same scenario gives 0.83 and 0.93 -- COMPLIANT.
+        #   The old verdict was a mesh artifact, so the scenario is re-scaled to sit
+        #   clearly on the side the trustworthy meshes actually support.
+        #   At 5.5 mg/L they give 0.57-0.64, inside the instructor acceptance rule
+        #   (every validated mesh below 0.8, or above 1.333, of the threshold).
+        concentration_mg_L: 5.5
         ssm_itype: -1
 
       simulation:
