@@ -93,8 +93,10 @@ establish a mechanism**. Solver behaviour, cell geometry near the well, or anoth
 the timestep calculation could contribute. The `courant_nstp` diagnostic records which cell binds;
 reading it would settle this, and has not been done.
 
-> **What may be stated:** spreading the sink over a fixed disc makes fine meshes dramatically
-> cheaper in timesteps. **What may not yet be stated:** *why*.
+> **What may be stated:** in the two runs measured, spreading the sink over a fixed 25 m disc cut
+> the timestep demand by 5.3× at 2 m and 1.4× at 10 m. **What may not be stated:** that this
+> generalises to other meshes or cases — no other controlled counterpart exists — or *why* it
+> happens.
 
 ### 3.2 🔴 But the grid sensitivity SURVIVES the control — a negative result
 
@@ -107,10 +109,18 @@ reading it would settle this, and has not been done.
 figure against ≈ +15.7% *derived from `04t`'s published series*, and codex was right that a
 half-measured contrast should not be asserted. `spatial_10m_cr0.9` was already a registered
 identity and cost **19.6 s** to run through the controlled path, so it was measured rather than
-withdrawn. Its **+15.76%** confirms `04t`'s published +15.7%.
+withdrawn.
+
+⚠️ **An earlier draft added that +15.76% "confirms" `04t`'s published +15.7%. Cut** *(codex round
+2)*: agreement to within rounding between an artifact and a notebook figure derived from the same
+model is interesting, not independent validation of either.
 
 Holding the sink support fixed does **not** shrink the mesh sensitivity of the peak; if anything it
-is marginally larger. **Sink discretisation is not what drives the grid effect.**
+is marginally larger. **Over the one step measured — 10 m to 2 m — holding the sink support fixed does not reduce the
+peak's mesh sensitivity.** ⚠️ *(codex round 2)* That is the whole claim. It is **one step, on two
+meshes, for this case and this platform**. It does not establish that sink discretisation is
+irrelevant to grid sensitivity in general, nor say anything about the 5 m, 1 m or 50 m behaviour,
+where no controlled counterpart was run.
 
 This is consistent with what `T0_2b…` §4.2 predeclared: B-control *"controls the SINK, not the
 FLOW"* and does **not** reach `cause`, because GWF and GWT stay tied to each mesh's DISV grid. The
