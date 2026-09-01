@@ -193,6 +193,50 @@ def check_dict_task_with_solution(task_id, user_values):
     display(output, solution_button, solution_output)
 
 
+_MCQ_STYLES_INJECTED = False
+
+_MCQ_CSS = """
+<style>
+/* Long multiple-choice options must wrap instead of overflowing a one-row box.
+   Scoped to .agm-mcq so no other RadioButtons in the course is affected.
+   Both class names are needed: ipywidgets 8 renames .widget-radio-box ->
+   .jupyter-widget-radio-box and keeps the old one only as a deprecated alias. */
+.agm-mcq .widget-radio-box,
+.agm-mcq .jupyter-widget-radio-box {
+    width: 100%;
+}
+.agm-mcq .widget-radio-box label,
+.agm-mcq .jupyter-widget-radio-box label {
+    height: auto !important;          /* the actual fix: upstream pins this to one row */
+    min-height: 1.6em;
+    line-height: 1.5 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    padding: 6px 0;
+    display: flex;                    /* radio in its own column, text wraps in the other */
+    align-items: flex-start;
+    gap: 0.55em;
+}
+.agm-mcq .widget-radio-box input[type="radio"],
+.agm-mcq .jupyter-widget-radio-box input[type="radio"] {
+    height: auto !important;
+    float: none !important;           /* upstream floats it; wrapped lines would run under it */
+    margin: 0.3em 0 0 0 !important;
+    flex: 0 0 auto;
+}
+</style>
+"""
+
+
+def _inject_mcq_styles():
+    """Emit the multiple-choice wrap CSS once per kernel."""
+    global _MCQ_STYLES_INJECTED
+    if _MCQ_STYLES_INJECTED:
+        return
+    display(HTML(_MCQ_CSS))
+    _MCQ_STYLES_INJECTED = True
+
+
 def create_multiple_choice(task_id):
     """
     Create a multiple-choice widget for conceptual checkpoints.
@@ -224,28 +268,28 @@ def create_multiple_choice(task_id):
     # Create mapping from label back to value for checking
     label_to_value = {label: value for (value, label) in options}
 
-    # 🔴 ipywidgets RadioButtons draw each option as ONE fixed-height row that does not wrap.
-    # Several of these labels run to 200-450 characters, so on JupyterHub the rows collide and
-    # the options render on top of each other (reported 2026-08-30).
+    # 🔴 ipywidgets RadioButtons draw each option as ONE FIXED-HEIGHT row. Its own stylesheet
+    # says:
+    #     .widget-radio-box label, .jupyter-widget-radio-box label {
+    #         height:      var(--jp-widgets-radio-item-height);   <-- one row, always
+    #         line-height: var(--jp-widgets-radio-item-height);
+    #     }
+    # 21 of our 158 option labels run past 120 characters (the longest, task_t08_checkpoint_1,
+    # is 462). Wrapped text overflows that fixed box and the options render on top of each
+    # other on JupyterHub (reported 2026-08-30).
     #
-    # Fix by Louise (review_transport_louise_from_course_2026, 91b823c): let the labels WRAP.
-    # Preferred over substituting short labels, because the student keeps reading the full
-    # option text on the control they are actually selecting.
+    # An earlier fix (Louise, 91b823c) set line-height/white-space but NOT `height`, so the box
+    # stayed one row tall and the overlap remained. Two further problems with it: it targeted
+    # only `.widget-radio-box`, which ipywidgets 8 marks DEPRECATED in favour of
+    # `.jupyter-widget-radio-box` (so on a newer frontend it matched nothing), and it was
+    # injected globally, restyling every RadioButtons in the course -- e.g.
+    # darcy_law_experiment.py.
     #
-    # ⚠️ Her version injected this from `check_task_with_solution`, which never creates
-    # RadioButtons -- it only worked when a numeric checkpoint happened to run earlier in the
-    # same notebook, since the CSS is global once injected. It belongs here.
-    display(HTML("""
-    <style>
-        .widget-radio-box label {
-            line-height: 1.6;
-            padding: 5px 0;
-            white-space: normal;
-            word-wrap: break-word;
-        }
-        .widget-radio-box { width: 100%; }
-    </style>
-    """))
+    # This version fixes the actual cause (`height: auto`), covers both class names, and is
+    # SCOPED to `.agm-mcq` so nothing else is touched. Each option is laid out as a flex row so
+    # that continuation lines align with the text rather than running underneath the radio
+    # button, which the upstream `float: left` on the input would otherwise cause.
+    _inject_mcq_styles()
 
     # Create widgets
     radio = widgets.RadioButtons(
@@ -255,6 +299,7 @@ def create_multiple_choice(task_id):
         disabled=False,
         layout=widgets.Layout(width='100%')
     )
+    radio.add_class('agm-mcq')
 
     submit_button = widgets.Button(description="Check Answer", button_style='primary')
     solution_button = widgets.Button(description="Show Solution", button_style='info', disabled=True)
