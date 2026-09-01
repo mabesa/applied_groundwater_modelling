@@ -95,7 +95,7 @@ The ZIP contains:
 - the **scratch** notebook(s) (`scratch_<name>.ipynb`) with saved figures/tables, plus
   `scratch_io.py`;
 - the `exports/` bundle, and the `figures/` and `tables/` you produced;
-- `report.pdf` and `presentation.pdf` in the **group folder root**.
+- `presentation.pdf` in the **group folder root**.
 
 Flow **and** transport are **both required** for the final project submission once the
 transport phase has been assigned.
@@ -147,8 +147,9 @@ restarts the kernel, and runs all cells to (re)build the `exports/` bundle.
 **4. Run each scratch notebook.** For every `scratch_<name>.ipynb` in the group folder,
 restart the kernel and run all cells so figures and tables are saved with output.
 
-**5. Add the report and presentation.** Put `report.pdf` and `presentation.pdf` in the
-**group folder root** (`PROJECT/workspace/group_<N>/`), alongside the notebooks.
+**5. Add the presentation.** Put `presentation.pdf` in the **group folder root**
+(`PROJECT/workspace/group_<N>/`), alongside the notebooks. There is no written
+report — your modelling work and your presentation are the submission.
 
 **6. Create the ZIP from `PROJECT/workspace/`** — *not* from inside the group folder, so
 the archive has a single top-level `group_<N>/` folder. Exclude checkpoint/cache junk:
