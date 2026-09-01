@@ -35,7 +35,6 @@ rename them to your group number**; your group is identified by the `group_<N>/`
 - [ ] `scratch_io.py` — the FloPy-free reader (required for rerun) *(required)*
 - [ ] `exports/` — the lightweight bundle (see below) *(required)*
 - [ ] `figures/` and `tables/` — outputs produced by the scratch cards *(required)*
-- [ ] `report.pdf` — in the group folder root *(required)*
 - [ ] `presentation.pdf` — in the group folder root *(required)*
 
 Flow **and** transport are both required for the final submission once the transport
