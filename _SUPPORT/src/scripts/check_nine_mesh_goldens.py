@@ -78,7 +78,14 @@ _ENV_KEYS = ("numpy", "flopy", "python", "geos")
 #: NOT the roster: the roster grew to 13 on 2026-08-31 and groups 9-12 carry
 #: DEFERRALS (authoritative Linux goldens pending). Widening this would report
 #: a pass over meshes that were never frozen.
-FROZEN_GOLDEN_GROUPS = tuple(range(9))
+#: 🔴 WIDENED 9 -> 13 on 2026-09-02, on the lecturer's authorisation. A16 was written
+#: when only groups 0-8 had frozen goldens; groups 9-12 carried deferrals. They now have
+#: authoritative Linux goldens, the deferrals are gone, and every group in the roster is
+#: frozen -- so the evidence set is the roster. The old comment warned that widening
+#: this "would silently report a pass over meshes that were never frozen"; that hazard
+#: is exactly what `verify_flow_goldens.py` and `assert_all_groups_anchored` (golden XOR
+#: deferral) now rule out.
+FROZEN_GOLDEN_GROUPS = tuple(range(13))
 
 
 def current_env() -> dict:
@@ -320,11 +327,11 @@ def is_full_a16_evidence(records, expected_groups=None) -> bool:
         skipped as cross-platform is useful (it still checks radius and solver health)
         but it is NOT the pin, so it can never be the evidence.
     """
-    # DELIBERATELY nine (FROZEN_GOLDEN_GROUPS), not the roster size. This script is A16's regression evidence
-    # over the FROZEN golden set, and only groups 0-8 have frozen goldens. Groups
-    # 9-12 (added 2026-08-31) carry deferrals until their authoritative Linux
-    # goldens are generated; widening this default would silently report a pass
-    # over meshes that were never frozen. Pass expected_groups explicitly to widen.
+    # FROZEN_GOLDEN_GROUPS, which is now the whole roster (widened 9 -> 13 on
+    # 2026-09-02 once groups 9-12 had authoritative Linux goldens). It is still the
+    # FROZEN set rather than the roster by definition -- they merely coincide today. If
+    # a future group is added with a deferral, this must NOT follow the roster until its
+    # golden exists, or the evidence would cover meshes that were never frozen.
     expected = FROZEN_GOLDEN_GROUPS if expected_groups is None else tuple(expected_groups)
     seen = tuple(r["group"] for r in records)
     if sorted(seen) != sorted(expected):

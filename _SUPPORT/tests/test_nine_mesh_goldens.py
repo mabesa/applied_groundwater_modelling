@@ -33,16 +33,24 @@ GOLDEN_DIR = REPO / "_SUPPORT" / "src" / "golden"
 
 
 # --- 1. the mechanism covers all nine, not just group 0 ---------------------
-def test_default_group_set_is_all_nine():
-    """A16's evidence set is the NINE frozen meshes -- not the roster.
+def test_default_group_set_is_every_frozen_group():
+    """A16's evidence set is the FROZEN meshes.
 
-    Was asserted against `b.ALL_GROUPS`, which is the ROSTER and grew to 13 on
-    2026-08-31. The frozen-golden set did NOT grow with it: groups 9-12 carry
-    deferrals until their authoritative Linux goldens exist.
+    It was nine: groups 9-12 were added to the roster on 2026-08-31 carrying
+    deferrals, and the frozen set deliberately did not grow with the roster. On
+    2026-09-02 those four were frozen with authoritative Linux goldens and A16 was
+    widened to thirteen on the lecturer's authorisation, so the two now coincide.
+
+    They are still DIFFERENT CONCEPTS. This asserts the frozen set covers exactly the
+    groups that actually have a golden -- so adding a future group with a deferral
+    cannot silently drag it into A16's evidence.
     """
-    assert nine.FROZEN_GOLDEN_GROUPS == tuple(range(9))
-    assert len(nine.FROZEN_GOLDEN_GROUPS) == 9
-    # the roster is a superset -- every frozen group is still a real group
+    assert nine.FROZEN_GOLDEN_GROUPS == tuple(range(13))
+    # every group in the evidence set must really be frozen ...
+    for g in nine.FROZEN_GOLDEN_GROUPS:
+        assert b._frozen_golden_manifest(g) is not None, f"group {g} is not frozen"
+        assert b._load_deferral(g) is None, f"group {g} still carries a deferral"
+    # ... and it must not claim groups outside the roster
     assert set(nine.FROZEN_GOLDEN_GROUPS) <= set(b.ALL_GROUPS)
 
 
@@ -117,17 +125,26 @@ def _rec(group, result="PASS", enforced=True):
     return {"group": group, "result": result, "hashes_enforced": enforced}
 
 
-def test_full_a16_evidence_needs_all_nine_passing_with_hashes_enforced():
-    nine_ok = [_rec(g) for g in range(9)]
-    assert nine.is_full_a16_evidence(nine_ok) is True
+def test_full_a16_evidence_needs_every_frozen_group_passing_with_hashes_enforced():
+    """A16 named NINE meshes until 2026-09-02; it now covers all THIRTEEN. Derived from
+    FROZEN_GOLDEN_GROUPS rather than a literal, so widening the set again cannot leave
+    this asserting the old size."""
+    all_ok = [_rec(g) for g in nine.FROZEN_GOLDEN_GROUPS]
+    assert nine.is_full_a16_evidence(all_ok) is True
+
+
+_N = len(nine.FROZEN_GOLDEN_GROUPS)
+_LAST = nine.FROZEN_GOLDEN_GROUPS[-1]
 
 
 @pytest.mark.parametrize("records, why", [
-    ([_rec(g) for g in range(8)], "only eight groups -- A16 names nine"),
-    ([_rec(g) for g in range(9)][:-1] + [_rec(8, result="FAIL")], "a group failed"),
-    ([_rec(g) for g in range(9)][:-1] + [_rec(8, enforced=False)],
+    ([_rec(g) for g in nine.FROZEN_GOLDEN_GROUPS[:-1]],
+     f"only {_N - 1} groups -- A16 covers {_N}"),
+    ([_rec(g) for g in nine.FROZEN_GOLDEN_GROUPS][:-1] + [_rec(_LAST, result="FAIL")],
+     "a group failed"),
+    ([_rec(g) for g in nine.FROZEN_GOLDEN_GROUPS][:-1] + [_rec(_LAST, enforced=False)],
      "one group's hashes were SKIPPED, so the pin was not enforced there"),
-    ([_rec(g, enforced=False) for g in range(9)],
+    ([_rec(g, enforced=False) for g in nine.FROZEN_GOLDEN_GROUPS],
      "a full cross-platform run: useful, but not the pin"),
 ])
 def test_these_runs_are_not_a16_evidence(records, why):
