@@ -178,9 +178,22 @@ class TestWellsOnlyStateGroup0:
                                   work_dir=tmp_path_factory.mktemp("g0_wells_half"))
 
     def test_doublet_placement_cells(self, full):
+        """inj/ext resolve into the fine corridor, active, non-CHD/RIV (no raise).
+
+        🔴 2026-09-02: this asserted the literal cell ids 673 and 732. Cell INDICES are
+        an artefact of the tessellation -- they change whenever the grid does, which it
+        did when the flow and transport halves were unified onto one grid, and the
+        literal then fails for a reason that has nothing to do with placement being
+        wrong. Assert the properties that actually matter instead: the two roles land on
+        DIFFERENT cells, each at its configured coordinate, inside the fine corridor.
+        (`resolve_doublet_cells` already raises on an ambiguous or inactive placement.)
+        """
         d = full["doublet"]
-        # inj/ext resolve into the fine corridor, active, non-CHD/RIV (no raise)
-        assert d["injection"]["cell"] == 673 and d["extraction"]["cell"] == 732
+        inj_xy, ext_xy = cfc.group_doublet_points(0)
+        assert d["injection"]["cell"] != d["extraction"]["cell"], (
+            "the doublet collapsed onto a single cell")
+        assert (d["injection"]["E"], d["injection"]["N"]) == pytest.approx(inj_xy)
+        assert (d["extraction"]["E"], d["extraction"]["N"]) == pytest.approx(ext_xy)
         assert d["injection"]["cellsize_m"] < cfc.CORRIDOR_CELLSIZE_THRESHOLD_M
         assert d["extraction"]["cellsize_m"] < cfc.CORRIDOR_CELLSIZE_THRESHOLD_M
 
@@ -495,8 +508,14 @@ def test_builder_spec_hashes_match_committed_without_solve():
     coarse_heads = cgwf.output.head().get_data().flatten()
     boundary_gdf, river_gdf = cfc.load_gis(mother)
     refine_points = cfc.group_refine_points(0)
+    # MUST pass the group's pinned radius. Omitting it silently builds at
+    # BASELINE_REFINE_RADIUS (70 m) and compares that against a golden frozen at the
+    # pin -- every member then differs and it reads as a catastrophic regression. The
+    # same omission caused exactly that confusion once before (see
+    # test_nine_mesh_goldens.test_diff_builds_at_the_goldens_own_radius_not_the_default).
     spec, riv_info = cfc.build_baseline_spec(
         cgwf, boundary_gdf, river_gdf, refine_points, coarse_heads,
+        refine_radius=cfc.group_refine_radius(0),
     )
     agg, arr = cfc.spec_canonical_hashes(spec)
     manifest = json.loads((GOLDEN_DIR / "group0_flow.manifest.json").read_text())

@@ -941,7 +941,10 @@ def _solve_validate_wells(group, walk, work_dir, *, half_rate) -> Dict[str, Any]
     heads_i = np.asarray(base_built["heads"], dtype=float)
 
     # (b) Resolve + validate the doublet cells against the BUILT grid.
-    doublet = cfc.resolve_doublet_cells(spec, base_built["modelgrid"], refine_points)
+    # NOT walk["refine_points"] -- those are the CORRIDOR anchors since 2026-09-02.
+    # This needs the two WELLS.
+    doublet = cfc.resolve_doublet_cells(
+        spec, base_built["modelgrid"], cfc.group_doublet_points(group))
     inj_cell = doublet["injection"]["cell"]
     ext_cell = doublet["extraction"]["cell"]
     Q = float(cfc.DOUBLET_Q_M3D) * (0.5 if half_rate else 1.0)

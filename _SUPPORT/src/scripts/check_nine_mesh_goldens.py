@@ -230,6 +230,25 @@ def check_group(group: int, *, state: str = "baseline", diagnose: bool = False) 
         "failures": [],
     }
 
+    # 🔴 The radius comparison is platform-independent and needs NO build, so record it
+    # FIRST. It used to be computed only after a successful build, which meant a build
+    # that raised -- exactly what a radius divergence CAUSES, via
+    # `_pin_built_grid_to_frozen_golden` -- returned a record with no `refine_radius`
+    # check at all, and the caller got a KeyError instead of the diagnosis.
+    _golden_radius_early = manifest.get("radius_used")
+    try:
+        import casestudy_flow_common as _cfc
+        _intended_radius = _cfc.group_refine_radius(group)
+    except Exception:                                        # noqa: BLE001
+        _intended_radius = None
+    if _golden_radius_early is not None and _intended_radius is not None:
+        _ok = abs(float(_golden_radius_early) - float(_intended_radius)) < 1e-9
+        rec["checks"]["refine_radius"] = "PASS" if _ok else "FAIL"
+        if not _ok:
+            rec["failures"].append(
+                f"refine_radius: golden {_golden_radius_early} != this group's pinned "
+                f"radius {_intended_radius}")
+
     t0 = time.time()
     try:
         with tempfile.TemporaryDirectory() as wd:

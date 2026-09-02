@@ -50,10 +50,22 @@ def test_every_group_has_a_committed_golden():
     """A16 names NINE frozen meshes; the checker must have something to check."""
     missing = [g for g in nine.FROZEN_GOLDEN_GROUPS if b._frozen_golden_manifest(g) is None]
     assert not missing, f"groups without a committed golden manifest: {missing}"
-    # every group OUTSIDE the frozen set must be anchored by a DEFERRAL instead,
-    # so a group can never be silently unanchored
-    for g in set(b.ALL_GROUPS) - set(nine.FROZEN_GOLDEN_GROUPS):
-        assert b._load_deferral(g) is not None, f"group {g}: neither golden nor deferral"
+    # Every group must be anchored by EXACTLY ONE of golden / deferral, so a group can
+    # never be silently unanchored.
+    #
+    # 🔴 2026-09-02: this used to require every group OUTSIDE the nine to carry a
+    # DEFERRAL. Groups 9-12 now have authoritative Linux goldens, so that assumption is
+    # stale. The invariant that actually matters -- and that
+    # `assert_all_groups_anchored` enforces -- is golden XOR deferral, which is what is
+    # checked here. A16's evidence set stays at nine (widening it is a contract
+    # amendment); this is only about no group being unanchored.
+    for g in b.ALL_GROUPS:
+        has_golden = b._frozen_golden_manifest(g) is not None
+        has_deferral = b._load_deferral(g) is not None
+        assert has_golden != has_deferral, (
+            f"group {g}: has "
+            f"{'BOTH a golden AND a deferral' if has_golden else 'NEITHER'}"
+            f" -- exactly one is required")
 
 
 # --- 2. NEGATIVE CONTROLS -- the check must be able to fail ------------------
@@ -143,11 +155,19 @@ def test_env_mismatch_is_detected_from_the_manifest():
 
 
 def test_env_mismatch_reports_each_differing_library(monkeypatch):
-    monkeypatch.setattr(nine, "current_env", lambda: {
-        "numpy": "2.1.3", "flopy": "3.9.3", "python": "3.12.9", "geos": "3.13.1"})
-    diff = nine.env_mismatch(b._frozen_golden_manifest(0))
+    """🔴 2026-09-02: this hard-coded the golden's numpy as "2.3.5". The goldens were
+    regenerated on the Hub, whose numpy is 2.1.3, so the literal silently became the
+    CURRENT version and the test asserted a mismatch that no longer existed. Derive the
+    "different" versions from the golden instead, so it tests the mechanism rather than
+    a snapshot of one environment."""
+    golden = b._frozen_golden_manifest(0)
+    gv = golden["versions"]
+    bumped = {"numpy": gv["numpy"] + ".9", "flopy": gv["flopy"] + ".9",
+              "python": gv["python"], "geos": gv["geos"]}
+    monkeypatch.setattr(nine, "current_env", lambda: bumped)
+    diff = nine.env_mismatch(golden)
     assert set(diff) == {"numpy", "flopy"}
-    assert diff["numpy"] == {"golden": "2.3.5", "current": "2.1.3"}
+    assert diff["numpy"] == {"golden": gv["numpy"], "current": bumped["numpy"]}
 
 
 def test_kernel_bump_alone_is_not_an_env_mismatch(monkeypatch):
@@ -189,11 +209,19 @@ def test_diff_builds_at_the_goldens_own_radius_not_the_default(group):
     differing, which read as a catastrophic regression and sent the investigation after a
     cause that did not exist.
     """
+    import casestudy_flow_common as cfc
+
     manifest = b._frozen_golden_manifest(group)
-    assert manifest["radius_used"] == 62.0, "fixture assumption: these goldens are r=62"
+    # 🔴 2026-09-02: these goldens used to all be r=62 (the ladder's first success).
+    # They are now frozen at each group's PINNED radius, so the fixture assumption is
+    # the pin, not a literal.
+    pin = cfc.group_refine_radius(group)
+    assert manifest["radius_used"] == pin, (
+        f"fixture assumption: group {group}'s golden is frozen at its pinned radius "
+        f"{pin}, got {manifest['radius_used']}")
     d = nine.member_level_diff(group, manifest)
     assert d.get("error") is None, d
-    assert d["built_at_radius"] == 62.0
+    assert d["built_at_radius"] == pin
     # the tell-tale of the bug: essentially every member differing at once
     total = (len(d["topology_members_differing"])
              + len(d["cell_property_members_differing"])

@@ -181,6 +181,25 @@ def group_refine_points(group: Group, *, config_path: Any = None) -> List[Tuple[
     return _corridor_anchors(spill, ext) + [inj]
 
 
+def group_doublet_points(group: Group, *, config_path: Any = None) -> List[Tuple[float, float]]:
+    """The group's two well coordinates: ``[(inj_E, inj_N), (ext_E, ext_N)]``.
+
+    🔴 Added 2026-09-02. Until then this WAS ``group_refine_points`` -- the points
+    to refine around and the doublet itself were the same two coordinates, so one
+    function served both. They are no longer the same: refinement now follows the
+    whole spill->extraction corridor, so anything that needs THE WELLS (well
+    placement, ``resolve_doublet_cells``) must ask for them explicitly rather than
+    reading the first two refine anchors.
+    """
+    import case_utils as cu
+
+    doublet = cu.lint_transport_config(config_path=config_path, groups=[group])[group]["doublet"]
+    return [
+        (float(doublet["injection_easting"]), float(doublet["injection_northing"])),
+        (float(doublet["extraction_easting"]), float(doublet["extraction_northing"])),
+    ]
+
+
 def resolve_refine_radii(group: Group, ladder: Any, *, config_path: Any = None) -> tuple:
     """The radii to try for *group*: its PINNED radius alone, else *ladder*.
 
@@ -437,7 +456,8 @@ def resolve_doublet_cells(
     """Resolve + VALIDATE the group's doublet (injection, extraction) cells
     against the ACTUAL built grid (single canonical mapper, cross-checked
     against the containing cell). *refine_points* is ``[(inj_E, inj_N),
-    (ext_E, ext_N)]`` (from ``group_refine_points``).
+    (ext_E, ext_N)]`` -- from ``group_doublet_points``, NOT ``group_refine_points``
+    (which returns the corridor anchors and is a different, longer list).
 
     For each role:
       * resolve via ``resolve_well_cell`` (nearest ACTIVE) AND independently
@@ -468,7 +488,10 @@ def resolve_doublet_cells(
     rivc = {int(c[1]) for c in spec["riv_cellid"]}
 
     if len(refine_points) != 2:
-        raise ValueError(f"resolve_doublet_cells expects 2 refine points, got {len(refine_points)}")
+        raise ValueError(
+            f"resolve_doublet_cells expects the 2 DOUBLET points, got {len(refine_points)}. "
+            "Since 2026-09-02 group_refine_points returns the CORRIDOR anchors (many points); "
+            "pass casestudy_flow_common.group_doublet_points(group) instead.")
 
     out: Dict[str, Dict[str, Any]] = {}
     for role, (E, N) in zip(("injection", "extraction"), refine_points):
