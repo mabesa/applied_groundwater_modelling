@@ -73,6 +73,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import os
 import re
 import signal
@@ -198,14 +199,21 @@ def status_of(result):
 # Criterion 1 -- run_group_determinism_check: pure orchestration logic.
 # =============================================================================
 def test_determinism_pass_on_identical_runs():
-    runner = const_runner(radius=70.0, retried=False)
+    """A group built at its INTENDED radius is not a fallback.
+
+    Since 2026-09-02 "intended" is the group's PINNED radius where it has one,
+    not RETRY_RADII[0] -- so this drives group 3 at its own pin rather than at a
+    hard-coded 70 m.
+    """
+    intended = rc.group_refine_radius(3)
+    runner = const_runner(radius=intended, retried=False)
     result = rc.run_group_determinism_check(3, runner, reruns=5)
     assert status_of(result) == "PASS"
     assert not result.get("reason"), "PASS must have no divergence reason"
-    assert float(result["radius_used"]) == 70.0
+    assert float(result["radius_used"]) == intended
     assert int(result["group"]) == 3
     assert result["first_radius_fallback"] is False, (
-        "the first RETRY_RADII entry must NOT be flagged as a fallback"
+        "a group built at its own pinned radius must NOT be flagged as a fallback"
     )
 
 
@@ -244,7 +252,11 @@ def test_determinism_pass_on_deterministic_fallback():
     `first_radius_fallback` surfaces this informationally without gating
     the verdict; genuine divergence across reruns still FAILs (see
     test_determinism_fail_on_differing_radius below)."""
-    fallback_radius = rc.RETRY_RADII[1]
+    # a "fallback" is now any radius that is not the group's INTENDED (pinned)
+    # one, so derive it from that group's pin rather than naming a ladder entry
+    # (RETRY_RADII[1] is 62 m, which IS group 2's pin -- picking it blind would
+    # make this test assert a fallback that is not one)
+    fallback_radius = rc.group_refine_radius(3) + 1.0
     runner = const_runner(radius=fallback_radius, retried=True)
     result = rc.run_group_determinism_check(2, runner, reruns=3)
     assert status_of(result) == "PASS"
@@ -314,7 +326,8 @@ def test_determinism_fail_on_differing_active_cell_count():
 # =============================================================================
 def test_subprocess_runner_returns_spec_via_fake_npz_ipc(tmp_path, monkeypatch):
     """AGM_FAKE_SPEC_NPZ exercises the freeze->subprocess->load IPC path with no MODFLOW."""
-    npz = freeze_synthetic_spec(tmp_path / "fake", "fake_spec.npz", refine_radius_used=70.0)
+    npz = freeze_synthetic_spec(tmp_path / "fake", "fake_spec.npz",
+                                refine_radius_used=rc.group_refine_radius(3))
     monkeypatch.setenv("AGM_FAKE_SPEC_NPZ", str(npz))
 
     out = rc.subprocess_refine_runner(
@@ -325,8 +338,8 @@ def test_subprocess_runner_returns_spec_via_fake_npz_ipc(tmp_path, monkeypatch):
 
     assert int(spec["ncpl"]) == _NCPL
     assert [tuple(int(x) for x in c) for c in spec["chd_cellid"]] == [(0, 0), (0, 2)]
-    assert float(radius_used) == 70.0
-    # `retried` is now DERIVED from refine_radius_used (== RETRY_RADII[0]
+    assert float(radius_used) == rc.group_refine_radius(3)
+    # `retried` is now DERIVED from refine_radius_used (== the group's pin
     # here), not read back from a manifest 'retried' field -- the child no
     # longer writes one at all.
     assert bool(retried) is False, "fake (no real refinement) path did not retry"
@@ -354,17 +367,21 @@ def test_subprocess_runner_derives_retried_true_from_fallback_radius(tmp_path, m
 
 
 def test_subprocess_runner_derives_retried_false_at_first_radius(tmp_path, monkeypatch):
-    """Positive mirror of the fallback test above: a spec frozen at exactly
-    `RETRY_RADII[0]` must derive retried=False."""
+    """Positive mirror of the fallback test above: a spec frozen at exactly the
+    group's INTENDED radius must derive retried=False.
+
+    Was RETRY_RADII[0]; since 2026-09-02 the intended radius is group 9's pin.
+    """
+    intended = rc.group_refine_radius(9)
     npz = freeze_synthetic_spec(
-        tmp_path / "fake", "fake_spec.npz", refine_radius_used=rc.RETRY_RADII[0]
+        tmp_path / "fake", "fake_spec.npz", refine_radius_used=intended
     )
     monkeypatch.setenv("AGM_FAKE_SPEC_NPZ", str(npz))
 
     spec, radius_used, retried = rc.subprocess_refine_runner(
         9, mother_model=tmp_path / "no_such_mother", work_dir=tmp_path / "work"
     )
-    assert float(radius_used) == rc.RETRY_RADII[0]
+    assert float(radius_used) == intended
     assert retried is False
 
 
@@ -402,7 +419,7 @@ def test_determinism_check_passes_on_derived_retried_false_via_real_runner(tmp_p
     and, being identical across reruns (the fake hook always returns the
     same frozen spec), PASSes."""
     npz = freeze_synthetic_spec(
-        tmp_path / "fake", "fake_spec.npz", refine_radius_used=rc.RETRY_RADII[0]
+        tmp_path / "fake", "fake_spec.npz", refine_radius_used=rc.group_refine_radius(9)
     )
     monkeypatch.setenv("AGM_FAKE_SPEC_NPZ", str(npz))
 
@@ -422,7 +439,8 @@ def test_subprocess_runner_actually_spawns_a_fresh_child(tmp_path, monkeypatch):
     just reads AGM_FAKE_SPEC_NPZ itself -- providing no isolation -- would pass
     the black-box test above but is caught here because no subprocess is spawned.
     Mirror of test_determinism_is_pure_no_subprocess (which forbids the spawn)."""
-    npz = freeze_synthetic_spec(tmp_path / "fake", "fake_spec.npz", refine_radius_used=70.0)
+    npz = freeze_synthetic_spec(tmp_path / "fake", "fake_spec.npz",
+                                refine_radius_used=rc.group_refine_radius(3))
     monkeypatch.setenv("AGM_FAKE_SPEC_NPZ", str(npz))
 
     calls = []
@@ -449,7 +467,7 @@ def test_subprocess_runner_actually_spawns_a_fresh_child(tmp_path, monkeypatch):
     assert calls, "subprocess_refine_runner must spawn a FRESH child process"
     # The child honoured AGM_FAKE_SPEC_NPZ over the freeze->load IPC hop.
     assert int(spec["ncpl"]) == _NCPL
-    assert float(radius_used) == 70.0
+    assert float(radius_used) == rc.group_refine_radius(3)
     # The fake npz env var reached the child: either forwarded explicitly via
     # env=, or inherited from the parent environment we set above.
     passed_envs = [k.get("env") for _, _a, k in calls]
@@ -615,7 +633,8 @@ def _run_cli(argv):
 
 
 def test_cli_pass_group_freezes_and_reports(tmp_path, monkeypatch):
-    npz = freeze_synthetic_spec(tmp_path / "fake", "fake_spec.npz", refine_radius_used=70.0)
+    npz = freeze_synthetic_spec(tmp_path / "fake", "fake_spec.npz",
+                                refine_radius_used=rc.group_refine_radius(3))
     monkeypatch.setenv("AGM_FAKE_SPEC_NPZ", str(npz))
     meshes = tmp_path / "meshes"
     report = tmp_path / "report.json"
@@ -636,7 +655,7 @@ def test_cli_pass_group_freezes_and_reports(tmp_path, monkeypatch):
     scalars = [v for v in _flatten_json(data) if isinstance(v, str)]
     assert any("PASS" == v or "PASS" in v for v in scalars), "report must record determinism PASS"
     numbers = [float(v) for v in _flatten_json(data) if isinstance(v, (int, float))]
-    assert 70.0 in numbers, "report must record the radius used"
+    assert rc.group_refine_radius(3) in numbers, "report must record the radius used"
     import platform
     if platform.node():
         assert platform.node() in scalars, "report must record the node"
@@ -648,7 +667,8 @@ def test_cli_pass_group_without_freeze_flag_writes_no_artifact(tmp_path, monkeyp
     conditions freezing on 'when freezing is requested'; an implementation that
     always freezes on PASS (or ignores the flag) must fail here. Mirror of
     test_cli_pass_group_freezes_and_reports (same PASS group, freeze omitted)."""
-    npz = freeze_synthetic_spec(tmp_path / "fake", "fake_spec.npz", refine_radius_used=70.0)
+    npz = freeze_synthetic_spec(tmp_path / "fake", "fake_spec.npz",
+                                refine_radius_used=rc.group_refine_radius(3))
     monkeypatch.setenv("AGM_FAKE_SPEC_NPZ", str(npz))
     meshes = tmp_path / "meshes"
     report = tmp_path / "report.json"
@@ -848,37 +868,76 @@ class TestParseGroupsCanonicalDomain:
 
 
 # =============================================================================
-# Fix 1: refine_points must be DERIVED from the group's doublet, not a random
+# refine_points must be DERIVED from the group's own scenario, not a random
 # interior point -- group_refine_points is a small MODFLOW-free helper.
+#
+# 🔴 2026-09-02: it returns the spill -> extraction CORRIDOR plus the injection
+# well, no longer just the doublet pair. Before this, the flow half of a case
+# study built a DIFFERENT grid from the transport half, so each group had two
+# geometries and only the transport one was ever validated for the sub-metre
+# cells that stopped group 4 running.
 # =============================================================================
 class TestGroupRefinePoints:
-    def test_returns_doublet_coords_for_group_0(self):
+    def test_matches_what_the_transport_builder_refines(self):
+        """The whole point of the change: ONE grid per group.
+
+        Compares against ``transport_base_model._corridor_points``, the transport
+        side's own implementation, so the two cannot drift apart silently.
+        """
+        import case_utils as cu
+        import transport_base_model as tbm
+
+        for group in (0, 3, 11):
+            scn = cu.lint_transport_config(groups=[group])[group]
+            d, s = scn["doublet"], scn["source"]
+            inj = (float(d["injection_easting"]), float(d["injection_northing"]))
+            ext = (float(d["extraction_easting"]), float(d["extraction_northing"]))
+            spill = (ext[0] + float(s["location"]["easting"]),
+                     ext[1] + float(s["location"]["northing"]))
+            corridor, _u, _L = tbm._corridor_points(spill, ext)
+            expected = [tuple(pt) for pt in corridor] + [inj]
+            assert rc.group_refine_points(group) == expected, f"group {group}"
+
+    def test_still_covers_the_doublet(self):
+        """Near-well resolution is what the drawdown / capture-zone analysis
+        needs, so BOTH wells must still sit inside the refined region.
+
+        The injection well is an exact anchor. The extraction well is not: the
+        corridor is sampled every ~40 m and padded past both ends, so the nearest
+        anchor lands a few metres off it. What matters is that the well is well
+        inside the refined disc of every anchor near it -- refinement radii are
+        44-90 m, so a few metres is not close to the edge.
+        """
         import case_utils as cu
 
-        doublet = cu.lint_transport_config(groups=[0])[0]["doublet"]
-        expected = [
-            (float(doublet["injection_easting"]), float(doublet["injection_northing"])),
-            (float(doublet["extraction_easting"]), float(doublet["extraction_northing"])),
-        ]
-        assert rc.group_refine_points(0) == expected
+        for group in (0, 3, 12):
+            d = cu.lint_transport_config(groups=[group])[group]["doublet"]
+            inj = (float(d["injection_easting"]), float(d["injection_northing"]))
+            ext = (float(d["extraction_easting"]), float(d["extraction_northing"]))
+            pts = rc.group_refine_points(group)
+            radius = rc.group_refine_radius(group)
+            assert inj in pts, f"group {group}: injection well must be an anchor"
+            nearest = min(math.hypot(x - ext[0], y - ext[1]) for x, y in pts)
+            assert nearest < 0.25 * radius, (
+                f"group {group}: extraction well is {nearest:.1f} m from the nearest "
+                f"anchor, not comfortably inside the {radius:g} m refine radius")
 
-    def test_returns_doublet_coords_for_group_3(self):
-        import case_utils as cu
-
-        doublet = cu.lint_transport_config(groups=[3])[3]["doublet"]
-        expected = [
-            (float(doublet["injection_easting"]), float(doublet["injection_northing"])),
-            (float(doublet["extraction_easting"]), float(doublet["extraction_northing"])),
-        ]
-        assert rc.group_refine_points(3) == expected
-
-    def test_returns_exactly_two_points(self):
+    def test_returns_well_formed_float_pairs(self):
         points = rc.group_refine_points(1)
         assert isinstance(points, list)
-        assert len(points) == 2
+        assert len(points) > 2, "corridor anchors, not just the doublet pair"
         for pt in points:
             assert isinstance(pt, tuple) and len(pt) == 2
             assert all(isinstance(v, float) for v in pt)
+
+    def test_delegates_rather_than_duplicating(self):
+        """This module used to carry a SECOND independent implementation. Two
+        copies drifting apart is how flow and transport ended up on different
+        grids, so it must delegate."""
+        import casestudy_flow_common as cfc
+
+        for group in (0, 5, 12):
+            assert rc.group_refine_points(group) == cfc.group_refine_points(group)
 
     def test_is_deterministic_across_calls(self):
         """No randomness: reruns of the SAME group must return identical
@@ -895,7 +954,7 @@ class TestGroupRefinePoints:
         monkeypatch.setattr(subprocess, "run", boom)
         monkeypatch.setattr(subprocess, "Popen", boom)
         points = rc.group_refine_points(0)
-        assert len(points) == 2
+        assert len(points) > 2
 
 
 # =============================================================================

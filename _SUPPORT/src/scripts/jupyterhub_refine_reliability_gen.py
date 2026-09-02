@@ -126,16 +126,31 @@ _CELLID_KEYS = ("chd_cellid", "riv_cellid", "wel_cellid")
 RETRY_RADII = (70.0, 62.0, 78.0, 56.0, 84.0)
 
 
-def _was_retried(radius_used: float) -> bool:
-    """True iff *radius_used* differs from ``RETRY_RADII[0]`` -- i.e. the
-    refinement fell back to a wider retry radius.
+def _was_retried(radius_used: float, group: Any = None) -> bool:
+    """True iff the refinement fell back off the radius it MEANT to use.
 
     PURELY INFORMATIONAL (see ``first_radius_fallback`` on the
     ``run_group_determinism_check`` result): a deterministic fallback is
     safe to freeze, so this no longer gates PASS/FAIL -- it just lets an
     instructor see, from the report/manifest, that a group froze at a
-    fallback radius rather than the first-attempted one."""
-    return not math.isclose(float(radius_used), RETRY_RADII[0])
+    fallback radius rather than the intended one.
+
+    🔴 2026-09-02: *group* was added because the intended radius is no longer
+    always ``RETRY_RADII[0]``. A group with a PINNED radius intends that one, so
+    comparing against the ladder's head would have reported "fallback" for every
+    pinned group whose pin is not 70 m -- 12 of 13 -- turning a real signal into
+    noise. Falls back to the old ladder-head comparison when *group* is unknown
+    or unpinned.
+    """
+    intended = None
+    if group is not None:
+        try:
+            intended = group_refine_radius(group)
+        except Exception:
+            intended = None
+    if intended is None:
+        intended = RETRY_RADII[0]
+    return not math.isclose(float(radius_used), float(intended))
 
 
 def _canon_cellids(cellids) -> list:
@@ -163,7 +178,7 @@ def _fail(group: Group, radius_used: Any = None, reason: str = "") -> Dict[str, 
     }
     if radius_used is not None:
         result["radius_used"] = float(radius_used)
-        result["first_radius_fallback"] = _was_retried(radius_used)
+        result["first_radius_fallback"] = _was_retried(radius_used, group)
     return result
 
 
@@ -279,7 +294,7 @@ def run_group_determinism_check(
         "group": int(group),
         "reason": "",
         "radius_used": radius0,
-        "first_radius_fallback": _was_retried(radius0),
+        "first_radius_fallback": _was_retried(radius0, group),
         "reruns": reruns,
     }
 
@@ -403,43 +418,35 @@ def _best_effort_versions() -> Dict[str, str]:
 
 
 def group_refine_points(group: Group, *, config_path: Any = None) -> List[Tuple[float, float]]:
-    """Derive the refine-mesh anchor points for *group* from its configured
-    injection/extraction doublet.
+    """Refine-mesh anchor points for *group* -- the spill -> extraction corridor
+    plus the injection well.
 
-    The frozen mesh must be finely resolved AROUND THE GROUP'S ACTUAL WELLS
-    (needed for drawdown / capture-zone analysis downstream), not at an
-    arbitrary interior point unrelated to the doublet. Reads
-    ``case_config_transport.yaml`` via ``case_utils.lint_transport_config``
-    and returns the doublet's two well coordinates.
+    🔴 2026-09-02: this used to be a SECOND, INDEPENDENT implementation that
+    returned only the doublet pair, duplicating
+    ``casestudy_flow_common.group_refine_points``. The two drifting apart is
+    exactly how the flow half of a case study ended up on a different grid from
+    the transport half. It now DELEGATES, so there is one definition.
 
-    Reruns of the SAME group are reproducible for
-    ``run_group_determinism_check`` because the doublet coordinates in the
-    config are fixed -- no randomness is involved.
-
-    Pure data lookup: no MODFLOW, no geopandas/Triangle, no subprocess --
-    safe to unit test without loading the mother model.
-
-    Parameters
-    ----------
-    group : Any
-        Group id (int-like), passed straight through to
-        ``case_utils.lint_transport_config(groups=[group])``.
-    config_path : str or Path, optional
-        Override for the transport case config path (see
-        ``case_utils.lint_transport_config``); mainly for tests.
+    Pure data lookup: no MODFLOW, no geopandas/Triangle, no subprocess -- safe to
+    unit test without loading the mother model.
 
     Returns
     -------
     list of (easting, northing) float tuples
-        Exactly two points: the injection well, then the extraction well.
+        The corridor anchors, then the injection well.
     """
-    import case_utils as cu
+    import casestudy_flow_common as cfc
 
-    doublet = cu.lint_transport_config(config_path=config_path, groups=[group])[group]["doublet"]
-    return [
-        (float(doublet["injection_easting"]), float(doublet["injection_northing"])),
-        (float(doublet["extraction_easting"]), float(doublet["extraction_northing"])),
-    ]
+    return cfc.group_refine_points(group, config_path=config_path)
+
+
+def group_refine_radius(group: Group, *, config_path: Any = None) -> Any:
+    """The group's PINNED refine radius, or ``None``. Delegates to
+    ``casestudy_flow_common.group_refine_radius`` -- see there for why a pinned
+    radius replaces walking ``RETRY_RADII``."""
+    import casestudy_flow_common as cfc
+
+    return cfc.group_refine_radius(group, config_path=config_path)
 
 
 def _real_refine_group(
@@ -494,8 +501,17 @@ def _real_refine_group(
     # resolved at the group's actual wells.
     refine_points = group_refine_points(group)
 
+    # 🔴 2026-09-02: prefer the group's PINNED radius over walking RETRY_RADII.
+    # The ladder takes the first radius that BUILDS, which is not the same as one
+    # that is USABLE -- for group 4 it chose a mesh carrying 225 sub-metre cells
+    # whose transport run diverged to +/-5e9 mg/L. The pinned radius is the one
+    # validated for that corridor. The ladder remains the fallback for any group
+    # without a pin, so this degrades gracefully.
+    pinned = group_refine_radius(group)
+    radii = (float(pinned),) if pinned is not None else RETRY_RADII
+
     last_exc: Any = None
-    for k, radius in enumerate(RETRY_RADII):
+    for k, radius in enumerate(radii):
         try:
             spec = mio.generate_refined_grid(
                 gwf, boundary_gdf=boundary_gdf, river_gdf=river_gdf,
@@ -664,12 +680,13 @@ def subprocess_refine_runner(
 
     spec = mio.load_flow_spec(out_npz, verify=True)
     radius_used = float(spec["refine_radius_used"])
-    # DERIVED, not read back from the manifest: a run "retried/fell back"
-    # iff the succeeding radius differs from the FIRST radius in
-    # RETRY_RADII. This is a single source of truth over the manifest field
-    # the child used to freeze (which could silently default away an
-    # unsafe retried=True on a load, or simply drift out of sync).
-    retried = _was_retried(radius_used)
+    # DERIVED, not read back from the manifest: a run "retried/fell back" iff the
+    # succeeding radius differs from the one the group INTENDED (its pinned radius
+    # if it has one, else the head of RETRY_RADII -- see _was_retried). This is a
+    # single source of truth over the manifest field the child used to freeze
+    # (which could silently default away an unsafe retried=True on a load, or
+    # simply drift out of sync).
+    retried = _was_retried(radius_used, group)
     return spec, radius_used, retried
 
 
