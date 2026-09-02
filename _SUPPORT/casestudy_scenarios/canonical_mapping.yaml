@@ -23,6 +23,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.0e-09
   solubility_mg_L: 1100.0
+  refine_radius_m: 90.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 51.0
@@ -64,6 +65,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.9e-09
   solubility_mg_L: 850000.0
+  refine_radius_m: 50.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 42.4
@@ -105,6 +107,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.0e-09
   solubility_mg_L: 1780.0
+  refine_radius_m: 62.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 50.0
@@ -145,6 +148,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 2.0e-09
   solubility_mg_L: 350000.0
+  refine_radius_m: 90.0
   source_type: area
   source_release_type: continuous
   source_easting_offset_m: 100.0
@@ -185,6 +189,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.1e-09
   solubility_mg_L: 10000.0
+  refine_radius_m: 90.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 53.0
@@ -227,6 +232,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 7.0e-10
   solubility_mg_L: 9500.0
+  refine_radius_m: 70.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 32.0
@@ -270,6 +276,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 9.0e-10
   solubility_mg_L: 200.0
+  refine_radius_m: 44.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 56.0
@@ -310,6 +317,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.9e-09
   solubility_mg_L: 1000000.0
+  refine_radius_m: 84.0
   source_type: line
   source_release_type: continuous
   source_easting_offset_m: 75.0
@@ -350,6 +358,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 8.0e-10
   solubility_mg_L: 35.0
+  refine_radius_m: 44.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: -53.0
@@ -390,6 +399,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.9e-09
   solubility_mg_L: 42000.0
+  refine_radius_m: 56.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 179.7
@@ -432,6 +442,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.9e-09
   solubility_mg_L: 18.0
+  refine_radius_m: 74.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 92.3
@@ -475,6 +486,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.9e-09
   solubility_mg_L: 55000.0
+  refine_radius_m: 84.0
   source_type: point
   source_release_type: continuous
   source_easting_offset_m: 52.8
@@ -515,6 +527,7 @@ canonical_mapping:
   vertical_dispersivity_m: 0.1
   molecular_diffusion_m2_s: 1.9e-09
   solubility_mg_L: 1000.0
+  refine_radius_m: 48.0
   source_type: point
   source_release_type: pulse
   source_easting_offset_m: 88.2

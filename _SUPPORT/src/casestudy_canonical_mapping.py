@@ -561,6 +561,17 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
             vertical_dispersivity_m=_to_native(transport.get("vertical_dispersivity_m")),
             molecular_diffusion_m2_s=_to_native(transport.get("molecular_diffusion_m2_s")),
             solubility_mg_L=_to_native(props.get("solubility_mg_L")),
+            # --- prepared geometry (the grid that produces the numbers) ---
+            # 🔴 Added 2026-09-02. The mapping recorded WHAT each group models and with
+            # which parameters, but not the GRID -- and the grid decides the answer. Group
+            # 4 at radius 70 does not converge at all; at its pinned 90 it reports 0.66x
+            # the threshold. Group 12 read EXCEEDS on the ladder's pick and COMPLIANT on a
+            # clean mesh. A provenance record that omits the radius cannot explain either.
+            # Recording it here also makes the radius appear in THREE independent places --
+            # this mapping, the config pin, and the golden manifest -- so any two
+            # disagreeing is a signal. Deliberately NOT the golden's aggregate_hash: that
+            # would couple the mapping to every golden regeneration.
+            refine_radius_m=_to_native((tr_opt.get("geometry") or {}).get("refine_radius_m")),
             source_type=_to_native(source.get("type")),
             source_release_type=_to_native(source.get("release_type")),
             source_easting_offset_m=_to_native(loc.get("easting")),
@@ -588,6 +599,7 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
         "decay", "first_order_decay_constant_1_per_day", "half_life_days",
         "porosity", "longitudinal_dispersivity_m", "transverse_dispersivity_m",
         "vertical_dispersivity_m", "molecular_diffusion_m2_s", "solubility_mg_L",
+        "refine_radius_m",
         "source_type", "source_release_type", "source_easting_offset_m",
         "source_northing_offset_m", "source_layer", "source_start_time_days",
         "source_duration_days", "source_value", "source_value_field", "source_value_unit",

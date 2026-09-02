@@ -747,3 +747,52 @@ def test_committed_csv_is_lf_only():
     raw = ccm.DEFAULT_OUT_CSV.read_bytes()
     assert b"\r\n" not in raw
     assert raw.endswith(b"\n")
+
+
+# =============================================================================
+# The prepared geometry is part of the provenance (2026-09-02)
+#
+# The mapping recorded what each group models and with which parameters, but not the
+# GRID -- and the grid decides the answer. Group 4 at the ladder's radius 70 does not
+# converge at all; at its pinned 90 it reports 0.66x the threshold. Group 12 read
+# EXCEEDS on the ladder's pick and COMPLIANT on a clean mesh. Neither is explicable
+# from a row that omits the radius.
+# =============================================================================
+def test_every_group_records_its_pinned_refine_radius(mapping):
+    assert "refine_radius_m" in mapping.columns
+    missing = mapping.loc[mapping["refine_radius_m"].isna(), "group"].tolist()
+    assert not missing, f"groups with no recorded refine radius: {missing}"
+
+
+def test_radius_agrees_across_mapping_config_and_golden(mapping):
+    """🔴 The triangulation this column exists for.
+
+    The radius now appears in THREE independent places: this mapping, the config pin
+    that the builders read, and the golden manifest recording what was actually frozen.
+    Any two disagreeing means a geometry divergence -- which is exactly the failure that
+    went unnoticed until a Hub freeze produced flow meshes at ladder radii for 12 of 13
+    groups while the validated transport pins said otherwise.
+    """
+    import json
+    import sys
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[1] / "src"
+    if str(src) not in sys.path:
+        sys.path.insert(0, str(src))
+    import casestudy_flow_common as cfc
+
+    golden_dir = src / "golden"
+    problems = []
+    for row in mapping.to_dict("records"):
+        g = int(row["group"])
+        mapped = row["refine_radius_m"]
+        pinned = cfc.group_refine_radius(g)
+        man_p = golden_dir / f"group{g}_flow.manifest.json"
+        frozen = json.loads(man_p.read_text())["radius_used"] if man_p.is_file() else None
+
+        if mapped != pinned:
+            problems.append(f"group {g}: mapping {mapped} != config pin {pinned}")
+        if frozen is not None and abs(float(frozen) - float(pinned)) > 1e-9:
+            problems.append(f"group {g}: golden frozen at {frozen} != config pin {pinned}")
+    assert not problems, "geometry provenance disagrees:\n  " + "\n  ".join(problems)
