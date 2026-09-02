@@ -126,18 +126,102 @@ def load_gis(mother_model):
     return boundary_gdf, river_gdf
 
 
+#: Corridor sampling parameters. These MIRROR ``transport_base_model._corridor_points``
+#: and must stay identical -- ``test_flow_and_transport_share_one_grid`` pins them equal
+#: for every group. They are re-stated here rather than imported because
+#: ``transport_base_model`` imports flopy at module scope, and this module (and the
+#: freeze child subprocess that calls it) is deliberately MODFLOW-free.
+_CORRIDOR_STEP_M = 40.0
+_CORRIDOR_PAD_M = 40.0
+
+
+def _corridor_anchors(a_xy: Tuple[float, float], b_xy: Tuple[float, float],
+                      step: float = _CORRIDOR_STEP_M,
+                      pad: float = _CORRIDOR_PAD_M) -> List[Tuple[float, float]]:
+    """Points sampled along a->b, padded past both ends. Mirrors
+    ``transport_base_model._corridor_points`` (which returns the unit vector and
+    length as well; only the points are needed here)."""
+    a, b = np.array(a_xy, float), np.array(b_xy, float)
+    L = float(np.hypot(*(b - a)))
+    u = (b - a) / L
+    n = max(int((L + 2 * pad) // step) + 1, 2)
+    return [tuple(a + s * u) for s in np.linspace(-pad, L + pad, n)]
+
+
 def group_refine_points(group: Group, *, config_path: Any = None) -> List[Tuple[float, float]]:
-    """Corridor refine anchors for *group* = its configured injection/
-    extraction doublet coords (from ``case_config_transport.yaml``). Pure
-    config lookup -- no MODFLOW, no subprocess -- so reruns are reproducible.
+    """Refine anchors for *group*: the spill -> extraction CORRIDOR plus the
+    injection well.
+
+    🔴 CHANGED 2026-09-02 -- this returned just the doublet pair
+    ``[(inj), (ext)]``. That gave the flow half of a case study a DIFFERENT grid
+    from the transport half, because ``build_spill_scenario`` refines the whole
+    corridor plus the injection well. Two grids per group meant two geometries to
+    validate, and only the transport one ever was -- the flow meshes were never
+    checked for the sub-metre cells that stopped group 4 running at all.
+
+    These anchors are now exactly what the transport builder refines, so with the
+    per-group pinned radius (``group_refine_radius``) both halves build ONE grid.
+    The doublet is still covered: the corridor ends at the extraction well and the
+    injection well is appended, so the near-well resolution the drawdown and
+    capture-zone analysis needs is unchanged.
+
+    ⚠️ Consequence: the flow grid now depends on the SPILL LOCATION, which is a
+    transport scenario input. Moving a spill re-freezes the flow goldens too.
+
+    Pure config lookup -- no MODFLOW, no subprocess -- so reruns are reproducible.
     """
     import case_utils as cu
 
-    doublet = cu.lint_transport_config(config_path=config_path, groups=[group])[group]["doublet"]
-    return [
-        (float(doublet["injection_easting"]), float(doublet["injection_northing"])),
-        (float(doublet["extraction_easting"]), float(doublet["extraction_northing"])),
-    ]
+    scn = cu.lint_transport_config(config_path=config_path, groups=[group])[group]
+    doublet, source = scn["doublet"], scn["source"]
+    inj = (float(doublet["injection_easting"]), float(doublet["injection_northing"]))
+    ext = (float(doublet["extraction_easting"]), float(doublet["extraction_northing"]))
+    spill = (ext[0] + float(source["location"]["easting"]),
+             ext[1] + float(source["location"]["northing"]))
+    return _corridor_anchors(spill, ext) + [inj]
+
+
+def resolve_refine_radii(group: Group, ladder: Any, *, config_path: Any = None) -> tuple:
+    """The radii to try for *group*: its PINNED radius alone, else *ladder*.
+
+    🔴 THE single place this decision is made. THREE call sites used to each walk a
+    ladder themselves -- the mesh freeze, the golden generator, and the builder that
+    students and tests run -- and fixing only one of them silently produced artifacts
+    that could not match: goldens built at a ladder radius against a freeze that used
+    the pin. Any new consumer must call THIS, so the decision cannot be half-applied.
+
+    A ladder takes the first radius that BUILDS, which is not the same as one that is
+    USABLE: for group 4 it chose a mesh with 225 sub-metre cells whose transport run
+    diverged to +/-5e9 mg/L against a 13 mg/L source.
+    """
+    pinned = group_refine_radius(group, config_path=config_path)
+    return (float(pinned),) if pinned is not None else tuple(ladder)
+
+
+def group_refine_radius(group: Group, *, config_path: Any = None) -> Optional[float]:
+    """The group's PINNED refine radius from ``case_config_transport.yaml``
+    (``geometry.refine_radius_m``), or ``None`` if it has none.
+
+    Added 2026-09-02. The radius is validated per group -- chosen as the cleanest
+    mesh for that corridor and confirmed free of sub-metre cells -- so callers
+    should use it INSTEAD of walking a retry ladder. A ladder takes the first
+    radius that BUILDS, which is not the same as one that is usable: for group 4
+    it picked a mesh with 225 sub-metre cells whose transport run diverged.
+    """
+    import case_utils as cu
+
+    raw = cu.load_transport_scenarios(config_path=config_path) \
+        if hasattr(cu, "load_transport_scenarios") else None
+    if raw is None:
+        import yaml
+        path = cu._resolve_transport_config_path(config_path)
+        raw = yaml.safe_load(open(path, encoding="utf-8"))["transport_scenarios"]["options"]
+    for opt in raw:
+        if int(opt.get("id", -1)) == int(group):
+            geom = opt.get("geometry") or {}
+            r = geom.get("refine_radius_m")
+            return float(r) if r is not None else None
+    return None
 
 
 # =============================================================================
