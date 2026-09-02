@@ -304,17 +304,30 @@ def test_atrazine_flagged(sanity):
     assert bool(atr["flagged"]) is True
 
 
-def test_nitrate_and_chloride_surfaced(sanity):
+def test_chloride_surfaced_and_nitrate_resolved(sanity):
+    """Chloride still needs a human; nitrate no longer does.
+
+    Nitrate flagged until 2026-09-02, but NOT because 25 mg/L was wrong: the reference
+    band was the as-N one ([1.0, 11.3]) while 25 mg/L is the Swiss GSchV Anhang 2
+    groundwater requirement expressed as NO3-. Basis and band now agree, so our own
+    correct threshold stops tripping the check. If it flags again, the two have drifted
+    apart -- 25 mg/L as N would be 110 mg/L as NO3-, which is not a standard anywhere.
+    """
     nit = sanity.loc[sanity["contaminant"].str.contains("Nitrate")].iloc[0]
     chl = sanity.loc[sanity["contaminant"].str.contains("Chloride")].iloc[0]
-    assert bool(nit["flagged"]) is True
+    assert bool(nit["flagged"]) is False, nit["note"]
+    assert nit["basis"] == "drinking_water_as_NO3"
     assert bool(chl["flagged"]) is True
 
 
 def test_exact_flagged_set(sanity):
-    """Only Nitrate, Chloride, and Atrazine should flag (all others in-band)."""
+    """Only Chloride and Atrazine should flag (all others in-band).
+
+    Group 1 (nitrate) left this set on 2026-09-02 when its reference band was corrected
+    from the as-N basis to the as-NO3- basis its 25 mg/L threshold actually uses.
+    """
     flagged = set(sanity.loc[sanity["flagged"], "group"])
-    assert flagged == {1, 3, 8}
+    assert flagged == {3, 8}
 
 
 def test_reference_bounds_documented_for_every_cas(mapping):

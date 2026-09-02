@@ -162,8 +162,13 @@ transport_scenarios:
         # TODO: Adjust duration of source activation based on model runs to 
         # ensure plume reaches monitoring point. Minimum 1 day.
         duration_days: 1               # 1-day spill
-        concentration_mg_L: 100.0
-
+        # SYNTHETIC scenario-design value (not a measured field concentration).
+        #   2026-09-02: 100 -> 5 mg/L. At 100 the receptor peak was 138.5x the
+        #   threshold, so the compliance verdict was settled before any modelling judgment
+        #   was applied. Transport is linear in this value, so the peak scales exactly:
+        #   the case now lands at ~6.92x the threshold -- still clearly exceeding, but the
+        #   student has to do the work to show it. Well under the solubility limit.
+        concentration_mg_L: 5
       simulation:
         # TODO: Adjust simulation duration based on model runs to ensure plume
         # reaches monitoring point. Minimum 30 days. 
@@ -229,14 +234,28 @@ transport_scenarios:
           # extraction well: this places your spill upgradient of it. Whether the
           # plume is then CAPTURED and whether it EXCEEDS the threshold is the
           # question you answer -- it is deliberately not given to you here.
-          easting: 155.3             # m, E offset from extraction well
-          northing: -89.7            # m, -N offset from extraction well
+          # 2026-09-02: moved from (+155.3, -89.7) to (+42.4, +42.4).
+          # The old position missed the capture zone by 175 m of its 179 m offset -- almost
+          # pure bypass, peaking at 0.009x the threshold, so the verdict needed no modelling.
+          # A sweep of eight bearings at 120 m found the capture zone lies NORTH-EAST; closing
+          # in to 60 m cuts the dilution further (0.009 -> 0.080 -> 0.131x at equal source).
+          easting: 42.4              # m, +E offset from extraction well
+
+          northing: 42.4             # m, +N offset from extraction well
+
           layer: 1
         start_time_days: 0
         # TODO: Adjust duration of source activation based on model runs to 
         # ensure plume reaches monitoring point. Minimum 1 day.
         duration_days: 1             # 1-day spill
-        concentration_mg_L: 50.0
+        # SYNTHETIC scenario-design value (not a measured field concentration).
+        #   2026-09-02: 50 -> 700 mg/L. The scenario describes a leaking TANK of liquid
+        #   fertilizer; 50 mg/L is field-leachate strength and was inconsistent with that
+        #   story. Commercial liquid N fertilizer is ~30% N by weight, so a source zone in
+        #   the high hundreds of mg/L as NO3- follows from the narrative as written.
+        #   With the move above this lands at ~1.8x the 25 mg/L threshold.
+        concentration_mg_L: 700.0
+
         ssm_itype: -1
 
       simulation:
@@ -312,7 +331,13 @@ transport_scenarios:
         # TODO: Adjust duration of source activation based on model runs to 
         # ensure plume reaches monitoring point. Minimum 1 day.
         duration_days: 10               # 2-month leak
-        concentration_mg_L: 10.0
+        # SYNTHETIC scenario-design value (not a measured field concentration).
+        #   2026-09-02: 10 -> 1.5 mg/L. At 10 the receptor peak was 23.7x the
+        #   threshold, so the compliance verdict was settled before any modelling judgment
+        #   was applied. Transport is linear in this value, so the peak scales exactly:
+        #   the case now lands at ~3.55x the threshold -- still clearly exceeding, but the
+        #   student has to do the work to show it. Well under the solubility limit.
+        concentration_mg_L: 1.5
         ssm_itype: -1
 
       simulation:
@@ -551,7 +576,13 @@ transport_scenarios:
         # TODO: Adjust duration of source activation based on model runs to
         # ensure plume reaches monitoring point. Minimum 1 day.
         duration_days: 1               # 1-day spill
-        concentration_mg_L: 1.0
+        # SYNTHETIC scenario-design value (not a measured field concentration).
+        #   2026-09-02: 1 -> 0.28 mg/L. At 1 the receptor peak was 49.8x the
+        #   threshold, so the compliance verdict was settled before any modelling judgment
+        #   was applied. Transport is linear in this value, so the peak scales exactly:
+        #   the case now lands at ~13.93x the threshold -- still clearly exceeding, but the
+        #   student has to do the work to show it. Well under the solubility limit.
+        concentration_mg_L: 0.28
         ssm_itype: -1
 
       simulation:
@@ -625,7 +656,13 @@ transport_scenarios:
           layer: 1
         start_time_days: 0
         duration_days: 90               # 3-month leak
-        concentration_mg_L: 50.0
+        # SYNTHETIC scenario-design value (not a measured field concentration).
+        #   2026-09-02: 50 -> 2.9 mg/L. At 50 the receptor peak was 38.2x the
+        #   threshold, so the compliance verdict was settled before any modelling judgment
+        #   was applied. Transport is linear in this value, so the peak scales exactly:
+        #   the case now lands at ~2.22x the threshold -- still clearly exceeding, but the
+        #   student has to do the work to show it. Well under the solubility limit.
+        concentration_mg_L: 2.9
         ssm_itype: -1
 
       simulation:
@@ -779,8 +816,22 @@ transport_scenarios:
         start_time_days: 0
         # TODO: Adjust duration of source activation based on model runs to
         # ensure plume reaches monitoring point. Minimum 1 day.
-        duration_days: 1             # 1 day of application
-        concentration_mg_L: 5.0
+        # 2026-09-02: 1 -> 90 d. A one-day dump delivered too little mass for the plume to
+        # matter (peak was 0.10x the threshold -- compliance was a foregone conclusion).
+        # Atrazine's 35 mg/L solubility rules out fixing this with concentration alone, and a
+        # season-long leach from an allotment is the better story anyway.
+        duration_days: 90            # season-long leaching, not a one-day dump
+
+        # SYNTHETIC scenario-design value (not a measured field concentration).
+
+        #   2026-09-02: 5.0 -> 15.0 mg/L, together with the 90 d release above. Measured:
+
+        #   the case now peaks at 2.07x the threshold (was 0.10x). Well under atrazine's
+
+        #   35 mg/L solubility. Transport is linear in this value, so it scales exactly.
+
+        concentration_mg_L: 15.0
+
         ssm_itype: -1
 
       simulation:

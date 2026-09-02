@@ -740,15 +740,24 @@ def freeze_group_flow_artifact(
 # a machine-readable per-group JSON report.
 # =============================================================================
 
-#: 🔴 The domain THIS script accepts -- deliberately NOT cv.CANONICAL_GROUPS.
+#: The domain THIS script accepts.
 #:
-#: This script reads FROZEN mesh artifacts, and only groups 0-8 have them.
-#: When the roster grew to 13 on 2026-08-31, groups 9-12 were added with
-#: DEFERRALS (their authoritative Linux goldens are pending), so following
-#: CANONICAL_GROUPS would make the CLI accept ids whose artifacts do not exist
-#: and report on nothing. Widen this only when those goldens are frozen --
-#: the same reasoning pins check_nine_mesh_goldens at nine.
-FROZEN_MESH_GROUPS = tuple(range(9))
+#: 🔴 WIDENED 0-8 -> 0-12 on 2026-09-02. The previous note said this script
+#: "reads FROZEN mesh artifacts, and only groups 0-8 have them", and told the
+#: reader to "widen this only when those goldens are frozen". That reasoning is
+#: circular for THIS script, which is the PRODUCER: it builds each group's
+#: refinement in a subprocess, reruns it for determinism, and FREEZES a passing
+#: group to <meshes-dir>/group<N>_flow.npz (+ manifest) for
+#: ``model_io_utils.load_pinned_flow_model`` to consume. It does not read a
+#: pre-existing golden, so restricting it to 0-8 made groups 9-12's deferrals
+#: impossible to discharge -- the freeze run for them exited 2 before doing any
+#: work.
+#:
+#: ⚠️ ``check_nine_mesh_goldens`` is still pinned at nine, and deliberately: it
+#: is C1 **A16**'s evidence mechanism, and A16 names NINE frozen meshes. Once
+#: 9-12 are frozen, A16's evidence set has to be widened to thirteen, which is a
+#: contract amendment and needs the lecturer's signature -- not a code edit.
+FROZEN_MESH_GROUPS = tuple(range(13))
 
 
 def _parse_groups(spec: str) -> List[int]:
@@ -761,7 +770,7 @@ def _parse_groups(spec: str) -> List[int]:
     instructor validation harness CLI uses, so the two tools can never drift
     on what a valid ``--groups`` spec means. On top of that shared parser,
     every resulting id is additionally checked against
-    ``FROZEN_MESH_GROUPS`` (0-8) -- NOT ``case_validation.CANONICAL_GROUPS``,
+    ``FROZEN_MESH_GROUPS`` (0-12) -- NOT ``case_validation.CANONICAL_GROUPS``,
     which grew to 13 in 2026-08. This script's frozen artifacts only ever cover
     that closed set of case-study groups, so an out-of-domain id (e.g. ``"9"``)
     is rejected here too, not just an oversized range.
@@ -770,7 +779,7 @@ def _parse_groups(spec: str) -> List[int]:
     ------
     ValueError
         If *spec* is empty/malformed (from ``parse_groups_spec``) or selects
-        any id outside the canonical 0-8 domain.
+        any id outside the canonical 0-12 domain.
     """
     if not spec or not spec.strip():
         raise ValueError("--groups must not be empty")

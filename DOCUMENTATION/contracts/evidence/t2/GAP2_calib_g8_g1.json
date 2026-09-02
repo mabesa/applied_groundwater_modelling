@@ -1,0 +1,81 @@
+[
+  {
+    "g": 8,
+    "tag": "dur15",
+    "ok": true,
+    "radius": 44.0,
+    "duration": 15.0,
+    "min_cell": 1.672,
+    "n_below_1m": 0,
+    "ratio": 0.2179,
+    "t_peak": 153.2,
+    "wall": 35.8,
+    "hub": 78.0
+  },
+  {
+    "g": 8,
+    "tag": "dur45",
+    "ok": true,
+    "radius": 44.0,
+    "duration": 45.0,
+    "min_cell": 1.672,
+    "n_below_1m": 0,
+    "ratio": 0.4297,
+    "t_peak": 167.7,
+    "wall": 36.9,
+    "hub": 80.0
+  },
+  {
+    "g": 8,
+    "tag": "dur90",
+    "ok": true,
+    "radius": 44.0,
+    "duration": 90.0,
+    "min_cell": 1.672,
+    "n_below_1m": 0,
+    "ratio": 0.6899,
+    "t_peak": 194.4,
+    "wall": 37.9,
+    "hub": 82.0
+  },
+  {
+    "g": 1,
+    "tag": "d150_lat30",
+    "ok": true,
+    "radius": 56.0,
+    "duration": 1,
+    "min_cell": 1.244,
+    "n_below_1m": 0,
+    "ratio": 0.0004,
+    "t_peak": 22.2,
+    "wall": 20.3,
+    "hub": 44.0,
+    "offset_E": 77.7,
+    "offset_N": 128.3,
+    "lateral_m": 30.0,
+    "dist_m": 150.0
+  },
+  {
+    "g": 1,
+    "tag": "d150_lat60",
+    "ok": true,
+    "radius": 56.0,
+    "duration": 1,
+    "min_cell": 3.574,
+    "n_below_1m": 0,
+    "ratio": 0.0003,
+    "t_peak": 23.3,
+    "wall": 23.0,
+    "hub": 50.0,
+    "offset_E": 49.2,
+    "offset_N": 141.7,
+    "lateral_m": 60.0,
+    "dist_m": 150.0
+  },
+  {
+    "g": 1,
+    "tag": "d100_lat20",
+    "ok": false,
+    "err": "no clean mesh"
+  }
+]
