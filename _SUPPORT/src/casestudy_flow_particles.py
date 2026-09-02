@@ -250,28 +250,83 @@ def _golden_angle_disc_points(
     return x, y
 
 
+#: How far inside its cell a PRT release point must sit. MF6 rejected a point
+#: 2.6 mm inside an ~11 m cell ("release point ... is not in cell"), so shapely
+#: containment alone does not predict what MF6 will accept. 5 cm is negligible
+#: against the cell size and far above the observed disagreement.
+_RELEASE_EDGE_MARGIN_M = 0.05
+
+
 def _strict_release_points(
     modelgrid, center_x: float, center_y: float, n_particles: int, radius_m: float,
 ) -> Tuple[List[Tuple[float, float, int]], int]:
-    """Golden-angle disc of candidate release points; STRICT in-cell
-    membership via ``modelgrid.intersect`` (VertexGrid). Points with no unique
-    containing cell (off-grid, or degenerate) are DROPPED and counted --
-    never assigned to a nearest centroid.
+    """Golden-angle disc of candidate release points; STRICT in-cell membership
+    verified against the CELL POLYGON. Points with no containing cell (off-grid or
+    degenerate) are DROPPED and counted -- never assigned to a nearest centroid.
+
+    🔴 2026-09-02: this used ``modelgrid.intersect`` alone and called that "strict".
+    Containment alone is not enough, because MF6 and shapely disagree at the edge.
+    For group 0 a release point sat **2.6 mm inside** cell 947 (an ~11 m cell);
+    shapely calls that covered, MF6 refuses the run --
+
+        Error: release point (x=2681883.85, y=1247395.44) is not in cell 948
+
+    (948 is the 1-BASED cellid MF6 prints for 0-based 947 -- the cell assignment
+    was correct; the point was simply too close to the boundary for MF6 to accept.)
+    The notebook died at the PRT step. Latent until the flow and transport halves
+    were unified onto one grid, which moved where the golden-angle disc lands.
+
+    So a candidate must be inside its cell BY A MARGIN, not merely inside it. The
+    margin is tiny against an ~11 m cell but far larger than the millimetre-scale
+    disagreement, and a dropped point costs nothing: the disc oversamples and the
+    caller only fails if EVERY candidate is dropped.
+
+    intersect is still used as a fast candidate and confirmed against the actual
+    polygon, so a wrong candidate is corrected rather than trusted.
 
     Returns ``(points, n_dropped)`` where each point is ``(x, y, cell0based)``.
     """
+    from shapely.geometry import Point, Polygon
+    from shapely.strtree import STRtree
+
     xs, ys = _golden_angle_disc_points(center_x, center_y, n_particles, radius_m)
+
+    ncpl = int(modelgrid.ncpl if np.isscalar(modelgrid.ncpl) else modelgrid.ncpl[0])
+    polys = [Polygon(modelgrid.get_cell_vertices(i)) for i in range(ncpl)]
+    tree = STRtree(polys)
+
+    def _ok(ci: int, pt) -> bool:
+        """Inside cell *ci* BY ``_RELEASE_EDGE_MARGIN_M``, not merely inside it."""
+        poly = polys[ci]
+        return poly.covers(pt) and poly.exterior.distance(pt) >= _RELEASE_EDGE_MARGIN_M
+
+    def _containing_cell(px: float, py: float):
+        """The cell that contains (px, py) with margin to spare, or None."""
+        pt = Point(px, py)
+        # fast path: trust intersect only if the polygon agrees
+        try:
+            cand = modelgrid.intersect(px, py, forgive=True)
+        except Exception:                                   # noqa: BLE001
+            cand = None
+        if cand is not None and not (isinstance(cand, float) and math.isnan(cand)):
+            ci = int(cand)
+            if 0 <= ci < ncpl and _ok(ci, pt):
+                return ci
+        # intersect was wrong, or the point sits too near that cell's edge
+        for ci in tree.query(pt):
+            ci = int(ci)
+            if _ok(ci, pt):
+                return ci
+        return None
+
     points: List[Tuple[float, float, int]] = []
     n_dropped = 0
     for x, y in zip(xs, ys):
-        try:
-            cell = modelgrid.intersect(float(x), float(y), forgive=True)
-        except Exception:
-            cell = float("nan")
-        if cell is None or (isinstance(cell, float) and math.isnan(cell)):
+        cell = _containing_cell(float(x), float(y))
+        if cell is None:
             n_dropped += 1
             continue
-        points.append((float(x), float(y), int(cell)))
+        points.append((float(x), float(y), cell))
     return points, n_dropped
 
 

@@ -125,3 +125,64 @@ groups:
     assertion_class: global
     metric: max_abs_head_change
     expectation: "present + bounded + finite + no-dry + SPREAD head redistribution (NOT localized; global Kh)"
+
+  # ---------------------------------------------------------------------------
+  # Groups 9-12, added 2026-09-02 when the roster grew from 9 to 13.
+  #
+  # Authored the same way as 0-8: from the SCENARIO TYPE and the SIGN of its
+  # parameters, BEFORE looking at any state-(iii) result for these groups. Each
+  # reuses a scenario type that groups 0-8 already exercise, and in this table the
+  # assertion_class is a property of the TYPE (every type maps to exactly one
+  # class across 0-8), so the class here follows the precedent rather than being
+  # chosen freshly:
+  #     chd_head_change       -> feature_local  (g0)
+  #     river_stage           -> clear_sign     (g5)
+  #     river_width_and_stage -> feature_local  (g6)
+  #     recharge_scale        -> clear_sign     (g3, g4)
+  # Only the DIRECTION had to be reasoned, and each of these is the mirror of an
+  # existing group. A response that contradicts one of these is a FINDING to
+  # report, not something to edit away.
+  # ---------------------------------------------------------------------------
+
+  9:
+    scenario_type: chd_head_change
+    params: {chd_head_change_m: 1}
+    assertion_class: feature_local
+    feature: chd            # response localized near the CHD boundary
+    metric: max_abs_head_change
+    # Mirror of g0 (-1 m). Raising the prescribed boundary head perturbs the
+    # domain near that boundary; the sign at the point of MAXIMUM change stays
+    # ambiguous because it depends on the local gradient, exactly as for g0.
+    expectation: "present + bounded + localized near the CHD boundary (sign ambiguous: local gradient dependent)"
+
+  10:
+    scenario_type: river_stage
+    params: {stage_change_m: -1.5, stage_zone: 1}
+    assertion_class: clear_sign
+    metric: river_to_aquifer_flux
+    direction: decrease
+    # Mirror of g5 (+1.5 m). LOWERING the stage lowers the river head relative to
+    # the aquifer, so the signed river-to-aquifer flux (positive = into the
+    # aquifer, see the conventions above) must DECREASE.
+    expectation: "signed river-to-aquifer flux DECREASES vs state ii (delta < 0)"
+
+  11:
+    scenario_type: river_width_and_stage
+    params: {width_factor: 0.7, stage_change_factor: 0.5}
+    assertion_class: feature_local
+    feature: riv            # response localized near the river
+    metric: max_abs_head_change
+    # Mirror of g6, with both factors inverted: NARROWER channel (0.7) but HIGHER
+    # stage (+0.5). The two push the exchange in opposite directions, so as for g6
+    # the sign is mixed and only locality and boundedness are asserted.
+    expectation: "present + bounded + localized near the river (mixed sign: narrower channel but higher stage)"
+
+  12:
+    scenario_type: recharge_scale
+    params: {recharge_factor: 0.6}
+    assertion_class: clear_sign
+    metric: mean_head_change
+    direction: decrease
+    # Same direction as g4 (0.8) and stronger: less recharge means less water
+    # entering the aquifer, so the mean head must DROP.
+    expectation: "mean head DROPS vs state ii (mean_head_change < 0)"

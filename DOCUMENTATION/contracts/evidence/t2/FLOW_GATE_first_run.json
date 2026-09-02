@@ -1,0 +1,149 @@
+{
+  "notebook": "case_study_flow_group_0.ipynb",
+  "results": [
+    {
+      "group": 0,
+      "status": "OK",
+      "runtime_s": 32.1,
+      "metrics": {
+        "group": 0,
+        "mass_balance_pct": 0.0015
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 1,
+      "status": "OK",
+      "runtime_s": 30.3,
+      "metrics": {
+        "group": 1,
+        "mass_balance_pct": 0.0004
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 2,
+      "status": "OK",
+      "runtime_s": 32.7,
+      "metrics": {
+        "group": 2,
+        "mass_balance_pct": 0.0003
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 3,
+      "status": "OK",
+      "runtime_s": 34.2,
+      "metrics": {
+        "group": 3,
+        "mass_balance_pct": 0.0002
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 4,
+      "status": "OK",
+      "runtime_s": 31.1,
+      "metrics": {
+        "group": 4,
+        "mass_balance_pct": 0.0003
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 5,
+      "status": "OK",
+      "runtime_s": 31.5,
+      "metrics": {
+        "group": 5,
+        "mass_balance_pct": 0.0007
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 6,
+      "status": "OK",
+      "runtime_s": 37.5,
+      "metrics": {
+        "group": 6,
+        "mass_balance_pct": 0.0005
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 7,
+      "status": "OK",
+      "runtime_s": 33.1,
+      "metrics": {
+        "group": 7,
+        "mass_balance_pct": 0.0005
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 8,
+      "status": "OK",
+      "runtime_s": 32.6,
+      "metrics": {
+        "group": 8,
+        "mass_balance_pct": 0.0019
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 9,
+      "status": "FAIL",
+      "runtime_s": 7.4,
+      "metrics": {},
+      "error": null,
+      "stderr_tail": "9m\u001b[33m): the \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1262\u001b[39m         \u001b[33mf\u001b[39m\u001b[33m\"\u001b[39m\u001b[33mstate-iii response CONTRADICTS its FROZEN expectation \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1263\u001b[39m         \u001b[33mf\u001b[39m\u001b[33m\"\u001b[39m\u001b[33m(\u001b[39m\u001b[38;5;132;01m{\u001b[39;00mexpectation[\u001b[33m'\u001b[39m\u001b[33massertion_class\u001b[39m\u001b[33m'\u001b[39m]\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m): \u001b[39m\u001b[38;5;132;01m{\u001b[39;00mexpectation[\u001b[33m'\u001b[39m\u001b[33mproblems\u001b[39m\u001b[33m'\u001b[39m]\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m. \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1264\u001b[39m         \u001b[33m\"\u001b[39m\u001b[33mRefusing to return a build that violates the frozen table.\u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1265\u001b[39m     )\n\n\u001b[36mFile \u001b[39m\u001b[32m~/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/src/casestudy_flow_scenarios.py:232\u001b[39m, in \u001b[36mevaluate_scenario_expectation\u001b[39m\u001b[34m(group, metrics, expectations, config_scenario)\u001b[39m\n\u001b[32m    230\u001b[39m exp = expectations \u001b[38;5;28;01mif\u001b[39;00m expectations \u001b[38;5;129;01mis\u001b[39;00m \u001b[38;5;129;01mnot\u001b[39;00m \u001b[38;5;28;01mNone\u001b[39;00m \u001b[38;5;28;01melse\u001b[39;00m load_expectations()\n\u001b[32m    231\u001b[39m cfg = exp[\u001b[33m\"\u001b[39m\u001b[33mconfig\u001b[39m\u001b[33m\"\u001b[39m]\n\u001b[32m--> \u001b[39m\u001b[32m232\u001b[39m entry = \u001b[43mexp\u001b[49m\u001b[43m[\u001b[49m\u001b[33;43m\"\u001b[39;49m\u001b[33;43mgroups\u001b[39;49m\u001b[33;43m\"\u001b[39;49m\u001b[43m]\u001b[49m\u001b[43m[\u001b[49m\u001b[43mgroup\u001b[49m\u001b[43m]\u001b[49m\n\u001b[32m    233\u001b[39m \u001b[38;5;28mcls\u001b[39m = entry[\u001b[33m\"\u001b[39m\u001b[33massertion_class\u001b[39m\u001b[33m\"\u001b[39m]\n\u001b[32m    235\u001b[39m \u001b[38;5;28;01mif\u001b[39;00m config_scenario \u001b[38;5;129;01mis\u001b[39;00m \u001b[38;5;129;01mnot\u001b[39;00m \u001b[38;5;28;01mNone\u001b[39;00m:\n\n\u001b[31mKeyError\u001b[39m: 9",
+      "over_budget": false
+    },
+    {
+      "group": 10,
+      "status": "FAIL",
+      "runtime_s": 6.6,
+      "metrics": {},
+      "error": null,
+      "stderr_tail": "c/casestudy_flow_scenarios.py:91\u001b[39m, in \u001b[36m_assert_stage_above_rbot\u001b[39m\u001b[34m(riv_stage, riv_rbot, scenario_type)\u001b[39m\n\u001b[32m     89\u001b[39m \u001b[38;5;28;01mif\u001b[39;00m bad.size:\n\u001b[32m     90\u001b[39m     i = \u001b[38;5;28mint\u001b[39m(bad[\u001b[32m0\u001b[39m])\n\u001b[32m---> \u001b[39m\u001b[32m91\u001b[39m     \u001b[38;5;28;01mraise\u001b[39;00m \u001b[38;5;167;01mValueError\u001b[39;00m(\n\u001b[32m     92\u001b[39m         \u001b[33mf\u001b[39m\u001b[33m\"\u001b[39m\u001b[33mscenario \u001b[39m\u001b[38;5;132;01m{\u001b[39;00mscenario_type\u001b[38;5;132;01m!r}\u001b[39;00m\u001b[33m: RIV reach \u001b[39m\u001b[38;5;132;01m{\u001b[39;00mi\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m inverts after the stage \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m     93\u001b[39m         \u001b[33mf\u001b[39m\u001b[33m\"\u001b[39m\u001b[33mchange -- stage \u001b[39m\u001b[38;5;132;01m{\u001b[39;00mstage[i]\u001b[38;5;132;01m:\u001b[39;00m\u001b[33m.4f\u001b[39m\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m m <= rbot \u001b[39m\u001b[38;5;132;01m{\u001b[39;00mrbot[i]\u001b[38;5;132;01m:\u001b[39;00m\u001b[33m.4f\u001b[39m\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m m + \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m     94\u001b[39m         \u001b[33mf\u001b[39m\u001b[33m\"\u001b[39m\u001b[33mclearance \u001b[39m\u001b[38;5;132;01m{\u001b[39;00mSTAGE_CLEARANCE_M\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m m (\u001b[39m\u001b[38;5;132;01m{\u001b[39;00m\u001b[38;5;28mint\u001b[39m(bad.size)\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m reach(es) total). \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m     95\u001b[39m         \u001b[33m\"\u001b[39m\u001b[33mREJECTING (an invalid river forcing is never clamped).\u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m     96\u001b[39m     )\n\n\u001b[31mValueError\u001b[39m: scenario 'river_stage': RIV reach 0 inverts after the stage change -- stage 388.3018 m <= rbot 388.8018 m + clearance 0.001 m (2601 reach(es) total). REJECTING (an invalid river forcing is never clamped).",
+      "over_budget": false
+    },
+    {
+      "group": 11,
+      "status": "FAIL",
+      "runtime_s": 7.0,
+      "metrics": {},
+      "error": null,
+      "stderr_tail": "m\u001b[33m): the \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1262\u001b[39m         \u001b[33mf\u001b[39m\u001b[33m\"\u001b[39m\u001b[33mstate-iii response CONTRADICTS its FROZEN expectation \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1263\u001b[39m         \u001b[33mf\u001b[39m\u001b[33m\"\u001b[39m\u001b[33m(\u001b[39m\u001b[38;5;132;01m{\u001b[39;00mexpectation[\u001b[33m'\u001b[39m\u001b[33massertion_class\u001b[39m\u001b[33m'\u001b[39m]\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m): \u001b[39m\u001b[38;5;132;01m{\u001b[39;00mexpectation[\u001b[33m'\u001b[39m\u001b[33mproblems\u001b[39m\u001b[33m'\u001b[39m]\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m. \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1264\u001b[39m         \u001b[33m\"\u001b[39m\u001b[33mRefusing to return a build that violates the frozen table.\u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1265\u001b[39m     )\n\n\u001b[36mFile \u001b[39m\u001b[32m~/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/src/casestudy_flow_scenarios.py:232\u001b[39m, in \u001b[36mevaluate_scenario_expectation\u001b[39m\u001b[34m(group, metrics, expectations, config_scenario)\u001b[39m\n\u001b[32m    230\u001b[39m exp = expectations \u001b[38;5;28;01mif\u001b[39;00m expectations \u001b[38;5;129;01mis\u001b[39;00m \u001b[38;5;129;01mnot\u001b[39;00m \u001b[38;5;28;01mNone\u001b[39;00m \u001b[38;5;28;01melse\u001b[39;00m load_expectations()\n\u001b[32m    231\u001b[39m cfg = exp[\u001b[33m\"\u001b[39m\u001b[33mconfig\u001b[39m\u001b[33m\"\u001b[39m]\n\u001b[32m--> \u001b[39m\u001b[32m232\u001b[39m entry = \u001b[43mexp\u001b[49m\u001b[43m[\u001b[49m\u001b[33;43m\"\u001b[39;49m\u001b[33;43mgroups\u001b[39;49m\u001b[33;43m\"\u001b[39;49m\u001b[43m]\u001b[49m\u001b[43m[\u001b[49m\u001b[43mgroup\u001b[49m\u001b[43m]\u001b[49m\n\u001b[32m    233\u001b[39m \u001b[38;5;28mcls\u001b[39m = entry[\u001b[33m\"\u001b[39m\u001b[33massertion_class\u001b[39m\u001b[33m\"\u001b[39m]\n\u001b[32m    235\u001b[39m \u001b[38;5;28;01mif\u001b[39;00m config_scenario \u001b[38;5;129;01mis\u001b[39;00m \u001b[38;5;129;01mnot\u001b[39;00m \u001b[38;5;28;01mNone\u001b[39;00m:\n\n\u001b[31mKeyError\u001b[39m: 11",
+      "over_budget": false
+    },
+    {
+      "group": 12,
+      "status": "FAIL",
+      "runtime_s": 7.0,
+      "metrics": {},
+      "error": null,
+      "stderr_tail": "m\u001b[33m): the \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1262\u001b[39m         \u001b[33mf\u001b[39m\u001b[33m\"\u001b[39m\u001b[33mstate-iii response CONTRADICTS its FROZEN expectation \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1263\u001b[39m         \u001b[33mf\u001b[39m\u001b[33m\"\u001b[39m\u001b[33m(\u001b[39m\u001b[38;5;132;01m{\u001b[39;00mexpectation[\u001b[33m'\u001b[39m\u001b[33massertion_class\u001b[39m\u001b[33m'\u001b[39m]\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m): \u001b[39m\u001b[38;5;132;01m{\u001b[39;00mexpectation[\u001b[33m'\u001b[39m\u001b[33mproblems\u001b[39m\u001b[33m'\u001b[39m]\u001b[38;5;132;01m}\u001b[39;00m\u001b[33m. \u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1264\u001b[39m         \u001b[33m\"\u001b[39m\u001b[33mRefusing to return a build that violates the frozen table.\u001b[39m\u001b[33m\"\u001b[39m\n\u001b[32m   1265\u001b[39m     )\n\n\u001b[36mFile \u001b[39m\u001b[32m~/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/src/casestudy_flow_scenarios.py:232\u001b[39m, in \u001b[36mevaluate_scenario_expectation\u001b[39m\u001b[34m(group, metrics, expectations, config_scenario)\u001b[39m\n\u001b[32m    230\u001b[39m exp = expectations \u001b[38;5;28;01mif\u001b[39;00m expectations \u001b[38;5;129;01mis\u001b[39;00m \u001b[38;5;129;01mnot\u001b[39;00m \u001b[38;5;28;01mNone\u001b[39;00m \u001b[38;5;28;01melse\u001b[39;00m load_expectations()\n\u001b[32m    231\u001b[39m cfg = exp[\u001b[33m\"\u001b[39m\u001b[33mconfig\u001b[39m\u001b[33m\"\u001b[39m]\n\u001b[32m--> \u001b[39m\u001b[32m232\u001b[39m entry = \u001b[43mexp\u001b[49m\u001b[43m[\u001b[49m\u001b[33;43m\"\u001b[39;49m\u001b[33;43mgroups\u001b[39;49m\u001b[33;43m\"\u001b[39;49m\u001b[43m]\u001b[49m\u001b[43m[\u001b[49m\u001b[43mgroup\u001b[49m\u001b[43m]\u001b[49m\n\u001b[32m    233\u001b[39m \u001b[38;5;28mcls\u001b[39m = entry[\u001b[33m\"\u001b[39m\u001b[33massertion_class\u001b[39m\u001b[33m\"\u001b[39m]\n\u001b[32m    235\u001b[39m \u001b[38;5;28;01mif\u001b[39;00m config_scenario \u001b[38;5;129;01mis\u001b[39;00m \u001b[38;5;129;01mnot\u001b[39;00m \u001b[38;5;28;01mNone\u001b[39;00m:\n\n\u001b[31mKeyError\u001b[39m: 12",
+      "over_budget": false
+    }
+  ]
+}

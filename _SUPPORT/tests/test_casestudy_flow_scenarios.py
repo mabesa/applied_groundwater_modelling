@@ -145,13 +145,25 @@ class TestTransforms:
 # FROZEN expectation table + evaluator.
 # =============================================================================
 class TestFrozenExpectations:
-    def test_table_is_frozen_and_matches_config_types(self):
+    def test_table_is_frozen_and_covers_the_whole_roster(self):
+        """Every group must carry a frozen expectation, and it must match its config.
+
+        🔴 2026-09-02: this asserted `set(range(9))`. The roster grew to 13 on
+        2026-08-31 but the table did not, so groups 9-12 had NO expectation and the
+        flow notebook died with `KeyError: 9` at the scenario step -- undetected
+        because nothing had ever executed that notebook for those groups. Derived
+        from the roster now, so the same gap cannot reopen silently.
+        """
+        import case_utils as cu
+        import casestudy_flow_builder as b
+        from casestudy_flow_builder import DEFAULT_FLOW_CONFIG
+
         exp = scn.load_expectations()
         assert exp["frozen_before_run"] is True
-        assert set(exp["groups"].keys()) == set(range(9))
-        import case_utils as cu
-        from casestudy_flow_builder import DEFAULT_FLOW_CONFIG
-        for g in range(9):
+        roster = set(b.ALL_GROUPS)
+        assert set(exp["groups"].keys()) == roster, (
+            f"expectation table covers {sorted(exp['groups'])}, roster is {sorted(roster)}")
+        for g in sorted(roster):
             cfg = cu.get_scenario_for_group(str(DEFAULT_FLOW_CONFIG), g)
             assert exp["groups"][g]["scenario_type"] == cfg["type"], f"group {g} type mismatch"
 
