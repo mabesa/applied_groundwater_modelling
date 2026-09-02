@@ -147,11 +147,28 @@ def test_this_machines_run_is_evidence_only_if_it_is_the_generation_os():
 
 # --- 4. environment mismatch is its own outcome, never a pass or a regression ---
 def test_env_mismatch_is_detected_from_the_manifest():
+    """This environment must match the golden's recorded versions, or its hashes cannot
+    distinguish a regression from an environment change.
+
+    🔴 2026-09-02: the goldens are regenerated on the JupyterHub, because Linux is the
+    authoritative platform and it is where students run. The Hub image ships
+    flopy 3.9.3 / numpy 2.1.3, but this project's uv.lock pins flopy 3.9.5 /
+    numpy 2.3.5 -- so THE HUB DOES NOT RUN THE PROJECT'S LOCKED DEPENDENCIES, and a
+    developer who correctly installs the lock will see this fail.
+
+    That is a real inconsistency, not a test defect, so this still fails rather than
+    being softened: either the Hub image or uv.lock has to move. Until it is resolved,
+    a local mismatch means the hash pins are INCONCLUSIVE here (check_group reports
+    ENV_MISMATCH, never a silent pass) -- it does not mean the goldens are wrong.
+    """
     manifest = b._frozen_golden_manifest(0)
     assert manifest["versions"]["numpy"], "the manifest must record numpy to compare it"
-    assert nine.env_mismatch(manifest) == {}, (
-        "this environment should match the golden's recorded versions; if it does not, "
-        "install the project's locked dependencies (uv.lock) before trusting any pin")
+    diff = nine.env_mismatch(manifest)
+    assert diff == {}, (
+        f"environment differs from the golden's: {diff}. The goldens are generated on "
+        "the Hub (authoritative Linux); if you installed this project's uv.lock and "
+        "still see this, the Hub image and uv.lock have diverged and one of them needs "
+        "to move -- see the docstring. Hash pins are INCONCLUSIVE until then.")
 
 
 def test_env_mismatch_reports_each_differing_library(monkeypatch):

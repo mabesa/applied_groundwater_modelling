@@ -205,3 +205,7 @@ _SUPPORT/src/scripts/reliability_sweep/
 
 # Instructor validation-run artifacts (regenerate with _SUPPORT/src/scripts/validate_transport_groups.py)
 transport_group_validation_report.json
+
+# golden generation scratch (created by casestudy_flow_golden.py)
+_SUPPORT/src/golden/_work/
+_SUPPORT/src/golden/_assemble/
