@@ -30,13 +30,13 @@ canonical_mapping:
   source_layer: 1
   source_start_time_days: 0
   source_duration_days: 1
-  source_value: 100.0
+  source_value: 5.0
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 1
@@ -50,7 +50,7 @@ canonical_mapping:
   contaminant: Nitrate (NO3-)
   cas_number: 14797-55-8
   threshold_mg_L: 25.0
-  threshold_basis: drinking_water_as_N
+  threshold_basis: drinking_water_as_NO3
   conservative: true
   sorption: false
   distribution_coefficient_mL_g: 0.0
@@ -66,18 +66,18 @@ canonical_mapping:
   solubility_mg_L: 850000.0
   source_type: point
   source_release_type: pulse
-  source_easting_offset_m: 155.3
-  source_northing_offset_m: -89.7
+  source_easting_offset_m: 42.4
+  source_northing_offset_m: 42.4
   source_layer: 1
   source_start_time_days: 0
   source_duration_days: 1
-  source_value: 50.0
+  source_value: 700.0
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 2
@@ -112,13 +112,13 @@ canonical_mapping:
   source_layer: 1
   source_start_time_days: 0
   source_duration_days: 10
-  source_value: 10.0
+  source_value: 1.5
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 3
@@ -158,7 +158,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 4
@@ -198,7 +198,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 5
@@ -234,13 +234,13 @@ canonical_mapping:
   source_layer: 1
   source_start_time_days: 0
   source_duration_days: 1
-  source_value: 1.0
+  source_value: 0.28
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 6
@@ -277,13 +277,13 @@ canonical_mapping:
   source_layer: 1
   source_start_time_days: 0
   source_duration_days: 90
-  source_value: 50.0
+  source_value: 2.9
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 7
@@ -323,7 +323,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 8
@@ -356,14 +356,14 @@ canonical_mapping:
   source_northing_offset_m: -82.0
   source_layer: 1
   source_start_time_days: 0
-  source_duration_days: 1
-  source_value: 5.0
+  source_duration_days: 90
+  source_value: 15.0
   source_value_field: concentration_mg_L
   source_value_unit: mg_L
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 9
@@ -403,7 +403,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 10
@@ -445,7 +445,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 11
@@ -488,7 +488,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 - group: 12
@@ -528,7 +528,7 @@ canonical_mapping:
   flow_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config.yaml
   flow_config_sha256: b4544493822fe34a28a46f2d24f22e9d26a3d916631c4f8779a906aacd659041
   transport_config_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/PROJECT/workspace/template/case_config_transport.yaml
-  transport_config_sha256: b0d482e3e8f8cee0a5e0bfc4aa7d982a4b24d7eba901ebfadecc4c75dcec0b6d
+  transport_config_sha256: a28ddcb6fed003b0ec6dc55b14a4ff537054bae95f1d36fae58f08e89f7cc51d
   doublet_table_file: /Users/bea/Documents/GitHub/applied_groundwater_modelling/_SUPPORT/casestudy_scenarios/doublet_table.csv
   doublet_table_sha256: da80e86d01f9d2d48881f068b593ccbd2ed0463dd36a0bb0131e201683f48b7f
 repairing_ledger:
@@ -645,13 +645,11 @@ threshold_sanity:
   contaminant: Nitrate (NO3-)
   cas_number: 14797-55-8
   threshold_mg_L: 25.0
-  ref_lo_mg_L: 1.0
-  ref_hi_mg_L: 11.3
-  basis: drinking_water_as_N
-  flagged: true
-  note: threshold 25.0 mg/L is OUTSIDE reference band [1.0, 11.3] mg/L (drinking_water_as_N).
-    Nitrate reference is as-N (US EPA MCL 10 mg/L-N ~= 44 mg/L as NO3-). 25 mg/L is
-    plausible as NO3- (~5.6 mg/L-N) -- confirm the as-N vs NO3- basis.
+  ref_lo_mg_L: 10.0
+  ref_hi_mg_L: 50.0
+  basis: drinking_water_as_NO3
+  flagged: false
+  note: within reference band [10.0, 50.0] mg/L (drinking_water_as_NO3).
 - group: 2
   contaminant: Benzene
   cas_number: 71-43-2

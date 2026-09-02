@@ -781,11 +781,15 @@ def test_cli_groups_oversized_range_exits_2(tmp_path):
 
 
 def test_cli_groups_out_of_domain_single_id_exits_2(tmp_path):
-    """--groups '9' is a syntactically valid single id, but this script's
-    frozen artifacts only ever cover the canonical 0-8 group domain -- must
-    be rejected with exit code 2."""
+    """--groups '13' is a syntactically valid single id but sits outside the
+    roster (0-12) -- must be rejected with exit code 2.
+
+    This used to assert on '9'. The domain was widened 0-8 -> 0-12 on
+    2026-09-02 so groups 9-12 could actually be frozen; 13 is now the first id
+    past the end.
+    """
     rv = rc.main([
-        "--groups", "9", "--meshes-dir", str(tmp_path / "meshes"),
+        "--groups", "13", "--meshes-dir", str(tmp_path / "meshes"),
         "--out", str(tmp_path / "report.json"),
     ])
     assert rv == 2
@@ -806,9 +810,15 @@ def test_cli_groups_full_canonical_range_is_accepted(tmp_path, monkeypatch):
 
 
 class TestParseGroupsCanonicalDomain:
-    """Unit-level coverage of `_parse_groups` itself (Fix 3): it now shares
-    case_validation.parse_groups_spec's range-span cap and additionally
-    restricts to case_validation.CANONICAL_GROUPS (0-8)."""
+    """Unit-level coverage of `_parse_groups` itself (Fix 3): it shares
+    case_validation.parse_groups_spec's range-span cap and restricts to
+    rc.FROZEN_MESH_GROUPS.
+
+    The domain was widened 0-8 -> 0-12 on 2026-09-02. The old bound made the
+    roster's groups 9-12 impossible to freeze: this script is the PRODUCER of
+    the frozen artifacts, so refusing the ids meant their deferrals could never
+    be discharged.
+    """
 
     def test_rejects_oversized_range(self):
         with pytest.raises(ValueError):
@@ -816,14 +826,22 @@ class TestParseGroupsCanonicalDomain:
 
     def test_rejects_out_of_domain_single_id(self):
         with pytest.raises(ValueError):
-            rc._parse_groups("9")
+            rc._parse_groups("13")
 
     def test_rejects_out_of_domain_within_otherwise_valid_list(self):
         with pytest.raises(ValueError):
-            rc._parse_groups("0,3,9")
+            rc._parse_groups("0,3,13")
 
     def test_accepts_full_canonical_range(self):
-        assert rc._parse_groups("0-8") == list(range(9))
+        assert rc._parse_groups("0-12") == list(range(13))
+
+    def test_accepts_the_four_groups_the_old_domain_refused(self):
+        assert rc._parse_groups("9-12") == [9, 10, 11, 12]
+
+    def test_domain_covers_the_whole_roster(self):
+        import case_validation as cv
+
+        assert tuple(rc.FROZEN_MESH_GROUPS) == tuple(cv.CANONICAL_GROUPS)
 
     def test_accepts_canonical_comma_list(self):
         assert rc._parse_groups("0,3,5") == [0, 3, 5]

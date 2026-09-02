@@ -145,9 +145,13 @@ REFERENCE_BOUNDS: Dict[str, Tuple[float, float, str, str]] = {
                    "0.07 mg/L. The band spans the detection-limit end to the WHO value."),
     "79-01-6":    (0.001,   0.02,   "drinking_water_MCL",
                    "TCE drinking-water standard ~0.005 mg/L (5 ug/L)."),
-    "14797-55-8": (1.0,     11.3,   "drinking_water_as_N",
-                   "Nitrate reference is as-N (US EPA MCL 10 mg/L-N ~= 44 mg/L as NO3-). "
-                   "25 mg/L is plausible as NO3- (~5.6 mg/L-N) -- confirm the as-N vs NO3- basis."),
+    "14797-55-8": (10.0,    50.0,   "drinking_water_as_NO3",
+                   "RESOLVED 2026-09-02: the basis is as-NO3-, not as-N. 25 mg/L is the Swiss "
+                   "GSchV Anhang 2 groundwater requirement for nitrate, expressed as NO3-. The "
+                   "band spans that to the EU/WHO drinking-water value of 50 mg/L as NO3-. The "
+                   "old entry carried the as-N band [1.0, 11.3], which flagged our own correct "
+                   "25 mg/L as out of range; 25 mg/L as N would be 110 mg/L as NO3-, which is "
+                   "not a standard anywhere."),
     "71-43-2":    (0.001,   0.01,   "drinking_water_MCL",
                    "Benzene drinking-water MCL ~0.005 mg/L."),
     "16887-00-6": (200.0,   400.0,  "aesthetic_indicator",
@@ -687,11 +691,18 @@ def _assert_acceptance(mapping: pd.DataFrame, ledger: pd.DataFrame,
     # threshold sanity ran + recorded for all; the plan's expected flags hold
     assert sanity["flagged"].notna().all(), "sanity check did not run for some row"
     flagged = set(sanity.loc[sanity["flagged"], "contaminant"])
-    # TCE must NOT be flagged (post 0.005 correction); Atrazine/Nitrate/Chloride must be.
+    # TCE must NOT be flagged (post 0.005 correction); Atrazine/Chloride must be.
     assert not any("TCE" in c for c in flagged), "TCE unexpectedly flagged (should be clear at 0.005)"
     assert any("Atrazine" in c for c in flagged), "Atrazine should be flagged (0.1 mg/L too high)"
-    assert any("Nitrate" in c for c in flagged), "Nitrate 25 should be surfaced"
     assert any("Chloride" in c for c in flagged), "Chloride 100 should be surfaced"
+    # Nitrate was flagged until 2026-09-02 -- NOT because 25 mg/L was wrong, but because
+    # REFERENCE_BOUNDS carried the as-N band [1.0, 11.3] while 25 mg/L is the Swiss GSchV
+    # Anhang 2 groundwater requirement expressed as NO3-. The band now matches the basis, so
+    # our own correct threshold no longer trips the check. This asserts the RESOLVED state:
+    # if nitrate starts flagging again, the basis has drifted back and needs a human.
+    assert not any("Nitrate" in c for c in flagged), (
+        "Nitrate flagged again -- REFERENCE_BOUNDS basis and threshold have drifted apart "
+        "(25 mg/L is as NO3-, not as N; 25 as N would be 110 as NO3-)")
 
 
 # ---------------------------------------------------------------------------

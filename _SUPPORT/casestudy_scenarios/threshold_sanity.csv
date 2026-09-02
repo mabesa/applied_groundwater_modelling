@@ -1,6 +1,6 @@
 group,contaminant,cas_number,threshold_mg_L,ref_lo_mg_L,ref_hi_mg_L,basis,flagged,note
 0,Trichloroethylene (TCE),79-01-6,0.005,0.001,0.02,drinking_water_MCL,False,"within reference band [0.001, 0.02] mg/L (drinking_water_MCL)."
-1,Nitrate (NO3-),14797-55-8,25,1,11.3,drinking_water_as_N,True,"threshold 25.0 mg/L is OUTSIDE reference band [1.0, 11.3] mg/L (drinking_water_as_N). Nitrate reference is as-N (US EPA MCL 10 mg/L-N ~= 44 mg/L as NO3-). 25 mg/L is plausible as NO3- (~5.6 mg/L-N) -- confirm the as-N vs NO3- basis."
+1,Nitrate (NO3-),14797-55-8,25,10,50,drinking_water_as_NO3,False,"within reference band [10.0, 50.0] mg/L (drinking_water_as_NO3)."
 2,Benzene,71-43-2,0.005,0.001,0.01,drinking_water_MCL,False,"within reference band [0.001, 0.01] mg/L (drinking_water_MCL)."
 3,Chloride (conservative tracer),16887-00-6,100,200,400,aesthetic_indicator,True,"threshold 100.0 mg/L is OUTSIDE reference band [200.0, 400.0] mg/L (aesthetic_indicator). Chloride is an aesthetic/taste indicator (~250 mg/L WHO/EU/CH). A 100 mg/L compliance threshold is stricter than typical -- confirm intended basis."
 4,Chromium (Cr-VI),18540-29-9,0.1,0.01,0.1,drinking_water_standard,False,"within reference band [0.01, 0.1] mg/L (drinking_water_standard)."

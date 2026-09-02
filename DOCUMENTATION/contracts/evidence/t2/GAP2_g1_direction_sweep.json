@@ -1,0 +1,112 @@
+[
+  {
+    "g": 1,
+    "tag": "deg0",
+    "ok": true,
+    "bearing_deg": 0,
+    "radius": 50.0,
+    "min_cell": 1.154,
+    "offset_E": 120.0,
+    "offset_N": 0.0,
+    "ratio": 0.01944,
+    "t_peak": 6.8,
+    "hub": 52
+  },
+  {
+    "g": 1,
+    "tag": "deg45",
+    "ok": true,
+    "bearing_deg": 45,
+    "radius": 50.0,
+    "min_cell": 1.268,
+    "offset_E": 84.9,
+    "offset_N": 84.9,
+    "ratio": 0.07964,
+    "t_peak": 5.9,
+    "hub": 52
+  },
+  {
+    "g": 1,
+    "tag": "deg90",
+    "ok": true,
+    "bearing_deg": 90,
+    "radius": 56.0,
+    "min_cell": 1.127,
+    "offset_E": 0.0,
+    "offset_N": 120.0,
+    "ratio": 0.00248,
+    "t_peak": 12.4,
+    "hub": 54
+  },
+  {
+    "g": 1,
+    "tag": "deg135",
+    "ok": true,
+    "bearing_deg": 135,
+    "radius": 50.0,
+    "min_cell": 1.268,
+    "offset_E": -84.9,
+    "offset_N": 84.9,
+    "ratio": 0.00131,
+    "t_peak": 16.2,
+    "hub": 55
+  },
+  {
+    "g": 1,
+    "tag": "deg180",
+    "ok": true,
+    "bearing_deg": 180,
+    "radius": 50.0,
+    "min_cell": 1.268,
+    "offset_E": -120.0,
+    "offset_N": 0.0,
+    "ratio": -0.0,
+    "t_peak": 0.2,
+    "hub": 49
+  },
+  {
+    "g": 1,
+    "tag": "deg225",
+    "ok": false,
+    "err": "only 80 m from boundary"
+  },
+  {
+    "g": 1,
+    "tag": "deg270",
+    "ok": false,
+    "err": "only 78 m from boundary"
+  },
+  {
+    "g": 1,
+    "tag": "deg315",
+    "ok": true,
+    "bearing_deg": 315,
+    "radius": 50.0,
+    "min_cell": 1.268,
+    "offset_E": 84.9,
+    "offset_N": -84.9,
+    "ratio": 0.01435,
+    "t_peak": 10.1,
+    "hub": 68
+  },
+  {
+    "g": 8,
+    "tag": "pulse_180d",
+    "ok": true,
+    "duration": 180.0,
+    "release": "pulse",
+    "ratio": 1.0391,
+    "t_peak": 258.0,
+    "hub": 85
+  },
+  {
+    "g": 8,
+    "tag": "continuous_365d",
+    "ok": true,
+    "duration": 365.0,
+    "release": "continuous",
+    "ratio": 1.2522,
+    "t_peak": 365.0,
+    "hub": 82
+  }
+]
