@@ -420,8 +420,15 @@ def _refine_solve_baseline_walk(group, workspace, *, sim_name, model_name=None) 
     boundary_gdf, river_gdf = cfc.load_gis(mother)
     refine_points = cfc.group_refine_points(group)
 
+    # 🔴 2026-09-02: prefer the group's PINNED radius over walking the ladder. The
+    # walk returns the FIRST radius that refines+solves, which is not the same as
+    # the one validated for that corridor -- and it must agree with what the golden
+    # generator and the mesh freeze use, or the three artifacts cannot match.
+    _pinned = cfc.group_refine_radius(group)
+    _radii = (float(_pinned),) if _pinned is not None else cfc.REFINE_RADII
+
     attempts: List[str] = []
-    for radius in cfc.REFINE_RADII:
+    for radius in _radii:
         try:
             spec, riv_info = cfc.build_baseline_spec(
                 cgwf, boundary_gdf, river_gdf, refine_points, coarse_heads,
