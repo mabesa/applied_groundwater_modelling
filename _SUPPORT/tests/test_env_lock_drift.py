@@ -75,9 +75,23 @@ def test_malformed_lock_is_unknown_never_ok(tmp_path):
 
 
 def test_reporting_never_installs():
-    """env_utils' own scope note: auto-install is pyemu ONLY. The drift half must not
-    acquire an install path -- a pip upgrade of numpy in a shared conda kernel is
-    exactly what the module warns against."""
+    """The REPORTING half must never shell out.
+
+    🔴 2026-09-02 -- this note used to read "auto-install is pyemu ONLY", and that
+    policy has changed on the lecturer's instruction: the Hub's base image ships older
+    numpy/flopy than the project pins and CANNOT be modified, so `0_diagnostics` now
+    tops them up via `ensure_pinned_versions`.
+
+    The original warning still stands and is why repair lives in its own function
+    rather than inside these: a pip upgrade of numpy under a conda base can break
+    packages compiled against the older one. Mitigations: the bump stays inside
+    numpy 2.x (stable ABI); it installs `--user`, so `rm -rf
+    ~/.local/lib/python3.*/site-packages/numpy*` reverts it; and it reports
+    `installed_needs_restart` instead of pretending the running kernel picked it up.
+
+    So: reporting stays pure, repair is opt-in and explicitly named. This test pins
+    that separation.
+    """
     import ast
     import inspect
     # Assert on the MECHANISM, not the word: the docstrings legitimately say
@@ -94,3 +108,100 @@ def test_reporting_never_installs():
         offending = (names | imported) & forbidden
         assert not offending, f"{fn.__name__} may not shell out: {offending}"
         assert "pip" not in imported
+
+
+# =============================================================================
+# ensure_pinned_versions -- repair, not just report (2026-09-02)
+#
+# The Hub's base image ships older numpy/flopy than the project pins, and the base
+# image cannot be modified. `ensure_package` cannot help: it only installs a MISSING
+# package, and these are present at the wrong version. Every test here forbids a real
+# install -- pip is monkeypatched -- so the suite can never mutate the environment
+# it is running in.
+# =============================================================================
+class TestEnsurePinnedVersions:
+    def test_dry_run_never_installs(self, monkeypatch):
+        import subprocess as _sp
+
+        def boom(*a, **k):
+            raise AssertionError("install=False must not shell out to pip")
+
+        monkeypatch.setattr(_sp, "run", boom)
+        rep = eu.ensure_pinned_versions(install=False)
+        assert all(a["status"] in ("ok", "reported_only", "skipped_no_lock")
+                   for a in rep["actions"].values())
+        assert rep["needs_restart"] is False
+
+    def test_a_matching_env_installs_nothing(self, monkeypatch):
+        import subprocess as _sp
+        calls = []
+        monkeypatch.setattr(_sp, "run", lambda *a, **k: calls.append(a))
+        monkeypatch.setattr(eu, "check_pinned_versions",
+                            lambda **k: {"lock_found": True, "mismatches": [], "unknown": [],
+                                         "packages": {"numpy": {"installed": "2.3.5",
+                                                                "locked": "2.3.5",
+                                                                "matches": True}}})
+        rep = eu.ensure_pinned_versions()
+        assert calls == [], "nothing to do, so pip must not be called"
+        assert rep["actions"]["numpy"]["status"] == "ok"
+
+    def test_drift_triggers_a_pinned_user_install_and_demands_a_restart(self, monkeypatch):
+        """The package is already imported, so a successful install cannot take effect
+        in the running kernel -- the caller MUST be told to restart."""
+        import subprocess as _sp
+
+        seen = {}
+
+        class _OK:
+            returncode = 0
+            stdout = stderr = ""
+
+        def fake_run(cmd, **k):
+            seen["cmd"] = cmd
+            return _OK()
+
+        monkeypatch.setattr(_sp, "run", fake_run)
+        monkeypatch.setattr(eu, "check_pinned_versions",
+                            lambda **k: {"lock_found": True, "mismatches": ["numpy"],
+                                         "unknown": [],
+                                         "packages": {"numpy": {"installed": "2.1.3",
+                                                                "locked": "2.3.5",
+                                                                "matches": False}}})
+        rep = eu.ensure_pinned_versions()
+        assert "numpy==2.3.5" in seen["cmd"], "must pin the EXACT locked version"
+        assert "--user" in seen["cmd"], "the Hub base image cannot be modified"
+        assert rep["actions"]["numpy"]["status"] == "installed_needs_restart"
+        assert rep["needs_restart"] is True
+
+    def test_a_failed_install_is_reported_never_swallowed(self, monkeypatch):
+        import subprocess as _sp
+
+        class _Bad:
+            returncode = 1
+            stdout = ""
+            stderr = "no matching distribution"
+
+        monkeypatch.setattr(_sp, "run", lambda *a, **k: _Bad())
+        monkeypatch.setattr(eu, "check_pinned_versions",
+                            lambda **k: {"lock_found": True, "mismatches": ["flopy"],
+                                         "unknown": [],
+                                         "packages": {"flopy": {"installed": "3.9.3",
+                                                                "locked": "3.9.5",
+                                                                "matches": False}}})
+        rep = eu.ensure_pinned_versions()
+        assert rep["actions"]["flopy"]["status"] == "failed"
+        assert "no matching distribution" in rep["actions"]["flopy"]["error"]
+        assert rep["needs_restart"] is False, "a failed install is not a pending restart"
+
+    def test_no_lock_entry_is_never_guessed(self, monkeypatch):
+        import subprocess as _sp
+        monkeypatch.setattr(_sp, "run",
+                            lambda *a, **k: pytest.fail("must not install without a pin"))
+        monkeypatch.setattr(eu, "check_pinned_versions",
+                            lambda **k: {"lock_found": False, "mismatches": [],
+                                         "unknown": ["numpy"],
+                                         "packages": {"numpy": {"installed": "2.1.3",
+                                                                "locked": None,
+                                                                "matches": None}}})
+        rep = eu.ensure_pinned_versions()
+        assert rep["actions"]["numpy"]["status"] == "skipped_no_lock"

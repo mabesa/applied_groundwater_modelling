@@ -170,6 +170,95 @@ def locked_versions(lock_path=None) -> dict:
             if isinstance(p, dict) and p.get("name")}
 
 
+def ensure_pinned_versions(packages=CRITICAL_PACKAGES, lock_path=None, *,
+                           install: bool = True, user: bool = True,
+                           quiet: bool = True) -> dict:
+    """Bring the CRITICAL packages up to the versions ``uv.lock`` pins.
+
+    ``ensure_package`` only helps when a package is MISSING. These packages are
+    always present -- the JupyterHub image ships them -- just sometimes at the wrong
+    version, which ``ensure_package``'s importability check cannot see.
+
+    🔴 Why this exists. The Hub's base image carries older numpy/flopy than the
+    project pins. The frozen goldens record the versions that produced them, and
+    numpy/flopy set the bit pattern of those arrays, so a drifted kernel cannot tell
+    a real regression from an environment difference -- the checks report
+    ENV_MISMATCH (inconclusive), never a silent pass. On 2026-09-02 the same Hub node
+    produced goldens at numpy 2.3.5 / flopy 3.9.5 and then, weeks later, at
+    2.1.3 / 3.9.3: the top-up into the user site had been lost (image rebuild or a
+    fresh home), and nothing re-applied it. This re-applies it.
+
+    Installs into the USER site (``pip --user``), which is what a multi-user Hub
+    allows -- the base image itself cannot be modified.
+
+    ⚠️ numpy and flopy are almost certainly imported already by the time this runs
+    (flopy imports numpy), so a successful install does NOT take effect in the
+    running kernel. Such a package is reported ``installed_needs_restart``; the
+    caller must tell the user to restart and re-run.
+
+    Parameters
+    ----------
+    install:
+        When False, behaves exactly like ``check_pinned_versions`` -- report only.
+        Useful for a dry run, and for tests that must never touch the environment.
+
+    Returns
+    -------
+    dict
+        The ``check_pinned_versions`` report, plus ``"actions"``:
+        ``{name: {"status": ..., "from": installed, "to": locked, "error": ...}}``
+        where status is ``ok`` (already correct), ``installed_needs_restart``,
+        ``failed``, ``skipped_no_lock``, or ``reported_only``; and
+        ``"needs_restart"``: bool.
+    """
+    import subprocess
+    import sys
+
+    report = check_pinned_versions(packages=packages, lock_path=lock_path)
+    report["actions"] = {}
+    report["needs_restart"] = False
+
+    for name, row in report["packages"].items():
+        if row["matches"] is True:
+            report["actions"][name] = {"status": "ok", "from": row["installed"],
+                                       "to": row["locked"]}
+            continue
+        if row["locked"] is None:
+            # No pin to aim at -- never guess a version.
+            report["actions"][name] = {"status": "skipped_no_lock",
+                                       "from": row["installed"], "to": None}
+            continue
+        if not install:
+            report["actions"][name] = {"status": "reported_only",
+                                       "from": row["installed"], "to": row["locked"]}
+            continue
+
+        cmd = [sys.executable, "-m", "pip", "install", f"{name}=={row['locked']}"]
+        if user:
+            cmd.append("--user")
+        if quiet:
+            cmd.append("--quiet")
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+        except Exception as exc:                        # noqa: BLE001
+            report["actions"][name] = {"status": "failed", "from": row["installed"],
+                                       "to": row["locked"],
+                                       "error": f"subprocess error: {exc}"}
+            continue
+        if proc.returncode != 0:
+            report["actions"][name] = {
+                "status": "failed", "from": row["installed"], "to": row["locked"],
+                "error": (proc.stderr or "").strip()[:500]
+                          or f"pip exited with code {proc.returncode}"}
+            continue
+        # Installed, but the OLD module object is already bound in this kernel.
+        report["actions"][name] = {"status": "installed_needs_restart",
+                                   "from": row["installed"], "to": row["locked"]}
+        report["needs_restart"] = True
+
+    return report
+
+
 def check_pinned_versions(packages=CRITICAL_PACKAGES, lock_path=None) -> dict:
     """Compare installed versions against ``uv.lock``. Reports; never installs.
 
