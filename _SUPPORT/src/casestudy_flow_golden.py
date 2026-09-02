@@ -765,8 +765,7 @@ def _real_refine_baseline_group(
     # so the GOLDEN would have been built at a ladder radius while the mesh freeze
     # and the student builder used the pin -- three artifacts for one group, none
     # of them agreeing. The ladder remains the fallback for an unpinned group.
-    _pinned = cfc.group_refine_radius(group)
-    _radii = (float(_pinned),) if _pinned is not None else rg.RETRY_RADII
+    _radii = cfc.resolve_refine_radii(group, rg.RETRY_RADII)
 
     last_exc: Any = None
     for k, radius in enumerate(_radii):

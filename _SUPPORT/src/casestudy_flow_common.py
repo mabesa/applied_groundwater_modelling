@@ -181,6 +181,23 @@ def group_refine_points(group: Group, *, config_path: Any = None) -> List[Tuple[
     return _corridor_anchors(spill, ext) + [inj]
 
 
+def resolve_refine_radii(group: Group, ladder: Any, *, config_path: Any = None) -> tuple:
+    """The radii to try for *group*: its PINNED radius alone, else *ladder*.
+
+    🔴 THE single place this decision is made. THREE call sites used to each walk a
+    ladder themselves -- the mesh freeze, the golden generator, and the builder that
+    students and tests run -- and fixing only one of them silently produced artifacts
+    that could not match: goldens built at a ladder radius against a freeze that used
+    the pin. Any new consumer must call THIS, so the decision cannot be half-applied.
+
+    A ladder takes the first radius that BUILDS, which is not the same as one that is
+    USABLE: for group 4 it chose a mesh with 225 sub-metre cells whose transport run
+    diverged to +/-5e9 mg/L against a 13 mg/L source.
+    """
+    pinned = group_refine_radius(group, config_path=config_path)
+    return (float(pinned),) if pinned is not None else tuple(ladder)
+
+
 def group_refine_radius(group: Group, *, config_path: Any = None) -> Optional[float]:
     """The group's PINNED refine radius from ``case_config_transport.yaml``
     (``geometry.refine_radius_m``), or ``None`` if it has none.

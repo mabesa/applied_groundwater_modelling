@@ -75,10 +75,22 @@ def test_all_flow_consumers_resolve_the_same_radius(group):
     assert rg.group_refine_points(group) == cfc.group_refine_points(group)
 
 
-def test_no_flow_consumer_silently_walks_the_ladder():
-    """Each of the three call sites must consult the pin before the ladder.
+def test_radii_helper_prefers_the_pin_and_falls_back_to_the_ladder():
+    """Behavioural test of the ONE place the decision is made."""
+    assert cfc.resolve_refine_radii(0, (70.0, 62.0)) == (cfc.group_refine_radius(0),)
+    # an unpinned group must still get the full ladder
+    assert cfc.resolve_refine_radii(99, (70.0, 62.0)) == (70.0, 62.0)
 
-    A source-level check on purpose: the alternative is running three MODFLOW builds.
+
+def test_no_flow_consumer_silently_walks_the_ladder():
+    """Each of the three call sites must delegate the radius choice.
+
+    Source-level on purpose -- the alternative is three MODFLOW builds. An earlier
+    version of this check only looked for a MENTION of ``group_refine_radius`` and was
+    VACUOUS: reverting a call site to the bare ladder left the mention on the line
+    above and the check still passed. It now requires the call to
+    ``resolve_refine_radii`` AND the absence of a bare ladder iteration, so a revert
+    cannot satisfy it.
     """
     import inspect
 
@@ -90,9 +102,14 @@ def test_no_flow_consumer_silently_walks_the_ladder():
                       (cfg, "_real_refine_baseline_group"),
                       (cfb, "_refine_solve_baseline_walk")):
         src = inspect.getsource(getattr(mod, func))
-        assert "group_refine_radius" in src, (
-            f"{mod.__name__}.{func} does not consult the pinned radius -- it will build "
+        assert "resolve_refine_radii" in src, (
+            f"{mod.__name__}.{func} does not delegate the radius choice -- it will build "
             f"at a ladder radius and its artifact will not match the others")
+        for bare in ("in RETRY_RADII", "in rg.RETRY_RADII",
+                     "in REFINE_RADII", "in cfc.REFINE_RADII",
+                     "enumerate(RETRY_RADII)", "enumerate(rg.RETRY_RADII)"):
+            assert bare not in src, (
+                f"{mod.__name__}.{func} iterates {bare!r} directly, bypassing the pin")
 
 
 @pytest.mark.parametrize("group", GROUPS)

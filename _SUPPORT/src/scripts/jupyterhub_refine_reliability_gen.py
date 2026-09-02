@@ -507,8 +507,8 @@ def _real_refine_group(
     # whose transport run diverged to +/-5e9 mg/L. The pinned radius is the one
     # validated for that corridor. The ladder remains the fallback for any group
     # without a pin, so this degrades gracefully.
-    pinned = group_refine_radius(group)
-    radii = (float(pinned),) if pinned is not None else RETRY_RADII
+    import casestudy_flow_common as _cfc
+    radii = _cfc.resolve_refine_radii(group, RETRY_RADII)
 
     last_exc: Any = None
     for k, radius in enumerate(radii):
