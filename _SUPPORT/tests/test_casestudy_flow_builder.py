@@ -45,7 +45,7 @@ GOLDEN_DIR = SRC_DIR / "golden"
 # 🔴 Skipping is NOT the whole answer. Where a test's intent is not the mesh hash, the
 # platform-INDEPENDENT part is kept running (self-consistency, package membership,
 # comparisons against another build on THIS platform) and only the golden-hash
-# comparison is guarded. See `check_nine_mesh_goldens.py` for the A16 nine-group
+# comparison is guarded. See `check_mesh_goldens.py` for the A16 thirteen-group
 # regression evidence, which is what actually enforces these pins on the
 # authoritative platform.
 _GROUP0_MANIFEST = json.loads((GOLDEN_DIR / "group0_flow.manifest.json").read_text())
@@ -54,7 +54,7 @@ requires_same_platform_golden = pytest.mark.skipif(
     _GOLDEN_IS_CROSS_PLATFORM,
     reason=(f"group-0 golden was generated on {b._golden_generation_os(_GROUP0_MANIFEST)}; "
             "the Triangle/Voronoi mesh differs cross-platform, so its topology hashes are a "
-            "valid pin only on that OS. Enforced there via check_nine_mesh_goldens.py."),
+            "valid pin only on that OS. Enforced there via check_mesh_goldens.py."),
 )
 
 _MF6 = cfc.resolve_mf6_exe()
@@ -512,7 +512,7 @@ def test_builder_spec_hashes_match_committed_without_solve():
     # BASELINE_REFINE_RADIUS (70 m) and compares that against a golden frozen at the
     # pin -- every member then differs and it reads as a catastrophic regression. The
     # same omission caused exactly that confusion once before (see
-    # test_nine_mesh_goldens.test_diff_builds_at_the_goldens_own_radius_not_the_default).
+    # test_mesh_goldens.test_diff_builds_at_the_goldens_own_radius_not_the_default).
     spec, riv_info = cfc.build_baseline_spec(
         cgwf, boundary_gdf, river_gdf, refine_points, coarse_heads,
         refine_radius=cfc.group_refine_radius(0),

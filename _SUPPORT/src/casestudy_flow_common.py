@@ -69,11 +69,17 @@ Group = Any
 # radius 70; the builder uses the same so its spec is byte-identical.
 BASELINE_REFINE_RADIUS = 70.0
 
-# Corridor refine-radius walk (mirrors model_io_utils.refine_with_retry /
-# jupyterhub_refine_reliability_gen.RETRY_RADII) -- the builder walks these to
-# dodge a Triangle abort (a PYTHON exception; a fatal SIGILL still needs
-# subprocess isolation by the caller). Group 0 succeeds at the first radius.
-REFINE_RADII = (70.0, 62.0, 78.0, 56.0, 84.0)
+# 🔴 FALLBACK ONLY -- never iterate this directly. Every case-study group now
+# carries a PINNED `geometry.refine_radius_m`; `resolve_refine_radii()` returns
+# that pin and falls back to this ladder only for a group that has none.
+# Walking the ladder takes the first radius that BUILDS, which is not the same
+# as one that is USABLE: it picked a mesh for group 4 with 225 sub-metre cells
+# whose transport run diverged. Renamed from `REFINE_RADII` on 2026-09-03 so the
+# bare name cannot be reached by accident.
+# (Mirrors model_io_utils.refine_with_retry / jupyterhub_refine_reliability_gen.
+# RETRY_RADII -- the walk dodges a Triangle abort, a PYTHON exception; a fatal
+# SIGILL still needs subprocess isolation by the caller.)
+FALLBACK_REFINE_RADII = (70.0, 62.0, 78.0, 56.0, 84.0)
 
 # The geothermal doublet magnitude PER WELL (m3/d): 3000 l/min x 1.44 =
 # licensed-max extraction, balanced reinjection (net-zero doublet). MF6 sign

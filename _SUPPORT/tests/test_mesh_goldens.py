@@ -1,13 +1,13 @@
-"""Tests for the A16 / S3b nine-mesh regression check.
+"""Tests for the A16 / S3b mesh-golden regression check.
 
 The check itself is the evidence mechanism C1 **A16** requires for milestone S3b
-("regression evidence for the NINE FROZEN case-study group meshes"). These tests exist
+("regression evidence for the THIRTEEN FROZEN case-study group meshes"). These tests exist
 to answer the only question that matters about such a mechanism:
 
     🔴 **can it fail?**
 
 A check that always passes is not evidence. The negative controls below corrupt a golden
-in a temporary copy and assert the checker reports FAIL -- so a green nine-mesh run means
+in a temporary copy and assert the checker reports FAIL -- so a green run means
 something.
 
 They also pin the platform contract: mesh-topology hashes are enforced only on the
@@ -27,16 +27,16 @@ sys.path.insert(0, str(REPO / "_SUPPORT" / "src"))
 sys.path.insert(0, str(REPO / "_SUPPORT" / "src" / "scripts"))
 
 import casestudy_flow_builder as b  # noqa: E402
-import check_nine_mesh_goldens as nine  # noqa: E402
+import check_mesh_goldens as chk  # noqa: E402
 
 GOLDEN_DIR = REPO / "_SUPPORT" / "src" / "golden"
 
 
-# --- 1. the mechanism covers all nine, not just group 0 ---------------------
+# --- 1. the mechanism covers all thirteen, not just group 0 -----------------
 def test_default_group_set_is_every_frozen_group():
     """A16's evidence set is the FROZEN meshes.
 
-    It was nine: groups 9-12 were added to the roster on 2026-08-31 carrying
+    It was chk: groups 9-12 were added to the roster on 2026-08-31 carrying
     deferrals, and the frozen set deliberately did not grow with the roster. On
     2026-09-02 those four were frozen with authoritative Linux goldens and A16 was
     widened to thirteen on the lecturer's authorisation, so the two now coincide.
@@ -45,27 +45,27 @@ def test_default_group_set_is_every_frozen_group():
     groups that actually have a golden -- so adding a future group with a deferral
     cannot silently drag it into A16's evidence.
     """
-    assert nine.FROZEN_GOLDEN_GROUPS == tuple(range(13))
+    assert chk.FROZEN_GOLDEN_GROUPS == tuple(range(13))
     # every group in the evidence set must really be frozen ...
-    for g in nine.FROZEN_GOLDEN_GROUPS:
+    for g in chk.FROZEN_GOLDEN_GROUPS:
         assert b._frozen_golden_manifest(g) is not None, f"group {g} is not frozen"
         assert b._load_deferral(g) is None, f"group {g} still carries a deferral"
     # ... and it must not claim groups outside the roster
-    assert set(nine.FROZEN_GOLDEN_GROUPS) <= set(b.ALL_GROUPS)
+    assert set(chk.FROZEN_GOLDEN_GROUPS) <= set(b.ALL_GROUPS)
 
 
 def test_every_group_has_a_committed_golden():
-    """A16 names NINE frozen meshes; the checker must have something to check."""
-    missing = [g for g in nine.FROZEN_GOLDEN_GROUPS if b._frozen_golden_manifest(g) is None]
+    """A16 names THIRTEEN frozen meshes; the checker must have something to check."""
+    missing = [g for g in chk.FROZEN_GOLDEN_GROUPS if b._frozen_golden_manifest(g) is None]
     assert not missing, f"groups without a committed golden manifest: {missing}"
     # Every group must be anchored by EXACTLY ONE of golden / deferral, so a group can
     # never be silently unanchored.
     #
-    # 🔴 2026-09-02: this used to require every group OUTSIDE the nine to carry a
+    # 🔴 2026-09-02: this used to require every group OUTSIDE the chk to carry a
     # DEFERRAL. Groups 9-12 now have authoritative Linux goldens, so that assumption is
     # stale. The invariant that actually matters -- and that
     # `assert_all_groups_anchored` enforces -- is golden XOR deferral, which is what is
-    # checked here. A16's evidence set stays at nine (widening it is a contract
+    # checked here. A16's evidence set was widened to THIRTEEN by amendment 8 (a contract
     # amendment); this is only about no group being unanchored.
     for g in b.ALL_GROUPS:
         has_golden = b._frozen_golden_manifest(g) is not None
@@ -83,7 +83,7 @@ def corrupt_golden(monkeypatch, tmp_path):
     def _apply(group, mutate):
         real = json.loads((GOLDEN_DIR / f"group{group}_flow.manifest.json").read_text())
         mutate(real)
-        monkeypatch.setattr(nine.b, "_frozen_golden_manifest",
+        monkeypatch.setattr(chk.b, "_frozen_golden_manifest",
                             lambda g, _m=real, _g=group: _m if g == _g else None)
         return real
     return _apply
@@ -94,7 +94,7 @@ def test_radius_divergence_is_reported_as_failure(corrupt_golden):
     def bump(m):
         m["radius_used"] = float(m["radius_used"]) + 37.0
     corrupt_golden(0, bump)
-    rec = nine.check_group(0)
+    rec = chk.check_group(0)
     assert rec["result"] == "FAIL"
     assert rec["checks"]["refine_radius"] == "FAIL"
     assert any("refine_radius" in f for f in rec["failures"])
@@ -103,14 +103,14 @@ def test_radius_divergence_is_reported_as_failure(corrupt_golden):
 def test_a_clean_group_passes(corrupt_golden):
     """Same path, unmutated -- guards against the FAIL above being trivially true."""
     corrupt_golden(0, lambda m: None)
-    rec = nine.check_group(0)
+    rec = chk.check_group(0)
     assert rec["result"] == "PASS", rec["failures"]
 
 
 # --- 3. the platform contract is explicit, never a silent pass --------------
 def test_hashes_are_skipped_not_passed_off_the_generation_os(corrupt_golden):
     corrupt_golden(0, lambda m: None)
-    rec = nine.check_group(0)
+    rec = chk.check_group(0)
     hash_checks = {k: v for k, v in rec["checks"].items()
                    if k in ("aggregate_hash", "array_hashes", "faithful_riv_hash")}
     assert hash_checks, "the checker must report on the mesh-topology hashes"
@@ -129,36 +129,36 @@ def test_full_a16_evidence_needs_every_frozen_group_passing_with_hashes_enforced
     """A16 named NINE meshes until 2026-09-02; it now covers all THIRTEEN. Derived from
     FROZEN_GOLDEN_GROUPS rather than a literal, so widening the set again cannot leave
     this asserting the old size."""
-    all_ok = [_rec(g) for g in nine.FROZEN_GOLDEN_GROUPS]
-    assert nine.is_full_a16_evidence(all_ok) is True
+    all_ok = [_rec(g) for g in chk.FROZEN_GOLDEN_GROUPS]
+    assert chk.is_full_a16_evidence(all_ok) is True
 
 
-_N = len(nine.FROZEN_GOLDEN_GROUPS)
-_LAST = nine.FROZEN_GOLDEN_GROUPS[-1]
+_N = len(chk.FROZEN_GOLDEN_GROUPS)
+_LAST = chk.FROZEN_GOLDEN_GROUPS[-1]
 
 
 @pytest.mark.parametrize("records, why", [
-    ([_rec(g) for g in nine.FROZEN_GOLDEN_GROUPS[:-1]],
+    ([_rec(g) for g in chk.FROZEN_GOLDEN_GROUPS[:-1]],
      f"only {_N - 1} groups -- A16 covers {_N}"),
-    ([_rec(g) for g in nine.FROZEN_GOLDEN_GROUPS][:-1] + [_rec(_LAST, result="FAIL")],
+    ([_rec(g) for g in chk.FROZEN_GOLDEN_GROUPS][:-1] + [_rec(_LAST, result="FAIL")],
      "a group failed"),
-    ([_rec(g) for g in nine.FROZEN_GOLDEN_GROUPS][:-1] + [_rec(_LAST, enforced=False)],
+    ([_rec(g) for g in chk.FROZEN_GOLDEN_GROUPS][:-1] + [_rec(_LAST, enforced=False)],
      "one group's hashes were SKIPPED, so the pin was not enforced there"),
-    ([_rec(g, enforced=False) for g in nine.FROZEN_GOLDEN_GROUPS],
+    ([_rec(g, enforced=False) for g in chk.FROZEN_GOLDEN_GROUPS],
      "a full cross-platform run: useful, but not the pin"),
 ])
 def test_these_runs_are_not_a16_evidence(records, why):
     """🔴 The rule must REFUSE each of these, or a green non-authoritative run would be
     mistaken for the evidence A16 requires."""
-    assert nine.is_full_a16_evidence(records) is False, why
+    assert chk.is_full_a16_evidence(records) is False, why
 
 
 def test_this_machines_run_is_evidence_only_if_it_is_the_generation_os():
     """Ties the rule to reality on whatever platform the suite is running on."""
     cross = b._golden_is_cross_platform(b._frozen_golden_manifest(0))
-    rec = nine.check_group(0)
+    rec = chk.check_group(0)
     assert rec["hashes_enforced"] is (not cross)
-    assert nine.is_full_a16_evidence([rec], expected_groups=[0]) is (
+    assert chk.is_full_a16_evidence([rec], expected_groups=[0]) is (
         (not cross) and rec["result"] == "PASS")
 
 
@@ -180,7 +180,7 @@ def test_env_mismatch_is_detected_from_the_manifest():
     """
     manifest = b._frozen_golden_manifest(0)
     assert manifest["versions"]["numpy"], "the manifest must record numpy to compare it"
-    diff = nine.env_mismatch(manifest)
+    diff = chk.env_mismatch(manifest)
     assert diff == {}, (
         f"environment differs from the golden's: {diff}. The goldens are generated on "
         "the Hub (authoritative Linux); if you installed this project's uv.lock and "
@@ -198,8 +198,8 @@ def test_env_mismatch_reports_each_differing_library(monkeypatch):
     gv = golden["versions"]
     bumped = {"numpy": gv["numpy"] + ".9", "flopy": gv["flopy"] + ".9",
               "python": gv["python"], "geos": gv["geos"]}
-    monkeypatch.setattr(nine, "current_env", lambda: bumped)
-    diff = nine.env_mismatch(golden)
+    monkeypatch.setattr(chk, "current_env", lambda: bumped)
+    diff = chk.env_mismatch(golden)
     assert set(diff) == {"numpy", "flopy"}
     assert diff["numpy"] == {"golden": gv["numpy"], "current": bumped["numpy"]}
 
@@ -208,27 +208,27 @@ def test_kernel_bump_alone_is_not_an_env_mismatch(monkeypatch):
     """The Hub kernel moved 6.8.0-124 -> 6.8.0-136 between freeze and re-run. A kernel
     bump is not a numerical difference and must not be reported as one."""
     golden = b._frozen_golden_manifest(0)["versions"]
-    monkeypatch.setattr(nine, "current_env", lambda: {
+    monkeypatch.setattr(chk, "current_env", lambda: {
         k: golden[k] for k in ("numpy", "flopy", "python", "geos")})
-    assert nine.env_mismatch(b._frozen_golden_manifest(0)) == {}
+    assert chk.env_mismatch(b._frozen_golden_manifest(0)) == {}
 
 
 def test_env_mismatch_run_is_never_a16_evidence():
-    """🔴 The failure mode this guards: nine ENV_MISMATCH results must not be mistaken
+    """🔴 The failure mode this guards: ENV_MISMATCH results must not be mistaken
     for either a clean run or a real regression."""
     recs = [{"group": g, "result": "ENV_MISMATCH", "hashes_enforced": False}
             for g in range(9)]
-    assert nine.is_full_a16_evidence(recs) is False
+    assert chk.is_full_a16_evidence(recs) is False
 
 
 def test_topology_and_cell_properties_are_classified_apart():
     """`botm` is an elevation sampled onto the mesh, not mesh topology. Bucketing it as
     topology made an earlier run report 'mesh intact: False' for an intact mesh."""
-    assert "botm" in nine._CELL_PROPERTY_MEMBERS
-    assert "strt" in nine._CELL_PROPERTY_MEMBERS
-    assert "botm" not in nine._TOPOLOGY_MEMBERS
-    assert "gridprops__vertices" in nine._TOPOLOGY_MEMBERS
-    assert not (nine._TOPOLOGY_MEMBERS & nine._CELL_PROPERTY_MEMBERS)
+    assert "botm" in chk._CELL_PROPERTY_MEMBERS
+    assert "strt" in chk._CELL_PROPERTY_MEMBERS
+    assert "botm" not in chk._TOPOLOGY_MEMBERS
+    assert "gridprops__vertices" in chk._TOPOLOGY_MEMBERS
+    assert not (chk._TOPOLOGY_MEMBERS & chk._CELL_PROPERTY_MEMBERS)
 
 
 # --- 5. regression: the diff must build at the GOLDEN's radius ---------------
@@ -237,7 +237,8 @@ def test_diff_builds_at_the_goldens_own_radius_not_the_default(group):
     """🔴 Regression guard for a bug in this very script.
 
     The builder walks `retry_radii` = (70, 62, 78, 56, 84) and freezes whichever first
-    converged, so FIVE of the nine goldens are radius 62 -- not the default 70. The first
+    converged; each group now carries a PINNED radius, so the goldens span nine distinct
+    radii from 44 to 90 m -- only one is the old default 70. The first
     version of `member_level_diff` called `build_baseline_spec` without a radius, silently
     built at 70, and compared it against a 62 golden. It then reported EVERY member as
     differing, which read as a catastrophic regression and sent the investigation after a
@@ -253,7 +254,7 @@ def test_diff_builds_at_the_goldens_own_radius_not_the_default(group):
     assert manifest["radius_used"] == pin, (
         f"fixture assumption: group {group}'s golden is frozen at its pinned radius "
         f"{pin}, got {manifest['radius_used']}")
-    d = nine.member_level_diff(group, manifest)
+    d = chk.member_level_diff(group, manifest)
     assert d.get("error") is None, d
     assert d["built_at_radius"] == pin
     # the tell-tale of the bug: essentially every member differing at once
@@ -271,7 +272,7 @@ def test_radius_70_and_radius_62_goldens_give_the_same_signature():
     sigs = {}
     for group in (0, 3):                      # r=70 and r=62
         m = b._frozen_golden_manifest(group)
-        d = nine.member_level_diff(group, m)
+        d = chk.member_level_diff(group, m)
         sigs[group] = set(d["cell_property_members_differing"])
     assert sigs[0] == sigs[3], (
         f"radius-70 group differs in {sigs[0]}, radius-62 group in {sigs[3]} -- "

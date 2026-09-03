@@ -770,10 +770,9 @@ def freeze_group_flow_artifact(
 #: impossible to discharge -- the freeze run for them exited 2 before doing any
 #: work.
 #:
-#: ⚠️ ``check_nine_mesh_goldens`` is still pinned at nine, and deliberately: it
-#: is C1 **A16**'s evidence mechanism, and A16 names NINE frozen meshes. Once
-#: 9-12 are frozen, A16's evidence set has to be widened to thirteen, which is a
-#: contract amendment and needs the lecturer's signature -- not a code edit.
+#: ✅ RESOLVED 2026-09-02 -- C1 **A16**'s evidence set was widened NINE -> THIRTEEN
+#: by amendment 8, so ``check_mesh_goldens`` (formerly ``check_nine_mesh_goldens``)
+#: now covers all thirteen frozen meshes.
 FROZEN_MESH_GROUPS = tuple(range(13))
 
 

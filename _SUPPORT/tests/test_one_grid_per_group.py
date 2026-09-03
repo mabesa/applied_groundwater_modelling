@@ -107,6 +107,7 @@ def test_no_flow_consumer_silently_walks_the_ladder():
             f"at a ladder radius and its artifact will not match the others")
         for bare in ("in RETRY_RADII", "in rg.RETRY_RADII",
                      "in REFINE_RADII", "in cfc.REFINE_RADII",
+                     "in FALLBACK_REFINE_RADII", "in cfc.FALLBACK_REFINE_RADII",
                      "enumerate(RETRY_RADII)", "enumerate(rg.RETRY_RADII)"):
             assert bare not in src, (
                 f"{mod.__name__}.{func} iterates {bare!r} directly, bypassing the pin")

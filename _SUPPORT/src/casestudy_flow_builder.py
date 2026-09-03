@@ -424,7 +424,7 @@ def _refine_solve_baseline_walk(group, workspace, *, sim_name, model_name=None) 
     # walk returns the FIRST radius that refines+solves, which is not the same as
     # the one validated for that corridor -- and it must agree with what the golden
     # generator and the mesh freeze use, or the three artifacts cannot match.
-    _radii = cfc.resolve_refine_radii(group, cfc.REFINE_RADII)
+    _radii = cfc.resolve_refine_radii(group, cfc.FALLBACK_REFINE_RADII)
 
     attempts: List[str] = []
     for radius in _radii:
@@ -451,7 +451,7 @@ def _refine_solve_baseline_walk(group, workspace, *, sim_name, model_name=None) 
         attempts.append(f"r={radius:g} solve:non-converged/SIGILL")
     raise RuntimeError(
         f"group {group}: baseline could not refine+solve at ANY radius "
-        f"{cfc.REFINE_RADII} (attempts: {attempts}) -- DEFERRED (needs Linux/hub)"
+        f"{cfc.FALLBACK_REFINE_RADII} (attempts: {attempts}) -- DEFERRED (needs Linux/hub)"
     )
 
 

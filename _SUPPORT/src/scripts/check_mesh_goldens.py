@@ -1,10 +1,18 @@
-"""A16 / S3b — regression evidence for the NINE FROZEN case-study group meshes.
+"""A16 / S3b — regression evidence for the THIRTEEN FROZEN case-study group meshes.
+
+(Formerly ``check_nine_mesh_goldens.py``. A16 named NINE meshes when this was written;
+amendment 8, 2026-09-02, widened its evidence set to THIRTEEN. The frozen evidence
+documents under DOCUMENTATION/contracts/evidence/s3b/ still cite the old filename --
+they are a historical record and were deliberately left unedited.)
 
 C1 **A16** authorises graded mesh construction (milestone S3b) on `disv_grid_utils.py`,
 and records the blast radius explicitly:
 
     "disv_grid_utils also builds the NINE FROZEN case-study group meshes -- S3b must
      carry regression evidence for those, not just the transport suite."
+
+(That quotation is A16 as originally signed, when the roster was nine groups. Groups
+9-12 joined on 2026-08-31 and amendment 8 widened the evidence set to thirteen.)
 
 That evidence did not exist. What existed:
 
@@ -28,12 +36,12 @@ generation OS. Everything else is not mesh-topology and does hold across platfor
       refine radius · flow mass balance · convergence · finite heads · no dry cells
 
 So a run on a non-authoritative OS is NOT vacuous: it still catches a radius walk landing
-somewhere new, a solver regression, or a broken flow field in any of the nine groups.
+somewhere new, a solver regression, or a broken flow field in any of the thirteen groups.
 
 Usage
 -----
-    uv run python _SUPPORT/src/scripts/check_nine_mesh_goldens.py
-    uv run python _SUPPORT/src/scripts/check_nine_mesh_goldens.py --groups 0 3 --json out.json
+    uv run python _SUPPORT/src/scripts/check_mesh_goldens.py
+    uv run python _SUPPORT/src/scripts/check_mesh_goldens.py --groups 0 3 --json out.json
 
 Exit status is 0 only when every ENFORCED check passed. Checks skipped as
 cross-platform are reported as SKIP and never silently counted as passes.
@@ -115,7 +123,7 @@ def env_mismatch(manifest) -> dict:
     🔴 A golden pins hashes of FLOATING-POINT ARRAYS. Those are reproducible only in the
     environment that produced them -- same OS is necessary but NOT sufficient. The
     manifest has always recorded `versions`; nothing ever compared them, so an
-    environment mismatch surfaced as nine spurious FAILs indistinguishable from a real
+    environment mismatch surfaced as spurious FAILs indistinguishable from a real
     regression.
     """
     golden = (manifest.get("versions") or {})
@@ -171,10 +179,11 @@ def member_level_diff(group: int, manifest: dict) -> dict:
         coarse_heads = cgwf.output.head().get_data().flatten()
         boundary_gdf, river_gdf = cfc.load_gis(mother)
         refine_points = cfc.group_refine_points(group)
-        # 🔴 BUILD AT THE GOLDEN'S OWN RADIUS. The builder walks `retry_radii` =
-        # (70, 62, 78, 56, 84) and freezes whichever one first converged, so five of the
-        # nine goldens are radius 62, not the default 70. Calling build_baseline_spec
-        # without a radius silently builds at 70 and compares it against a 62 golden --
+        # 🔴 BUILD AT THE GOLDEN'S OWN RADIUS. Each group now carries a PINNED radius
+        # (`geometry.refine_radius_m`), and the thirteen goldens span nine distinct radii
+        # from 44 to 90 m -- only one of them is the old default 70. Calling
+        # build_baseline_spec without a radius silently builds at 70 and compares it
+        # against a golden frozen at a different radius --
         # which reports EVERY member as differing and looks exactly like a catastrophic
         # regression. That artefact is precisely what this argument prevents.
         golden_radius = manifest.get("radius_used")
@@ -321,7 +330,7 @@ def is_full_a16_evidence(records, expected_groups=None) -> bool:
     """True only when this run IS the evidence A16 requires.
 
     Three conditions, all necessary:
-      * every group A16 names was checked (nine, unless deliberately subset);
+      * every group A16 names was checked (thirteen, unless deliberately subset);
       * no group failed;
       * mesh-topology hashes were ENFORCED on every group -- a run whose hashes were
         skipped as cross-platform is useful (it still checks radius and solver health)
@@ -354,7 +363,7 @@ def main() -> int:
     args = ap.parse_args()
 
     host_os = platform.system()
-    print(f"A16 nine-mesh regression check -- host {host_os}, "
+    print(f"A16 mesh regression check -- host {host_os}, "
           f"groups {args.groups}, state {args.state!r}\n", flush=True)
 
     records = []
