@@ -178,13 +178,36 @@ def group_refine_points(group: Group, *, config_path: Any = None) -> List[Tuple[
     """
     import case_utils as cu
 
+    inj, ext, spill = _group_corridor_ends(group, config_path=config_path)
+    return _corridor_anchors(spill, ext) + [inj]
+
+
+def _group_corridor_ends(group: Group, *, config_path: Any = None):
+    """``(inj_xy, ext_xy, spill_xy)`` for *group* from the CANONICAL config."""
+    import case_utils as cu
+
     scn = cu.lint_transport_config(config_path=config_path, groups=[group])[group]
     doublet, source = scn["doublet"], scn["source"]
     inj = (float(doublet["injection_easting"]), float(doublet["injection_northing"]))
     ext = (float(doublet["extraction_easting"]), float(doublet["extraction_northing"]))
     spill = (ext[0] + float(source["location"]["easting"]),
              ext[1] + float(source["location"]["northing"]))
-    return _corridor_anchors(spill, ext) + [inj]
+    return inj, ext, spill
+
+
+def group_refine_anchor(group: Group, *, config_path: Any = None) -> Tuple[float, float]:
+    """The CANONICAL spill point the refinement corridor is anchored on (C1 A20).
+
+    🔴 The flow half refines on this point (via :func:`group_refine_points`) and the
+    transport half must anchor its mesh on the SAME one, or the two halves build
+    different grids. It is deliberately read from the canonical config and never
+    from a student's copied ``case_config_transport.yaml``: a student may move
+    ``source.location`` -- the section-5 flip test invites exactly that -- and the
+    source package should move while the MESH stays put. Keeping the mesh fixed is
+    also what makes that a genuine one-change test.
+    """
+    _, _, spill = _group_corridor_ends(group, config_path=config_path)
+    return spill
 
 
 def group_doublet_points(group: Group, *, config_path: Any = None) -> List[Tuple[float, float]]:

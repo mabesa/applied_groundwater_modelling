@@ -438,6 +438,7 @@ def build_spill_scenario(
     cr_target: float = 0.9,
     nstp_cap: int = 4000,
     refine_radii: Sequence[float] = (70.0, 62.0, 78.0, 56.0, 84.0),
+    refine_anchor_xy: Optional[Tuple[float, float]] = None,
     heads_array: Optional[np.ndarray] = None,
 ) -> DoubletBase:
     """Build + run the COMBINED student scenario: doublet flow + a separate spill solute.
@@ -469,8 +470,18 @@ def build_spill_scenario(
     dur = float(rel.get("duration_days", total_time))
     is_pulse = is_pulse and dur < total_time
 
-    # ---- 1. corridor refinement (spill->extraction corridor + injection well) ----
-    corr_pts, u, L = _corridor_points(spill_xy, ext_xy)
+    # ---- 1. corridor refinement (anchor->extraction corridor + injection well) ----
+    # 🔴 The refinement corridor is anchored on `refine_anchor_xy`, NOT on `spill_xy`.
+    # The flow half of the case study refines on the CANONICAL spill location
+    # (casestudy_flow_common.group_refine_points), so if the mesh followed a student's
+    # edited spill the two halves would build DIFFERENT grids -- breaking the
+    # one-grid-per-group invariant. Anchoring the mesh and moving only the source
+    # package also makes the section-5 one-change flip test valid: exactly one thing
+    # changes. Defaults to `spill_xy`, so an unanchored call is unchanged.
+    anchor_xy = tuple(refine_anchor_xy) if refine_anchor_xy is not None else tuple(spill_xy)
+    corr_pts, _, _ = _corridor_points(anchor_xy, ext_xy)
+    # Source ORIENTATION still follows the actual spill->extraction direction.
+    _, u, _ = _corridor_points(spill_xy, ext_xy)
     refine_points = corr_pts + [tuple(inj_xy)]
     res, refine_radius_used = _refine_with_retry(
         coarse_gwf, boundary_gdf, river_gdf, refine_points, heads_array,
@@ -600,7 +611,13 @@ def build_spill_scenario(
                 reactions=reactions, total_time=total_time, Q=Q, c_src=c_src,
                 peak=peak, t_arrival=t_arrival, refine_radius_used=refine_radius_used,
                 ds_true_min=cdiag["ds_true_min"], courant_floor=cdiag["floor"],
-                cr_capped=bool(cr_act > 1.001))
+                cr_capped=bool(cr_act > 1.001),
+                scenario_inputs=scenario_inputs(
+                    inj_xy=inj_xy, ext_xy=ext_xy, spill_xy=spill_xy,
+                    refine_anchor_xy=anchor_xy, Q=Q, c_src=c_src, release=rel,
+                    geometry=geometry, geometry_size=geometry_size,
+                    reactions=reactions, total_time=total_time,
+                    refine_radii=refine_radii, cr_target=cr_target, nstp_cap=nstp_cap))
     np.savez(str(case_ws / "base_cache.npz"), times=times, bt=bt, src_cells=np.array(src_cells),
              receptor_cell=extc, corridor_mask=corridor_mask, recirc=recirc,
              src_xy=np.array(spill_xy), receptor_xy=np.array(ext_xy), meta=meta, allow_pickle=True)
@@ -611,9 +628,111 @@ def build_spill_scenario(
                        src_xy=tuple(spill_xy), receptor_xy=tuple(ext_xy), meta=meta)
 
 
-def load_doublet_base(case_ws: Union[str, Path]) -> DoubletBase:
-    """Solve-free loader: re-open the cached coupled sim + npz cache."""
+# ---------------------------------------------------------------------------
+# cache identity  (C1 A20)
+# ---------------------------------------------------------------------------
+#: Inputs that change what `build_spill_scenario` produces. `base_cache.npz`
+#: records these so a cache built with different knobs can be DETECTED rather
+#: than silently reused. Before A20, `load_doublet_base` validated nothing and
+#: the notebook gated on file existence alone -- so a student who tuned a
+#: section-2 knob and left `FORCE_RERUN = False` got the previous answer back
+#: with no warning. The notebook told them to flip it; nothing enforced it.
+#: This is the bug class `_src_sha` exists to prevent one level down, and the
+#: repo has shipped it once already.
+
+def _norm(v):
+    """Normalise a build input so comparison is stable across a save/load cycle."""
+    import numpy as _np
+    if isinstance(v, (bool, str)) or v is None:
+        return v
+    if isinstance(v, (int, float, _np.integer, _np.floating)):
+        return round(float(v), 6)
+    if isinstance(v, dict):
+        return {str(k): _norm(v[k]) for k in sorted(v)}
+    if isinstance(v, (list, tuple, _np.ndarray)):
+        return [_norm(x) for x in v]
+    return str(v)
+
+
+def scenario_inputs(**kwargs) -> Dict[str, Any]:
+    """The build inputs recorded in (and compared against) the scenario cache."""
+    return {str(k): _norm(v) for k, v in sorted(kwargs.items())}
+
+
+def scenario_cache_status(case_ws: Union[str, Path],
+                          expect: Optional[Dict[str, Any]] = None):
+    """``(status, changed_fields)`` for the cache in *case_ws*.
+
+    status is ``missing`` (no cache), ``legacy`` (a cache predating A20, which
+    records no inputs and therefore cannot be trusted), ``stale`` (inputs differ --
+    ``changed_fields`` names them), or ``current``.
+    """
+    npz = Path(case_ws) / "base_cache.npz"
+    if not npz.exists():
+        return "missing", []
+    if expect is None:
+        return "current", []
+    try:
+        meta = dict(np.load(str(npz), allow_pickle=True)["meta"].item())
+    except Exception:
+        return "legacy", []
+    got = meta.get("scenario_inputs")
+    if not isinstance(got, dict):
+        return "legacy", []
+    want = scenario_inputs(**expect) if not _looks_normalised(expect) else expect
+    # Compare every key the CALLER declares...
+    changed = {k for k in want if got.get(k) != want.get(k)}
+    # ...and, for output-affecting inputs the caller did NOT declare (geometry_size,
+    # cr_target, nstp_cap), compare what the cache recorded against the CURRENT
+    # defaults. Without this a default changed in code would leave every warm cache
+    # valid -- the same hole `_src_sha` closes one level down.
+    for k, default in _build_defaults().items():
+        if k not in want and k in got and got[k] != default:
+            changed.add(k)
+    return ("current", []) if not changed else ("stale", sorted(changed))
+
+
+def _build_defaults() -> Dict[str, Any]:
+    """Current defaults of :func:`build_spill_scenario` that affect its output."""
+    import inspect
+
+    out = {}
+    for name, prm in inspect.signature(build_spill_scenario).parameters.items():
+        if prm.default is inspect.Parameter.empty or prm.default is None:
+            continue
+        out[name] = _norm(prm.default)
+    return out
+
+
+def _looks_normalised(d: Dict[str, Any]) -> bool:
+    return all(isinstance(k, str) for k in d) and d == {k: _norm(v) for k, v in sorted(d.items())}
+
+
+def load_doublet_base(case_ws: Union[str, Path], *,
+                      expect_inputs: Optional[Dict[str, Any]] = None) -> DoubletBase:
+    """Solve-free loader: re-open the cached coupled sim + npz cache.
+
+    Pass *expect_inputs* (see :func:`scenario_inputs`) to REFUSE a cache that was
+    not built from those inputs. Without it the loader returns whatever is on
+    disk, which is how a changed section-2 knob could silently produce the
+    previous answer.
+    """
     case_ws = Path(case_ws)
+    if expect_inputs is not None:
+        status, changed = scenario_cache_status(case_ws, expect_inputs)
+        if status == "legacy":
+            raise ValueError(
+                f"the cached scenario in {case_ws} predates the A20 cache identity and "
+                "records no build inputs, so it cannot be checked against your current "
+                "settings. Rebuild it (FORCE_RERUN = True).")
+        if status == "stale":
+            raise ValueError(
+                "the cached scenario was built with different settings -- "
+                f"{', '.join(changed)} changed since it was written. Rebuild it "
+                "(FORCE_RERUN = True) instead of reading a result that does not "
+                "belong to your current scenario.")
+        if status == "missing":
+            raise FileNotFoundError(f"no cached scenario in {case_ws}")
     sim = flopy.mf6.MFSimulation.load(sim_ws=str(case_ws / "sim"), verbosity_level=0)
     gwf = sim.get_model("gwf"); gwt = sim.get_model("gwt")
     z = np.load(str(case_ws / "base_cache.npz"), allow_pickle=True)

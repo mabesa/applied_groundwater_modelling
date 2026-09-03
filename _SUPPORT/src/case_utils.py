@@ -455,3 +455,79 @@ def sample_heads(hds_path, lrc_list, kstpkper=None):
 # It is deleted rather than left dormant because its presence is what kept
 # suggesting a submodel exists. Recover from git history if ever needed.
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# student-copy drift  (C1 A20)
+# ---------------------------------------------------------------------------
+#: Fields a student legitimately OWNS in their copied `case_config_transport.yaml`.
+#: Everything else in a group block is instructor-owned. The notebook's own wording
+#: is the source of this split: section 2 exposes concentration, release type and
+#: duration, and the source geometry type; section 5's flip test additionally
+#: sanctions moving the source and changing the pumping rate; and the simulation
+#: horizon is tunable. Reactions, transport physics, the mesh geometry, the doublet
+#: coordinates and the monitoring definition are all marked read-only there.
+#:
+#: An ALLOW-LIST, deliberately: a field added to the canonical config later is
+#: instructor-owned until someone says otherwise, so the check fails closed.
+STUDENT_OWNED_FIELDS = frozenset({
+    "source.concentration_mg_L",
+    "source.release_type",
+    "source.duration_days",
+    "source.type",
+    "source.location.easting",
+    "source.location.northing",
+    "simulation.duration_days",
+    "doublet.pumping_rate_m3_d",
+})
+
+
+def _flatten(obj, prefix=""):
+    out = {}
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            out.update(_flatten(v, f"{prefix}{k}."))
+    elif isinstance(obj, (list, tuple)):
+        out[prefix.rstrip(".")] = list(obj)
+    else:
+        out[prefix.rstrip(".")] = obj
+    return out
+
+
+
+def _raw_group_block(group, config_path=None):
+    """The group's block exactly as written in the YAML -- every field, unvalidated."""
+    import yaml
+
+    path = _resolve_transport_config_path(config_path)
+    raw = yaml.safe_load(open(path, encoding="utf-8"))["transport_scenarios"]["options"]
+    for opt in raw:
+        if int(opt.get("id", -1)) == int(group):
+            return opt
+    raise ValueError(f"group {group}: no entry with id == {group} in {path}")
+
+def transport_config_drift(group, local_config_path, *, canonical_config_path=None):
+    """Instructor-owned fields where a student's copy differs from the canonical config.
+
+    Returns ``[(field, canonical_value, local_value), ...]``, empty when the copy is
+    in step. Student-owned fields (:data:`STUDENT_OWNED_FIELDS`) are never reported.
+
+    Why this exists: students copy ``template/`` into their own folder, and a later
+    ``git pull`` updates the repo copy but never theirs. Nothing that can move a MESH
+    is read from their copy any more (C1 A20), so this is a REPORT, not a gate --
+    it tells them their scenario text has fallen behind, without failing their run.
+    """
+    # 🔴 Compare the RAW group blocks, not lint_transport_config's output: that
+    # validator returns a SUBSET (id/title/doublet/source/simulation/monitoring) and
+    # drops `geometry`, `transport` and `properties` -- the very fields most worth
+    # checking. A first version of this function compared lint output and was
+    # therefore VACUOUS: it reported nothing when the pinned radius was changed.
+    fc = _flatten(_raw_group_block(group, canonical_config_path))
+    fl = _flatten(_raw_group_block(group, local_config_path))
+    drift = []
+    for field in sorted(set(fc) | set(fl)):
+        if field in STUDENT_OWNED_FIELDS:
+            continue
+        if fc.get(field) != fl.get(field):
+            drift.append((field, fc.get(field), fl.get(field)))
+    return drift
