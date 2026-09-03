@@ -205,3 +205,121 @@ class TestEnsurePinnedVersions:
                                                                 "matches": None}}})
         rep = eu.ensure_pinned_versions()
         assert rep["actions"]["numpy"]["status"] == "skipped_no_lock"
+
+
+# =============================================================================
+# ensure_security_floors -- >= semantics, and the server stack is never installed
+#
+# Separate from ensure_pinned_versions because the semantics are opposite:
+# CRITICAL_PACKAGES are pinned `==` (the goldens record exact versions), while a
+# security bump needs `>=` -- pinning `==` would DOWNGRADE a Hub whose image runs
+# ahead of our lock, which becomes the normal case as the lock ages.
+#
+# Every test forbids a real install: pip is monkeypatched throughout.
+# =============================================================================
+class TestEnsureSecurityFloors:
+
+    @staticmethod
+    def _report(name, installed, floor, layer):
+        return {"lock_found": True, "below_floor": [] if installed >= floor else [name],
+                "unknown": [],
+                "packages": {name: {"installed": installed, "floor": floor,
+                                    "satisfied": None if (installed is None or floor is None)
+                                                 else not eu._below(installed, floor),
+                                    "layer": layer}}}
+
+    def _patch(self, monkeypatch, name, installed, floor, layer):
+        calls = []
+        import subprocess as _sp
+
+        def rec(cmd, *a, **k):
+            calls.append(cmd)
+            class P:
+                returncode = 0
+                stderr = ""
+            return P()
+
+        monkeypatch.setattr(_sp, "run", rec)
+        monkeypatch.setattr(eu, "check_security_floors",
+                            lambda **kw: self._report(name, installed, floor, layer))
+        return calls
+
+    def test_at_the_floor_installs_nothing(self, monkeypatch):
+        calls = self._patch(monkeypatch, "tornado", "6.5.8", "6.5.8", "server")
+        rep = eu.ensure_security_floors()
+        assert calls == []
+        assert rep["actions"]["tornado"]["status"] == "ok"
+
+    def test_ABOVE_the_floor_installs_nothing(self, monkeypatch):
+        """🔴 The anti-downgrade guard.
+
+        The first design of this used `==` like ensure_pinned_versions, which would
+        have pip-installed 6.5.8 over a Hub already running 6.6.0 -- downgrading the
+        Jupyter server's own web framework into the student's user site.
+        """
+        calls = self._patch(monkeypatch, "tornado", "6.6.0", "6.5.8", "server")
+        rep = eu.ensure_security_floors()
+        assert calls == [], "a version ahead of the floor must never be touched"
+        assert rep["actions"]["tornado"]["status"] == "ok"
+        assert rep["server_stack_below_floor"] == []
+
+    def test_below_the_floor_on_the_SERVER_stack_reports_but_never_installs(self, monkeypatch):
+        calls = self._patch(monkeypatch, "tornado", "6.5.7", "6.5.8", "server")
+        rep = eu.ensure_security_floors()
+        assert calls == [], "server-stack packages must never be auto-installed"
+        assert rep["actions"]["tornado"]["status"] == "server_stack_reported"
+        assert rep["server_stack_below_floor"] == ["tornado"]
+        assert rep["needs_restart"] is False
+
+    def test_below_the_floor_on_the_KERNEL_layer_installs_a_FLOOR_not_a_pin(self, monkeypatch):
+        calls = self._patch(monkeypatch, "somelib", "1.0.0", "1.2.3", "kernel")
+        rep = eu.ensure_security_floors()
+        assert len(calls) == 1, calls
+        cmd = calls[0]
+        assert "somelib>=1.2.3" in cmd, cmd
+        assert "somelib==1.2.3" not in cmd, "must be a FLOOR, not an exact pin"
+        assert "--user" in cmd
+        assert rep["actions"]["somelib"]["status"] == "installed_needs_restart"
+        assert rep["needs_restart"] is True
+
+    def test_dry_run_never_installs(self, monkeypatch):
+        calls = self._patch(monkeypatch, "somelib", "1.0.0", "1.2.3", "kernel")
+        rep = eu.ensure_security_floors(install=False)
+        assert calls == []
+        assert rep["actions"]["somelib"]["status"] == "reported_only"
+
+    def test_no_lock_entry_is_skipped_never_guessed(self, monkeypatch):
+        import subprocess as _sp
+        monkeypatch.setattr(_sp, "run",
+                            lambda *a, **k: (_ for _ in ()).throw(
+                                AssertionError("must not install without a floor")))
+        monkeypatch.setattr(eu, "check_security_floors",
+                            lambda **kw: {"lock_found": False, "below_floor": [],
+                                          "unknown": ["tornado"],
+                                          "packages": {"tornado": {
+                                              "installed": "6.5.7", "floor": None,
+                                              "satisfied": None, "layer": "server"}}})
+        rep = eu.ensure_security_floors()
+        assert rep["actions"]["tornado"]["status"] == "skipped_no_lock"
+
+    def test_an_unparseable_version_is_not_treated_as_behind(self):
+        assert eu._below("not-a-version", "6.5.8") is False
+        assert eu._below(None, "6.5.8") is False
+        assert eu._below("6.5.7", None) is False
+
+    def test_tornado_is_classified_server_stack(self):
+        """It is the Jupyter server's web framework, not a kernel library."""
+        assert "tornado" in eu.SECURITY_FLOOR_SERVER
+        assert "tornado" not in eu.SECURITY_FLOOR_KERNEL
+
+    def test_the_floor_comes_from_the_lock_not_from_code(self):
+        """A CVE bump must be `uv lock --upgrade-package X` and nothing else."""
+        rep = eu.check_security_floors()
+        assert rep["packages"]["tornado"]["floor"] == eu.locked_versions()["tornado"]
+
+    def test_installed_version_works_without_a_dunder_version(self):
+        """tornado exposes `tornado.version` and NO `__version__`; an attribute probe
+        reports it unknown and the floor check would silently never fire."""
+        import tornado
+        assert getattr(tornado, "__version__", None) is None
+        assert eu.installed_version("tornado") is not None

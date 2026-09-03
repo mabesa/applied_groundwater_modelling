@@ -285,3 +285,159 @@ def check_pinned_versions(packages=CRITICAL_PACKAGES, lock_path=None) -> dict:
         elif matches is None:
             out["unknown"].append(name)
     return out
+
+
+# ---------------------------------------------------------------------------
+# security floors  (>= semantics, NOT ==)
+# ---------------------------------------------------------------------------
+#: Packages we want at a MINIMUM version for security. The floor is read from
+#: ``uv.lock``, so a future CVE bump is ``uv lock --upgrade-package X`` and nothing
+#: else -- no Hub-admin ticket per minor version (lecturer, 2026-09-03).
+#:
+#: 🔴 Why this is separate from :data:`CRITICAL_PACKAGES`. That set is pinned with
+#: ``==`` because the frozen goldens record exact versions and a newer numpy can
+#: change array bit patterns. A security bump needs the opposite: *at least* this
+#: version, never *exactly* it. Pinning ``==`` would DOWNGRADE a Hub whose image
+#: runs ahead of our lock -- and that becomes the normal case as the lock ages.
+#:
+#: 🔴 Split by BLAST RADIUS, not by severity:
+#:
+#: * KERNEL packages are imported by the student's kernel. A user-site top-up is
+#:   picked up on the next kernel restart and cannot stop a session from starting.
+#: * SERVER packages are the Jupyter server's OWN stack. These are never installed
+#:   automatically. A broken user-site copy can stop a single-user server from
+#:   starting, and the student then has no notebook from which to repair it -- so
+#:   they are REPORTED and a human decides. (Lecturer's choice, 2026-09-03:
+#:   "option B".)
+SECURITY_FLOOR_KERNEL: tuple = ()
+SECURITY_FLOOR_SERVER: tuple = ("tornado",)
+SECURITY_FLOOR_PACKAGES: tuple = SECURITY_FLOOR_KERNEL + SECURITY_FLOOR_SERVER
+
+
+def installed_version(name: str):
+    """Installed version of *name*, or ``None``.
+
+    Uses distribution metadata rather than a ``__version__`` attribute: tornado --
+    the first package enrolled here -- exposes ``tornado.version`` and NO
+    ``__version__``, so an attribute probe reports it as unknown and the floor
+    check would silently never fire.
+    """
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+    except ImportError:                     # pragma: no cover - <3.8
+        return None
+    try:
+        return version(name)
+    except PackageNotFoundError:
+        return None
+    except Exception:                       # noqa: BLE001 - broken metadata
+        return None
+
+
+def _below(installed, floor) -> bool:
+    """True when *installed* is strictly older than *floor*. Unknown -> False."""
+    if installed is None or floor is None:
+        return False
+    try:
+        from packaging.version import Version
+        return Version(installed) < Version(floor)
+    except Exception:                       # noqa: BLE001 - unparseable version
+        # Never guess: an unparseable version is not evidence of being behind.
+        return False
+
+
+def check_security_floors(packages=SECURITY_FLOOR_PACKAGES, lock_path=None) -> dict:
+    """Compare installed versions against the ``uv.lock`` FLOOR. Reports only.
+
+    ``satisfied`` is ``None`` -- unknown, never ``True`` -- when either side is
+    unavailable, so a missing lock can never read as agreement.
+    """
+    locked = locked_versions(lock_path)
+    out = {"lock_found": bool(locked), "packages": {}, "below_floor": [],
+           "unknown": []}
+    for name in packages:
+        inst = installed_version(name)
+        floor = locked.get(name)
+        if inst is None or floor is None:
+            satisfied = None
+        else:
+            satisfied = not _below(inst, floor)
+        out["packages"][name] = {"installed": inst, "floor": floor,
+                                 "satisfied": satisfied,
+                                 "layer": "server" if name in SECURITY_FLOOR_SERVER
+                                          else "kernel"}
+        if satisfied is False:
+            out["below_floor"].append(name)
+        elif satisfied is None:
+            out["unknown"].append(name)
+    return out
+
+
+def ensure_security_floors(packages=SECURITY_FLOOR_PACKAGES, lock_path=None, *,
+                           install: bool = True, user: bool = True,
+                           quiet: bool = True) -> dict:
+    """Top up KERNEL-layer packages that are below their ``uv.lock`` floor.
+
+    Installs ``{name}>={floor}`` -- never ``==`` -- and only when the installed
+    version is strictly older, so a Hub already ahead of our lock is left alone.
+    SERVER-layer packages are reported, never installed; see
+    :data:`SECURITY_FLOOR_SERVER` for why.
+
+    Status values: ``ok`` (at or above the floor), ``installed_needs_restart``,
+    ``server_stack_reported`` (below floor, deliberately not installed),
+    ``failed``, ``skipped_no_lock``, ``skipped_unknown_version``,
+    ``reported_only`` (``install=False``).
+    """
+    import subprocess
+    import sys
+
+    report = check_security_floors(packages=packages, lock_path=lock_path)
+    report["actions"] = {}
+    report["needs_restart"] = False
+    report["server_stack_below_floor"] = []
+
+    for name, row in report["packages"].items():
+        inst, floor, layer = row["installed"], row["floor"], row["layer"]
+        act = {"from": inst, "to": floor, "layer": layer}
+
+        if floor is None:
+            report["actions"][name] = {**act, "status": "skipped_no_lock"}
+            continue
+        if inst is None:
+            # Not installed at all. Absent from a Hub image is not the case this
+            # exists for, and guessing an install here could pull a whole stack.
+            report["actions"][name] = {**act, "status": "skipped_unknown_version"}
+            continue
+        if row["satisfied"] is True:
+            report["actions"][name] = {**act, "status": "ok"}
+            continue
+        if layer == "server":
+            # 🔴 Deliberately NOT installed -- see SECURITY_FLOOR_SERVER.
+            report["actions"][name] = {**act, "status": "server_stack_reported"}
+            report["server_stack_below_floor"].append(name)
+            continue
+        if not install:
+            report["actions"][name] = {**act, "status": "reported_only"}
+            continue
+
+        cmd = [sys.executable, "-m", "pip", "install", f"{name}>={floor}"]
+        if user:
+            cmd.append("--user")
+        if quiet:
+            cmd.append("--quiet")
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+        except Exception as exc:            # noqa: BLE001
+            report["actions"][name] = {**act, "status": "failed",
+                                       "error": f"subprocess error: {exc}"}
+            continue
+        if proc.returncode != 0:
+            report["actions"][name] = {
+                **act, "status": "failed",
+                "error": (proc.stderr or "").strip()[:500]
+                          or f"pip exited with code {proc.returncode}"}
+            continue
+        report["actions"][name] = {**act, "status": "installed_needs_restart"}
+        report["needs_restart"] = True
+
+    return report

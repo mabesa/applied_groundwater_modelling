@@ -110,3 +110,31 @@ feasibility risk, and S10's descriptive-only status.
 ⚠️ **Do not edit the constants to fit the measurement.** `HUB_FINE_CEILING_S` was frozen *before* measuring
 precisely so the outcome could not be renegotiated afterwards; changing it after the fact is a **failure
 edge to T0**, not an edit.
+
+---
+
+## Hub facts worth not rediscovering (2026-09-03)
+
+🔴 **The Hub checkout directory is `~/applied_groundwater_modelling.git`** — the `.git`
+suffix is part of the DIRECTORY name. `cd ~/applied_groundwater_modelling` fails.
+
+🔴 **On the Hub use plain `python`, never `uv run`** (uv is not installed there).
+
+**Running the two case-study gates:**
+
+```bash
+cd ~/applied_groundwater_modelling.git
+git pull --ff-only origin <branch>          # confirm it moves to the SHA you expect
+python _SUPPORT/src/scripts/validate_flow_groups.py
+python _SUPPORT/src/scripts/validate_transport_groups.py
+```
+
+Both delete each group's workspace before running, so they always rebuild and a warm cache
+never flatters the result.
+
+**Security floors.** `0_diagnostics` reports packages below the `uv.lock` floor. Kernel-layer
+packages are topped up into the user site with `>=` (never `==`, which would DOWNGRADE a Hub
+image running ahead of the lock). Jupyter **server-stack** packages — `tornado` today — are
+reported only, never auto-installed: a broken user-site copy can stop a single-user server
+from starting, leaving the student no notebook from which to repair it. Those go to the Hub
+admins. Keeping a floor current needs only `uv lock --upgrade-package <name>`.

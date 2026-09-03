@@ -103,6 +103,16 @@ get-modflow :flopy
 3. Run all cells.
 4. Confirm `overall_ready = True`.
 
+> **Run this at the start of every JupyterHub session.** On the Hub, some packages come
+> from a shared image that cannot be changed, so this notebook tops the important ones up
+> into *your* user site. If it asks you to **restart the kernel**, do that and re-run it —
+> nothing you run before the restart uses the new versions. To undo a top-up:
+> `pip uninstall -y <package>`.
+>
+> If it reports a package below a **security floor** that it did *not* install, that is
+> deliberate — those belong to the Jupyter server itself, and installing them yourself can
+> stop your server from starting. Tell the course staff instead.
+
 **Jupyter kernel checklist:**
 - Expected kernel: the Python environment pointing to `./.venv/bin/python`.
 - Example VS Code label: `applied-groundwater-modelling (3.12.x)  ./.venv/bin/python  Workspace` — your exact
