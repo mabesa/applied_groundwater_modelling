@@ -1,0 +1,161 @@
+{
+  "notebook": "case_study_flow_group_0.ipynb",
+  "results": [
+    {
+      "group": 0,
+      "status": "OK",
+      "runtime_s": 37.6,
+      "metrics": {
+        "group": 0,
+        "mass_balance_pct": 0.0015
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 1,
+      "status": "OK",
+      "runtime_s": 34.5,
+      "metrics": {
+        "group": 1,
+        "mass_balance_pct": 0.0004
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 2,
+      "status": "OK",
+      "runtime_s": 36.2,
+      "metrics": {
+        "group": 2,
+        "mass_balance_pct": 0.0003
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 3,
+      "status": "OK",
+      "runtime_s": 36.6,
+      "metrics": {
+        "group": 3,
+        "mass_balance_pct": 0.0002
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 4,
+      "status": "OK",
+      "runtime_s": 34.4,
+      "metrics": {
+        "group": 4,
+        "mass_balance_pct": 0.0003
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 5,
+      "status": "OK",
+      "runtime_s": 34.5,
+      "metrics": {
+        "group": 5,
+        "mass_balance_pct": 0.0007
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 6,
+      "status": "OK",
+      "runtime_s": 41.8,
+      "metrics": {
+        "group": 6,
+        "mass_balance_pct": 0.0005
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 7,
+      "status": "OK",
+      "runtime_s": 35.8,
+      "metrics": {
+        "group": 7,
+        "mass_balance_pct": 0.0005
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 8,
+      "status": "OK",
+      "runtime_s": 35.8,
+      "metrics": {
+        "group": 8,
+        "mass_balance_pct": 0.0019
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 9,
+      "status": "OK",
+      "runtime_s": 39.6,
+      "metrics": {
+        "group": 9,
+        "mass_balance_pct": 0.0011
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 10,
+      "status": "OK",
+      "runtime_s": 35.2,
+      "metrics": {
+        "group": 10,
+        "mass_balance_pct": 0.0001
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 11,
+      "status": "OK",
+      "runtime_s": 34.0,
+      "metrics": {
+        "group": 11,
+        "mass_balance_pct": 0.0001
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    },
+    {
+      "group": 12,
+      "status": "OK",
+      "runtime_s": 34.2,
+      "metrics": {
+        "group": 12,
+        "mass_balance_pct": 0.0006
+      },
+      "error": null,
+      "stderr_tail": null,
+      "over_budget": false
+    }
+  ]
+}

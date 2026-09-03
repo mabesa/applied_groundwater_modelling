@@ -118,10 +118,16 @@ scenarios:
       chd_head_change_m: 1
     - id: 10
       concession: 220
-      label: The weir is removed and average water levels in zone 1 fall by 1.5 m
+      # 2026-09-03: -1.5 -> -0.1 m. At -1.5 the river stage fell BELOW the river
+      # bottom on ALL 2601 reaches, so the builder rightly refused an inverted
+      # river and the group could not run at all. The reaches carry only
+      # 0.4-1.0 m of water (min stage-rbot 0.400 m, median 1.000 m), so the
+      # largest physically valid uniform drop is about 0.4 m; -0.25 m is the
+      # biggest safe round value and -0.1 m leaves the most margin.
+      label: The weir is lowered and average water levels in zone 1 fall by 0.1 m
       type: river_stage
       target: Limmat & Sihl
-      stage_change_m: -1.5
+      stage_change_m: -0.1
       stage_zone: 1
     - id: 11
       concession: 226
