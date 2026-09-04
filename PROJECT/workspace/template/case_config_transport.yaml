@@ -173,8 +173,6 @@ transport_scenarios:
         # TODO: Adjust simulation duration based on model runs to ensure plume
         # reaches monitoring point. Minimum 30 days. 
         duration_days: 60              # 60 days (manageable domain size)
-        # TODO: Adjust output times to capture key transport dynamics
-        output_times_days: [6, 11, 21, 61]
 
 
       monitoring:
@@ -262,8 +260,6 @@ transport_scenarios:
         # TODO: Adjust simulation duration based on model runs to ensure plume
         # reaches monitoring point. Minimum 30 days. 
         duration_days: 30
-        # TODO: Adjust output times to capture key transport dynamics
-        output_times_days: [2, 4, 6, 31]
 
 
       monitoring:
@@ -344,8 +340,6 @@ transport_scenarios:
         # TODO: Adjust simulation duration based on model runs to ensure plume
         # reaches monitoring point. Minimum 30 days. 
         duration_days: 60
-        # TODO: Adjust output times to capture key transport dynamics
-        output_times_days: [6, 11, 21, 31, 61]
 
 
       monitoring:
@@ -421,7 +415,6 @@ transport_scenarios:
         # line. 730 d shows the rise plus a full 2-year stable plateau and runs in
         # well under a minute on this Mac. Verdict unchanged (MARGINAL).
         duration_days: 730
-        output_times_days: [90, 180, 365, 548, 730]
 
 
       monitoring:
@@ -507,8 +500,6 @@ transport_scenarios:
         # TODO: Adjust simulation duration based on model runs to ensure plume
         # reaches monitoring point. Minimum 30 days.
         duration_days: 730
-        # TODO: Adjust output times to capture key transport dynamics
-        output_times_days: [90, 180, 365, 548, 730]
 
 
       monitoring:
@@ -589,8 +580,6 @@ transport_scenarios:
         # TODO: Adjust simulation duration based on model runs to ensure plume
         # reaches monitoring point. Minimum 30 days.
         duration_days: 30
-        # TODO: Adjust output times to capture key transport dynamics
-        output_times_days: [5, 15, 21, 31]
 
 
       monitoring:
@@ -674,7 +663,6 @@ transport_scenarios:
         # brings the required nstp back under the cap so Cr<1 (accurate).
         # Verdict unchanged (REACHES-above).
         duration_days: 1095
-        output_times_days: [90, 180, 365, 548, 730, 1095]
 
 
       monitoring:
@@ -750,7 +738,6 @@ transport_scenarios:
         # (early exceedance + stable 2-year plateau) and fits the budget easily.
         # Verdict unchanged (REACHES-above).
         duration_days: 730
-        output_times_days: [30, 90, 180, 365, 548, 730]
 
 
       monitoring:
@@ -841,7 +828,6 @@ transport_scenarios:
         # actually occurs near day 130. The compliance verdict is unaffected (well
         # under the threshold either way), but students now see the curve turn over.
         duration_days: 365
-        output_times_days: [30, 90, 180, 270, 365]
 
       monitoring:
         threshold_mg_L: 0.1             # Drinking water standard (EU)
@@ -911,7 +897,6 @@ transport_scenarios:
 
       simulation:
         duration_days: 365
-        output_times_days: [14, 60, 120, 366]
 
       monitoring:
         threshold_mg_L: 0.015    # taste-and-odour threshold (no Swiss numeric GwV limit)
@@ -984,7 +969,6 @@ transport_scenarios:
 
       simulation:
         duration_days: 365
-        output_times_days: [30, 90, 180, 366]
 
       monitoring:
         threshold_mg_L: 0.0001    # GwV general limit for organic trace substances (0.1 ug/L)
@@ -1056,7 +1040,6 @@ transport_scenarios:
 
       simulation:
         duration_days: 365
-        output_times_days: [60, 150, 270, 366]
 
       monitoring:
         threshold_mg_L: 1.0    # TBDV drinking-water value for boron
@@ -1134,7 +1117,6 @@ transport_scenarios:
 
       simulation:
         duration_days: 1095
-        output_times_days: [180, 365, 730, 1095]
 
       monitoring:
         threshold_mg_L: 0.02    # TBDV drinking-water value for nickel

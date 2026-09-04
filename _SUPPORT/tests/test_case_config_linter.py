@@ -18,8 +18,7 @@ Surface under test
       - a ``source`` with ``type``, ``release_type``,
         ``location{easting, northing, layer}``, ``duration_days >= 1`` and a
         numeric ``concentration_mg_L``;
-      - a ``simulation`` with ``duration_days > 0`` and a non-empty,
-        strictly-increasing ``output_times_days`` list;
+      - a ``simulation`` with ``duration_days > 0``;
       - a ``monitoring`` with a numeric ``threshold_mg_L``.
     On any missing/invalid field it raises a clear ``ValueError`` naming the
     group AND the offending field/reason. On success it returns a structured
@@ -139,7 +138,6 @@ def _valid_entry(gid):
         },
         "simulation": {
             "duration_days": 60,
-            "output_times_days": [6, 11, 21, 61],
         },
         "monitoring": {"threshold_mg_L": 5.0},
     }
@@ -479,33 +477,6 @@ class TestSimulationValidation:
         with pytest.raises(ValueError):
             lint(config_path=str(path), groups=[gid])
 
-    def test_empty_output_times_raises(self, tmp_path):
-        lint, path, gid = self._lint_broken(
-            tmp_path, lambda c, e: e["simulation"].__setitem__("output_times_days", [])
-        )
-        with pytest.raises(ValueError):
-            lint(config_path=str(path), groups=[gid])
-
-    def test_non_increasing_output_times_raises_naming_group_and_field(self, tmp_path):
-        lint, path, gid = self._lint_broken(
-            tmp_path,
-            lambda c, e: e["simulation"].__setitem__("output_times_days", [10, 5, 20]),
-            gid=6,
-        )
-        with pytest.raises(ValueError) as exc:
-            lint(config_path=str(path), groups=[gid])
-        _assert_names_group_and_field(exc, gid, "output_times_days")
-
-    def test_equal_consecutive_output_times_raises(self, tmp_path):
-        # Strictly increasing => equal consecutive values are invalid.
-        lint, path, gid = self._lint_broken(
-            tmp_path,
-            lambda c, e: e["simulation"].__setitem__("output_times_days", [5, 5, 20]),
-        )
-        with pytest.raises(ValueError):
-            lint(config_path=str(path), groups=[gid])
-
-
 class TestMonitoringValidation:
     def test_non_numeric_threshold_raises(self, tmp_path):
         path = _broken_config_path(
@@ -676,3 +647,34 @@ class TestCliWiring:
         entry = _stage_entry(report, 0, "config")
         assert entry["status"] != "NOT_IMPLEMENTED", entry
         assert entry["status"] == "FAIL", entry
+
+
+def test_output_times_days_is_gone_and_stays_gone():
+    """C1 A21 (2026-09-04): the field was REQUIRED and validated, hand-tuned in all 13
+    groups, and consumed by NOTHING -- the GWT OC package saves ("CONCENTRATION","ALL")
+    and the notebook plots the whole breakthrough series. Its TODO invited students to
+    edit a field that could not affect their results. Wiring it would have been WORSE
+    than deleting it: selecting a subset coarsens the curve the analysis rests on.
+    """
+    import yaml
+
+    cfg = yaml.safe_load(REAL_CONFIG.read_text())
+    for opt in cfg["transport_scenarios"]["options"]:
+        assert "output_times_days" not in (opt.get("simulation") or {}), (
+            f"group {opt['id']} reintroduced a field nothing reads")
+
+    src = (REPO_ROOT / "_SUPPORT" / "src" / "case_utils.py").read_text()
+    assert "def _lint_simulation" in src, "the simulation linter was renamed; retarget this guard"
+    body = src.split("def _lint_simulation", 1)[1].split("\ndef ", 1)[0]
+    # Match the FIELD NAME, not one exact call spelling, so an equivalent
+    # revalidation is caught too. Comments in that function are excluded, since the
+    # removal is deliberately explained there.
+    code = "\n".join(l for l in body.splitlines() if not l.strip().startswith("#"))
+    assert "output_times_days" not in code, (
+        "the linter validates a field again that no build code consumes")
+
+    # ...and the schema/spec consumers must not reintroduce it either.
+    for rel in ("_SUPPORT/src/casestudy_config_schema.yaml",
+                "_SUPPORT/src/casestudy_m1_specs.py"):
+        assert "output_times_days" not in (REPO_ROOT / rel).read_text(), (
+            f"{rel} still declares a field nothing reads")

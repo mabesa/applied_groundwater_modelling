@@ -99,7 +99,6 @@ says they "retire with the rest at the JAG". **Leave them until then.**
 | key | added | lost in | content |
 |---|---|---|---|
 | `task03_4` | `eb0a094` *"last question added (K slope)"* | `280ff5d` *"update darcy function for jupyterub bugs"* (57+/112-) | estimate K from the experiment's graph |
-| `task03_2` | — | `1303829` (6838-line restructure of `4_model_implementation`) | discharge Q in mm/s |
 | `task04_2` | — | `0ccd922` (exercise03/04 reshuffle) | water-table level at x = 400 m |
 
 🔴 **`task03_4` is the clear-cut one.** It was added *deliberately* as exercise 3's last
@@ -109,8 +108,17 @@ bugs — collateral damage, not a retirement. It is also the missing half of a p
 renders only `task03_3`. Restoring it is a two-line change to
 `scripts_exercises/darcy_law_experiment.py`.
 
-`task03_2` and `task04_2` were lost inside large restructures. Both contents are valid, but
-whether they belong in the current notebooks is pedagogy, not repair.
+🔴 **CORRECTION (2026-09-04): `task03_2` was NOT an accidental loss.** `eb0a094` shows it
+deliberately parked as a comment -- `# check_task_with_solution("task03_2")  # if we want to
+call the function to launch a new task` -- and that comment line was later dropped. It was a
+maybe, never a live question. `task04_2` was removed inside `0ccd922`'s exercise03/04 reshuffle;
+its content (water table at x = 400 m) is valid but its placement is pedagogy, not repair.
+
+✅ **`task03_4` RESTORED 2026-09-04**, in `darcy_task_1_3()` rather than back inside the
+`on_plot_fit` widget callback where it originally lived: that callback runs under
+`clear_output(wait=True)` cycles, which is the very class of problem `280ff5d` was fixing, so a
+verbatim restore risked reintroducing the bug that removed it. The question's own text begins
+"## Task 1.3", so this is where its author meant it to appear. Orphans: 15 -> 14.
 
 ### D. Flow — NEVER WIRED. Lecturer's call.
 `task03_conductance` (C = K·A/L, K=500 m/d, A=100 m², L=50 m → 1000 m²/d) has **only ever

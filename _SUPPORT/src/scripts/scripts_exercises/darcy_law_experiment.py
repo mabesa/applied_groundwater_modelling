@@ -124,4 +124,16 @@ def darcy_task_1_3():
     display(Markdown("## Task 1.3"
     "\nAnalyze the results and answer the following questions:"))
     check_task_with_solution("task03_3")
+    # 🔴 RESTORED 2026-09-04. `task03_4` was added deliberately in eb0a094
+    # ("last question added (K slope)") and then removed by 280ff5d, a refactor
+    # whose stated purpose was fixing JupyterHub rendering bugs -- collateral
+    # damage, not a retirement. Without it this cell promised "questions"
+    # (plural) and asked one.
+    #
+    # It is rendered HERE rather than back inside the `on_plot_fit` widget
+    # callback where it originally lived: that callback runs under
+    # `clear_output(wait=True)` cycles, which is the class of problem 280ff5d
+    # was fixing. The question's own text begins "## Task 1.3", so this is
+    # where its author meant it to appear.
+    check_task_with_solution("task03_4")
 

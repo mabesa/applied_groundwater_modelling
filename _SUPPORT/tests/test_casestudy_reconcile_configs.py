@@ -234,7 +234,15 @@ def test_todo_blocks_survive():
     assert flow_txt.count("TODO") >= 8
     assert "TODO: Tailor with your contaminant" in tr_txt
     assert "TODO: Provide 2" in tr_txt
-    assert tr_txt.count("TODO") >= 15
+    # 🔴 Was >= 15 until 2026-09-04. C1 A21 removed `simulation.output_times_days`
+    # and, with it, the five "TODO: Adjust output times to capture key transport
+    # dynamics" comments -- they invited students to edit a field NOTHING reads.
+    # The count is 13 now; the guard's job is to catch the rewriter STRIPPING
+    # scaffolding, so the floor is lowered to match reality rather than deleted.
+    assert tr_txt.count("TODO") >= 13
+    # ...and that particular TODO must not come back while the field is gone.
+    assert "Adjust output times" not in tr_txt, (
+        "a TODO returned for a field no build code consumes")
 
 
 def test_rewritten_transport_lints_clean():

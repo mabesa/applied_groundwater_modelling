@@ -185,16 +185,12 @@ def _lint_simulation(entry, group):
     if duration <= 0:
         raise ValueError(f"group {group}: field 'simulation.duration_days' must be > 0, got {duration!r}")
 
-    output_times = simulation.get("output_times_days")
-    if not isinstance(output_times, list) or len(output_times) == 0:
-        raise ValueError(f"group {group}: field 'simulation.output_times_days' must be a non-empty list")
-    for t in output_times:
-        _require_numeric(t, group, "simulation.output_times_days")
-    if any(b <= a for a, b in zip(output_times, output_times[1:])):
-        raise ValueError(
-            f"group {group}: field 'simulation.output_times_days' must be strictly increasing, "
-            f"got {output_times!r}"
-        )
+    # `simulation.output_times_days` was REMOVED 2026-09-04 (C1 A21). It was required and
+    # validated here, hand-tuned in all 13 groups, and consumed by NOTHING: the GWT OC
+    # package saves ("CONCENTRATION", "ALL") -- every timestep -- and the notebook plots
+    # the whole breakthrough series. Its TODO invited students to edit a field that could
+    # not affect their results. Wiring it would have been WORSE than deleting it, since
+    # selecting a subset would coarsen the very curve the analysis rests on.
     return simulation
 
 
