@@ -74,3 +74,53 @@ the hydraulic conductivity K" and refers to "the experiment's graph", which is w
 `darcy_task_1_2()` draws. `task03_2` ("discharge Q in mm/s") plausibly belongs to the same
 set. This is inferred from wording, not from a commit that removed a call — the review
 pass should confirm against history before acting.
+
+---
+
+## Orphaned checkpoints — REVIEW PASS COMPLETE (2026-09-04)
+
+Lecturer: **delete nothing**. This pass assigns a verdict per key from git history, not
+from wording. 15 orphans, three distinct fates.
+
+### A. Transport (10) — DELIBERATE, superseded by the solute rewrite. No action.
+`task_t04_checkpoint_2` died in `fbef045` (04t rebuild); the nine `task_t05_*` keys in
+`d03b06d` ("05t thin project-handoff bridge"). 05t was rewritten as a handoff bridge and
+simply stopped asking these. One (`task_t05_checkpoint_best_alpha`) is heat-era: it asks
+which α_L gave the lowest *temperature* RMSE against a track that computes no temperature.
+C1 **A9** authorises retiring all ten; Part 3 is inert until the **JAG**, and the contract
+says they "retire with the rest at the JAG". **Leave them until then.**
+
+### B. Flow — DELIBERATE. No action.
+`task01_2` was **combined into another task**, not dropped: `6d3951f` ("combine tasks 02 -
+3 of exercise 1") removed the only call, which lived in the since-folded
+`exercise01/exercise01.ipynb`.
+
+### C. Flow — ACCIDENTAL LOSS. 🔴 Worth restoring; lecturer's call.
+| key | added | lost in | content |
+|---|---|---|---|
+| `task03_4` | `eb0a094` *"last question added (K slope)"* | `280ff5d` *"update darcy function for jupyterub bugs"* (57+/112-) | estimate K from the experiment's graph |
+| `task03_2` | — | `1303829` (6838-line restructure of `4_model_implementation`) | discharge Q in mm/s |
+| `task04_2` | — | `0ccd922` (exercise03/04 reshuffle) | water-table level at x = 400 m |
+
+🔴 **`task03_4` is the clear-cut one.** It was added *deliberately* as exercise 3's last
+question, then removed by a commit whose stated purpose was fixing JupyterHub rendering
+bugs — collateral damage, not a retirement. It is also the missing half of a pair:
+`darcy_task_1_3()` still displays *"answer the following question**s**"* (plural) and
+renders only `task03_3`. Restoring it is a two-line change to
+`scripts_exercises/darcy_law_experiment.py`.
+
+`task03_2` and `task04_2` were lost inside large restructures. Both contents are valid, but
+whether they belong in the current notebooks is pedagogy, not repair.
+
+### D. Flow — NEVER WIRED. Lecturer's call.
+`task03_conductance` (C = K·A/L, K=500 m/d, A=100 m², L=50 m → 1000 m²/d) has **only ever
+existed in `tasks_data.py`** — no notebook or helper has ever called it, in any commit. It
+is unfinished content, not lost content. Directly on-topic for a MODFLOW course.
+
+### How to redo this scan
+Follow the helper indirection or it will propose deleting live content: `task03_3` is LIVE
+via `darcy_law_experiment.darcy_task_1_3()`, which `01f_model_goal.ipynb` calls. Scan
+notebooks AND `scripts_exercises/*.py`, then check whether the wrapping helper is itself
+called. Also search git history WITHOUT quotes — notebook JSON escapes them (`\"key\"`),
+so `git log -S'"key"'` silently matches nothing.
+
