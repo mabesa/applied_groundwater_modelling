@@ -391,37 +391,46 @@ def modflow_minimal_model(
     diag["executable_path"] = found_exe
 
     if not found_exe and auto_download:
+        # 🔴 Call FloPy's API, not a bare `get-modflow` PATH lookup. The old form failed
+        # with a misleading "install pymake" whenever the console script was absent, and
+        # pulled 20+ programs. `subset` fetches only what this course needs: mf6 solves,
+        # triangle meshes -- and it was a MISSING TRIANGLE that took down all 26 Hub runs
+        # on 2026-09-04, while a mf6-only check would have reported everything fine.
         diag["attempted_download"] = True
-        cmd = ["get-modflow", ":flopy"]
-        diag["download_command"] = " ".join(cmd)
+        diag["download_command"] = "flopy.utils.get_modflow(':flopy', subset=('mf6','triangle'))"
         try:
-            proc = subprocess.run(
-                cmd, capture_output=True, text=True, check=False, timeout=300
-            )
-            diag["download_returncode"] = proc.returncode
-            if proc.stdout:
-                diag["download_stdout_tail"] = proc.stdout[-2000:]
-            if proc.stderr:
-                diag["download_stderr_tail"] = proc.stderr[-2000:]
-            if proc.returncode == 0:
-                found_exe = find_exe()
-                diag["executable_found_after_attempt"] = bool(found_exe)
-                diag["executable_path"] = found_exe
-                diag["executable_found"] = bool(found_exe)
-        except FileNotFoundError:  # pragma: no cover
-            diag["download_error"] = (
-                "get-modflow command not found in PATH (install pymake)\n"
-                "Try: pip install pymake   (or mamba/conda install -c conda-forge pymake)"
-            )
-        except subprocess.TimeoutExpired:  # pragma: no cover
-            diag["download_error"] = "get-modflow timed out after 300s"
-        except Exception as e_dl:  # pragma: no cover
-            diag["download_error"] = f"unexpected download error: {e_dl}"
+            from flopy.utils import get_modflow
+
+            get_modflow(":flopy", subset=("mf6", "triangle"), quiet=True)
+        except Exception as e_dl:  # noqa: BLE001 - network, permissions, API change
+            # With the callable API there is no subprocess, so there is no installer
+            # stderr to report -- keep the exception itself.
+            diag["download_error"] = f"{type(e_dl).__name__}: {e_dl}"
+
+        # The re-probe is the DEFINITIVE result: an install that "succeeded" but left an
+        # executable unresolvable has not fixed anything.
+        found_exe = find_exe()
+        diag["executable_found_after_attempt"] = bool(found_exe)
+        diag["executable_path"] = found_exe
+        diag["executable_found"] = bool(found_exe)
+        missing_after = []
+        try:
+            import flopy  # noqa: F401
+            from flopy.mbase import resolve_exe
+
+            for _exe in ("mf6", "triangle"):
+                try:
+                    resolve_exe(_exe)
+                except Exception:       # noqa: BLE001
+                    missing_after.append(_exe)
+        except Exception:               # noqa: BLE001
+            missing_after = ["mf6", "triangle"]
+        diag["missing_executables"] = missing_after
 
     if not found_exe:
         diag.setdefault(
             "advice",
-            "Install pymake (pip install pymake) then run get-modflow :flopy",
+            "Run: python -m flopy.utils.get_modflow :flopy",
         )
         diag.setdefault(
             "note", "MODFLOW executable unavailable; model run skipped"

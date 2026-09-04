@@ -186,6 +186,60 @@ def _short_verdict(verdict: str | None) -> str:
 # Per-group runner
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# preflight  (shared by both gates)
+# ---------------------------------------------------------------------------
+#: Commands proven on the Hub, 2026-09-04. They must run OUTSIDE the notebook:
+#: "run 0_diagnostics" is not an acceptable recovery instruction, because the whole
+#: point is that someone invoking a gate directly never opens that notebook.
+FIX_BINARIES = "python -m flopy.utils.get_modflow :flopy"
+FIX_GIS = ("python -c \"import sys; sys.path.insert(0,'_SUPPORT/src'); "
+           "import data_utils; data_utils.warm_data_cache()\"")
+
+
+def preflight(*, verbose: bool = True) -> list:
+    """Prerequisites the gates cannot run without. Returns a list of problem strings.
+
+    The Hub home is EPHEMERAL: on 2026-09-04 it wiped ``~/.local`` (taking the MODFLOW
+    binaries) and separately lost the GIS folder, between two sessions on the same node.
+    Without this check both losses surface as 13 identical FAILs whose cause is buried in
+    a JSON field.
+    """
+    problems: list = []
+
+    # --- MODFLOW binaries. Probe via flopy's own resolver, and import flopy FIRST:
+    # flopy appends its bin dir to PATH at import, so a bare shutil.which() reports
+    # None on a perfectly healthy install.
+    try:
+        import flopy  # noqa: F401
+        from flopy.mbase import resolve_exe
+        for exe in ("mf6", "triangle"):
+            try:
+                resolve_exe(exe)
+            except Exception:
+                problems.append(f"MODFLOW executable {exe!r} not found -> {FIX_BINARIES}")
+    except Exception as exc:                        # noqa: BLE001
+        problems.append(f"flopy unavailable ({type(exc).__name__}: {exc})")
+
+    # --- GIS inputs, opened through the SAME path production uses, so this cannot
+    # disagree with the run. warm_data_cache() only stats files, so a truncated
+    # GeoPackage would read as CACHED forever.
+    try:
+        sys.path.insert(0, str(_REPO_ROOT / "_SUPPORT" / "src"))
+        import model_io_utils as mio
+        import casestudy_flow_common as cfc
+        cfc.load_gis(mio.ensure_flow_model())
+    except Exception as exc:                        # noqa: BLE001
+        problems.append(f"GIS inputs unusable ({type(exc).__name__}: {exc}) -> {FIX_GIS}")
+
+    if verbose and problems:
+        print("PREFLIGHT FAILED -- not running any group.\n")
+        for pr in problems:
+            print(f"  * {pr}")
+        print("\nFix the above, then re-run this script.")
+    return problems
+
+
 def _run_group(group_id: int, workspace_prefix: str, keep_cache: bool) -> dict:
     """
     Build and run one group scenario in a subprocess.
@@ -479,6 +533,9 @@ def main() -> None:
     print(f"  Keep cache   : {keep_cache}")
     print(f"  Wall timeout : {WALL_TIMEOUT_S} s / group")
     print()
+
+    if preflight():
+        return
 
     results: list[dict] = []
 

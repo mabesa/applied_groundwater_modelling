@@ -434,7 +434,14 @@ def _refine_solve_baseline_walk(group, workspace, *, sim_name, model_name=None) 
                 refine_radius=radius,
             )
         except Exception as e:  # Triangle abort / all-overbank RIV reach / etc.
-            attempts.append(f"r={radius:g} refine:{type(e).__name__}")
+            # 🔴 Keep the MESSAGE, not just the type. Recording only
+            # `type(e).__name__` turned a missing Triangle binary into a bare
+            # "FileNotFoundError" with no way to learn WHICH file -- it cost three
+            # Hub sessions on 2026-09-04.
+            _msg = str(e).strip().splitlines()[0] if str(e).strip() else ""
+            attempts.append(
+                f"r={radius:g} refine:{type(e).__name__}"
+                + (f": {_msg[:160]}" if _msg else ""))
             continue
         built = cfc.assemble_flow_state(
             spec, workspace=workspace, sim_name=sim_name, model_name=model_name,
@@ -449,9 +456,12 @@ def _refine_solve_baseline_walk(group, workspace, *, sim_name, model_name=None) 
                 "refine_points": refine_points, "base_built": built,
             }
         attempts.append(f"r={radius:g} solve:non-converged/SIGILL")
+    # 🔴 Name the radii ACTUALLY tried. Printing FALLBACK_REFINE_RADII here read as
+    # "tried five radii" when a single pinned radius was used -- actively misleading
+    # exactly when someone is debugging a failure.
     raise RuntimeError(
-        f"group {group}: baseline could not refine+solve at ANY radius "
-        f"{cfc.FALLBACK_REFINE_RADII} (attempts: {attempts}) -- DEFERRED (needs Linux/hub)"
+        f"group {group}: baseline could not refine+solve at radius "
+        f"{tuple(float(r) for r in _radii)} (attempts: {attempts}) -- DEFERRED (needs Linux/hub)"
     )
 
 

@@ -134,6 +134,25 @@ def _print_summary(results: list[dict]) -> None:
         print(f"{r['group']:<4} | {r['status']:<8} | {r['runtime_s']:>9.0f} | "
               f"{str(m.get('ncpl', '')):>6} | {str(m.get('refine_radius', '')):>7} | {note[:38]}")
     print("-" * 96)
+
+    # 🔴 Print the captured stderr for every failure. `error` is None for an ordinary
+    # non-zero exit (the detail lands in `stderr_tail`), so a summary that shows only
+    # `error` prints a BLANK notes column -- which is exactly what happened on
+    # 2026-09-04: 13 identical FAILs whose real cause ("The program triangle does not
+    # exist or is not executable") sat unread in the JSON report and took three Hub
+    # sessions to find. The transport validator already does this.
+    for r in results:
+        if r["status"] == "OK" or not r.get("stderr_tail"):
+            continue
+        print(f"\n--- group {r['group']} ({r['status']}) ---")
+        if r.get("error"):
+            print(f"  error: {r['error']}")
+        print("  stderr tail:")
+        for ln in r["stderr_tail"].splitlines()[-15:]:
+            print(f"    {ln}")
+    if any(r["status"] != "OK" for r in results):
+        print()
+
     tally = {}
     for r in results:
         tally[r["status"]] = tally.get(r["status"], 0) + 1
@@ -157,6 +176,9 @@ def main(argv=None) -> int:
     bad = [g for g in groups if g not in CANONICAL_GROUPS]
     if bad:
         print(f"error: groups outside the roster {CANONICAL_GROUPS}: {bad}", file=sys.stderr)
+        return 2
+
+    if vtg.preflight():
         return 2
 
     results = []
