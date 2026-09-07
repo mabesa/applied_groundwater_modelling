@@ -1,4 +1,4 @@
-"""Instructor validation driver for all 9 student transport-group scenarios.
+"""Instructor validation driver for all 13 student transport-group scenarios.
 
 Run from the repo root (or anywhere) to validate every group scenario on
 JupyterHub (Linux), where the cs=10 grid refinement that occasionally SIGILLs

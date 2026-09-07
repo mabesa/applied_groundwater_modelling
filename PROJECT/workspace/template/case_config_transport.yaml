@@ -1,7 +1,7 @@
 ###############################################################
 # Transport Case Study Configuration (All Groups)
 ###############################################################
-# This file contains ALL transport scenarios for groups 0-8.
+# This file contains ALL transport scenarios for groups 0-12 (13 groups).
 # Each group uses the scenario matching their group number.
 # Keep units consistent (meters, days, m3/day, mg/L).
 # Wells are REUSED from flow case study (case_config.yaml).
@@ -43,8 +43,10 @@
 # There is NO telescopic / cut-out submodel in this course. You run the SAME
 # regional model as everyone else. The instructor-provided build refines it
 # locally -- the spill-to-well corridor plus the injection well -- at a 10 m
-# cell size, inside a circle of radius ~56-84 m chosen by a retry ladder. Your
-# notebook prints the radius it actually used.
+# cell size, inside a circle of a radius PINNED PER GROUP by the instructor --
+# 44 m to 90 m across the 13 groups. It is not chosen by a retry ladder any more
+# (that ladder survives only as `FALLBACK_REFINE_RADII`): each radius was
+# validated for YOUR group and frozen. Your notebook prints the radius it used.
 #
 # The teaching notebooks in PROJECT/transport/ refine the same kind of corridor
 # but over its full length: 10 m for the run you do there, and 1 m for the
@@ -85,14 +87,13 @@ model:
 output:
   workspace: "~/applied_groundwater_modelling_data/limmat/transport/case_study_transport_group_"  # auto-expand with group number
 
-# Wells from flow case study (REUSED, not reimplemented)
-wells:
-  source: "case_config"                   # Reuse wells from flow case study
-  config_file: "./case_config.yaml"       # Path to flow case configuration
-  notes: >
-    Wells are loaded from the flow case study configuration. Students will identify
-    which wells are pumping (extraction) vs injection wells/Sickergalerie based on
-    flow rates, then analyze how these wells affect contaminant transport.
+# WELLS. There is nothing to configure here. Your doublet's injection and
+# extraction coordinates are the real licensed AWEL ones, resolved for BOTH
+# halves of the case study from the instructor-owned canonical roster, so the
+# flow and transport halves cannot disagree about where your wells are.
+# (This file previously declared `wells.source` / `wells.config_file`, pointing
+# at ./case_config.yaml as if the wells were loaded from there. No code read
+# either key.) Your group NUMBER does come from case_config.yaml -- see below.
 
 # Transport scenario assignments are FIXED by group number
 transport_scenarios:
@@ -877,7 +878,7 @@ transport_scenarios:
         extraction_easting: 2678967.0      # m (LV95) - compliance/monitoring Well
         extraction_northing: 1250021.4    # m (LV95)
         pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, like all nine others);
+        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, unlike groups 0-8);
                                           # reference only -- no part of the transport model reads it
       source:
         type: "point"
@@ -949,7 +950,7 @@ transport_scenarios:
         extraction_easting: 2681225.0      # m (LV95) - compliance/monitoring Well
         extraction_northing: 1249229.0    # m (LV95)
         pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, like all nine others);
+        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, unlike groups 0-8);
                                           # reference only -- no part of the transport model reads it
       source:
         type: "point"
@@ -1020,7 +1021,7 @@ transport_scenarios:
         extraction_easting: 2680191.0      # m (LV95) - compliance/monitoring Well
         extraction_northing: 1248880.0    # m (LV95)
         pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, like all nine others);
+        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, unlike groups 0-8);
                                           # reference only -- no part of the transport model reads it
       source:
         type: "point"
@@ -1089,7 +1090,7 @@ transport_scenarios:
         extraction_easting: 2682181.9      # m (LV95) - compliance/monitoring Well
         extraction_northing: 1247873.9    # m (LV95)
         pumping_rate_m3_d: 4320           # per-concession Q [m3/d]; both wells run at |Q|
-        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, like all nine others);
+        recirculation_fraction: 0.0       # NOT YET DERIVED (pending M3b, unlike groups 0-8);
                                           # reference only -- no part of the transport model reads it
       source:
         type: "point"

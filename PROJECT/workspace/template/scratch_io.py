@@ -247,8 +247,10 @@ def load_heads_gpkg(which, exports=None) -> gpd.GeoDataFrame:
     Returns
     -------
     geopandas.GeoDataFrame
-        Polygon cells with ``cellid``, ``row``, ``col``, ``head_m`` columns in
-        EPSG:2056. ``head_m`` is NaN where the cell was dry / no-flow.
+        Polygon cells with ``cellid`` and ``head_m`` columns in EPSG:2056
+        (see ``_HEADS_REQUIRED_COLS`` -- there is no ``row``/``col``: the course
+        model is MF6/DISV, which has ``ncpl`` cells and no rows or columns).
+        ``head_m`` is NaN where the cell was dry / no-flow.
     """
     if which not in _HEADS_FILES:
         raise ValueError(f"which must be one of {sorted(_HEADS_FILES)}, got {which!r}")

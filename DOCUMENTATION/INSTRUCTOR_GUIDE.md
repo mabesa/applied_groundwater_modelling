@@ -130,6 +130,22 @@ Before running the material in another course:
 - run the required notebooks in the intended teaching environment before assigning them;
 - adapt grading weights and reporting format to your local course.
 
+## Course-Run Preflight
+
+Before students start, **run the full workflow once on the actual JupyterHub image for the
+current course run**: copy one `template/` folder to a group folder, run the master
+notebooks, the steward export, and a scratch card end to end, then produce a submission
+ZIP. This confirms the environment, the `exports/` bundle, and the FloPy-free scratch
+rerun all work on the image students will use.
+
+Rerun the scratch ZIP check after any update that touches the workspace template,
+`scratch_io.py`, the steward export notebook, the project dependencies, or the JupyterHub
+image. The key check is: extract a submitted-style ZIP in a clean folder and
+restart-and-run a scratch notebook using only the local `scratch_io.py` and `exports/`.
+
+Received submissions are saved by the lecturers to the project SWITCHdrive, with access
+restricted to lecturers only.
+
 ## Evidence For Teaching Development
 
 For education research or a teaching-resource publication, avoid relying only on student satisfaction. Stronger evidence can include:

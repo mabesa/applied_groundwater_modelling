@@ -396,7 +396,7 @@ def save_fig(fig, name: str, *, out_dir) -> Path:
 # and a ``compute(state_b, state_a)`` callable used ONLY by tests / M3c / the
 # group-0 demo self-check.
 # =============================================================================
-def recipe_max_drawdown_m(state_b: StateResult, state_a: StateResult) -> float:
+def recipe_max_abs_head_change_m(state_b: StateResult, state_a: StateResult) -> float:
     """max |head change| (b - a) over FREE (active, non-CHD) cells."""
     mask = free_head_mask(state_a)
     vals = difference(state_b, state_a)[mask]
@@ -404,7 +404,7 @@ def recipe_max_drawdown_m(state_b: StateResult, state_a: StateResult) -> float:
     return float(np.max(np.abs(finite))) if finite.size else float("nan")
 
 
-def recipe_area_drawdown_gt_0p5m_m2(
+def recipe_area_abs_head_change_gt_0p5m_m2(
     state_b: StateResult, state_a: StateResult, *, threshold_m: float = 0.5,
 ) -> float:
     """Area-weighted sum of FREE-cell area where |head change| exceeds
@@ -495,21 +495,29 @@ def recipe_discharge_component_change(
     return {c: float(net_b.get(c, 0.0) - net_a.get(c, 0.0)) for c in components}
 
 
+# NOTE ON THE NAME (2026-09-07). These two were called ``max_drawdown_m`` and
+# ``area_drawdown_gt_0p5m_m2``, but both take ``abs()`` of the head change, so on
+# a balanced injection/extraction doublet they count the injection MOUND as well
+# as the extraction cone. That is a defensible "how much did this well field
+# disturb the aquifer" metric -- it is simply not *drawdown*, and the old names
+# collided with ``scratch_io.compute_drawdown`` (base - compare, positive = head
+# dropped), which the scratch Card A uses. Two different numbers under one word.
+# The docstrings always said "|head change|"; only the names were wrong.
 FLOW_METRIC_RECIPES: Dict[str, Dict[str, Any]] = {
-    "max_drawdown_m": {
+    "max_abs_head_change_m": {
         "unit": "m",
         "mask": "free_head_mask",
         "doc": "max |head change| (state_b - state_a) over free (active, non-CHD) cells",
-        "compute": recipe_max_drawdown_m,
+        "compute": recipe_max_abs_head_change_m,
     },
-    "area_drawdown_gt_0p5m_m2": {
+    "area_abs_head_change_gt_0p5m_m2": {
         "unit": "m2",
         "mask": "free_head_mask + cell_areas",
         "doc": (
             "area-weighted sum of free-cell area where |head change| > 0.5 m "
             "(NOT the broad active-area rule)"
         ),
-        "compute": recipe_area_drawdown_gt_0p5m_m2,
+        "compute": recipe_area_abs_head_change_gt_0p5m_m2,
     },
     "river_leakage_change_m3d": {
         "unit": "m3/d",

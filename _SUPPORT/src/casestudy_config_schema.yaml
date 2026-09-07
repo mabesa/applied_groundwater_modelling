@@ -27,7 +27,7 @@ configs:
   flow:
     file: "PROJECT/workspace/template/case_config.yaml"
     required_keys:
-      - {path: "group.number", type: int, range: [0, 8]}
+      - {path: "group.number", type: int, range: [0, 12]}
       - {path: "group.authors", type: list}
       # model: -- MF6 05f only (switched from legacy NWT in M1.3b)
       - {path: "model.data_name", type: str, const: "flow_model_mf6"}

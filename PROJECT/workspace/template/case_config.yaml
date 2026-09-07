@@ -6,7 +6,7 @@
 # Concession numbers and scenarios are FIXED by group number.
 
 group:
-  number: 0                               # TODO: integer group number (0-8)
+  number: 0                               # TODO: integer group number (0-12)
   authors:                                # TODO: list all group members (2–3 persons)
     - "First Last"
     - "Second Last"                      # remove if only 2 members / add third if needed
@@ -21,6 +21,10 @@ group:
 # Group 6: concession 227, scenario SC6
 # Group 7: concession 213, scenario SC7
 # Group 8: concession 207, scenario SC8
+# Group 9: concession 204, scenario SC9
+# Group 10: concession 220, scenario SC10
+# Group 11: concession 226, scenario SC11
+# Group 12: concession 222, scenario SC12
 
 title: "Impact of a well group on the groundwater flow field."  # TODO: tailor the title (you may refine but keep core meaning)
 
@@ -47,14 +51,12 @@ output:
   # All group results should go into a dedicated folder using the group number.
   workspace: "~/applied_groundwater_modelling_data/limmat/case_study_group_"  # auto-expand: replace <group_number>
 
-pumping:
-  # Concession wells: implement provided locations & rates (m3/day; negative for extraction).
-  # Provide a small table (inline or external file) listing wells you add/modify.
-  wells_source: "concession"               # keep fixed
-  data_file: "./concession_wells_group<number>.csv"  # TODO: optional helper file you create
-  apply_half_rate_variant: true             # Run an additional model with all concession rates * 0.5
-  notes: >
-    TODO: Briefly describe any assumptions in mapping concession data to model cells (e.g. snapping to nearest active cell).
+# NOTE: there is no `pumping:` block to fill in. The concession wells, their
+# rates and the 50% half-rate variant are ALL resolved for you from the
+# instructor-owned canonical roster by `casestudy_flow_builder`, which is given
+# only your group number. (This file previously offered `pumping.wells_source`,
+# `pumping.data_file` and `pumping.apply_half_rate_variant`; no code ever read
+# any of them, and `data_file` asked you to create a CSV nothing would open.)
 
 # Scenario assignments are FIXED by group number 
 scenarios:

@@ -453,8 +453,8 @@ class TestDiagnosticsAndMetricsIO:
 
     def test_summarize_metrics_tidy_dataframe(self):
         rows = [
-            {"name": "max_drawdown_m", "value": 1.2, "unit": "m"},
-            {"name": "area_drawdown_gt_0p5m_m2", "value": 2.0, "unit": "m2"},
+            {"name": "max_abs_head_change_m", "value": 1.2, "unit": "m"},
+            {"name": "area_abs_head_change_gt_0p5m_m2", "value": 2.0, "unit": "m2"},
         ]
         df = cfv.summarize_metrics(rows)
         assert list(df.columns) == ["name", "value", "unit"]
@@ -463,8 +463,8 @@ class TestDiagnosticsAndMetricsIO:
 
     def test_write_flow_metrics_emits_csv_and_json(self, tmp_path):
         rows = [
-            {"name": "max_drawdown_m", "value": 1.2, "unit": "m"},
-            {"name": "area_drawdown_gt_0p5m_m2", "value": 2.0, "unit": "m2"},
+            {"name": "max_abs_head_change_m", "value": 1.2, "unit": "m"},
+            {"name": "area_abs_head_change_gt_0p5m_m2", "value": 2.0, "unit": "m2"},
         ]
         paths = cfv.write_flow_metrics(0, rows, out_dir=tmp_path)
         assert paths["csv"].exists()
@@ -473,7 +473,7 @@ class TestDiagnosticsAndMetricsIO:
         assert paths["json"].name == "flow_metrics.group0.json"
 
         df = pd.read_csv(paths["csv"])
-        assert list(df["name"]) == ["max_drawdown_m", "area_drawdown_gt_0p5m_m2"]
+        assert list(df["name"]) == ["max_abs_head_change_m", "area_abs_head_change_gt_0p5m_m2"]
 
         loaded = json.loads(paths["json"].read_text())
         assert loaded == rows
@@ -531,7 +531,7 @@ class TestEmitEqualizationJson:
 # =============================================================================
 class TestFlowMetricRecipes:
     EXPECTED_IDS = {
-        "max_drawdown_m", "area_drawdown_gt_0p5m_m2", "river_leakage_change_m3d",
+        "max_abs_head_change_m", "area_abs_head_change_gt_0p5m_m2", "river_leakage_change_m3d",
         "gradient_toward_river_change", "discharge_component_change",
     }
 
@@ -545,12 +545,12 @@ class TestFlowMetricRecipes:
 
     def test_max_drawdown_self_check(self, two_states):
         state_a, state_b = two_states
-        val = cfv.FLOW_METRIC_RECIPES["max_drawdown_m"]["compute"](state_b, state_a)
+        val = cfv.FLOW_METRIC_RECIPES["max_abs_head_change_m"]["compute"](state_b, state_a)
         assert val == pytest.approx(1.2)
 
     def test_area_drawdown_self_check(self, two_states):
         state_a, state_b = two_states
-        val = cfv.FLOW_METRIC_RECIPES["area_drawdown_gt_0p5m_m2"]["compute"](state_b, state_a)
+        val = cfv.FLOW_METRIC_RECIPES["area_abs_head_change_gt_0p5m_m2"]["compute"](state_b, state_a)
         assert val == pytest.approx(2.0)  # cells 5 + 6, area 1.0 each
 
     def test_river_leakage_change_self_check(self, two_states, monkeypatch):
