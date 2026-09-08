@@ -29,7 +29,7 @@ Export bundle (schema 1.0)
     flow_budget_summary.csv        list-file budget terms (required)
     transport_breakthrough.csv     C(t) at monitoring well (optional)
     transport_meta.json            transport scenario metadata (optional)
-    pathlines_summary.csv          MODPATH summary (optional)
+    pathlines_summary.csv          MF6 PRT particle-track summary (optional)
 
 Head GeoPackages carry polygon cell geometry in Swiss LV95 (EPSG:2056) with columns
 ``cellid`` (the DISV cell index, as a string) and ``head_m`` (NaN where the cell was
@@ -403,7 +403,7 @@ def load_transport_meta(exports=None) -> dict:
 
 
 def load_pathlines_summary(exports=None) -> pd.DataFrame:
-    """Load ``pathlines_summary.csv`` (MODPATH particle-track summary).
+    """Load ``pathlines_summary.csv`` (MF6 PRT particle-track summary).
 
     Pathlines are optional (Card B). Raises ``FileNotFoundError`` when absent so
     the card can skip cleanly.
@@ -412,7 +412,7 @@ def load_pathlines_summary(exports=None) -> pd.DataFrame:
     path = ex / EXPORT_FILES["pathlines"]
     if not path.is_file():
         raise FileNotFoundError(
-            f"{path.name} not present in {ex}. Pathlines are optional (MODPATH was "
+            f"{path.name} not present in {ex}. Pathlines are optional (PRT was "
             "not run or not exported)."
         )
     return pd.read_csv(path)

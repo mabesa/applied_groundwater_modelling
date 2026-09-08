@@ -33,7 +33,7 @@ Everyone else works in the **scratch** notebook on their assigned card.
 Analysis work is split into **cards** (see the table in
 `scratch_analysis_template.ipynb`):
 
-- **A** drawdown affected area · **B** pathlines (optional) · **C** scenario
+- **A** drawdown affected area · **B** pathlines (normally available) · **C** scenario
   comparison · **D** budget / river exchange · **E** transport breakthrough ·
   **F** provenance / submission QA.
 
@@ -45,7 +45,9 @@ Rules:
   cross-check.
 - Not every card must be done, and **no student has to run every card** — the scratch
   notebook only loads the files its selected card needs. Cards B (pathlines) and C's
-  scenario input are optional and degrade or skip cleanly when their export is absent.
+  scenario input are formally optional and skip or degrade cleanly when their export
+  is absent — but both are **normally present**, since PRT and the scenario state run
+  by default.
 
 ## Export freeze
 

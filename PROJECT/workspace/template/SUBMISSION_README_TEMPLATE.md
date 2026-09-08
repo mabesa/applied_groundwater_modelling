@@ -49,7 +49,8 @@ phase has been assigned.
 - [ ] `transport_breakthrough.csv` *(required)*
 - [ ] `transport_meta.json` *(required)*
 - [ ] `flow_heads_sub_scenario.gpkg` *(optional — include if a scenario export exists)*
-- [ ] `pathlines_summary.csv` *(optional)*
+- [ ] `pathlines_summary.csv` *(optional — normally present; absent only if PRT
+      was disabled or its export did not complete)*
 
 Optional non-export extras:
 
@@ -61,7 +62,7 @@ Optional non-export extras:
 List any optional artifact that is intentionally absent and why (this matches
 `run_info.json → missing_optional`):
 
-- `<e.g. pathlines_summary.csv — MODPATH section not run>`
+- `<e.g. pathlines_summary.csv — PRT step not run or not exported>`
 - `<e.g. transport_* — transport scenario not attempted>`
 
 ## Reproducibility note

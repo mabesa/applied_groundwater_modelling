@@ -49,7 +49,7 @@ REQUIRED_SECTION_KEYWORDS = [
     "configure your group",
     "understand your scenario",
     "build the four flow states",
-    "heads and drawdown maps",
+    "heads and signed head-change maps",
     "water budget",
     "capture zone and pathlines",
     "metrics",

@@ -408,7 +408,8 @@ def recipe_area_abs_head_change_gt_0p5m_m2(
     state_b: StateResult, state_a: StateResult, *, threshold_m: float = 0.5,
 ) -> float:
     """Area-weighted sum of FREE-cell area where |head change| exceeds
-    *threshold_m* (area-weighted drawdown -- NOT the broad active-area rule)."""
+    *threshold_m* (area-weighted |head change| -- NOT the broad active-area rule,
+    and NOT drawdown: abs() counts an injection mound as well as a cone)."""
     mask = free_head_mask(state_a)
     diff = difference(state_b, state_a)
     areas = cell_areas(state_a)
