@@ -219,7 +219,52 @@ def test_provenance_stamped(mapping):
     assert mapping["doublet_table_file"].str.endswith("doublet_table.csv").all()
 
 
+def test_COMMITTED_mapping_is_not_stale_against_the_live_configs():
+    """🔴 The guard that has to exist, and did not.
+
+    ``test_provenance_hashes_match_actual_files`` below looks like this check but
+    is VACUOUS: it takes the ``mapping`` FIXTURE, which is
+    ``build_canonical_mapping(write=False)`` computed in memory from the live
+    configs, so it hashes a live file and compares it against the hash the builder
+    just derived from that same live file. It cannot fail.
+
+    Nothing therefore compared the COMMITTED canonical_mapping.csv against the
+    configs, and the only thing keeping it fresh was a side effect: a sibling test
+    used to call build_canonical_mapping(write=True) on the default paths and
+    silently rewrite the tracked file on every suite run. That mutation is gone,
+    so this is now the real guard.
+
+    Paths come from the module constants, NOT from the CSV's own
+    ``*_config_file`` columns -- those record absolute developer paths and do not
+    resolve on another machine.
+    """
+    committed = pd.read_csv(ccm.DEFAULT_OUT_CSV)
+    for column, path in (
+        ("flow_config_sha256", ccm.DEFAULT_FLOW_CONFIG),
+        ("transport_config_sha256", ccm.DEFAULT_TRANSPORT_CONFIG),
+        ("doublet_table_sha256", ccm.DEFAULT_DOUBLET_TABLE),
+    ):
+        recorded = set(committed[column])
+        assert len(recorded) == 1, f"{column} is not uniform across rows: {sorted(recorded)}"
+        assert recorded.pop() == ccm._sha256_file(path), (
+            f"committed canonical_mapping.csv is STALE: {column} does not match "
+            f"{path.name}. Regenerate it:\n"
+            f"    uv run python -m casestudy_canonical_mapping\n"
+            f"and commit canonical_mapping.csv + .yaml together with your config change."
+        )
+
+
 def test_provenance_hashes_match_actual_files(mapping):
+    """Checks the BUILDER stamps the hash of the file it actually read.
+
+    ⚠️ This is NOT a staleness guard, despite reading like one. ``mapping`` is the
+    in-memory fixture, so this hashes a live file and compares it against the hash
+    the builder just computed from that same live file -- it passes even when the
+    committed canonical_mapping.csv is arbitrarily stale (demonstrated 2026-09-08:
+    a config edit with no regeneration leaves this green and fails
+    ``test_COMMITTED_mapping_is_not_stale_against_the_live_configs``, which is the
+    real guard). Kept because stamping the right file is still worth asserting.
+    """
     row = mapping.iloc[0]
     assert ccm._sha256_file(Path(row["flow_config_file"])) == row["flow_config_sha256"]
     assert ccm._sha256_file(Path(row["transport_config_file"])) == row["transport_config_sha256"]
@@ -574,16 +619,69 @@ def test_regeneration_is_idempotent_and_reproduces_the_ledger(tmp_path):
     produced nine changed=False rows and overwrote the original concession ids.
     """
     import hashlib
-    led = ccm.DEFAULT_LEDGER_CSV
-    committed = hashlib.sha256(led.read_bytes()).hexdigest()
-    try:
-        ccm.build_canonical_mapping(write=True)
-        first = hashlib.sha256(led.read_bytes()).hexdigest()
-        ccm.build_canonical_mapping(write=True)
-        second = hashlib.sha256(led.read_bytes()).hexdigest()
-    finally:
-        pass
-    assert first == committed, "regeneration must reproduce the committed ledger"
+
+    # Regenerate into tmp_path, NEVER over the committed deliverables.
+    # 🔴 This test used to call build_canonical_mapping(write=True) with no paths,
+    # so every full-suite run rewrote the tracked canonical_mapping.{csv,yaml} in
+    # place -- a clean checkout came back dirty with no explanation, and config
+    # staleness was masked by the side effect rather than caught.
+    # 🔴 Redirecting only the WRITES would not be enough: the old body hashed
+    # DEFAULT_LEDGER_CSV *after* writing to it, so reading the committed path back
+    # while writing elsewhere would compare the committed file to itself and pass
+    # no matter how broken regeneration was. The hashes below are therefore taken
+    # from the TMP outputs and compared against the committed ones.
+    # ⚠️ Only the ledger and the sanity table may be compared BYTE-WISE. The
+    # mapping (and its YAML mirror) record ABSOLUTE developer paths in
+    # flow_config_file / transport_config_file / doublet_table_file
+    # (casestudy_canonical_mapping.py:586), so a byte comparison would fail in
+    # any clone at a different location -- a false failure, not a real one. Those
+    # three columns are dropped before comparing; every other column, including
+    # the content sha256s, is still checked.
+    PATH_COLS = ["flow_config_file", "transport_config_file", "doublet_table_file"]
+
+    def _bytes(path):
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+    def _mapping_content(path):
+        return pd.read_csv(path).drop(columns=PATH_COLS).to_csv(index=False)
+
+    def _yaml_content(path):
+        import yaml as _yaml
+        doc = _yaml.safe_load(Path(path).read_text())
+        for rec in doc["canonical_mapping"]:
+            for c in PATH_COLS:
+                rec.pop(c, None)
+        return _yaml.safe_dump(doc, sort_keys=True)
+
+    committed = {
+        "repairing_ledger.csv": _bytes(ccm.DEFAULT_LEDGER_CSV),
+        "threshold_sanity.csv": _bytes(ccm.DEFAULT_SANITY_CSV),
+        "canonical_mapping.csv (paths excluded)": _mapping_content(ccm.DEFAULT_OUT_CSV),
+        "canonical_mapping.yaml (paths excluded)": _yaml_content(ccm.DEFAULT_OUT_YAML),
+    }
+
+    kw = dict(out_csv=tmp_path / "canonical_mapping.csv",
+              out_yaml=tmp_path / "canonical_mapping.yaml",
+              ledger_csv=tmp_path / "repairing_ledger.csv",
+              sanity_csv=tmp_path / "threshold_sanity.csv",
+              write=True)
+
+    def _regenerated():
+        return {
+            "repairing_ledger.csv": _bytes(tmp_path / "repairing_ledger.csv"),
+            "threshold_sanity.csv": _bytes(tmp_path / "threshold_sanity.csv"),
+            "canonical_mapping.csv (paths excluded)": _mapping_content(tmp_path / "canonical_mapping.csv"),
+            "canonical_mapping.yaml (paths excluded)": _yaml_content(tmp_path / "canonical_mapping.yaml"),
+        }
+
+    ccm.build_canonical_mapping(**kw)
+    first = _regenerated()
+    ccm.build_canonical_mapping(**kw)
+    second = _regenerated()
+
+    assert first == committed, (
+        "regeneration must reproduce the committed deliverables; differs for "
+        + ", ".join(sorted(n for n in committed if first[n] != committed[n])))
     assert second == first, "regeneration must be idempotent"
 
 

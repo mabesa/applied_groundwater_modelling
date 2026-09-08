@@ -543,12 +543,12 @@ class TestFlowMetricRecipes:
             assert "doc" in entry and entry["doc"]
             assert callable(entry["compute"])
 
-    def test_max_drawdown_self_check(self, two_states):
+    def test_max_abs_head_change_self_check(self, two_states):
         state_a, state_b = two_states
         val = cfv.FLOW_METRIC_RECIPES["max_abs_head_change_m"]["compute"](state_b, state_a)
         assert val == pytest.approx(1.2)
 
-    def test_area_drawdown_self_check(self, two_states):
+    def test_area_abs_head_change_self_check(self, two_states):
         state_a, state_b = two_states
         val = cfv.FLOW_METRIC_RECIPES["area_abs_head_change_gt_0p5m_m2"]["compute"](state_b, state_a)
         assert val == pytest.approx(2.0)  # cells 5 + 6, area 1.0 each
