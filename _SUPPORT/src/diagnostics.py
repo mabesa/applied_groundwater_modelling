@@ -223,7 +223,11 @@ def run_import_checks(
 
 
 def geospatial_smoke_test() -> Dict[str, Any]:
-    """Run quick geospatial capability checks (GeoPandas, Shapely, etc.)."""
+    """Check GeoPandas/Shapely/pyproj operations and require a valid union.
+
+    ``success`` reports core readiness only. Optional fiona/rasterio/contextily
+    imports are informational and are skipped entirely after a core failure.
+    """
     checks: Dict[str, Any] = {}
     try:
         import geopandas as gpd  # type: ignore
@@ -267,7 +271,11 @@ def geospatial_smoke_test() -> Dict[str, Any]:
                 "planar_vs_geodesic_ratio": planar_vs_geodesic_ratio,
             }
         )
-    except Exception as e:  # pragma: no cover - environment dependent
+        if not checks["union_valid"]:
+            raise ValueError("Geospatial union is invalid")
+        checks["success"] = True
+    except Exception as e:
+        checks["success"] = False
         checks["error"] = str(e)
 
     for extra in ["fiona", "rasterio", "contextily"]:
@@ -550,7 +558,11 @@ def system_snapshot() -> Dict[str, Any]:
 
 
 def build_summary(diag_results: Dict[str, Any]) -> Dict[str, Any]:
-    """Aggregate overall readiness summary from the diag_results structure."""
+    """Require essential packages, MODFLOW executable/run, and geospatial success.
+
+    Missing geospatial success fails closed. ``geospatial_optional_errors``
+    lists failed optional probes for display only; skipped probes are omitted.
+    """
     packages = diag_results.get("packages", {})
     modflow = diag_results.get("modflow", {})
     geospatial = diag_results.get("geospatial", {})
@@ -560,22 +572,23 @@ def build_summary(diag_results: Dict[str, Any]) -> Dict[str, Any]:
     summary: Dict[str, Any] = {
         "missing_essential": missing_essential,
         "missing_optional": packages.get("missing_optional", []),
-        "modflow_executable_found": modflow.get("executable_found"),
-        "modflow_run_success": modflow.get("run_success"),
+        "modflow_executable_found": modflow.get("executable_found", False) is True,
+        "modflow_run_success": modflow.get("run_success", False) is True,
         "modflow_linear_solution_ok": modflow.get("analytical_ok"),
-        "geospatial_errors": [
+        "geospatial_success": geospatial.get("success", False) is True,
+        "geospatial_optional_errors": [
             k
-            for k, v in geospatial.items()
-            if isinstance(v, str) and v.startswith("ERROR")
+            for k in ("fiona", "rasterio", "contextily")
+            if isinstance(geospatial.get(k), str) and geospatial[k].startswith("ERROR")
         ],
         "plotly_3d_success": viz.get("plotly_3d", {}).get("success"),
     }
 
-    summary["overall_ready"] = (
+    summary["overall_ready"] = bool(
         (not summary["missing_essential"])  # no essential gaps
         and summary["modflow_executable_found"]
         and summary["modflow_run_success"]
-        and summary["geospatial_errors"] == []
+        and summary["geospatial_success"]
     )
     return summary
 
