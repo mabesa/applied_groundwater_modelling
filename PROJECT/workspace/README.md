@@ -30,19 +30,33 @@ This is where you work on your flow and transport case study.
 | `scratch_analysis_template.ipynb` | **scratch** notebook: FloPy-free card analysis, reruns from `exports/` alone |
 | `scratch_io.py` | the FloPy-free reader for the `exports/` bundle — do not edit it |
 | `COLLABORATION.md` | how your group divides the work |
+| `REPORT_BRIEF.md` | what the group report must contain, how it is judged, and the 12-minute presentation rule |
+| `report_template.md` / `.tex` / `.docx` | the report skeleton — same structure in three formats, pick one |
 | `SUBMISSION_README_TEMPLATE.md` | fill in and include in your ZIP |
 
 ## How Your Group Works
 
-One member is the **steward**: they run the two master notebooks, then
-`steward_export_lightweight.ipynb` to produce the `exports/` bundle. A **deputy** can
-stand in. Everyone else picks one **card** (A–F) in their own copy of the scratch
-notebook and produces its figures and tables. The steward **freezes `exports/` at least
-3 days before the deadline** so everyone finalises against the same numbers.
+**Stewardship rotates, so nobody sits out the modelling.** The flow steward runs
+`case_study_flow_group_0.ipynb`; the **transport steward** — a different member — runs
+`case_study_transport_group_0.ipynb`; the **export steward** runs
+`steward_export_lightweight.ipynb` to produce the `exports/` bundle. In a two-person
+group one member holds two of these roles; in a three-person group each member holds
+exactly one. Deputies are arranged so every role has a named stand-in — in a pair that
+means one member deputises for the other's two.
 
-Full detail — roles, the card table, the freeze, and the (optional, off by default) Git
-guidance — is in [`template/COLLABORATION.md`](template/COLLABORATION.md). **Read it before
-you divide the work.**
+**Every member owns two cards** (A–F) in their own copy of the scratch notebook, and
+produces their figures, tables and — the part that is not pre-written — each card's
+**extension**. Cards **A, B, C, D and E** are required in every group. That is five
+cards against four extension slots in a two-member group, so one of them — your choice,
+Card B is the usual one — is carried as a **short card**: shipped analysis +
+interpretation, no extension.
+
+The export steward **freezes `exports/` at least 3 days before the deadline** so everyone
+finalises against the same numbers.
+
+Full detail — roles, the card table, the extensions, the freeze, and the (optional, off
+by default) Git guidance — is in [`template/COLLABORATION.md`](template/COLLABORATION.md).
+**Read it before you divide the work.**
 
 ## Definition Of Done
 
@@ -53,7 +67,14 @@ produce figures.
 - which parameters or boundary conditions you changed;
 - how the model response appears in heads, drawdown, budgets, and transport outputs;
 - whether the result looks like a physical signal, numerical noise, or model instability;
-- what the result implies for the practical groundwater problem.
+- what the result implies for the practical groundwater problem;
+- **which of your claims the model actually supports, and which it does not** — and
+  where you say so in the report;
+- **what would have to be different for your conclusion to change** — the defensibility
+  question each card extension asks, answered for the group's headline result.
+
+Every member should be able to answer all of these for the **group's** work, not only for
+their own two cards — expect to be asked about any part of it.
 
 ## What You Submit
 
@@ -62,17 +83,42 @@ produce figures.
 - your filled `case_config.yaml` and `case_config_transport.yaml`;
 - the **master** flow and transport notebooks, **with saved output**;
 - the **steward export** notebook, with saved output;
-- the **scratch** notebook(s) (`scratch_<name>.ipynb`) with saved figures/tables, plus
-  `scratch_io.py`;
+- **one scratch notebook per member** (`scratch_<name>.ipynb`), each covering that
+  member's **two cards including their extensions** — plus the short card, if they carry
+  it — with saved figures/tables, plus `scratch_io.py`;
 - the `exports/` bundle, and the `figures/` and `tables/` you produced;
 - your filled-in `SUBMISSION_README.md`;
-- `presentation.pdf` in the **group folder root**.
+- `report.pdf` and `presentation.pdf` in the **group folder root**.
 
-There is **no written report** — your modelling work, your presentation and your oral
-defence are the submission. Flow **and** transport are both required.
+Start the report from `template/report_template.md`, `.tex` or `.docx` — same skeleton,
+three formats. The presentation is **strictly 12 minutes**; see
+[`template/REPORT_BRIEF.md`](template/REPORT_BRIEF.md) for what fits.
 
-**Only the scratch notebook has to rerun from the ZIP.** It is FloPy-free and reads only
-`scratch_io.py` and `exports/`; that is the artifact your TA reruns. The master and
+Flow **and** transport are both required.
+
+### How the pieces are assessed
+
+Four things carry your project grade:
+
+| Component | What it is |
+|---|---|
+| Written exam | Individual, during the semester. |
+| Group report | `report.pdf` — the written record of *how you know*. See [`template/REPORT_BRIEF.md`](template/REPORT_BRIEF.md). |
+| Oral presentation | Your presentation delivered and defended. **Strictly 12 minutes**, questions extra. `presentation.pdf` is its artifact. |
+| Working notebooks | The **evidence** the report and the oral rest on. Computed work that nothing in the ZIP reproduces cannot be credited. |
+
+> **Moodle is definitive.** The **weighting** of these components, the deadlines, the exam
+> arrangements and the grading rubric are published on the Moodle course page — not in this
+> repository, so that the repo and the official course description cannot drift apart.
+> **Check Moodle before you plan your time.**
+
+The report and the presentation are **not** the same content in two formats — see the
+comparison in [`template/REPORT_BRIEF.md`](template/REPORT_BRIEF.md). Write the report
+first.
+
+**Only the scratch notebooks have to rerun from the ZIP.** They are FloPy-free and read
+only `scratch_io.py` and `exports/`; they are the artifacts your TA can rerun and will
+spot-check — your card extension code included. The master and
 steward notebooks are saved-output provenance records — the heavy model workspaces under
 `~/applied_groundwater_modelling_data/` are excluded from the ZIP, so those notebooks are
 not expected to rerun from it.
@@ -90,9 +136,17 @@ On the course JupyterHub. Replace `<N>` with your zero-padded group number (e.g.
 
 1. Copy `template/SUBMISSION_README_TEMPLATE.md` into your group folder as
    `SUBMISSION_README.md` and fill in every `<...>` field.
-2. Restart-and-run-all the steward export notebook, then every `scratch_<name>.ipynb`, so
-   figures and tables are saved with output.
-3. Put `presentation.pdf` in the group folder root.
+2. Restart-and-run-all every `scratch_<name>.ipynb`, so figures and tables are saved with
+   output. Check that each member's notebook has **every** card they own run, with the
+   extensions — the short card excepted, which needs interpretation only.
+
+   > ⚠️ **Do not re-run the steward export notebook here.** It would rebuild `exports/`
+   > and break the freeze your group finalised against — the bundle in the ZIP would no
+   > longer be the one the figures came from. Its saved output from the freeze run is
+   > what you submit. Re-run it only for a deliberate correctness fix, and then tell the
+   > group to re-run their cards against the new bundle.
+3. Put `report.pdf` and `presentation.pdf` in the group folder root. (Your report source
+   — `.md`, `.tex` or `.docx` — may go in too; the PDF is what is required.)
 4. Zip **from `PROJECT/workspace/`**, not from inside the group folder, so the archive has
    a single top-level `group_<N>/` folder:
 
