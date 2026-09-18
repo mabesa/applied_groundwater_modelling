@@ -107,7 +107,16 @@ Project examples and template outputs may also be public. If an instructor wants
 
 ## Assessment
 
-The project is assessed through notebooks, report, and presentation. The assessment should reward both correct modelling work and professional communication.
+The project is assessed through notebooks, report, and presentation.
+
+**The presentation is limited to 12 minutes and students are told it is enforced**
+(`PROJECT/workspace/template/REPORT_BRIEF.md` gives them a per-section time budget).
+Someone must therefore actually hold a clock and stop the talk at 12 minutes — if the
+limit is announced and then not kept, the groups that rehearsed to it are penalised
+relative to those that did not. Questions follow and are not counted in the 12; that is
+where individual understanding is assessed.
+
+The assessment should reward both correct modelling work and professional communication.
 
 Report and presentation rubrics should emphasize:
 

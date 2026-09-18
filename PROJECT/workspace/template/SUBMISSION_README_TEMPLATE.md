@@ -3,23 +3,63 @@
 *Copy this file into your group folder, fill every `<...>` field, and include it in the
 submission ZIP.*
 
-## Group members
+## Group members and stewardship
 
-| Name | Role |
-|------|------|
-| `<First Last>` | steward |
-| `<First Last>` | deputy |
-| `<First Last>` | member |
+Stewardship rotates — see `COLLABORATION.md`. Name the member who **actually ran** each
+heavy notebook. In a two-person group one member holds two steward roles; in a
+three-person group each member holds exactly one.
+
+| Role | Member | Ran | Deputy |
+|------|--------|-----|--------|
+| Flow steward | `<First Last>` | `case_study_flow_group_0.ipynb` | `<name>` |
+| Transport steward | `<First Last>` | `case_study_transport_group_0.ipynb` | `<name>` |
+| Export steward | `<First Last>` | `steward_export_lightweight.ipynb` + bundle QA | `<name>` |
+
+- [ ] Every member ran at least one master or steward-export notebook themselves.
 
 ## Card assignment & contribution statements
 
-One row per member. State the card and one sentence on what you produced.
+**Two cards per member, with extensions.** Cards **A, B, C, D and E** are required in
+every group; a three-member group covers all six, two each. A two-member group has four
+extension slots for five required cards, so one member carries a **third** card as a
+**short card** — shipped analysis + interpretation, no extension. Mark it `(short)`.
 
-| Member | Card | Contribution |
-|--------|------|--------------|
-| `<name>` | `<A/B/C/D/E/F>` | `<e.g. computed the drawdown affected area and wrote the interpretation>` |
-| `<name>` | `<card>` | `<...>` |
-| `<name>` | `<card>` | `<...>` |
+One row per card — state what you produced **and what your extension added**.
+
+| Member | Card | Contribution | Extension — what you computed and what you concluded |
+|--------|------|--------------|------------------------------------------------------|
+| `<name>` | `<A/B/C/D/E/F>` | `<e.g. computed the drawdown affected area and wrote the interpretation>` | `<e.g. swept the area threshold 0.1–2.0 m; the 'affected area' halves between 0.4 and 0.6 m, so the 0.5 m figure is a convention, not a boundary>` |
+| `<name>` | `<card>` | `<...>` | `<...>` |
+| `<name>` | `<card>` | `<...>` | `<...>` |
+| `<name>` | `<card>` | `<...>` | `<...>` |
+| `<name>` | `<card>` | `<...>` | `<...>` |
+| `<name>` | `<card>` | `<...>` | `<...>` |
+
+- [ ] Every member owns **two** cards with extensions. *(Two-member group: one of you
+      also carries the short card, so that member has three rows below — mark it
+      `(short)`.)*
+- [ ] No card is duplicated. A deliberate cross-check is **additional** work, not a
+      replacement — if you did one, say what it showed: `<...>`
+- [ ] Cards A, B, C, D and E are all covered. Two-member group: which card is the
+      short one, and why that one? `<...>`
+- [ ] Every **full** card's extension is completed: the computation **and** the written
+      defensibility answer. *(The short card is the one exception — shipped analysis +
+      interpretation only. Mark it `(short)` above.)*
+
+## Report authorship
+
+| Report section | Drafted by |
+|---|---|
+| Conceptual model, synthesis, limitations, conclusion | whole group |
+| Method — flow | `<flow steward>` |
+| Method — transport | `<transport steward>` |
+| Results — `<card>` + `<card>` | `<name>` |
+| Results — `<card>` + `<card>` | `<name>` |
+| Results — `<card>` + `<card>` | `<name>` |
+
+- [ ] Every **computed** number quoted in `report.pdf` appears in a table under
+      `tables/` produced from the frozen bundle. (Values you were *given* — α_L,
+      porosity, your threshold — are cited from the config instead.)
 
 ## Included files checklist
 
@@ -31,11 +71,16 @@ rename them to your group number**; your group is identified by the `group_<N>/`
 - [ ] `case_study_flow_group_0.ipynb` — master flow notebook, **with saved output** *(required)*
 - [ ] `case_study_transport_group_0.ipynb` — master transport notebook, with saved output *(required)*
 - [ ] `steward_export_lightweight.ipynb` — export notebook, with saved output *(required)*
-- [ ] `scratch_<name>.ipynb` (one per member) — with saved figures/tables *(required)*
+- [ ] `scratch_<name>.ipynb` (one per member, **two cards each with their extensions run**;
+      in a pair, one member also carries the short card) — with saved figures/tables
+      *(required)*
 - [ ] `scratch_io.py` — the FloPy-free reader (required for rerun) *(required)*
 - [ ] `exports/` — the lightweight bundle (see below) *(required)*
-- [ ] `figures/` and `tables/` — outputs produced by the scratch cards *(required)*
+- [ ] `figures/` and `tables/` — outputs produced by the scratch cards **and their
+      extensions** *(required)*
+- [ ] `report.pdf` — the group report, in the group folder root *(required)*
 - [ ] `presentation.pdf` — in the group folder root *(required)*
+- [ ] Presentation rehearsed and comes in **under 12 minutes** (hard limit; questions extra)
 
 Flow **and** transport are both required for the final submission once the transport
 phase has been assigned.
@@ -48,27 +93,36 @@ phase has been assigned.
 - [ ] `flow_budget_summary.csv` *(required)*
 - [ ] `transport_breakthrough.csv` *(required)*
 - [ ] `transport_meta.json` *(required)*
-- [ ] `flow_heads_sub_scenario.gpkg` *(optional — include if a scenario export exists)*
-- [ ] `pathlines_summary.csv` *(optional — normally present; absent only if PRT
-      was disabled or its export did not complete)*
+- [ ] `flow_heads_sub_scenario.gpkg` *(required — Card C needs it)*
+- [ ] `pathlines_summary.csv` *(required — PRT; Card B needs it. Absent means the flow
+      master ran with `RUN_PRT = False`: set it `True`, re-run and re-export)*
+
+All eight are required. The `exports/` bundle has **no optional parts** — `scratch_io`
+tolerates a missing file so a card skips instead of crashing, but that is defensive
+reading, not permission to omit it.
 
 Optional non-export extras:
 
 - [ ] presentation source file such as `presentation.pptx` *(optional — `presentation.pdf`
       in the group folder root is what is required)*
+- [ ] report source file such as `report.md`, `report.tex` or `report.docx` *(optional —
+      `report.pdf` is what is required)*
 
-## Optional exports we did NOT include
+## Required exports we could not produce
 
-List any optional artifact that is intentionally absent and why (this matches
-`run_info.json → missing_optional`):
+This should be **empty**. If it is not, your bundle is incomplete and cards downstream
+of the missing file cannot deliver. List anything absent, why, and what you did about
+it — this must match `run_info.json → missing_required`:
 
-- `<e.g. pathlines_summary.csv — PRT step not run or not exported>`
-- `<e.g. transport_* — transport scenario not attempted>`
+- `<file — why it is missing, and what you tried>`
+
+- [ ] `run_info.json → missing_required` is empty.
 
 ## Reproducibility note
 
-- The **scratch** notebook (`scratch_analysis_template.ipynb`) reruns from this ZIP
-  **alone** — it is FloPy-free and reads only the `exports/` bundle via `scratch_io.py`.
+- Every member's **scratch** notebook (`scratch_<name>.ipynb`) reruns from this ZIP
+  **alone** — they are FloPy-free and read only the `exports/` bundle via `scratch_io.py`.
+  This covers the **card extension code** each member wrote, not just the shipped cells.
 - The **master** and **steward export** notebooks are **provenance records** (saved
   output). They are **not** expected to rerun from the ZIP because the heavy model
   workspaces are **excluded** (see below).

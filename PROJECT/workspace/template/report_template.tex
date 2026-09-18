@@ -1,0 +1,224 @@
+% =====================================================================
+%  GROUP REPORT TEMPLATE -- Applied Groundwater Modelling
+% =====================================================================
+%  Read REPORT_BRIEF.md first: it says what each section is FOR and how
+%  it is judged. This file is only the skeleton.
+%
+%  Same skeleton in three formats -- use whichever you like:
+%      report_template.md    Markdown (JupyterHub, VS Code, any editor)
+%      report_template.tex   this file (LaTeX / Overleaf)
+%      report_template.docx  Microsoft Word
+%
+%  HOW TO USE
+%    1. Copy this file into your group folder as report.tex.
+%    2. Delete every % comment block as you go -- they are instructions,
+%       not content.
+%    3. Compile to report.pdf in your group folder root.
+%       Overleaf: upload and hit Recompile.
+%       On the course JupyterHub (pdflatex/xelatex/lualatex are installed):
+%           pdflatex report.tex && pdflatex report.tex
+%       (run it twice so the table/figure references resolve)
+%
+%  LIMITS
+%    10 pages max, excluding title, references and appendix.
+%    Appendix capped at 5 pages.
+%    The per-section budgets below add to about 8, which leaves you room.
+%
+%  Deliberately plain: article class and standard packages only, so it
+%  compiles anywhere without installing anything.
+% =====================================================================
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+% >>> REPLACE EVERY <...> BELOW. A forgotten title block is visible on page 1. <<<
+% Two-member group: delete the third \and entry.
+\title{<Your title --- name the concession and the question,
+        not ``Groundwater Modelling Report''>}
+\author{Group <N> \\
+        <First Last> \and <Second Last> \and <Third Last>}
+\date{<date>}
+
+\begin{document}
+\maketitle
+
+% ---------------------------------------------------------------------
+\section{Problem and modelling question}
+% ~0.5 page. One paragraph.
+% Your concession, its setting, and the question your scenario actually
+% asks. Be specific: "does the assigned recharge reduction change river
+% leakage enough to matter for the concession's yield" is a question;
+% "we study the Limmat aquifer" is not.
+
+<...>
+
+% ---------------------------------------------------------------------
+\section{Conceptual model and assumptions}
+% ~1.5 pages.
+% The aquifer as YOU are modelling it: boundaries and what they represent,
+% the stresses, your scenario's physical story, and the transport setup --
+% spill, doublet, the locked physics (alpha_L = 10 m, alpha_T = 1 m,
+% n_e = 0.20) and your group's pinned reactions.
+%
+% State the assumptions YOU make, not the ones the software makes, and name
+% the CONSEQUENCE of each.
+
+<...>
+
+\subsection{Assumptions and their consequences}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\toprule
+Assumption & Why reasonable here & What it costs us \\
+\midrule
+<e.g. steady state> & <...> & <...> \\
+<...>               & <...> & <...> \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------------------
+\section{Method}
+% ~1 page.
+% Enough that a competent reader could repeat it: the four flow states and
+% what each isolates, how your scenario forcing is applied, the transport
+% build, and which quantities came from which export. Point to the
+% notebooks; do not reproduce their code.
+
+<...>
+
+% ---------------------------------------------------------------------
+\section{Results}
+% ~3 pages. THE STRUCTURE MATTERS: organise by FINDING, not by card.
+% The full record of each card and its extension is already in the scratch
+% notebooks and in tables/ -- do not re-narrate it. What belongs here is the
+% INTEGRATED result: what the flow response, the scenario forcing, the water
+% balance and the transport verdict say TOGETHER about your concession.
+%
+% Every figure and table: caption, units, and the file under figures/ or
+% tables/ it came from. Every computed number traceable to the frozen bundle.
+%
+% Two traps to handle explicitly:
+%  - head change has two conventions: abs() (counts the injection mound) vs
+%    drawdown (base - compare, positive where head falls). Say which.
+%  - an advective travel time is not a concentration peak. Do not reconcile
+%    them by arithmetic.
+%
+% Both things are required AT ONCE, and this is the hardest instruction in the brief:
+% the section must be finding-shaped, AND every member's work must be visible in it.
+% A finding usually draws on more than one card -- say whose analysis established it,
+% in the text or the caption, rather than giving each member a subsection.
+%
+% Rename these headings to YOUR findings.
+
+\subsection{What the doublet does to the flow field}
+<...>
+
+\subsection{What your scenario forcing adds, and where it dominates}
+<...>
+
+\subsection{What the water balance says}
+<...>
+
+\subsection{The transport verdict}
+<...>
+
+% Figure pattern -- caption names the source file:
+% \begin{figure}[h]
+%   \centering
+%   \includegraphics[width=0.8\textwidth]{figures/cardA_drawdown_map.png}
+%   \caption{Drawdown (base $\rightarrow$ wells), m. Source:
+%            \texttt{figures/cardA\_drawdown\_map.png}.}
+% \end{figure}
+
+% ---------------------------------------------------------------------
+\section{Uncertainty and the limits of your claims}
+% ~1.5 pages. This section separates reports at this level. Required:
+%  - the mesh envelope on your transport peak (two defensible meshes move it
+%    by roughly +/-20 %), and its consequence -- WHETHER OR NOT it flips your
+%    verdict;
+%  - a signal / artefact / instability judgment on your main flow result with
+%    the evidence that discriminates -- or a correct finding that your
+%    evidence CANNOT discriminate, and what would;
+%  - at least one limitation you found and quantified yourselves;
+%  - your card extensions' defensibility answers, synthesised not listed.
+
+<...>
+
+\subsection{What this model cannot tell you}
+% State these explicitly. The model resolves transport ALONG the flow axis
+% but not across it, so:
+%   CLAIMABLE     -- arrival time, first threshold exceedance, receptor peak
+%   NOT CLAIMABLE -- contaminated-area maps, lateral threshold-contour width,
+%                    exact plume footprint (numerical artefacts at any
+%                    feasible grid).
+% Then check nothing elsewhere in your report quietly breaks this.
+
+<...>
+
+% ---------------------------------------------------------------------
+\section{Conclusion and practical recommendation}
+% ~0.5 page.
+% What the result means for the actual problem. ONE recommendation, and the
+% condition under which you would withdraw it.
+%
+% A no-reach or below-threshold result is not a weaker result.
+
+<...>
+
+% ---------------------------------------------------------------------
+\section{Contribution statement}
+% Must be CONSISTENT WITH SUBMISSION_README.md and the STUDENT_NAME fields in the
+% scratch notebooks. That file lists one row per card, this one per member --
+% different shapes, same people. In a two-member group one member has three cards;
+% mark the short one (short).
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\toprule
+Member & Cards & Contribution \\
+\midrule
+<...> & <...> & <...> \\
+<...> & <...> & <...> \\
+<...> & <...> & <...> \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Steward roles:} flow <name> $\cdot$ transport <name> $\cdot$ export <name>
+
+% ---------------------------------------------------------------------
+\section{References}
+<...>
+
+% ---------------------------------------------------------------------
+\appendix
+% Not counted in the 10 pages. Capped at 5 pages.
+
+\section{Figure and table index}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+\toprule
+Report item & File \\
+\midrule
+Figure 1 & \texttt{figures/<...>} \\
+Table 1  & \texttt{tables/<...>} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Derivations or intermediate numbers you want on record}
+<...>
+
+\end{document}
