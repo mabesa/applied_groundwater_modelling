@@ -197,9 +197,6 @@ _SUPPORT/src/scripts/reliability_sweep/
 /_SUPPORT/extract_river_temperature_from_yearbooks/debug_output
 /_SUPPORT/extract_river_temperature_from_yearbooks/downloaded_pdfs
 
-# WF2 (vision-build) detached gate-runner artifacts
-.claude/workflow-runs/
-
 # Internal redesign handoff/design doc — kept local, not shipped to student branches
 .flow_redesign_handoff.md
 
@@ -210,3 +207,8 @@ flow_group_validation_report.json
 # golden generation scratch (created by casestudy_flow_golden.py)
 _SUPPORT/src/golden/_work/
 _SUPPORT/src/golden/_assemble/
+
+# Claude Code's working directory. Never tracked (the 7 files it once held went in
+# cc3cf63), but it was not ignored either — and it holds full repo worktrees plus
+# run logs, currently ~1.9 GB.
+.claude/
