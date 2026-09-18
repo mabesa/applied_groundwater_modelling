@@ -212,3 +212,18 @@ _SUPPORT/src/golden/_assemble/
 # cc3cf63), but it was not ignored either — and it holds full repo worktrees plus
 # run logs, currently ~1.9 GB.
 .claude/
+
+# Instructor validation-run output (mother_model_lock.py writes here, and the parked
+# pinned-meshes workstream drops its reference here). Nothing in it is tracked.
+/_SUPPORT/validation/
+
+# Editor scratch and OS metadata — keeps a public repo clean of local debris
+*.swp
+*.swo
+*~
+.#*
+._*
+__MACOSX/
+[Tt]humbs.db
+[Ee]hthumbs.db
+[Dd]esktop.ini
