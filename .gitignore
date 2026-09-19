@@ -227,3 +227,40 @@ __MACOSX/
 [Tt]humbs.db
 [Ee]hthumbs.db
 [Dd]esktop.ini
+
+# LaTeX build artifacts. The templates document copy-then-compile (copy report_template.tex
+# into your group folder as report.tex, compile there), and group folders are already
+# covered by PROJECT/workspace/*/ above. But an in-place compile of the template drops
+# these beside it, and PROJECT/workspace/template/ is deliberately un-ignored — so without
+# this they land as untracked files in a tracked directory. That is what happened during
+# the Hub verification, and an instructor or a curious student will do it again.
+# (*.log is already covered at line 59.)
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.brf
+*.dvi
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.lof
+*.loa
+*.lol
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex
+*.synctex.gz
+*.toc
+*.vrb
+*.xdv
+# Scoped, not a blanket *.pdf: no PDF is tracked today and a global rule would silently
+# refuse a future one. Note the trade-off — this does block the one PDF this directory is
+# most likely to want later, a rendered example of the compiled template. `git add -f` it
+# if that day comes.
+/PROJECT/workspace/template/report_template.pdf
