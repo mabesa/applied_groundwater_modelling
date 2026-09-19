@@ -35,6 +35,16 @@ import pytest
 from shapely.geometry import Polygon
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _schema_version() -> str:
+    """Read it from the module rather than hardcoding — a literal here silently
+    drifts from scratch_io on the next bump."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('sio_ver', SCRATCH_IO_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.SCHEMA_VERSION
 SCRATCH_IO_PATH = REPO_ROOT / "PROJECT" / "workspace" / "template" / "scratch_io.py"
 
 
@@ -66,7 +76,7 @@ def _build_exports(ex: Path) -> None:
     with open(ex / "run_info.json", "w", encoding="utf-8") as fh:
         json.dump(
             {
-                "schema_version": "1.0",
+                "schema_version": _schema_version(),
                 "group_number": 0,
                 "crs": "EPSG:2056",
                 "exports": {"flow_heads_sub_base.gpkg": {"present": True}},

@@ -64,7 +64,9 @@ One row per card — state what you produced **and what your extension added**.
 ## Included files checklist
 
 Tick what is in this ZIP. The template notebooks keep their shipped filenames — **do not
-rename them to your group number**; your group is identified by the `group_<N>/` folder.
+rename them to your group number**. Your group is identified by **`group.number` in
+`case_config.yaml`**; the `group_<N>/` folder name must match it, and the notebooks now
+refuse to run if it does not.
 
 - [ ] `case_config.yaml` (filled in) *(required)*
 - [ ] `case_config_transport.yaml` (filled in) *(required)*

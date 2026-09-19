@@ -19,7 +19,7 @@ Because of this contract the scratch notebook re-runs from the extracted ZIP alo
 on any machine with a scientific-Python + geopandas environment — no MODFLOW, no
 FloPy, no course repository, no heavy model workspaces.
 
-Export bundle (schema 1.0)
+Export bundle (schema 2.0)
 --------------------------
 ``exports/``
     run_info.json                  provenance + manifest (always present)
@@ -40,6 +40,7 @@ directly from the geometry — no cell-size assumption is baked in here.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -50,7 +51,7 @@ import geopandas as gpd
 # ---------------------------------------------------------------------------
 # Schema / constants
 # ---------------------------------------------------------------------------
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "2.0"   # 2.0: run_info carries `missing_required` (was `missing_optional`)
 
 #: Target coordinate reference system for every spatial export (Swiss LV95).
 EXPORT_EPSG = 2056
@@ -107,6 +108,43 @@ def assert_no_flopy() -> None:
 # ---------------------------------------------------------------------------
 # Locating the exports/ folder
 # ---------------------------------------------------------------------------
+def assert_group_folder_matches(group_number, start=None, remedy=None):
+    """Refuse to run when the group folder disagrees with the configured group.
+
+    A student who copies ``template/`` to ``group_07/`` and forgets to edit
+    ``group.number`` in ``case_config.yaml`` silently runs **group 0's** scenario.
+    Nothing downstream notices: the masters run, the export builds a valid bundle,
+    the bundle check says "Ready to submit", and the ZIP reruns clean -- all for the
+    wrong group. This has happened to a real student, and again during the 2026-09-19
+    Hub preflight.
+
+    Returns the group number parsed from the folder, or ``None`` when the folder is
+    not named ``group_<N>`` (``template/``, an extracted ZIP, a scratch directory) --
+    there is nothing to check in that case.
+    """
+    folder = Path(start or Path.cwd()).resolve().name
+    m = re.fullmatch(r"group_(\d+)", folder)
+    if m is None:
+        # Fail open, but SAY SO: the whole failure mode starts at the copy-and-rename
+        # step, so a student who typed "group05" or "Group_05" gets no protection and
+        # should know the check switched itself off.
+        if folder not in ("template",) and folder.lower().startswith("group"):
+            print(f"NOTE: folder {folder!r} is not named group_<N>, so the group check "
+                  f"is inactive. PROJECT/workspace/README.md asks for e.g. group_03.")
+        return None
+    from_folder = int(m.group(1))
+    if from_folder != int(group_number):
+        raise ValueError(
+            f"This folder is {folder!r} but the configuration says group "
+            f"{int(group_number)}. You would run group {int(group_number)}'s scenario, "
+            f"not group {from_folder}'s -- a different concession, contaminant and "
+            f"threshold. "
+            + (remedy or f"Set `group.number: {from_folder}` in case_config.yaml "
+                         f"(or rename the folder to match).")
+        )
+    return from_folder
+
+
 def find_exports(start=None) -> Path:
     """Locate the ``exports/`` folder from wherever the notebook was opened.
 

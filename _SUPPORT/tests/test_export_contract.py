@@ -276,3 +276,67 @@ def test_steward_resolves_support_like_the_master_notebooks():
         f"steward should resolve _SUPPORT/src as {relative}, the same relative "
         f"form both master notebooks use"
     )
+
+
+# =============================================================================
+# 6. The group-folder guard must actually be WIRED IN
+#
+# scratch_io.assert_group_folder_matches is unit-tested, but nothing checked that
+# the notebooks still CALL it -- delete a call line and every test stayed green.
+# That is the same "two files agreeing with nothing checking" pattern this file
+# was written for. A student who copies template/ to group_07/ and leaves
+# group.number at 0 silently runs the demo scenario; it has happened twice.
+# =============================================================================
+GUARD = "assert_group_folder_matches"
+
+#: Every notebook that resolves a group and then acts on it.
+GUARDED_NOTEBOOKS = (FLOW_NB, TRANSPORT_NB, STEWARD_NB, SCRATCH_NB)
+
+
+def _makes_a_real_call_to(nb_path, name):
+    """True only for an executable call -- not a mention in a comment or string.
+
+    A substring check passed when the call was commented out, which is the same
+    can-never-fail shape this file exists to catch.
+    """
+    for tree in _trees(nb_path):
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            fn = node.func
+            if (isinstance(fn, ast.Attribute) and fn.attr == name) or (
+                isinstance(fn, ast.Name) and fn.id == name
+            ):
+                return True
+    return False
+
+
+@pytest.mark.parametrize("nb_path", GUARDED_NOTEBOOKS, ids=lambda p: p.name)
+def test_notebook_calls_the_group_folder_guard(nb_path):
+    assert _makes_a_real_call_to(nb_path, GUARD), (
+        f"{nb_path.name} no longer calls scratch_io.{GUARD}(). Without it, running "
+        f"in group_07/ with group.number still 0 silently produces a complete, "
+        f"valid-looking submission for the WRONG group."
+    )
+
+
+def test_the_guard_exists_and_is_callable(scratch_io):
+    """The notebooks call it by name; this is the other half of that contract."""
+    assert callable(getattr(scratch_io, GUARD, None)), (
+        f"scratch_io.{GUARD} is missing, but {len(GUARDED_NOTEBOOKS)} notebooks call it"
+    )
+
+
+def test_flow_master_guards_the_effective_group_not_the_configured_one():
+    """The flow master lets AGM_GROUP_ID override the config; the guard must run
+    AFTER that, or the gates' override would be checked against the wrong number."""
+    src = _source(FLOW_NB)
+    # index the ASSIGNMENT, not the first mention: AGM_GROUP_ID appears earlier in
+    # an explanatory comment, and indexing that made this test pass even with the
+    # guard moved above the override -- the exact defect it names.
+    override = src.index('os.environ.get("AGM_GROUP_ID"')
+    guard = src.index(GUARD)
+    assert override < guard, (
+        "the group-folder guard runs BEFORE the AGM_GROUP_ID override in the flow "
+        "master, so it would check the configured group rather than the effective one"
+    )
