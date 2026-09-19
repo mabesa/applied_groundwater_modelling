@@ -155,7 +155,7 @@ If notebooks scroll erratically: `Settings → Settings Editor → Notebook → 
 
 The course is organized into two main phases:
 
-### Phase 1: Theory (Weeks 1-8)
+### Phase 1: Theory
 
 Lectures and exercises covering flow and transport fundamentals.
 
@@ -163,7 +163,7 @@ Lectures and exercises covering flow and transport fundamentals.
 - `exercises/` - exercises and reminders reinforcing key concepts; most exercises are now embedded in the flow and transport notebooks
 - `_demos/` - Lecture demonstrations (e.g., porosity and REV)
 
-### Phase 2: Project (Weeks 9-14)
+### Phase 2: Project
 
 Apply concepts to the Limmat Valley aquifer case study.
 
@@ -194,7 +194,7 @@ The transport track builds on the calibrated flow model. Steps marked with "—"
 
 | Period | Focus | Main student activity | Main output |
 | --- | --- | --- | --- |
-| Weeks 1-8 | Groundwater flow and transport theory | Lectures, exercises, discussions, and modelling foundations | Self-corrected exercises and exam preparation |
+| Theory block | Groundwater flow and transport theory | Lectures, exercises, discussions, and modelling foundations | Self-corrected exercises and exam preparation |
 | Project block | Limmat Valley case study | Flow and transport notebooks, scenario analysis, report writing, and presentation preparation | Submitted notebooks, configuration files, report, and presentation |
 | Final communication | Synthesis and communication | Present modelling results, limitations, and recommendations | Project presentation and final report |
 
@@ -208,10 +208,10 @@ The course is a 4 ECTS course. The project workload is being reassessed for HS26
 
 ```
 applied_groundwater_modelling/
-├── THEORY/                   # Phase 1: Theory materials (Weeks 1-8)
+├── THEORY/                   # Phase 1: Theory materials
 │   ├── exercises/            # Exercises aligned with lectures
 │   └── _demos/               # Lecture demonstrations
-├── PROJECT/                  # Phase 2: Case study (Weeks 9-14)
+├── PROJECT/                  # Phase 2: Case study
 │   ├── 0_start_here.ipynb    # Course intro & 10-step framework
 │   ├── flow/                 # Flow modeling track (steps 1-10)
 │   ├── transport/            # Transport track
