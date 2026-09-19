@@ -190,7 +190,7 @@ The project follows a 10-step modeling methodology:
 
 The transport track builds on the calibrated flow model. Steps marked with "—" use the flow model results.
 
-### Semester Map
+### Course Map
 
 | Period | Focus | Main student activity | Main output |
 | --- | --- | --- | --- |
