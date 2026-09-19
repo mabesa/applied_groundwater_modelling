@@ -40,6 +40,9 @@ This is where you work on your flow and transport case study.
 | `report_template.md` / `.tex` / `.docx` | the report skeleton — same structure in three formats, pick one |
 | `SUBMISSION_README_TEMPLATE.md` | fill in and include in your ZIP |
 
+One file sits **outside** `template/`, so it is never copied into your group folder:
+`check_submission_zip.py` — run it on your finished ZIP (step 5 of *Building The ZIP*).
+
 ## How Your Group Works
 
 **Stewardship rotates, so nobody sits out the modelling.** The flow steward runs
@@ -168,7 +171,27 @@ unzip -Z1 group_<N>.zip | cut -d/ -f1 | sort -u
    If that prints anything other than the single line `group_<N>`, you zipped from inside
    the group folder — delete the ZIP and redo this step from `PROJECT/workspace/`.
 
-5. Check it reruns. Extract into a clean folder and restart-and-run one scratch notebook
+5. **Check the ZIP.** Five seconds, and it catches a mistake that has already happened
+   twice — once to a student, once in a course preflight: a bundle belonging to a
+   different group than the folder it sits in. Everything else about such a submission
+   looks right, which is what makes it worth checking:
+
+```bash
+python3 check_submission_zip.py group_<N>.zip
+```
+
+   It compares three things that must agree — the folder name, the group recorded in
+   `exports/run_info.json`, and `group.number` in `case_config.yaml` — and checks that
+   the eight bundle files, the notebooks, the configs, `figures/`, `tables/` and your two
+   PDFs are present and non-empty. It does not judge their *contents*: that is what the
+   rerun in step 6 is for. If it reports a group mismatch, **do not rename the folder**:
+   that would submit another group's scenario. Fix `group.number`, re-run both masters and
+   the steward export, and rebuild the ZIP.
+
+   > Your TA runs this same command on the ZIP they receive, so a mismatch is found
+   > either way — but finding it here is the difference between a rebuild and a mark.
+
+6. Check it reruns. Extract into a clean folder and restart-and-run one scratch notebook
    from there; it must run top to bottom with no manual fixes:
 
 ```bash
@@ -176,4 +199,4 @@ rm -rf ~/ziptest/group_<N> && mkdir -p ~/ziptest
 unzip -q group_<N>.zip -d ~/ziptest
 ```
 
-6. Submit that one ZIP.
+7. Submit that one ZIP.
