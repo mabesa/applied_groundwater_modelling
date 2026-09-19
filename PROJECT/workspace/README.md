@@ -13,12 +13,18 @@ This is where you work on your flow and transport case study.
 1. Copy the `template/` folder to create your own workspace.
 2. Rename the copy to your group folder using the standard naming `group_<N>`, zero-padded
    to two digits — for example `group_03`.
-3. Work only in your group folder.
-4. **Do not rename the template notebooks.** The filenames stay exactly as shipped —
+3. **Set `group.number` in `case_config.yaml` to the same number.** Renaming the folder
+   does not do this for you: the notebooks read the number from the YAML, which ships as
+   `0`. Miss this and every notebook runs the **demo** group's concession, contaminant
+   and threshold — and nothing downstream looks wrong. The notebooks now refuse to run
+   when the folder and the number disagree, but only if your folder is named exactly
+   `group_<N>`.
+4. Work only in your group folder.
+5. **Do not rename the template notebooks.** The filenames stay exactly as shipped —
    `case_study_flow_group_0.ipynb` and `case_study_transport_group_0.ipynb` — even though
-   your folder is `group_<N>`. Your group is identified by the folder name, not the
-   notebook filename.
-5. Keep the original `template/` folder unchanged so you can compare against it if needed.
+   your folder is `group_<N>`. Your group is identified by `group.number` in
+   `case_config.yaml` — the folder name must match it, not the notebook filename.
+6. Keep the original `template/` folder unchanged so you can compare against it if needed.
 
 ## What Is In The Template
 

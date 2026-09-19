@@ -38,7 +38,8 @@ SCRATCH_IO_PATH = REPO_ROOT / "PROJECT" / "workspace" / "template" / "scratch_io
 FORBIDDEN_IMPORTS = ("flopy", "pyemu")
 FORBIDDEN_IMPORT_PREFIXES = ("_SUPPORT",)
 ALLOWED_THIRD_PARTY = {"numpy", "pandas", "geopandas"}
-STDLIB_ALLOWED = {"json", "pathlib", "sys", "__future__"}
+# "re" is used by the group-folder guard, which parses a "group_<N>" directory name.
+STDLIB_ALLOWED = {"json", "pathlib", "re", "sys", "__future__"}
 
 
 # =============================================================================
@@ -139,7 +140,7 @@ def _write_heads_gpkg(path: Path, heads):
 
 
 @pytest.fixture()
-def exports_dir(tmp_path) -> Path:
+def exports_dir(tmp_path, scratch_io) -> Path:
     """Build a complete, tiny synthetic exports/ bundle."""
     ex = tmp_path / "group_test" / "exports"
     ex.mkdir(parents=True)
@@ -176,7 +177,7 @@ def exports_dir(tmp_path) -> Path:
     with open(ex / "run_info.json", "w", encoding="utf-8") as fh:
         json.dump(
             {
-                "schema_version": "1.0",
+                "schema_version": scratch_io.SCHEMA_VERSION,
                 "group_number": 0,
                 "crs": "EPSG:2056",
                 "exports": {
@@ -219,13 +220,18 @@ def test_load_run_info_and_schema(scratch_io, exports_dir):
 
 
 def test_check_schema_rejects_major_mismatch(scratch_io):
-    with pytest.raises(ValueError):
-        scratch_io.check_schema({"schema_version": "2.0", "group_number": 0, "crs": "x", "exports": {}})
+    # derive a major that cannot match the current one, so a future SCHEMA_VERSION
+    # bump cannot quietly turn this into a test that asserts nothing.
+    other = f"{int(scratch_io.SCHEMA_VERSION.split('.')[0]) + 1}.0"
+    with pytest.raises(ValueError, match="incompatible"):
+        scratch_io.check_schema({"schema_version": other, "group_number": 0, "crs": "x", "exports": {}})
 
 
 def test_check_schema_rejects_missing_keys(scratch_io):
-    with pytest.raises(ValueError):
-        scratch_io.check_schema({"schema_version": "1.0"})
+    # use the CURRENT schema so this fails on the missing keys, not the version --
+    # with a literal it would pass for the wrong reason after any version bump.
+    with pytest.raises(ValueError, match="missing required keys"):
+        scratch_io.check_schema({"schema_version": scratch_io.SCHEMA_VERSION})
 
 
 def test_available_exports_flags_presence(scratch_io, exports_dir):
@@ -317,3 +323,79 @@ def test_assert_no_flopy_raises_when_present(scratch_io, monkeypatch):
     monkeypatch.setitem(sys.modules, "flopy", types.ModuleType("flopy"))
     with pytest.raises(RuntimeError):
         scratch_io.assert_no_flopy()
+
+
+# =============================================================================
+# Group-folder guard
+#
+# A student copies template/ to group_07/ and forgets to edit group.number, so
+# every notebook runs group 0's scenario -- a different concession, contaminant
+# and threshold. Nothing downstream notices: the masters run, the export builds
+# a valid bundle, the bundle check says "Ready to submit" and the ZIP reruns
+# clean. This happened to a real student, and again during the 2026-09-19 Hub
+# preflight.
+# =============================================================================
+def test_group_folder_guard_accepts_a_matching_folder(scratch_io, tmp_path):
+    d = tmp_path / "group_05"
+    d.mkdir()
+    assert scratch_io.assert_group_folder_matches(5, start=d) == 5
+
+
+def test_group_folder_guard_accepts_zero_padding(scratch_io, tmp_path):
+    """Folders are zero-padded (group_03) but the config holds an int."""
+    d = tmp_path / "group_03"
+    d.mkdir()
+    assert scratch_io.assert_group_folder_matches(3, start=d) == 3
+
+
+def test_group_folder_guard_rejects_a_mismatch(scratch_io, tmp_path):
+    d = tmp_path / "group_05"
+    d.mkdir()
+    with pytest.raises(ValueError) as exc:
+        scratch_io.assert_group_folder_matches(0, start=d)
+    msg = str(exc.value)
+    # the message must name BOTH numbers, or the student cannot tell which to change
+    assert "group_05" in msg and "group 0" in msg and "group.number: 5" in msg
+
+
+def test_group_folder_guard_is_inert_outside_a_group_folder(scratch_io, tmp_path):
+    """template/ and an extracted ZIP must not be second-guessed.
+
+    Both validation gates run the master notebooks with cwd=PROJECT/workspace/
+    template, so a guard that fired there would break a 20-minute Hub gate.
+    """
+    for name in ("template", "ziptest", "group_test", "group_", "mygroup_7"):
+        d = tmp_path / name
+        d.mkdir()
+        assert scratch_io.assert_group_folder_matches(0, start=d) is None
+
+
+def test_group_folder_guard_accepts_str_and_int_group(scratch_io, tmp_path):
+    d = tmp_path / "group_11"
+    d.mkdir()
+    assert scratch_io.assert_group_folder_matches("11", start=d) == 11
+
+
+def test_group_folder_guard_message_is_a_whole_sentence(scratch_io, tmp_path):
+    """The remedy= refactor once dropped the noun completing 'concession,
+    contaminant and ___', leaving both messages ending mid-clause."""
+    d = tmp_path / "group_05"
+    d.mkdir()
+    with pytest.raises(ValueError) as exc:
+        scratch_io.assert_group_folder_matches(0, start=d)
+    msg = str(exc.value)
+    assert "concession, contaminant and threshold." in msg, msg
+    assert "case_config.yaml" in msg
+
+
+def test_group_folder_guard_custom_remedy_replaces_only_the_remedy(scratch_io, tmp_path):
+    """A caller checking the BUNDLE must be able to say so: telling that reader to
+    edit case_config.yaml is wrong, because it cannot change an exported bundle."""
+    d = tmp_path / "group_05"
+    d.mkdir()
+    with pytest.raises(ValueError) as exc:
+        scratch_io.assert_group_folder_matches(0, start=d, remedy="RE-EXPORT THE BUNDLE.")
+    msg = str(exc.value)
+    assert msg.endswith("RE-EXPORT THE BUNDLE.")
+    assert "concession, contaminant and threshold." in msg   # diagnosis survives
+    assert "group.number: 5" not in msg                      # default remedy replaced
