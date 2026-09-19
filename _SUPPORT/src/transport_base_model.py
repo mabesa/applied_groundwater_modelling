@@ -24,7 +24,7 @@ A third source mode is the student-project COMBINED scenario:
                     with per-group sorption/decay in MST and the source->extraction
                     corridor (plus the injection well) refined.  This is the
                     "will the spill reach the well, and does it exceed the threshold?"
-                    setup the Weeks 11-12 student template runs.  [groups]
+                    setup the student template runs.  [groups]
 
 Functions:
     build_doublet_base   : build + run the validated corridor-refine coupled sim
