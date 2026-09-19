@@ -99,6 +99,14 @@ The canonical student deliverables are listed in [PROJECT/workspace/README.md](.
 
 Instructors or TAs should run submitted notebooks to verify that report content is reproducible from the submitted work.
 
+**Run `PROJECT/workspace/check_submission_zip.py` on each ZIP you receive**, before anything else:
+
+```bash
+python3 PROJECT/workspace/check_submission_zip.py path/to/group_05.zip
+```
+
+It takes seconds, needs only the standard library, and catches the failure that has occurred twice: a submission that is complete, internally consistent and fully rerunnable, but belongs to a **different group** than its folder — a different concession, contaminant and threshold, with every other check passing. The students' own README tells them to run the same command, so a mismatch here means it was skipped.
+
 ## Graded Versus Practice Material
 
 Exercises are intended for practice and immediate self-correction. Exercise solutions may be public because the graded work is the group-specific project interpretation, report, and presentation.
