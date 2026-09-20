@@ -174,8 +174,12 @@ self-correcting exercises, rather than kept as separate exercise files.
 Apply concepts to the Limmat Valley aquifer case study.
 
 **Materials in `PROJECT/`:**
+- [`0_start_here.ipynb`](PROJECT/0_start_here.ipynb) - **start here**: course introduction and
+  the 10-step modelling framework
 - `flow/` and `transport/` - Step-by-step modeling notebooks
-- `workspace/` - Your working area
+- `workspace/` - Your working area. Read
+  [`PROJECT/workspace/README.md`](PROJECT/workspace/README.md) first: it defines the group
+  deliverables, the submission layout and the hand-in checks.
 - `_demos/` - Calibration, sensitivity, and uncertainty demonstrations (for lectures)
 
 The project follows a 10-step modeling methodology:
@@ -188,8 +192,8 @@ The project follows a 10-step modeling methodology:
 | 3 | Conceptual Model | `flow/03f_modflow_fundamentals.ipynb` | `transport/03t_modflow_transport.ipynb` |
 | 4 | Model Implementation | `flow/04f_model_implementation.ipynb` | `transport/04t_model_implementation.ipynb` |
 | 5 | Calibration | `flow/05f_calibration.ipynb` | `transport/05t_calibration.ipynb` |
-| 6 | Validation | `flow/06f_validation.ipynb` | — |
-| 7 | Sensitivity & Uncertainty | `flow/07f_sensitivity_uncertainty.ipynb` | — |
+| 6 | Validation *(optional)* | `flow/06f_validation.ipynb` | — |
+| 7 | Sensitivity & Uncertainty *(optional)* | `flow/07f_sensitivity_uncertainty.ipynb` | — |
 | 8 | Model Application | `flow/08f_model_application.ipynb` | `transport/08t_model_application.ipynb` |
 | 9 | Documentation | `flow/09f_documentation.ipynb` | — |
 | 10 | Communication | `flow/10f_communication.ipynb` | — |
@@ -221,7 +225,7 @@ applied_groundwater_modelling/
 │   ├── 0_start_here.ipynb    # Course intro & 10-step framework
 │   ├── flow/                 # Flow modeling track (steps 1-10)
 │   ├── transport/            # Transport track
-│   ├── workspace/            # Your working area
+│   ├── workspace/            # Your working area (start at its README.md)
 │   └── _demos/               # Calibration & uncertainty demos
 ├── DOCUMENTATION/            # Instructor, data, reference, and development docs
 ├── _SUPPORT/                 # Helper code and static files
@@ -229,7 +233,10 @@ applied_groundwater_modelling/
 └── 0_sync_repo.ipynb         # Update from upstream
 ```
 
-> **Note:** Folders starting with `_` contain internal/instructor materials - you can ignore them.
+> **Note:** Folders starting with `_` hold supporting material rather than course steps, so
+> you do not work through them in order. You do still use them: every notebook that runs code
+> loads helpers from `_SUPPORT/src/`, and `03f_modflow_fundamentals.ipynb` links out to the
+> REV demo in `THEORY/_demos/`. Follow those links when a notebook sends you there.
 
 The supporting documentation is indexed in [DOCUMENTATION/README.md](DOCUMENTATION/README.md).
 
@@ -237,7 +244,7 @@ The supporting documentation is indexed in [DOCUMENTATION/README.md](DOCUMENTATI
 
 - Apply numerical methods to solve groundwater flow and transport problems
 - Construct and adapt models to address real-world hydrogeological challenges
-- Implement and analyze numerical solutions using MODFLOW 6 (with GWT/GWE for transport) and FloPy
+- Implement and analyze numerical solutions using MODFLOW 6 (with GWT for solute transport) and FloPy
 - Critically evaluate modeling results and their implications
 
 ## 5 Prerequisites
@@ -255,13 +262,24 @@ The Limmat Valley case study uses public data sources, including AWEL/GIS-ZH, BA
 <details>
 <summary>Data configuration details</summary>
 
-The data system uses `config.py` for data source configuration. For public data (default), copy `config_template.py` to `config.py`:
+The data system reads its configuration from `config_template.py`, which is committed and
+holds the public data sources. **For the default public setup you do not need to do anything** —
+`data_utils.py` falls back to the template automatically and prints a note saying so.
+
+Create a `config.py` only if you need to override those defaults, for example an alternate
+mirror or a temporary teaching link:
 
 ```bash
-cp config_template.py config.py
+cp config_template.py config.py    # then edit config.py
 ```
 
-Some deployments may use a local `config.py` with alternate mirrors or temporary teaching links. Do not commit local configuration files.
+`config.py` is gitignored and takes precedence over the template when present, so never
+commit one. If your course deployment supplied a `config.py` pointing at teaching mirrors,
+keep it — deleting it drops you back to the public links.
+
+**Maintainers:** the T0 gate harness (`_SUPPORT/src/scripts/t0_gate_harness.py`) requires a
+repo-root `config.py` and exits with an error without one, so it cannot propagate the
+data-source config to its worktrees. A development checkout still needs the copy above.
 
 Data downloads automatically when needed:
 ```python
@@ -289,7 +307,10 @@ Don't bookmark JupyterHub URLs - always access via Moodle.
 
 ### Data Download Issues
 
-**"No URL configured":** Ensure `config.py` exists (copy from `config_template.py`)
+**"No URL configured":** Raised when the requested dataset is missing from the configuration
+in use. If you have a local `config.py`, it is shadowing `config_template.py` and predates the
+dataset — add the missing entry, or delete `config.py` to fall back to the committed template.
+Without a `config.py` this error should not normally appear.
 
 **Download failures:** Check internet connection and that Dropbox links are accessible
 
