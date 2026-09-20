@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import sys
 from pathlib import Path
 
@@ -333,3 +334,67 @@ def test_escape_table_snippet_hazard_angle_destination_not_html_neutralized():
     # is killed, but "<b>" is not "a"/"img" so it is left live as HTML.
     text = "[a](<b>)"
     assert tci._escape_table_snippet(text) == "[a]\\(<b>)"
+
+
+# --- The Theory reminder must stay reachable -------------------------------
+#
+# These two tests read the source file and assert a link to the reminder is
+# THERE, resolving to it. They are lexical: neither checks that the target is
+# tracked, so a rename is caught by test_theory_reminder_is_tracked and by the
+# whole-repo checker, not by them. The older tests in this module hand a
+# hardcoded href to validate_link and use the source only as a resolution base,
+# so they stay green even if the file is emptied -- replacing README.md with a
+# single line leaves all of them passing. A test of that shape could never
+# notice the link being dropped, which is the failure these guard against.
+#
+# The `%20` is load-bearing. A raw space is truncated by
+# strip_markdown_destination (destination.split(None, 1)[0]), so
+# "THEORY/Theory reminder.ipynb" is checked as "THEORY/Theory" and fails.
+
+THEORY_REMINDER = "THEORY/Theory reminder.ipynb"
+
+
+def _resolved_link_targets(source_rel):
+    """Repo-relative targets of every internal link really present in a file.
+
+    Notebook cells are scanned ONE AT A TIME, the way validate_notebook_file
+    does it. strip_fenced_code_blocks carries state across the text it is given,
+    so joining the cells first would let an unclosed ``` in any earlier cell
+    blank every link after it -- a link that is perfectly valid, and that the
+    real checker still sees, would vanish from this set.
+    """
+    source = REPO_ROOT / source_rel
+    if source.suffix == ".ipynb":
+        notebook = json.loads(source.read_text(encoding="utf-8"))
+        texts = [
+            check_internal_links.markdown_source(cell.get("source", ""))
+            for cell in notebook.get("cells", [])
+            if cell.get("cell_type") == "markdown"
+        ]
+    else:
+        texts = [source.read_text(encoding="utf-8")]
+
+    targets = set()
+    for text in texts:
+        for link in check_internal_links.extract_links(text):
+            internal_path = check_internal_links.internal_path_from_href(link.href)
+            if internal_path is None:
+                continue
+            try:
+                resolved = (source.parent / internal_path).resolve().relative_to(REPO_ROOT)
+            except ValueError:
+                continue
+            targets.add(resolved.as_posix())
+    return targets
+
+
+def test_theory_reminder_is_tracked():
+    assert THEORY_REMINDER in tracked_files()
+
+
+def test_readme_links_theory_reminder():
+    assert THEORY_REMINDER in _resolved_link_targets("README.md")
+
+
+def test_start_here_links_theory_reminder():
+    assert THEORY_REMINDER in _resolved_link_targets("PROJECT/0_start_here.ipynb")
