@@ -6,7 +6,7 @@
 
 ``apply_scenario(spec, scenario_type, params) -> new_spec`` mutates the
 state-(ii) refined DISV spec's PACKAGE ARRAYS to produce the state-(iii)
-"wells-plus-scenario" spec, for the 9 case-study groups' 6 scenario types
+"wells-plus-scenario" spec, for the 13 case-study groups' 6 scenario types
 (see DESIGN_DOCS/student_casestudy_M2a_3_plan.md, config
 ``PROJECT/workspace/template/case_config.yaml``).
 

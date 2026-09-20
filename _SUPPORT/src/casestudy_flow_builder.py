@@ -505,7 +505,7 @@ def build_flow_state(
     Parameters
     ----------
     group : int
-        Student group id (0-8).
+        Student group id (0-12).
     state : str
         ``"baseline"`` (state i, background wells only), ``"wells_only"``
         (state ii, background + the group's flow-only geothermal doublet), or

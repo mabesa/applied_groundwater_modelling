@@ -13,9 +13,9 @@ programmatic entry point) runs.
 
 Usage
 -----
-    uv run python _SUPPORT/src/scripts/validate_case_study_redesign.py --groups 0-8 --plan-only
-    uv run python _SUPPORT/src/scripts/validate_case_study_redesign.py --groups 0,3 --require-green
-    uv run python _SUPPORT/src/scripts/validate_case_study_redesign.py --groups 0-8 --stage config --out report.json
+    uv run python _SUPPORT/src/scripts/validate_case_study_redesign.py --groups 0-12 --plan-only
+    uv run python _SUPPORT/src/scripts/validate_case_study_redesign.py --groups 0-12 --require-green
+    uv run python _SUPPORT/src/scripts/validate_case_study_redesign.py --groups 0-12 --stage config --out report.json
 """
 
 from __future__ import annotations
@@ -47,7 +47,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--groups",
         default="0",
-        help="Group ids to validate, e.g. '0-8' or '0,3,5' (default: 0).",
+        help=(
+            # Derived, for the same reason the --require-green error is: a
+            # literal here rots at the next roster widening.
+            f"Group ids to validate, e.g. "
+            f"'{min(cv.CANONICAL_GROUPS)}-{max(cv.CANONICAL_GROUPS)}' or "
+            f"'0,3,5' (default: 0)."
+        ),
     )
     parser.add_argument(
         "--plan-only",
@@ -121,8 +127,15 @@ def main(argv=None) -> int:
         return 2
 
     if args.require_green and set(groups) != set(cv.CANONICAL_GROUPS):
+        # Derived from CANONICAL_GROUPS, never hard-coded: this message said
+        # "all 9 groups 0-8" for three weeks after d8a785a widened the roster
+        # to 13, so it told you to pass exactly what it was rejecting. The
+        # min-max form is honest because test_canonical_groups_is_contiguous_
+        # from_zero fails if the roster is ever non-contiguous.
         print(
-            "ERROR: --require-green is a release gate and must cover all 9 groups 0-8",
+            "ERROR: --require-green is a release gate and must cover all "
+            f"{len(cv.CANONICAL_GROUPS)} groups "
+            f"{min(cv.CANONICAL_GROUPS)}-{max(cv.CANONICAL_GROUPS)}",
             file=sys.stderr,
         )
         return 2

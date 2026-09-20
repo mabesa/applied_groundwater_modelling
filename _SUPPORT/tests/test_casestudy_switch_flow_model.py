@@ -126,7 +126,7 @@ def test_transport_config_untouched_and_lints():
     """The transport config must be byte-identical to its M1.3a state and still
     lint (M1.3b only touches the flow config)."""
     import case_utils
-    # transport model block is the MF6 source; ensure it still lints for all 9
+    # transport model block is the MF6 source; ensure it still lints for all 13
     report = case_utils.lint_transport_config(config_path=str(REAL_TR), groups=range(N))
     assert sorted(report) == list(range(N))
 
