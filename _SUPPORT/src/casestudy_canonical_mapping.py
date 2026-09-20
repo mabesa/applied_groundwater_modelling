@@ -39,7 +39,7 @@ IMPORTANT ownership boundaries
 
 Outputs (all deterministic, provenance-stamped; written under
 ``_SUPPORT/casestudy_scenarios/`` -- instructor-only, NOT the student template)
-  1. ``canonical_mapping.{csv,yaml}`` -- the 9-row mapping (identifiers + exact
+  1. ``canonical_mapping.{csv,yaml}`` -- the 13-row mapping (identifiers + exact
      reaction fields + difficulty/source metadata + provenance).
   2. ``repairing_ledger.csv`` -- one row per group: original transport
      concession -> canonical flow concession, whether the contaminant moved
@@ -243,9 +243,9 @@ def _to_native(v: Any) -> Any:
 @dataclass
 class CanonicalMappingResult:
     """The three M1.2 deliverables as DataFrames."""
-    mapping: pd.DataFrame       # canonical_mapping (9 rows)
-    ledger: pd.DataFrame        # repairing_ledger (9 rows)
-    sanity: pd.DataFrame        # threshold_sanity (9 rows; `flagged` marks warnings)
+    mapping: pd.DataFrame       # canonical_mapping (13 rows)
+    ledger: pd.DataFrame        # repairing_ledger (13 rows)
+    sanity: pd.DataFrame        # threshold_sanity (13 rows; `flagged` marks warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -376,7 +376,7 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
     Returns
     -------
     CanonicalMappingResult
-        ``.mapping`` (9 rows), ``.ledger`` (9 rows), ``.sanity`` (9 rows).
+        ``.mapping`` (13 rows), ``.ledger`` (13 rows), ``.sanity`` (13 rows).
     """
     flow_path = Path(flow_config or DEFAULT_FLOW_CONFIG)
     tr_path = Path(transport_config or DEFAULT_TRANSPORT_CONFIG)
@@ -394,7 +394,7 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
     # The `group N -> doublet_table[N]` position rule is only valid if the
     # doublet_table's group indices are EXACTLY {0..N_GROUPS-1}, unique, and each row's
     # group label is the canonical `f"G{gidx}"`. A duplicate/missing group
-    # (e.g. two G3 + no G8) would still give 9 rows / 9 concessions but silently
+    # (e.g. two G3 + no G8) would still give 13 rows / 13 concessions but silently
     # break the positional mapping -- so validate it before trusting the order.
     dt = dt.copy()
     if len(dt) != N_GROUPS:
@@ -691,7 +691,7 @@ def _assert_acceptance(mapping: pd.DataFrame, ledger: pd.DataFrame,
         assert actual == expected, (
             f"group {g}: golden content mismatch -- got {actual}, expected {expected}")
 
-    # ledger: 9 rows; `changed` == (original != canonical) row-wise (the
+    # ledger: 13 rows; `changed` == (original != canonical) row-wise (the
     # pre/post reconcile STATE is enforced upstream in build_canonical_mapping).
     # Group-5's b010223 overlap is flagged regardless of state.
     exp_changed = ledger["original_transport_concession"] != ledger["canonical_flow_concession"]

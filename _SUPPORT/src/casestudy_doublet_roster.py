@@ -1,7 +1,7 @@
 """
 casestudy_doublet_roster -- M1.1: deterministic doublet-geometry extraction.
 
-Extracts the 9 GWHE (groundwater heat exchanger) doublet geometries -- one per
+Extracts the 13 GWHE (groundwater heat exchanger) doublet geometries -- one per
 student group -- from the cantonal well registry
 (``Wasserfassungen_-OGD.gpkg``, CRS LV95 / EPSG:2056) and writes a
 provenance-stamped ``doublet_table`` (CSV + YAML mirror).
@@ -89,7 +89,7 @@ Known outcome (grounded against the live registry, 2026-07 snapshot)
 ----------------------------------------------------------------------
 - The roster is a CLEAN set: every concession is a single-Entnahme +
   single-Rückgabe (or tightly-clustered) doublet whose centroids are
-  in-domain, in an active 05f cell, and clear of the river buffer -> all 9
+  in-domain, in an active 05f cell, and clear of the river buffer -> all 13
   resolve with ``ext_method == inj_method == "centroid"`` and NO flags.
 - G4 is **b010120** (a clean doublet ~228 m / ~343 m clear of any river),
   the user-approved swap for the gallery-only **b010190** (which must NOT
@@ -97,12 +97,12 @@ Known outcome (grounded against the live registry, 2026-07 snapshot)
   because b010005's lone Rückgabe well sat ~14 m inside a river with no
   fallback and its Entnahme wells spanned ~70 m -- i.e. it could not clear
   the gate cleanly. b010005 is no longer in the roster.
-- All 9 concessions resolve the ordinary "300 - 3000 l/min" Ertrag range
+- All 13 concessions resolve the ordinary "300 - 3000 l/min" Ertrag range
   (Q = 3000 l/min = 4320 m3/d).
 
 Deliverable
 -----------
-``build_doublet_table()`` returns a ``pandas.DataFrame`` (9 rows) and writes
+``build_doublet_table()`` returns a ``pandas.DataFrame`` (13 rows) and writes
 it deterministically to ``_SUPPORT/casestudy_scenarios/doublet_table.csv``
 (+ a ``.yaml`` mirror). Re-running yields byte-identical coordinates -- no
 randomness anywhere in this module.
@@ -125,7 +125,7 @@ from shapely.geometry import Point
 # Pinned constants
 # ---------------------------------------------------------------------------
 
-# The 9 concessions, ordered to match case_config.yaml's existing group
+# The 13 concessions, ordered to match case_config.yaml's existing group
 # numbering (group N -> CONCESSIONS[N]), so "group" == f"G{N}" lines up with
 # the acceptance criterion "G4 = b010120". b010120 is the user-approved swap
 # for the gallery-only b010190 (which is deliberately ABSENT); it replaced an
@@ -275,7 +275,7 @@ def _parse_ertrag(texts: Sequence[Any]) -> Dict[str, Any]:
     concession's rows carry DISAGREEING Ertrag values, the largest resolved
     value wins (deterministic -- values are compared numerically, not by row
     order) AND ``disagreement`` is set True so the caller can flag it (this is
-    NOT observed in the 9 concessions this module currently targets, where
+    NOT observed in the 13 concessions this module currently targets, where
     each has one distinct Ertrag clause across all its rows).
 
     Returns a dict with ``raw`` (all distinct clause strings), ``q_lmin``
@@ -620,7 +620,7 @@ def build_doublet_table(check_active_cell: bool = True,
                         out_yaml: Optional[Path] = None,
                         write: bool = True,
                         strict: bool = True) -> pd.DataFrame:
-    """Build the 9-row doublet_table and (by default) write it to disk.
+    """Build the 13-row doublet_table and (by default) write it to disk.
 
     Parameters
     ----------
@@ -652,7 +652,7 @@ def build_doublet_table(check_active_cell: bool = True,
     Returns
     -------
     pandas.DataFrame
-        9 rows, one per concession, columns as documented in the module
+        13 rows, one per concession, columns as documented in the module
         docstring / DESIGN_DOCS/student_casestudy_M1_steps.md (M1.1).
 
     Raises

@@ -77,7 +77,7 @@ hashes (and solved heads) differ across OSes: a golden is a valid oracle only
 on its own generation OS and must be re-frozen on the authoritative platform.
 
 Run with:
-    uv run python -m casestudy_flow_golden --group 0 --reruns 5 --out-dir _SUPPORT/src/golden
+    PYTHONPATH=_SUPPORT/src uv run python -m casestudy_flow_golden --group 0 --reruns 5 --out-dir _SUPPORT/src/golden
     uv run pytest _SUPPORT/tests/test_casestudy_flow_golden.py -v
 ================================================================================
 """
