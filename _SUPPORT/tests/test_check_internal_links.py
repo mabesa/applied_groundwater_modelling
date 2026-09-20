@@ -398,3 +398,16 @@ def test_readme_links_theory_reminder():
 
 def test_start_here_links_theory_reminder():
     assert THEORY_REMINDER in _resolved_link_targets("PROJECT/0_start_here.ipynb")
+
+
+# --- The README must reach the student-facing entry points -----------------
+#
+# Before these, README.md linked no PROJECT material at all -- a reader landing
+# on the front page had no path into the case study or the deliverables. Same
+# shape as the reminder tests above: read the file, assert the target is among
+# the links really present.
+
+def test_readme_links_student_entry_points():
+    targets = _resolved_link_targets("README.md")
+    for entry in ("PROJECT/0_start_here.ipynb", "PROJECT/workspace/README.md"):
+        assert entry in targets, f"README.md no longer links {entry}"

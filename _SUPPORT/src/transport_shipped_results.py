@@ -57,7 +57,7 @@ def fingerprint(folder: Path) -> Optional[str]:
 def _heal_download_entry() -> None:
     """Fill in this one download entry if the local `config.py` predates it.
 
-    `config.py` is a ONE-TIME COPY of `config_template.py` (README), and `data_utils`
+    `config.py` is a ONE-TIME COPY of `config_template.py`, and `data_utils`
     falls back to the template only when `config.py` is ABSENT -- not when it exists but
     lacks a key. So anyone who set up before this archive shipped would silently get the
     10 m fallback instead of the fine-grid result the notebooks quote. Patch the single
