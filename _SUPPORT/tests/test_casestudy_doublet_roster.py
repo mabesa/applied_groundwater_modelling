@@ -1,6 +1,6 @@
 """
 Tests for casestudy_doublet_roster (M1.1 -- deterministic doublet-geometry
-extraction for the 9 GWHE case-study concessions).
+extraction for the 13 GWHE case-study concessions).
 
 These tests read the REAL cantonal well registry (``Wasserfassungen_-OGD.gpkg``,
 downloaded/cached under ``~/applied_groundwater_modelling_data/limmat/gis`` the
@@ -349,7 +349,7 @@ def test_q_m3d_conversion_factor(table):
 
 
 def test_q_parsed_for_every_concession(table):
-    """Grounded expectation: all 9 concessions resolve an Ertrag clause (no
+    """Grounded expectation: all 13 concessions resolve an Ertrag clause (no
     concession in this roster is missing licensed-yield data)."""
     assert table["Q_m3d"].isna().sum() == 0
     assert table["ertrag_raw"].isna().sum() == 0
@@ -606,7 +606,7 @@ def test_registry_en_agrees_with_geometry(table):
     """The real registry passed the E/N-vs-geometry check during the build (it
     would have raised otherwise); re-verify the invariant directly here."""
     gdf, path, notes = cdr._load_registry()
-    # For the 9 roster concessions, E/N must equal the geometry within tol.
+    # For the 13 roster concessions, E/N must equal the geometry within tol.
     gdf = gdf.copy()
     gdf["conc"] = gdf["GWR_ID"].str.split("_").str[0]
     sub = gdf[gdf["conc"].isin(EXPECTED_CONCESSIONS)]

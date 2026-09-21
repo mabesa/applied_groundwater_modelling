@@ -63,7 +63,7 @@ VALID_STATUSES = frozenset({"PASS", "FAIL", "SKIP", "TIMEOUT", "ERROR", "NOT_IMP
 
 DEFAULT_STAGE_TIMEOUT_S = 60.0
 
-# The canonical, closed set of case-study group ids (0-8). Used by the CLI to
+# The canonical, closed set of case-study group ids (0-12). Used by the CLI to
 # reject out-of-domain --groups selections and to define what "all groups"
 # means for the --require-green release gate.
 CANONICAL_GROUPS: tuple[int, ...] = tuple(range(13))
@@ -177,7 +177,7 @@ def parse_groups_spec(spec: str) -> list[int]:
     like ``'0-999999999'`` silently building a huge in-memory list). This is
     purely a sanity cap on the *spec syntax*; it does not know about
     ``CANONICAL_GROUPS`` — the CLI is responsible for rejecting ids outside
-    the canonical 0-8 domain.
+    the canonical 0-12 domain.
     """
     groups: set[int] = set()
     for part in spec.split(","):

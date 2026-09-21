@@ -1000,7 +1000,7 @@ def _flow_model_drift_message(ws: Path, report: Dict[str, Any]) -> str:
         "\n"
         "This usually means 05f_calibration.ipynb was run locally with "
         "RUN_PEST_LOCALLY=True, which regenerates this workspace in place.\n"
-        "Every golden-pinned build (the nine case-study group meshes) REJECTS a model "
+        "Every golden-pinned build (the case-study group meshes) REJECTS a model "
         "built on a different calibration. That failure surfaces as 'the built grid "
         "DIVERGED from the committed/frozen golden' -- which names the GRID but is "
         "caused by THIS file set.\n"

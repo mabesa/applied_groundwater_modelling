@@ -215,7 +215,7 @@ class TestFrozenExpectations:
 
     def test_no_response_flags_inconsistent(self):
         # zero response fails PRESENT for every class
-        for g in range(9):
+        for g in range(13):
             r = scn.evaluate_scenario_expectation(g, self._base_metrics(max_abs_head_change=0.0))
             assert not r["consistent"]
 

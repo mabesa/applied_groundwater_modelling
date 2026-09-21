@@ -8,7 +8,7 @@ incomplete/invalid, and wires it into the M1 validation harness as the real
 
 Surface under test
 ------------------
-  * A function ``lint_transport_config(config_path=None, groups=range(9))``
+  * A function ``lint_transport_config(config_path=None, groups=range(13))``
     (primary home: ``_SUPPORT/src/case_utils.py``; a clearly-named sibling
     module is also accepted). It parses ``case_config_transport.yaml`` and, for
     EACH requested group id, asserts:
@@ -233,18 +233,18 @@ def test_real_config_file_exists():
 
 
 # =============================================================================
-# Criterion 1 + 5 — happy path on the REAL config, all 9 groups.
+# Criterion 1 + 5 — happy path on the REAL config, all 13 groups.
 # =============================================================================
 
 class TestHappyPathRealConfig:
-    def test_default_args_lint_all_nine_groups(self):
-        # Default config_path (real repo file) and default groups=range(9):
-        # the CURRENT real config must lint clean for every group 0-8.
+    def test_default_args_lint_all_thirteen_groups(self):
+        # Default config_path (real repo file) and default groups=range(13):
+        # the CURRENT real config must lint clean for every group 0-12.
         lint = _import_lint()
         report = lint()
         gmap = _group_map(report)
-        assert set(range(9)) <= set(gmap), (
-            f"coverage report must cover groups 0-8, got {sorted(gmap)}"
+        assert set(range(13)) <= set(gmap), (
+            f"coverage report must cover groups 0-12, got {sorted(gmap)}"
         )
 
     def test_explicit_real_path_subset_returns_per_group_report(self):

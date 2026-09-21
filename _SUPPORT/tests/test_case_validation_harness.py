@@ -137,10 +137,14 @@ class TestNotImplemented:
         # module directly keeps this test symmetric with the SIGILL test
         # below, which *needs* the shared in-process registry.
         #
-        # --require-green is a release gate and now requires the full
-        # canonical 0-8 group set (case_validation.CANONICAL_GROUPS), so both
-        # invocations use "0-8" to exercise a real release-gate run rather
-        # than the single-group "0" used previously.
+        # --require-green is a release gate: it requires the FULL canonical
+        # group set (case_validation.CANONICAL_GROUPS, currently 0-12), so the
+        # gate invocation must pass 0-12 to exercise a real release-gate run.
+        # It said "0-8" from d8a785a until this fix, which meant it never
+        # reached run_validation at all -- the CLI rejected the argument and
+        # returned 2, and the old `!= 0` assertion absorbed that silently.
+        # rc_plain deliberately stays "0-8": it exercises the NON-gate path,
+        # where any valid subset is fine. Do not "align" it.
         import importlib
         sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
         vcsr = importlib.import_module("validate_case_study_redesign")
@@ -149,10 +153,12 @@ class TestNotImplemented:
         # into Path.cwd() (which may be the repo root during a local run) --
         # so the test leaves nothing behind on disk anywhere.
         rc_plain = vcsr.main(["--groups", "0-8", "--out", str(tmp_path / "_unused_report.json")])
-        rc_green = vcsr.main(["--groups", "0-8", "--require-green"])
+        rc_green = vcsr.main(["--groups", "0-12", "--require-green"])
 
         assert rc_plain == 0
-        assert rc_green != 0
+        # == 1 (gate ran, stages unimplemented), NOT just != 0: rc 2 means
+        # the CLI rejected the arguments and the gate never ran.
+        assert rc_green == 1
 
 
 # =============================================================================
@@ -183,12 +189,12 @@ class TestSigillStage:
 
     def test_require_green_flips_exit_code_around_sigill_stage(self):
         # --require-green now (a) cannot be combined with --stage and (b)
-        # requires the full canonical 0-8 group set (see Fix 2 in
+        # requires the full canonical group set, 0-12 (see Fix 2 in
         # case_validation / the CLI). So rc_plain exercises the old
         # single-stage/single-group path (still allowed without
         # --require-green), while rc_green registers every required stage
         # (all passing except "scenario", which crashes via SIGILL) and runs
-        # the full release-gate invocation across all 9 groups.
+        # the full release-gate invocation across all 13 groups.
         for stage_id in REQUIRED_STAGES:
             cv.register_stage(stage_id, _stage_sigill if stage_id == "scenario" else _stage_pass)
 
@@ -197,10 +203,14 @@ class TestSigillStage:
         vcsr = importlib.import_module("validate_case_study_redesign")
 
         rc_plain = vcsr.main(["--groups", "0", "--stage", "scenario"])
-        rc_green = vcsr.main(["--groups", "0-8", "--require-green"])
+        rc_green = vcsr.main(["--groups", "0-12", "--require-green"])
 
         assert rc_plain == 0
-        assert rc_green != 0
+        # == 1 (the gate ran and FAILED because the "scenario" stage crashed --
+        # every required stage IS registered here, unlike the unimplemented case
+        # above), NOT just != 0: rc 2 means the CLI rejected the arguments
+        # and the gate never ran.
+        assert rc_green == 1
 
 
 # =============================================================================
@@ -369,8 +379,9 @@ class TestGroupDomain:
         sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "scripts"))
         vcsr = importlib.import_module("validate_case_study_redesign")
 
-        rc = vcsr.main(["--groups", "0-8", "--require-green"])
-        assert rc != 0
+        rc = vcsr.main(["--groups", "0-12", "--require-green"])
+        # == 1, not just != 0 -- see test_require_green_nonzero_when_unimplemented.
+        assert rc == 1
 
     def test_parse_groups_spec_caps_absurd_range_span(self):
         with pytest.raises(ValueError):

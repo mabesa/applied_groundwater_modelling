@@ -436,18 +436,23 @@ class TestM1GuaranteesStillHold:
             assert [s["id"] for s in g["stages"]] == list(cv.REQUIRED_STAGES)
 
     def test_require_green_still_nonzero_on_skeleton(self, tmp_path):
-        # flow_refinement now PASSES (valid artifacts for all 9 groups), but the
-        # other 9 stages are still unimplemented -> the release gate must NOT be
-        # green. Guards against wiring flow_refinement accidentally flipping the
-        # skeleton green.
+        # flow_refinement now PASSES (valid artifacts for all 13 groups), but
+        # the other stages are still unimplemented -> the release gate must NOT
+        # be green. Guards against wiring flow_refinement accidentally flipping
+        # the skeleton green. This passed "0-8" until CANONICAL_GROUPS widened
+        # to 0-12, after which the CLI rejected the argument and returned 2
+        # without running the gate at all -- the guard was void, and `!= 0`
+        # absorbed it.
         meshes = tmp_path / "meshes"
-        for g in range(9):
+        for g in range(len(cv.CANONICAL_GROUPS)):
             _freeze_group(meshes, g)
         result = _run_cli(
-            ["--groups", "0-8", "--require-green"],
+            ["--groups", "0-12", "--require-green"],
             env_extra={"AGM_MESHES_DIR": str(meshes)},
         )
-        assert result.returncode != 0
+        # == 1 (gate ran and failed), not just != 0: rc 2 would mean the
+        # CLI rejected the arguments and the guard never ran.
+        assert result.returncode == 1
 
 
 # =============================================================================

@@ -247,7 +247,7 @@ def test_todo_blocks_survive():
 
 def test_rewritten_transport_lints_clean():
     """Config-loader smoke test: the rewritten transport config passes the
-    ACTUAL consumer linter for all 9 groups."""
+    ACTUAL consumer linter for all 13 groups."""
     import case_utils
     report = case_utils.lint_transport_config(config_path=str(REAL_TR), groups=range(N))
     assert sorted(report) == list(range(N))
@@ -256,7 +256,7 @@ def test_rewritten_transport_lints_clean():
 
 
 def test_rewritten_flow_loads_through_consumer():
-    """Flow consumer path: get_scenario_for_group resolves all 9 groups."""
+    """Flow consumer path: get_scenario_for_group resolves all 13 groups."""
     import case_utils
     for gid in range(N):
         sc = case_utils.get_scenario_for_group(str(REAL_FLOW), gid)

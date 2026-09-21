@@ -62,7 +62,7 @@ def get_scenario_for_group(config_path, group_number):
     config_path : str
         Path to the case_config.yaml file
     group_number : int
-        Group number (0-8)
+        Group number (0-12)
         
     Returns:
     --------
