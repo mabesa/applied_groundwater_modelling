@@ -395,7 +395,7 @@ Given:
 
 "task_t02_checkpoint_2": r"""
 ## Checkpoint 2 — Sorption Retardation Factor
-Five of the nine case-study contaminants are reactive. A **sorbing** solute is retarded by the
+Eight of the thirteen case-study contaminants are reactive. A **sorbing** solute is retarded by the
 **retardation factor** (dimensionless). Given group 4's contaminant, **chromium** (the strong-sorption case):
 
 Given:
@@ -2231,7 +2231,7 @@ $$R = 1 + \frac{1800 \times 2.0 \times 10^{-3}}{0.20} = 1 + \frac{3.6}{0.20} = 1
 The units cancel ($\text{kg/m}^3 \times \text{m}^3/\text{kg}$ is dimensionless), so $R$ is dimensionless.
 Chromium's front travels about **19× slower** than a conservative tracer (front velocity $u / R$) — strong retardation.
 
-Reactive transport is **in scope**: 5 of the 9 case studies sorb or decay. In MODFLOW 6 GWT, sorption is activated in the **MST** package (`sorption`, `bulk_density`, `distcoef`) and first-order decay via `decay`; your group's parameters are pinned in `case_config_transport.yaml`.
+Reactive transport is **in scope**: 8 of the 13 case studies sorb or decay (one, MTBE, does both). In MODFLOW 6 GWT, sorption is activated in the **MST** package (`sorption`, `bulk_density`, `distcoef`) and first-order decay via `decay`; your group's parameters are pinned in `case_config_transport.yaml`.
 <br>
 """,
 
