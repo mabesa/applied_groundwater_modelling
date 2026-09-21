@@ -1112,7 +1112,12 @@ def generate_group0_golden(
         "steady": True,
         "nlay": 1,
         "radius_used": radius_used,
-        "node": platform.node(),
+        # NOTE: the freezing machine's hostname was recorded here until
+        # 2026-09-21. It is deliberately NOT emitted: this is a public
+        # teaching repo, platform.node() on the course JupyterHub returns
+        # the operator's own account name, and nothing read the field.
+        # Provenance that IS used lives in generation_os,
+        # authoritative_platform, provisional and versions.
         "versions": _golden_versions(),
         # Provisional-vs-authoritative provenance: CONDITIONAL on the OS this
         # golden is being frozen on (``_provisional_provenance``, derived from
