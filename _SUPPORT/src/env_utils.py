@@ -310,7 +310,7 @@ def check_pinned_versions(packages=CRITICAL_PACKAGES, lock_path=None) -> dict:
 #:   they are REPORTED and a human decides. (Lecturer's choice, 2026-09-03:
 #:   "option B".)
 SECURITY_FLOOR_KERNEL: tuple = ()
-SECURITY_FLOOR_SERVER: tuple = ("tornado",)
+SECURITY_FLOOR_SERVER: tuple = ("tornado", "anyio", "soupsieve")
 SECURITY_FLOOR_PACKAGES: tuple = SECURITY_FLOOR_KERNEL + SECURITY_FLOOR_SERVER
 
 
