@@ -170,6 +170,34 @@ GEOTHERMAL_NUTZART = "WPG"
 
 # repo_root/_SUPPORT/src/casestudy_doublet_roster.py -> repo_root
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _data_relative(path) -> str:
+    """Provenance path recorded RELATIVE TO THE DATA FOLDER.
+
+    The well registry and boundary layers live in the per-user data folder
+    (``~/applied_groundwater_modelling_data/<case>``), NOT in the repo, so these
+    are recorded relative to that root -- e.g. ``gis/Wasserfassungen_-OGD.gpkg``.
+    They held absolute paths until 2026-09-21, which published the author's home
+    directory in a public repo.
+
+    Degrades to the basename when the file is not under the data folder, for the
+    same reason as ``casestudy_canonical_mapping._repo_relative``: a less precise
+    provenance record beats a leaked home directory.
+    """
+    p = Path(path).resolve()
+    # Imported here, not at module scope, to keep the dependency lazy. Errors
+    # from the import or from root discovery deliberately PROPAGATE: swallowing
+    # them would silently downgrade every path to a basename -- including files
+    # that should have got a proper relative one -- and a provenance format that
+    # changes shape on an unrelated failure is worse than a crash.
+    from data_utils import get_default_data_folder
+    root = Path(get_default_data_folder()).resolve()
+    try:
+        return p.relative_to(root).as_posix()
+    except ValueError:
+        # Genuinely outside the data root: basename only, never an absolute path.
+        return p.name
 # Instructor-only scenario-pipeline artifacts live OUTSIDE the student-copied
 # PROJECT/workspace/template/ (students must not receive the all-groups roster).
 _SCENARIO_DIR = _REPO_ROOT / "_SUPPORT" / "casestudy_scenarios"
@@ -419,7 +447,7 @@ def _build_cell_validity_context(check_active_cell: bool = True) -> _CellValidit
             domain_checked=True, river_checked=True, active_cell_checked=True,
             boundary_poly=boundary_poly, rivers_gdf=rivers_gdf,
             modelgrid=modelgrid, idomain=idomain,
-            boundary_file=str(boundary_path), boundary_sha256=_sha256_file(boundary_path),
+            boundary_file=_data_relative(boundary_path), boundary_sha256=_sha256_file(boundary_path),
             modelgrid_sha=modelgrid_sha, idomain_sha=idomain_sha, notes=notes,
         )
     except Exception as e_flow:
@@ -442,7 +470,7 @@ def _build_cell_validity_context(check_active_cell: bool = True) -> _CellValidit
             ctx = _CellValidityContext(
                 domain_checked=True, river_checked=True, active_cell_checked=False,
                 boundary_poly=boundary_poly, rivers_gdf=rivers_gdf,
-                boundary_file=str(boundary_path), boundary_sha256=_sha256_file(boundary_path),
+                boundary_file=_data_relative(boundary_path), boundary_sha256=_sha256_file(boundary_path),
             )
             ctx.notes.append(
                 f"05f flow-model load failed ({e_flow!r}); in_active_cell NOT RUN "
@@ -792,7 +820,7 @@ def build_doublet_table(check_active_cell: bool = True,
             ext_E=ext["E"], ext_N=ext["N"],
             Q_m3d=q_m3d,
             Q_basis="licensed_max",
-            source_file=str(source_path),
+            source_file=_data_relative(source_path),
             source_sha256=source_sha256,
             boundary_file=ctx.boundary_file,
             boundary_sha256=ctx.boundary_sha256,

@@ -70,6 +70,28 @@ import yaml
 # repo_root/_SUPPORT/src/casestudy_canonical_mapping.py -> repo_root
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _TEMPLATE_DIR = _REPO_ROOT / "PROJECT" / "workspace" / "template"
+
+
+def _repo_relative(path) -> str:
+    """Provenance path recorded RELATIVE TO THE REPO ROOT.
+
+    These columns held ABSOLUTE developer paths until 2026-09-21. That was two
+    problems in one string: it published the author's home directory in a public
+    repo, and it forced
+    ``test_regeneration_is_idempotent_and_reproduces_the_ledger`` to EXCLUDE
+    these columns from its byte comparison, because no two clones could ever
+    agree on them. Recording them relative makes every clone agree, so the
+    guard now covers them instead of skipping them.
+
+    A path outside the repo degrades to its basename rather than falling back to
+    an absolute one: this column is provenance, and a less precise record beats
+    a leaked home directory.
+    """
+    p = Path(path).resolve()
+    try:
+        return p.relative_to(_REPO_ROOT).as_posix()
+    except ValueError:
+        return p.name
 # Instructor-only scenario-pipeline artifacts (roster/mapping/ledgers) live OUTSIDE
 # the student-copied template/; only the two case_config*.yaml INPUTS stay there.
 _SCENARIO_DIR = _REPO_ROOT / "_SUPPORT" / "casestudy_scenarios"
@@ -583,11 +605,11 @@ def build_canonical_mapping(flow_config: Optional[Path] = None,
             source_value_field=source_value_field,
             source_value_unit=source_value_unit,
             # --- provenance (BOTH configs + doublet_table) ---
-            flow_config_file=str(flow_path),
+            flow_config_file=_repo_relative(flow_path),
             flow_config_sha256=flow_sha,
-            transport_config_file=str(tr_path),
+            transport_config_file=_repo_relative(tr_path),
             transport_config_sha256=tr_sha,
-            doublet_table_file=str(dt_path),
+            doublet_table_file=_repo_relative(dt_path),
             doublet_table_sha256=dt_sha,
         ))
 

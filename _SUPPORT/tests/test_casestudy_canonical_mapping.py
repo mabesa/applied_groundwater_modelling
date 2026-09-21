@@ -266,9 +266,12 @@ def test_provenance_hashes_match_actual_files(mapping):
     real guard). Kept because stamping the right file is still worth asserting.
     """
     row = mapping.iloc[0]
-    assert ccm._sha256_file(Path(row["flow_config_file"])) == row["flow_config_sha256"]
-    assert ccm._sha256_file(Path(row["transport_config_file"])) == row["transport_config_sha256"]
-    assert ccm._sha256_file(Path(row["doublet_table_file"])) == row["doublet_table_sha256"]
+    # The columns are REPO-RELATIVE (see ccm._repo_relative), so resolve them
+    # against the repo root rather than the process CWD -- a bare Path() here
+    # would make this test pass or fail depending on where pytest was invoked.
+    assert ccm._sha256_file(ccm._REPO_ROOT / row["flow_config_file"]) == row["flow_config_sha256"]
+    assert ccm._sha256_file(ccm._REPO_ROOT / row["transport_config_file"]) == row["transport_config_sha256"]
+    assert ccm._sha256_file(ccm._REPO_ROOT / row["doublet_table_file"]) == row["doublet_table_sha256"]
 
 
 # ---------------------------------------------------------------------------
@@ -630,34 +633,21 @@ def test_regeneration_is_idempotent_and_reproduces_the_ledger(tmp_path):
     # while writing elsewhere would compare the committed file to itself and pass
     # no matter how broken regeneration was. The hashes below are therefore taken
     # from the TMP outputs and compared against the committed ones.
-    # ⚠️ Only the ledger and the sanity table may be compared BYTE-WISE. The
-    # mapping (and its YAML mirror) record ABSOLUTE developer paths in
-    # flow_config_file / transport_config_file / doublet_table_file
-    # (casestudy_canonical_mapping.py:586), so a byte comparison would fail in
-    # any clone at a different location -- a false failure, not a real one. Those
-    # three columns are dropped before comparing; every other column, including
-    # the content sha256s, is still checked.
-    PATH_COLS = ["flow_config_file", "transport_config_file", "doublet_table_file"]
-
+    # ✅ ALL FOUR artifacts are now compared BYTE-WISE, including the mapping's
+    # three path columns. They used to be EXCLUDED: they held absolute developer
+    # paths, so no two clones could agree on them and a byte comparison would
+    # have failed everywhere but one machine. Since 2026-09-21 those columns are
+    # repo-relative (casestudy_canonical_mapping._repo_relative), which is what
+    # makes covering them possible -- the exclusion was a symptom of the absolute
+    # paths, not an inherent limit of this check.
     def _bytes(path):
         return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-
-    def _mapping_content(path):
-        return pd.read_csv(path).drop(columns=PATH_COLS).to_csv(index=False)
-
-    def _yaml_content(path):
-        import yaml as _yaml
-        doc = _yaml.safe_load(Path(path).read_text())
-        for rec in doc["canonical_mapping"]:
-            for c in PATH_COLS:
-                rec.pop(c, None)
-        return _yaml.safe_dump(doc, sort_keys=True)
 
     committed = {
         "repairing_ledger.csv": _bytes(ccm.DEFAULT_LEDGER_CSV),
         "threshold_sanity.csv": _bytes(ccm.DEFAULT_SANITY_CSV),
-        "canonical_mapping.csv (paths excluded)": _mapping_content(ccm.DEFAULT_OUT_CSV),
-        "canonical_mapping.yaml (paths excluded)": _yaml_content(ccm.DEFAULT_OUT_YAML),
+        "canonical_mapping.csv": _bytes(ccm.DEFAULT_OUT_CSV),
+        "canonical_mapping.yaml": _bytes(ccm.DEFAULT_OUT_YAML),
     }
 
     kw = dict(out_csv=tmp_path / "canonical_mapping.csv",
@@ -670,8 +660,8 @@ def test_regeneration_is_idempotent_and_reproduces_the_ledger(tmp_path):
         return {
             "repairing_ledger.csv": _bytes(tmp_path / "repairing_ledger.csv"),
             "threshold_sanity.csv": _bytes(tmp_path / "threshold_sanity.csv"),
-            "canonical_mapping.csv (paths excluded)": _mapping_content(tmp_path / "canonical_mapping.csv"),
-            "canonical_mapping.yaml (paths excluded)": _yaml_content(tmp_path / "canonical_mapping.yaml"),
+            "canonical_mapping.csv": _bytes(tmp_path / "canonical_mapping.csv"),
+            "canonical_mapping.yaml": _bytes(tmp_path / "canonical_mapping.yaml"),
         }
 
     ccm.build_canonical_mapping(**kw)

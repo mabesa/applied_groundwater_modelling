@@ -7,9 +7,9 @@ doublet_table:
   ext_N: 1247397.9
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -48,9 +48,9 @@ doublet_table:
   ext_N: 1249120.4
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -89,9 +89,9 @@ doublet_table:
   ext_N: 1248879.9
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -130,9 +130,9 @@ doublet_table:
   ext_N: 1249015.0
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -171,9 +171,9 @@ doublet_table:
   ext_N: 1248549.9
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -212,9 +212,9 @@ doublet_table:
   ext_N: 1248169.9
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -253,9 +253,9 @@ doublet_table:
   ext_N: 1247765.0
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -294,9 +294,9 @@ doublet_table:
   ext_N: 1248114.9
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -335,9 +335,9 @@ doublet_table:
   ext_N: 1247611.4
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -376,9 +376,9 @@ doublet_table:
   ext_N: 1250021.4
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -417,9 +417,9 @@ doublet_table:
   ext_N: 1249229.0
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -458,9 +458,9 @@ doublet_table:
   ext_N: 1248880.0
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
@@ -499,9 +499,9 @@ doublet_table:
   ext_N: 1247873.9
   Q_m3d: 4320.0
   Q_basis: licensed_max
-  source_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/Wasserfassungen_-OGD.gpkg
+  source_file: gis/Wasserfassungen_-OGD.gpkg
   source_sha256: bcd00fd415f17d055f6d255423b6d1337b039368741d62439f8182248f4ae7f6
-  boundary_file: /Users/bea/applied_groundwater_modelling_data/limmat/gis/limmat_model_boundary.gpkg
+  boundary_file: gis/limmat_model_boundary.gpkg
   boundary_sha256: 97f19e61cf45dd7a8277ce1d333c2c01ca874dca579f475b21cbcc9059d7eb29
   modelgrid_sha: c9b38488942ac8e5f0295d02fe0be88f5162d6a341f12fea1378d3834d1cdec6
   idomain_sha: 961b51f862e1402bae86f5741fd85df839c0c4855404163f27624e920cb73491
