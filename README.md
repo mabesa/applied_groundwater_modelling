@@ -160,7 +160,7 @@ The course is organized into two main phases:
 Lectures and exercises covering flow and transport fundamentals.
 
 **Materials in `THEORY/`:**
-- [`Theory reminder.ipynb`](THEORY/Theory%20reminder.ipynb) - a compact reference for the
+- [`Theory_reminder.ipynb`](THEORY/Theory_reminder.ipynb) - a compact reference for the
   equations, symbols and units used across the flow and transport models. It is a reference
   sheet, not a derivation, and its section numbering follows the lecture sequence rather than
   the `NNf_`/`NNt_` project notebooks.
@@ -219,7 +219,7 @@ The course is a 4 ECTS course. The project workload is being reassessed for HS26
 ```
 applied_groundwater_modelling/
 ├── THEORY/                   # Phase 1: Theory materials
-│   ├── Theory reminder.ipynb # Equation & symbol reference for the theory block
+│   ├── Theory_reminder.ipynb # Equation & symbol reference for the theory block
 │   └── _demos/               # Lecture demonstrations
 ├── PROJECT/                  # Phase 2: Case study
 │   ├── 0_start_here.ipynb    # Course intro & 10-step framework

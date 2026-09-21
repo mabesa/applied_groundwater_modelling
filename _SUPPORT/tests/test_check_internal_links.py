@@ -347,11 +347,17 @@ def test_escape_table_snippet_hazard_angle_destination_not_html_neutralized():
 # single line leaves all of them passing. A test of that shape could never
 # notice the link being dropped, which is the failure these guard against.
 #
-# The `%20` is load-bearing. A raw space is truncated by
-# strip_markdown_destination (destination.split(None, 1)[0]), so
-# "THEORY/Theory reminder.ipynb" is checked as "THEORY/Theory" and fails.
+# The reminder uses an underscore so that links to it need no percent-encoding.
+# strip_markdown_destination splits at the first whitespace
+# (destination.split(None, 1)[0]), so a destination containing a literal space
+# is truncated: until 2026-09-21 the notebook was "THEORY/Theory reminder.ipynb"
+# and every link to it needed `%20`, because a link written the natural way was
+# checked as "THEORY/Theory" and failed. The parser limitation is unchanged --
+# it is the filename that no longer trips it. If a LINKED filename ever contains
+# a space, either encode it in every destination or teach the parser the
+# bracketed `<...>` form.
 
-THEORY_REMINDER = "THEORY/Theory reminder.ipynb"
+THEORY_REMINDER = "THEORY/Theory_reminder.ipynb"
 
 
 def _resolved_link_targets(source_rel):
