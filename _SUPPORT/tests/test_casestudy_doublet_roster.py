@@ -127,7 +127,10 @@ def test_source_file_is_the_wells_registry(table):
 
 def test_source_sha256_matches_actual_file(table):
     """Cheap tamper-check: the recorded hash must match the file on disk right now."""
-    path = Path(table.iloc[0]["source_file"])
+    # source_file is DATA-FOLDER-RELATIVE (see cdr._data_relative), so resolve it
+    # against that root; a bare Path() would depend on the process CWD.
+    from data_utils import get_default_data_folder
+    path = Path(get_default_data_folder()) / table.iloc[0]["source_file"]
     assert path.exists()
     assert cdr._sha256_file(path) == table.iloc[0]["source_sha256"]
 
