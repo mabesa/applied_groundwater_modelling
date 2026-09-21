@@ -4616,7 +4616,6 @@
     "unrefined_rms_m": 0.08
   },
   "nlay": 1,
-  "node": "jupyter-martib-40ethz-2ech",
   "provisional": false,
   "provisional_reason": null,
   "radius_used": 90.0,
