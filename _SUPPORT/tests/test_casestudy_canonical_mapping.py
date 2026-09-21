@@ -249,7 +249,7 @@ def test_COMMITTED_mapping_is_not_stale_against_the_live_configs():
         assert recorded.pop() == ccm._sha256_file(path), (
             f"committed canonical_mapping.csv is STALE: {column} does not match "
             f"{path.name}. Regenerate it:\n"
-            f"    uv run python -m casestudy_canonical_mapping\n"
+            f"    PYTHONPATH=_SUPPORT/src uv run python -m casestudy_canonical_mapping\n"
             f"and commit canonical_mapping.csv + .yaml together with your config change."
         )
 

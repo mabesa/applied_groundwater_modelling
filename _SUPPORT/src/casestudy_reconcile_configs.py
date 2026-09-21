@@ -229,7 +229,7 @@ def _rewrite_transport_comments(text: str, canonical: Dict[int, str],
         ]
         text = text[:m.start()] + "\n".join(lines) + "\n" + text[m.end():]
 
-    # --- inline spill-placement comments (all 9 source.location blocks) ---
+    # --- inline spill-placement comments (all 13 source.location blocks) ---
     text = _TR_LOCATION_BLOCK_RE.sub(
         lambda mo: mo.group("head") + _NEUTRAL_LOCATION_COMMENT, text)
 
@@ -333,7 +333,7 @@ def reconcile_configs(flow_config: Optional[Path] = None,
     Returns
     -------
     ReconcileResult
-        ``.ledger`` (9 rows), the two unified diffs, the rewritten text, and
+        ``.ledger`` (13 rows), the two unified diffs, the rewritten text, and
         the backup paths (if written).
     """
     flow_path = Path(flow_config or DEFAULT_FLOW_CONFIG)

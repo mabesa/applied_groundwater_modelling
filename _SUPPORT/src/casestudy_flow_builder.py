@@ -19,7 +19,7 @@ This is the module the M2a.0 golden generator deliberately does NOT import
 oracle the builder is pinned to (see `test_casestudy_flow_builder.py`).
 
 Scope (M2a.2): state (i) baseline + state (ii) wells_only (the group's
-flow-only geothermal doublet) + its 50% half-rate sensitivity, for all 9
+flow-only geothermal doublet) + its 50% half-rate sensitivity, for all 13
 groups. The doublet is added via the neutral factory's ``extra_wells`` seam;
 the drawdown reference is the SAME-grid state-(i) solve. State (iii)
 scenarios are M2a.3.

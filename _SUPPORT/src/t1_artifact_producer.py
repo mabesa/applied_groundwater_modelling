@@ -448,7 +448,7 @@ def validate_claim_id(claim_id: str) -> None:
 def roster_hash() -> Optional[str]:
     """SHA-256 of the shipped case roster (`_SUPPORT/casestudy_scenarios/doublet_table.csv`,
     `casestudy_doublet_roster.build_doublet_table`'s default output -- the
-    9-row student-group roster referenced throughout T0/T1 as "the case
+    13-row student-group roster referenced throughout T0/T1 as "the case
     roster"). Returns `None` (never a placeholder) if the roster file is not
     present on disk -- e.g. a fresh checkout that has not yet run
     `casestudy_doublet_roster.build_doublet_table()`.
