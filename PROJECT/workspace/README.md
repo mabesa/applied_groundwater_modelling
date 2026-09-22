@@ -60,8 +60,8 @@ cards against four extension slots in a two-member group, so one of them — you
 Card B is the usual one — is carried as a **short card**: shipped analysis +
 interpretation, no extension.
 
-The export steward **freezes `exports/` at least 3 days before the deadline** so everyone
-finalises against the same numbers.
+**Default:** the export steward freezes `exports/` at least 3 days before the submission
+deadline, so everyone finalises against the same numbers.
 
 Full detail — roles, the card table, the extensions, the freeze, and the (optional, off
 by default) Git guidance — is in [`template/COLLABORATION.md`](template/COLLABORATION.md).
