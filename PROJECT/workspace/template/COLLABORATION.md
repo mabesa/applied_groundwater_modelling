@@ -176,7 +176,16 @@ Start the report from one of the shipped skeletons — `report_template.md`, `.t
 Because every card reads from the same `exports/` bundle, that bundle must stop moving
 before people finalise figures. **Default: the export steward freezes `exports/` at
 least 3 days before the submission deadline.** After the freeze, re-export only for a
-correctness fix, and tell the group so everyone re-pulls the bundle.
+correctness fix, and tell the group so everyone replaces their local bundle with the
+updated copy.
+
+**Getting the bundle to everyone.** Share it as soon as it is ready — card analysis
+cannot start without it. Hub home directories are separate, so the steward has to hand it
+over explicitly: package `exports/` as a ZIP, download it through the JupyterLab file
+browser, and put it in the group's SWITCHdrive folder (or another agreed file-sharing
+service). Each other member downloads that ZIP, uploads it through their own JupyterLab
+file browser, and extracts it into their own group folder, so `exports/` sits next to
+their scratch notebook.
 
 Plan backwards from the freeze, not from the deadline: the report is written *against*
 frozen numbers, so a bundle that moves on the last day invalidates text, not just
@@ -185,9 +194,9 @@ figures.
 ## Git is optional (off by default)
 
 Git is **not required** for this project. Notebook merge conflicts are painful, so the
-default is **no Git**: coordinate through your usual channel and hand the frozen
-`exports/` bundle around. If your group does choose Git, commit and pull often, avoid
-editing the same notebook cells simultaneously, and never commit the heavy model
+default is **no Git**: coordinate through your usual channel and share `exports/` as
+described under **Export freeze** above. If your group does choose Git, commit and pull
+often, avoid editing the same notebook cells simultaneously, and never commit the heavy model
 workspaces under `~/applied_groundwater_modelling_data/`.
 
 ## Why the scratch notebook must rerun from the ZIP
