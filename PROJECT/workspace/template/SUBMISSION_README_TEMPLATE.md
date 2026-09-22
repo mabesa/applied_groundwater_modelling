@@ -82,7 +82,7 @@ refuse to run if it does not.
       extensions** *(required)*
 - [ ] `report.pdf` — the group report, in the group folder root *(required)*
 - [ ] `presentation.pdf` — in the group folder root *(required)*
-- [ ] Presentation rehearsed and comes in **under 12 minutes** (hard limit; questions extra)
+- [ ] Presentation rehearsed and comes in **within the slot published on Moodle**
 
 Flow **and** transport are both required for the final submission once the transport
 phase has been assigned.
