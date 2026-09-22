@@ -165,8 +165,8 @@ structure, length and what it must defend. How it maps onto this workflow:
 The report and the presentation are **not** the same document in two formats. The report
 is the written record of *how you know* — assumptions, method, uncertainty, what you may
 and may not claim. The presentation is the decision-facing case: the verdict and the
-evidence a client would need, in **strictly 12 minutes**. Write the report first; the
-presentation is a selection from it, not a summary of it — and at 12 minutes it has to be.
+evidence a client would need, in the slot Moodle gives you. Write the report first; the
+presentation is a selection from it, not a summary of it — and in a short slot it has to be.
 
 Start the report from one of the shipped skeletons — `report_template.md`, `.tex` or
 `.docx`, same structure in three formats.

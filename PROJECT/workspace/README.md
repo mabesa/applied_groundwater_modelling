@@ -36,7 +36,7 @@ This is where you work on your flow and transport case study.
 | `scratch_analysis_template.ipynb` | **scratch** notebook: FloPy-free card analysis, reruns from `exports/` alone |
 | `scratch_io.py` | the FloPy-free reader for the `exports/` bundle — do not edit it |
 | `COLLABORATION.md` | how your group divides the work |
-| `REPORT_BRIEF.md` | what the group report must contain, how it is judged, and the 12-minute presentation rule |
+| `REPORT_BRIEF.md` | what the group report must contain, how it is judged, and how to plan the presentation |
 | `report_template.md` / `.tex` / `.docx` | the report skeleton — same structure in three formats, pick one |
 | `SUBMISSION_README_TEMPLATE.md` | fill in and include in your ZIP |
 
@@ -100,8 +100,8 @@ their own two cards — expect to be asked about any part of it.
 - `report.pdf` and `presentation.pdf` in the **group folder root**.
 
 Start the report from `template/report_template.md`, `.tex` or `.docx` — same skeleton,
-three formats. The presentation is **strictly 12 minutes**; see
-[`template/REPORT_BRIEF.md`](template/REPORT_BRIEF.md) for what fits.
+three formats. Your presentation slot is published on **Moodle**; for what fits in it,
+see [`template/REPORT_BRIEF.md`](template/REPORT_BRIEF.md).
 
 Flow **and** transport are both required.
 
@@ -113,7 +113,7 @@ Four things carry your project grade:
 |---|---|
 | Written exam | Individual, during the semester. |
 | Group report | `report.pdf` — the written record of *how you know*. See [`template/REPORT_BRIEF.md`](template/REPORT_BRIEF.md). |
-| Oral presentation | Your presentation delivered and defended. **Strictly 12 minutes**, questions extra. `presentation.pdf` is its artifact. |
+| Oral presentation | Your presentation delivered and defended; length and format per **Moodle**. `presentation.pdf` is its artifact. |
 | Working notebooks | The **evidence** the report and the oral rest on. Computed work that nothing in the ZIP reproduces cannot be credited. |
 
 > **Moodle is definitive.** The **weighting** of these components, the deadlines, the exam

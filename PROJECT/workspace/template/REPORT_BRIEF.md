@@ -153,16 +153,17 @@ The fastest ways to lose marks, in practice: a **computed** number that nothing 
 reproduces; a claim the §5 rules say your model cannot support; a peak quoted without its
 uncertainty; and a results section that describes figures instead of interpreting them.
 
-## The presentation — 12 minutes, strictly
+## The presentation
 
-**Your presentation is limited to 12 minutes. This is a hard limit and it is enforced:**
-you will be stopped at 12 minutes, and anything you had not reached does not count.
-Questions come afterwards and are **not** part of the 12.
+🔴 **Your slot length, and how the time is handled, are published on Moodle — that is
+the authoritative source.** Check it before you plan the talk. The guidance below is
+written for a **12-minute** presentation; if Moodle gives you a different length, scale
+the budget proportionally rather than adding sections.
 
-Twelve minutes is deliberately short. It is not enough time to walk through everything you
+A short talk is deliberately hard. It is not enough time to walk through everything you
 did, which is the point — selecting what a decision-maker needs is the skill being tested.
 
-**What realistically fits:**
+**What realistically fits in 12 minutes:**
 
 | | Budget |
 |---|---|
@@ -175,9 +176,9 @@ did, which is the point — selecting what a decision-maker needs is the skill b
 That is roughly **8–10 slides and 2–3 figures**. Every member of the group speaks, so in a
 three-person group each person has about four minutes.
 
-**Rehearse against a clock.** A run that comes in at 14 minutes is not a 12-minute talk
-with a bit of overrun — it is a talk that will be cut off before its conclusion, which is
-the part that carries the most credit.
+**Rehearse against a clock.** A run that comes in well over your slot is not that talk
+with a bit of overrun — it is a talk whose conclusion, the part carrying the most credit,
+arrives after the audience has stopped listening.
 
 What to cut first: the method walkthrough (it is in the report), per-card narration (also
 in the report), and any figure you would have to apologise for. What to keep whatever

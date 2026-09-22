@@ -115,14 +115,21 @@ Project examples and template outputs may also be public. If an instructor wants
 
 ## Assessment
 
-The project is assessed through notebooks, report, and presentation.
+The project is assessed through notebooks, report, and presentation. A worked,
+adaptable scheme — components and weights, report and oral criteria, how evidential
+defects are scored, and a question bank — is in
+[GRADING_SCHEME.md](GRADING_SCHEME.md). It is a **suggestion**; for students, the
+course's own published page is authoritative.
 
-**The presentation is limited to 12 minutes and students are told it is enforced**
-(`PROJECT/workspace/template/REPORT_BRIEF.md` gives them a per-section time budget).
-Someone must therefore actually hold a clock and stop the talk at 12 minutes — if the
-limit is announced and then not kept, the groups that rehearsed to it are penalised
-relative to those that did not. Questions follow and are not counted in the 12; that is
-where individual understanding is assessed.
+🔴 **The presentation slot is published on Moodle, which is the authoritative source.**
+The repo states no enforced limit. `PROJECT/workspace/template/REPORT_BRIEF.md` gives
+students a per-section time budget, written for a 12-minute talk and labelled as guidance
+to scale if Moodle says otherwise.
+
+**Whatever slot is announced, keep it.** If a limit is published and then not kept, the
+groups that rehearsed to it are penalised relative to those that did not. Questions are
+where individual understanding is assessed; whether they sit inside or outside the slot is
+a Moodle statement, not a repo one.
 
 The assessment should reward both correct modelling work and professional communication.
 

@@ -27,7 +27,8 @@ way they do:
   silently costing LaTeX groups the claimable / not-claimable rule. Subsections
   are compared too;
 * the 12-minute presentation limit was frozen nowhere, although the same file
-  froze the page limits.
+  froze the page limits. Superseded 2026-09-22: the slot lives on Moodle, and the
+  guards assert these files DEFER to it rather than agree with each other.
 
 Regenerate the .docx after editing the .md (never by hand):
 
@@ -55,18 +56,69 @@ DOCX = TEMPLATE / "report_template.docx"
 BRIEF = TEMPLATE / "REPORT_BRIEF.md"
 BUILDER = REPO_ROOT / "_SUPPORT" / "src" / "scripts" / "build_report_template_docx.py"
 
-#: Files that state the presentation length. All must agree -- including the
-#: instructor guide: the brief promises students they WILL be stopped at 12 minutes,
-#: so whoever runs the session has to know to hold a clock.
-TIMED_FILES = (
-    BRIEF,
+#: Student-facing files that must point at Moodle for the slot and state no length.
+DEFERRING_FILES = (
     WORKSPACE / "README.md",
     TEMPLATE / "COLLABORATION.md",
     TEMPLATE / "SUBMISSION_README_TEMPLATE.md",
+)
+
+#: Every file carrying presentation guidance, including the two that may legitimately
+#: name a number: the brief (its budget) and the instructor guide (model run times).
+PRESENTATION_FILES = DEFERRING_FILES + (
+    BRIEF,
     REPO_ROOT / "DOCUMENTATION" / "INSTRUCTOR_GUIDE.md",
 )
 
-PRESENTATION_MINUTES = 12
+#: Phrasings this repo ACTUALLY used to assert an enforced limit.
+#:
+#: ⚠️ A blocklist: a pass means only that THESE PATTERNS found no match. It cannot
+#: establish that no enforced limit is asserted -- a novel phrasing says the same thing
+#: and matches nothing here. Novel phrasing is caught by review, not by this test.
+_ENFORCEMENT = re.compile(
+    r"(?:be\s+stopped\b"
+    r"|stopped\s+(?:hard\s+)?at\b"
+    r"|cut\s+off\s+at\b"
+    r"|hard\s+limit\b"
+    r"|strictly\s+\d+\s*-?\s*min"
+    r"|limited\s+to\s+\d+\s*-?\s*min"
+    r"|\d+\s*minutes,\s*strictly)",
+    re.I,
+)
+
+#: Anything about the talk. Used to scope both guards to the relevant prose.
+_TOPICAL = re.compile(r"present|talk\b|slot\b|\bmin(?:ute)?s?\b", re.I)
+
+_MINUTES = re.compile(r"\b[0-9]+(?:\.[0-9]+)?\s*-?\s*min(?:ute)?s?\b", re.I)
+
+
+#: Per-line Markdown decoration: block quotes, bullets, ordered-list markers.
+_LINE_PREFIX = re.compile(r"^\s*(?:>+\s*|[-*+]\s+|\d+[.)]\s+)+")
+
+
+def _blocks(text: str) -> list[str]:
+    """Blank-line blocks, whitespace-collapsed, with table rows kept separate.
+
+    Joins wrapped lines so a sentence split across them still matches. Strips per-line
+    decoration first (``> hard`` + ``> limit`` would otherwise collapse to
+    ``> hard > limit``), and keeps table rows apart so two unrelated rows do not read as
+    one statement.
+    """
+    out: list[str] = []
+    for block in re.split(r"\n\s*\n", text):
+        lines = [_LINE_PREFIX.sub("", ln) for ln in block.splitlines()]
+        rows = [ln for ln in lines if ln.lstrip().startswith("|")]
+        rest = [ln for ln in lines if not ln.lstrip().startswith("|")]
+        out.extend(re.sub(r"\s+", " ", r).strip() for r in rows if r.strip())
+        joined = re.sub(r"\s+", " ", " ".join(rest)).strip()
+        if joined:
+            out.append(joined)
+    return out
+
+#: The talk length the brief's budget table is written for. NOT a course rule -- if
+#: Moodle publishes a different slot, students scale the budget, and this constant and
+#: the table move together or test_the_presentation_time_budget_adds_up fails.
+BRIEF_PLANNING_MINUTES = 12
 
 
 def _normalise(title: str) -> str:
@@ -253,27 +305,62 @@ def test_page_limits_are_stated_and_frozen():
         assert "5 pages" in text, f"{path.name} does not state the appendix cap"
 
 
-@pytest.mark.parametrize("path", TIMED_FILES, ids=lambda p: p.name)
-def test_presentation_length_agrees_everywhere(path):
-    assert f"{PRESENTATION_MINUTES} minutes" in path.read_text(), (
-        f"{path.name} does not state the {PRESENTATION_MINUTES}-minute presentation "
-        f"limit. It is stated in {len(TIMED_FILES)} student-facing files and they must "
-        f"agree -- a student planning against the wrong number gets cut off."
+@pytest.mark.parametrize("path", PRESENTATION_FILES, ids=lambda p: p.name)
+def test_removed_enforcement_phrasings_have_not_returned(path):
+    """None of the phrasings this repo used for an enforced limit may come back.
+
+    Scoped to blocks ABOUT the talk, so "a hard limit of 100 iterations" stays legal.
+    """
+    hits = [
+        (para[:80], _ENFORCEMENT.findall(para))
+        for para in _blocks(path.read_text())
+        if _TOPICAL.search(para) and _ENFORCEMENT.search(para)
+    ]
+    assert not hits, (
+        f"{path.name} asserts an enforced presentation limit: {hits}. The slot and its "
+        f"enforcement are published on the course page; this repository describes what "
+        f"fits, never what is enforced."
+    )
+
+
+@pytest.mark.parametrize("path", DEFERRING_FILES, ids=lambda p: p.name)
+def test_only_the_brief_states_a_presentation_length(path):
+    """These files must point at Moodle for the slot, never restate a length.
+
+    Scoped to blocks about the talk, so an unrelated duration stays legal: the defect is
+    a second source of truth for the slot, not the presence of a digit.
+    """
+    paras = _blocks(path.read_text())
+    talk = re.compile(r"present|talk\b|slot\b", re.I)
+    stray = [pa[:100] for pa in paras if talk.search(pa) and _MINUTES.search(pa)]
+    assert not stray, (
+        f"{path.name} states a presentation length: {stray}. Moodle publishes the slot; "
+        f"only REPORT_BRIEF.md carries a number, as a budget it labels as such."
+    )
+    defers = [pa for pa in paras if re.search(r"moodle", pa, re.I) and talk.search(pa)]
+    assert defers, (
+        f"{path.name} states no length but never points at Moodle in the same breath as "
+        f"the presentation, so a student has nowhere to look the slot up. A Moodle "
+        f"mention elsewhere in the file does not tell them that."
     )
 
 
 def test_the_presentation_time_budget_adds_up():
-    """The brief hands students a per-section budget; it must sum to the limit."""
+    """The brief's per-section budget must sum to the talk length it is written for."""
     text = BRIEF.read_text()
-    start = text.index("**What realistically fits:**")
-    block = text[start:start + 1200]
+    anchor = f"**What realistically fits in {BRIEF_PLANNING_MINUTES} minutes:**"
+    assert anchor in text, (
+        f"the brief's budget table is no longer introduced by {anchor!r}; the parser and "
+        f"the table have diverged, so this test would be checking nothing"
+    )
+    block = text[text.index(anchor):][:1200]
     minutes = [float(m) for m in re.findall(r"~\s*([0-9]+(?:\.[0-9]+)?)\s*min", block)]
     assert len(minutes) >= 4, (
         f"parsed only {minutes} from the brief's time budget; the parser and the table "
         f"have diverged, so this test would be checking nothing"
     )
     total = sum(minutes)
-    assert total == pytest.approx(PRESENTATION_MINUTES), (
-        f"the brief's per-section time budget sums to {total} min but the presentation "
-        f"limit is {PRESENTATION_MINUTES} min ({minutes})"
+    assert total == pytest.approx(BRIEF_PLANNING_MINUTES), (
+        f"the brief's per-section time budget sums to {total} min but the table is "
+        f"written for {BRIEF_PLANNING_MINUTES} min ({minutes})"
     )
