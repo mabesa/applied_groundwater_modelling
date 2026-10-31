@@ -729,10 +729,14 @@ def plot_pathlines(state_result: StateResult, capture: Dict[str, Any], *, ax=Non
     fig, ax = cfv.plot_head_map(state_result, ax=ax, title=title)
     pw = capture["pathlines_world"]
     color = "tab:orange" if capture.get("mode") == "forward" else "tab:purple"
-    for _, grp in pw.groupby("irpt"):
+    label = "Forward particle tracks" if capture.get("mode") == "forward" else "Backward particle tracks"
+    for index, (_, grp) in enumerate(pw.groupby("irpt")):
         grp = grp.sort_values("time")
-        ax.plot(grp["x_world"], grp["y_world"], linewidth=0.6, color=color, alpha=0.6)
+        ax.plot(grp["x_world"], grp["y_world"], linewidth=0.6, color=color, alpha=0.6,
+                label=label if index == 0 else "_nolegend_")
+    cfv._plot_legend(ax)
     ax.set_aspect("equal")
+    cfv._prune_contour_labels(ax)
     return fig, ax
 
 
@@ -761,5 +765,7 @@ def plot_capture_zone(state_result: StateResult, backward_capture: Dict[str, Any
                 )
             except Exception:
                 pass
+    cfv._plot_legend(ax)
     ax.set_aspect("equal")
+    cfv._prune_contour_labels(ax)
     return fig, ax

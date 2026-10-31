@@ -787,3 +787,115 @@ class TestExploreScenario:
             "assert_config_matches_frozen",
         ):
             assert forbidden not in src, f"explore_scenario must not reference {forbidden!r}"
+
+
+# Plot-only annotation contracts; all data are synthetic and no solver runs.
+def _legend_labels(ax):
+    legend = ax.get_legend()
+    return [] if legend is None else [text.get_text() for text in legend.get_texts()]
+
+
+def test_map_annotation_contract(two_states):
+    state_a, state_b = two_states
+    original = state_b["heads"].copy()
+    fig, ax = cfv.plot_head_map(state_b)
+    assert fig.get_constrained_layout()
+    assert fig.axes[1].get_ylabel() == "Hydraulic head [m]"
+    assert (ax.get_xlabel(), ax.get_ylabel()) == ("Easting [m]", "Northing [m]")
+    assert _legend_labels(ax) == ["RIV", "CHD", "WEL"]
+    assert ax.texts  # numeric contour labels
+    for text in ax.texts:
+        float(text.get_text())
+    assert ax.collections[0].get_clim() == (7.8, 9.0)
+    np.testing.assert_array_equal(state_b["heads"], original)
+    fig.canvas.draw()
+    assert not ax.get_window_extent().overlaps(ax.get_legend().get_window_extent())
+    plt.close(fig)
+    fig, ax = cfv.plot_difference_map(state_b, state_a)
+    assert fig.axes[1].get_ylabel() == "Head change [m]\n(positive = rise; b − a)"
+    assert ax.collections[0].get_clim() == pytest.approx((-1.2, 1.2))
+    assert ax.texts
+    plt.close(fig)
+
+
+@pytest.mark.parametrize("present", [[], ["riv"], ["chd", "wel"]])
+def test_bc_legend_only_present_symbols(two_states, present):
+    state = dict(two_states[0])
+    state["spec"] = dict(state["spec"])
+    for name in ("riv", "chd", "wel"):
+        if name not in present:
+            state["spec"][name + "_cellid"] = []
+    fig, ax = cfv.plot_head_map(state)
+    assert _legend_labels(ax) == [name.upper() for name in ("riv", "chd", "wel") if name in present]
+    plt.close(fig)
+    fig, ax = cfv.plot_head_map(state, overlays=False, contour=False)
+    assert not _legend_labels(ax)
+    assert not ax.texts
+    plt.close(fig)
+
+
+def test_budget_color_sign_key(two_states, monkeypatch):
+    from matplotlib.colors import to_rgba
+    monkeypatch.setattr(cfv, "budget_components", lambda _: pd.DataFrame({
+        "component": ["RCH", "WEL", "CHD"], "net_m3d": [10., -10., 0.],
+    }))
+    fig, ax = cfv.plot_budget_bars(two_states[0])
+    assert [p.get_height() for p in ax.patches] == [10., -10., 0.]
+    assert [p.get_facecolor() for p in ax.patches] == [to_rgba(c) for c in ("tab:blue", "tab:red", "tab:blue")]
+    assert _legend_labels(ax) == ["Into aquifer (+)\nZero also blue", "Out of aquifer (−)"]
+    plt.close(fig)
+
+
+@pytest.mark.parametrize("mode", ["forward", "backward"])
+def test_complete_particle_legend(two_states, mode):
+    import casestudy_flow_particles as cfp
+    capture = {"mode": mode, "pathlines_world": pd.DataFrame({
+        "irpt": [1, 1, 2, 2, 3, 3], "time": [0, 1] * 3,
+        "x_world": [2, .5, 2, 3.5, 2, 2], "y_world": [1, .5, 1, .5, 1, 2.5],
+    })}
+    if mode == "forward":
+        fig, ax = cfp.plot_pathlines(two_states[1], capture)
+    else:
+        fig, ax = cfp.plot_capture_zone(two_states[1], capture)
+    expected = ["RIV", "CHD", "WEL", mode.capitalize() + " particle tracks"]
+    if mode == "backward":
+        expected.append("capture envelope")
+    assert _legend_labels(ax) == expected
+    assert len(fig.axes) == 2  # head scale only; tracks are not time-colored
+    fig.canvas.draw()
+    assert not ax.get_window_extent().overlaps(ax.get_legend().get_window_extent())
+    plt.close(fig)
+    capture["pathlines_world"] = capture["pathlines_world"].iloc[:0]
+    fig, ax = cfp.plot_capture_zone(two_states[1], capture)
+    assert _legend_labels(ax) == ["RIV", "CHD", "WEL"]
+    plt.close(fig)
+
+
+def test_notebook_four_panel_budget_layout(two_states, monkeypatch, tmp_path):
+    monkeypatch.setattr(cfv, "budget_components", lambda _: pd.DataFrame({
+        "component": ["CHD", "RCH", "RIV", "WEL"], "net_m3d": [12., 8., -10., -10.],
+    }))
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+    for name, ax in zip(["baseline", "wells_only", "wells_only_half", "wells_plus_scenario"], axes.ravel()):
+        returned, _ = cfv.plot_budget_bars(two_states[0], ax=ax)
+        assert returned is fig
+        ax.set_title(name)
+    fig.tight_layout()
+    fig.canvas.draw()
+    for ax in axes.ravel():
+        bounds = ax.get_legend().get_window_extent()
+        assert fig.bbox.contains(bounds.x0, bounds.y0)
+        assert fig.bbox.contains(bounds.x1, bounds.y1)
+        assert not ax.get_window_extent().overlaps(bounds)
+    assert cfv.save_fig(fig, "budget_states", out_dir=tmp_path).is_file()
+    plt.close(fig)
+
+
+def test_contour_labels_distinct_near_large_heads(two_states):
+    state = dict(two_states[0], heads=400.0 + np.arange(NCPL) * .01)
+    fig, ax = cfv.plot_head_map(state)
+    labels = [text for text in ax.texts if text.get_gid() == "flow-contour-label"]
+    assert len({text.get_text() for text in labels}) > 1
+    bounds = [text.get_window_extent() for text in labels]
+    assert all(not first.overlaps(second) for i, first in enumerate(bounds) for second in bounds[i + 1:])
+    plt.close(fig)
