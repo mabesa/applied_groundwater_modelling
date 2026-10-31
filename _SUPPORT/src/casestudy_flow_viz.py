@@ -94,10 +94,63 @@ def _fig_ax(ax=None):
     if ax is None:
         import matplotlib.pyplot as plt
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(layout="constrained")
     else:
         fig = ax.figure
     return fig, ax
+
+
+def _map_labels(ax):
+    """Coordinates are world coordinates in metres."""
+    ax.set_xlabel("Easting [m]")
+    ax.set_ylabel("Northing [m]")
+
+
+def _plot_legend(ax, *, handles=None):
+    """Keep the complete symbol key below the map, clear of plotted data."""
+    if handles is None:
+        handles, labels = ax.get_legend_handles_labels()
+    else:
+        labels = [handle.get_label() for handle in handles]
+    if handles:
+        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.22),
+                  ncol=2, fontsize="small")
+
+
+def _label_contours(ax, contours):
+    if contours is not None:
+        # Fixed decimals follow the level spacing, not the head magnitude.
+        # Thus close contours near 400 m remain distinct without float noise.
+        steps = np.diff(contours.levels)
+        steps = steps[steps > 0]
+        decimals = max(0, int(np.ceil(-np.log10(steps.min()))) + 1) if steps.size else 2
+        def label(value):
+            text = f"{value:.{decimals}f}"
+            return text.rstrip("0").rstrip(".") if "." in text else text
+        for text in ax.clabel(contours, inline=False, fontsize=8, fmt=label):
+            text.set_gid("flow-contour-label")
+            text.set_bbox(dict(facecolor="white", alpha=0.8, edgecolor="none", pad=0.3))
+
+
+def _prune_contour_labels(ax):
+    """Remove colliding labels only; leave all contour paths intact."""
+    labels = [text for text in ax.texts if text.get_gid() == "flow-contour-label"]
+    if not labels:
+        return
+    canvas = ax.figure.canvas
+    get_renderer = getattr(canvas, "get_renderer", None)
+    if not callable(get_renderer):
+        # Vector canvases need not expose a renderer. Pruning is optional.
+        return
+    canvas.draw()
+    renderer = get_renderer()
+    occupied = []
+    for text in labels:
+        bounds = text.get_window_extent(renderer).expanded(1.15, 1.25)
+        if any(bounds.overlaps(other) for other in occupied):
+            text.remove()
+        else:
+            occupied.append(bounds)
 
 
 def _flat_cells(cellids: Optional[Iterable[Any]]) -> List[int]:
@@ -159,14 +212,18 @@ def plot_head_map(
     modelgrid = state_result["gwf"].modelgrid
     fig, ax = _fig_ax(ax)
     pmv = flopy.plot.PlotMapView(modelgrid=modelgrid, ax=ax)
-    pmv.plot_array(heads, cmap="viridis")
+    image = pmv.plot_array(heads, cmap="viridis")
+    fig.colorbar(image, ax=ax, label="Hydraulic head [m]")
     if contour:
-        _maybe_contour(pmv, heads, colors="black", linewidths=0.6)
+        _label_contours(ax, _maybe_contour(pmv, heads, colors="black", linewidths=0.6))
     if overlays:
         _add_bc_overlays(ax, state_result)
+        _plot_legend(ax)
+    _map_labels(ax)
     ax.set_aspect("equal")
     if title:
         ax.set_title(title)
+    _prune_contour_labels(ax)
     return fig, ax
 
 
@@ -182,11 +239,14 @@ def plot_difference_map(state_b: StateResult, state_a: StateResult, *, ax=None,
     finite = diff[np.isfinite(diff)]
     vmax = float(np.max(np.abs(finite))) if finite.size else 1.0
     vmax = vmax if vmax > 0 else 1.0
-    pmv.plot_array(diff, cmap="RdBu_r", vmin=-vmax, vmax=vmax)
-    _maybe_contour(pmv, diff, colors="black", linewidths=0.6)
+    image = pmv.plot_array(diff, cmap="RdBu_r", vmin=-vmax, vmax=vmax)
+    fig.colorbar(image, ax=ax, label="Head change [m]\n(positive = rise; b − a)")
+    _label_contours(ax, _maybe_contour(pmv, diff, colors="black", linewidths=0.6))
+    _map_labels(ax)
     ax.set_aspect("equal")
     if title:
         ax.set_title(title)
+    _prune_contour_labels(ax)
     return fig, ax
 
 
@@ -198,7 +258,13 @@ def plot_budget_bars(state_result: StateResult, *, ax=None):
     colors = ["tab:blue" if v >= 0 else "tab:red" for v in df["net_m3d"]]
     ax.bar(df["component"], df["net_m3d"], color=colors)
     ax.axhline(0.0, color="black", linewidth=0.8)
-    ax.set_ylabel("Net flux (m3/d)")
+    ax.set_ylabel("Net flux (m³/d)")
+    from matplotlib.patches import Patch
+
+    _plot_legend(ax, handles=[
+        Patch(color="tab:blue", label="Into aquifer (+)\nZero also blue"),
+        Patch(color="tab:red", label="Out of aquifer (−)"),
+    ])
     return fig, ax
 
 
@@ -385,7 +451,7 @@ def save_fig(fig, name: str, *, out_dir) -> Path:
     figs_dir.mkdir(parents=True, exist_ok=True)
     stem = name[:-4] if name.lower().endswith(".png") else name
     path = figs_dir / f"{stem}.png"
-    fig.savefig(path, dpi=150)
+    fig.savefig(path, dpi=150, bbox_inches="tight")
     return path
 
 
