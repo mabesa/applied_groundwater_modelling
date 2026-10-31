@@ -24,6 +24,11 @@
 %    Appendix capped at 5 pages.
 %    The per-section budgets below add to about 8, which leaves you room.
 %
+%  LAYOUT
+%    You may adjust fonts, spacing and figure placement. Keep the required
+%    sections, readable text and the page limits. The supplied layout is a
+%    starting point, not an assessment criterion.
+%
 %  Deliberately plain: article class and standard packages only, so it
 %  compiles anywhere without installing anything.
 % =====================================================================
@@ -35,14 +40,20 @@
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{array}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\renewcommand{\arraystretch}{1.2}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\usepackage[hidelinks]{hyperref}
 
 % >>> REPLACE EVERY <...> BELOW. A forgotten title block is visible on page 1. <<<
-% Two-member group: delete the third \and entry.
-\title{<Your title --- name the concession and the question,
-        not ``Groundwater Modelling Report''>}
+% Two-member group: delete the third name.
+\title{Your title: concession and modelling question}
 \author{Group <N> \\
-        <First Last> \and <Second Last> \and <Third Last>}
+        <First Last>, <Second Last>, <Third Last> \\
+        Applied Groundwater Modelling}
 \date{<date>}
 
 \begin{document}
@@ -73,17 +84,15 @@
 
 \subsection{Assumptions and their consequences}
 
-\begin{table}[h]
-\centering
-\begin{tabular}{lll}
+\begin{tabularx}{\textwidth}{@{}YYY@{}}
 \toprule
 Assumption & Why reasonable here & What it costs us \\
 \midrule
 <e.g. steady state> & <...> & <...> \\
 <...>               & <...> & <...> \\
 \bottomrule
-\end{tabular}
-\end{table}
+\end{tabularx}
+\par\medskip
 
 % ---------------------------------------------------------------------
 \section{Method}
@@ -181,9 +190,7 @@ Assumption & Why reasonable here & What it costs us \\
 % different shapes, same people. In a two-member group one member has three cards;
 % mark the short one (short).
 
-\begin{table}[h]
-\centering
-\begin{tabular}{lll}
+\begin{tabularx}{\textwidth}{@{}p{0.22\textwidth}p{0.13\textwidth}Y@{}}
 \toprule
 Member & Cards & Contribution \\
 \midrule
@@ -191,8 +198,8 @@ Member & Cards & Contribution \\
 <...> & <...> & <...> \\
 <...> & <...> & <...> \\
 \bottomrule
-\end{tabular}
-\end{table}
+\end{tabularx}
+\par\medskip
 
 \noindent\textbf{Steward roles:} flow <name> $\cdot$ transport <name> $\cdot$ export <name>
 
@@ -201,22 +208,21 @@ Member & Cards & Contribution \\
 <...>
 
 % ---------------------------------------------------------------------
+\clearpage
 \appendix
 % Not counted in the 10 pages. Capped at 5 pages.
 
 \section{Figure and table index}
 
-\begin{table}[h]
-\centering
-\begin{tabular}{ll}
+\begin{tabularx}{\textwidth}{@{}p{0.25\textwidth}Y@{}}
 \toprule
 Report item & File \\
 \midrule
 Figure 1 & \texttt{figures/<...>} \\
 Table 1  & \texttt{tables/<...>} \\
 \bottomrule
-\end{tabular}
-\end{table}
+\end{tabularx}
+\par\medskip
 
 \section{Derivations or intermediate numbers you want on record}
 <...>
