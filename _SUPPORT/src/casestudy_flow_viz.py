@@ -134,12 +134,18 @@ def _label_contours(ax, contours):
 
 def _prune_contour_labels(ax):
     """Remove colliding labels only; leave all contour paths intact."""
-    ax.figure.canvas.draw()
-    renderer = ax.figure.canvas.get_renderer()
+    labels = [text for text in ax.texts if text.get_gid() == "flow-contour-label"]
+    if not labels:
+        return
+    canvas = ax.figure.canvas
+    get_renderer = getattr(canvas, "get_renderer", None)
+    if not callable(get_renderer):
+        # Vector canvases need not expose a renderer. Pruning is optional.
+        return
+    canvas.draw()
+    renderer = get_renderer()
     occupied = []
-    for text in list(ax.texts):
-        if text.get_gid() != "flow-contour-label":
-            continue
+    for text in labels:
         bounds = text.get_window_extent(renderer).expanded(1.15, 1.25)
         if any(bounds.overlaps(other) for other in occupied):
             text.remove()

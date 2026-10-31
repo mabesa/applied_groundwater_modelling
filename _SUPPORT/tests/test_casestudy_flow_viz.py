@@ -302,6 +302,45 @@ class TestPlotHeadMap:
         assert ax2 is ax
 
 
+class TestContourPruningBackends:
+    @pytest.mark.parametrize("contour", [False, True])
+    def test_head_map_renders_on_svg_canvas(self, tmp_path, contour):
+        from matplotlib.backends.backend_svg import FigureCanvasSVG
+        from matplotlib.figure import Figure
+
+        backend = matplotlib.get_backend()
+        state = _make_state(
+            tmp_path, name="svg_state", heads=np.linspace(7.0, 9.0, NCPL),
+        )
+        original_heads = state["heads"].copy()
+        fig = Figure(figsize=(8, 6))
+        canvas = FigureCanvasSVG(fig)
+        ax = fig.subplots()
+        assert not hasattr(canvas, "get_renderer")
+
+        result_fig, result_ax = cfv.plot_head_map(state, ax=ax, contour=contour)
+        assert result_fig is fig and result_ax is ax
+        assert len(ax.collections) > 0
+        labels = [text for text in ax.texts if text.get_gid() == "flow-contour-label"]
+        assert bool(labels) == contour
+        output = tmp_path / "head_map.svg"
+        fig.savefig(output)
+        assert "<svg" in output.read_text()
+        np.testing.assert_array_equal(state["heads"], original_heads)
+        assert matplotlib.get_backend() == backend
+
+    def test_no_contour_labels_does_not_draw(self, monkeypatch):
+        fig, ax = plt.subplots()
+        ax.text(0.5, 0.5, "Unrelated annotation")
+
+        def unexpected_draw():
+            pytest.fail("No draw is needed without contour labels")
+
+        monkeypatch.setattr(fig.canvas, "draw", unexpected_draw)
+        cfv._prune_contour_labels(ax)
+        plt.close(fig)
+
+
 class TestMaybeContour:
     """MEDIUM-6: the contour helper skips ONLY the genuinely-degenerate
     too-few-finite-cells case; any OTHER error propagates (never swallowed)."""
