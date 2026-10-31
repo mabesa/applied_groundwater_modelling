@@ -29,17 +29,119 @@ this, only whoever edits the template does.
 from __future__ import annotations
 
 import argparse
+import io
 import shutil
 import subprocess
 import sys
 import tempfile
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 TEMPLATE_DIR = REPO_ROOT / "PROJECT" / "workspace" / "template"
 SOURCE_MD = TEMPLATE_DIR / "report_template.md"
 TARGET_DOCX = TEMPLATE_DIR / "report_template.docx"
+
+W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+
+
+def format_document(target: Path) -> None:
+    """Apply a reproducible, editable report style rather than Pandoc defaults."""
+    with zipfile.ZipFile(target) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    for part in ("word/document.xml", "word/styles.xml"):
+        for _, (prefix, uri) in ET.iterparse(io.BytesIO(parts[part]), events=["start-ns"]):
+            ET.register_namespace(prefix, uri)
+    document = ET.fromstring(parts["word/document.xml"])
+    styles = ET.fromstring(parts["word/styles.xml"])
+
+    def set_element(parent, name, **attrs):
+        element = parent.find(W + name)
+        if element is None:
+            element = ET.SubElement(parent, W + name)
+        element.attrib.update({W + key: str(value) for key, value in attrs.items()})
+        return element
+
+    sizes = {"Normal": 22, "BodyText": 22, "FirstParagraph": 22,
+             "Title": 52, "Heading1": 32, "Heading2": 26,
+             "Heading3": 24, "BlockText": 20, "VerbatimChar": 20}
+    for style in styles.findall(W + "style"):
+        name = style.get(W + "styleId")
+        if name not in sizes:
+            continue
+        run = set_element(style, "rPr")
+        set_element(run, "rFonts", ascii="Calibri", hAnsi="Calibri", cs="Calibri")
+        set_element(run, "sz", val=sizes[name])
+        set_element(run, "szCs", val=sizes[name])
+        color = set_element(run, "color", val="000000")
+        color.attrib = {W + "val": "000000"}
+        para = set_element(style, "pPr")
+        set_element(para, "spacing", after=120, line=264, lineRule="auto")
+        if name == "Title" or name.startswith("Heading"):
+            set_element(run, "b")
+            set_element(para, "keepNext")
+            set_element(para, "spacing", before=240, after=120)
+        if name == "BlockText":
+            set_element(para, "ind", left=0, right=0)
+            set_element(para, "keepLines")
+        for border in list(para.findall(W + "pBdr")):
+            para.remove(border)
+
+    body = document.find(W + "body")
+    for paragraph in body.findall(W + "p"):
+        style = paragraph.find(W + "pPr/" + W + "pStyle")
+        if style is None:
+            continue
+        text = "".join(paragraph.itertext())
+        current = style.get(W + "val")
+        if current == "Heading1" and text == "Appendix":
+            set_element(paragraph.find(W + "pPr"), "pageBreakBefore")
+        if current == "Heading1" and "Your title" in text:
+            style.set(W + "val", "Title")
+        elif current == "Heading2":
+            style.set(W + "val", "Heading1")
+        elif current == "Heading3":
+            style.set(W + "val", "Heading2")
+        if current and current.startswith("Heading"):
+            for run in paragraph.findall(W + "r"):
+                props = run.find(W + "rPr")
+                if props is not None:
+                    run.remove(props)
+        # Pandoc renders Markdown thematic breaks as paragraph borders.
+        props = paragraph.find(W + "pPr")
+        if props is not None:
+            for border in list(props.findall(W + "pBdr")):
+                props.remove(border)
+
+    section = body.find(W + "sectPr")
+    set_element(section, "pgSz", w=11906, h=16838)
+    set_element(section, "pgMar", top=1417, bottom=1417, left=1417, right=1417)
+    for table in body.findall(W + "tbl"):
+        props = set_element(table, "tblPr")
+        borders = set_element(props, "tblBorders")
+        for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+            set_element(borders, edge, val="single", sz=4, color="D9D9D9")
+        margins = set_element(props, "tblCellMar")
+        for edge in ("top", "bottom", "left", "right"):
+            set_element(margins, edge, w=90, type="dxa")
+        rows = table.findall(W + "tr")
+        for index, row in enumerate(rows):
+            set_element(set_element(row, "trPr"), "cantSplit")
+            if index == 0:
+                set_element(set_element(row, "trPr"), "tblHeader")
+            for cell in row.findall(W + "tc"):
+                for paragraph in cell.findall(W + "p"):
+                    # These are short template tables: keep the whole example together.
+                    if index < len(rows) - 1:
+                        set_element(set_element(paragraph, "pPr"), "keepNext")
+                if index == 0:
+                    set_element(set_element(cell, "tcPr"), "shd", fill="EDEDED")
+    parts["word/document.xml"] = ET.tostring(document, encoding="utf-8", xml_declaration=True)
+    parts["word/styles.xml"] = ET.tostring(styles, encoding="utf-8", xml_declaration=True)
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, data in parts.items():
+            archive.writestr(name, data)
 
 
 def build(target: Path) -> None:
@@ -56,11 +158,12 @@ def build(target: Path) -> None:
         ["pandoc", str(SOURCE_MD), "-o", str(target)],
         check=True,
     )
+    format_document(target)
 
 
-def _document_xml(path: Path) -> bytes:
+def _document_xml(path: Path) -> tuple[bytes, bytes]:
     with zipfile.ZipFile(path) as zf:
-        return zf.read("word/document.xml")
+        return zf.read("word/document.xml"), zf.read("word/styles.xml")
 
 
 def main() -> int:

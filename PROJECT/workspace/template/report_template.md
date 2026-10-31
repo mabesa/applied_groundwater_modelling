@@ -1,3 +1,8 @@
+# Your title: concession and modelling question
+
+**Group `<N>`** · `<First Last>`, `<First Last>`, `<First Last>`\
+Applied Groundwater Modelling · `<date>`
+
 > **GUIDANCE — delete this block.**
 > **Group report template — Applied Groundwater Modelling.**
 > Read `REPORT_BRIEF.md` first: it says what each section is FOR and how it is judged.
@@ -9,7 +14,7 @@
 > `report_template.docx` (Microsoft Word).
 >
 > **How to use.** Copy your chosen file into your group folder as `report.md`, `report.tex`
-> or `report.docx`. Delete each grey GUIDANCE block as you fill that section in — they are
+> or `report.docx`. Delete each GUIDANCE block as you fill that section in — they are
 > instructions, not content. Then export to **`report.pdf`** in your group folder root:
 > print to PDF from Word, hit Recompile in Overleaf, or from Markdown run
 > `pandoc report.md -o report.pdf` — **this works on the course JupyterHub**, which has
@@ -17,16 +22,14 @@
 > `pdflatex not found`, run `pandoc report.md -o report.docx` instead and print to PDF
 > from Word.
 >
+> **Layout.** You may adjust fonts, spacing and figure placement to suit your report.
+> Keep the required sections, readable text and the page limits. The supplied layout
+> is a starting point, not an assessment criterion.
+>
 > **Limits.** 10 pages max, excluding this title block, references and appendix.
 > Appendix capped at 5 pages. The per-section budgets below add to about 8, which leaves
 > you room — they are guides, not rules.
 
-# `<Your title — name the concession and the question, not "Groundwater Modelling Report">`
-
-**Group `<N>`** · `<First Last>`, `<First Last>`, `<First Last>`
-Applied Groundwater Modelling · `<date>`
-
----
 
 ## 1. Problem and modelling question
 
@@ -35,7 +38,6 @@ Applied Groundwater Modelling · `<date>`
 >   Your concession, its setting, and the question your scenario actually asks.
 >   Be specific. "Does the assigned recharge reduction change river leakage enough to
 >   matter for the concession's yield" is a question. "We study the Limmat aquifer" is not.
-
 
 `<...>`
 
@@ -50,7 +52,6 @@ Applied Groundwater Modelling · `<date>`
 >   State the assumptions YOU are making, not the ones the software makes, and name the
 >   CONSEQUENCE of each — steady state, one shared regional model, local refinement, a
 >   clean-water doublet with a separate zero-water contaminant source.
-
 
 `<...>`
 
@@ -69,7 +70,6 @@ Applied Groundwater Modelling · `<date>`
 >   isolates, how your scenario forcing is applied, the transport build, and which
 >   quantities came from which export. Point to the notebooks; do not reproduce their code.
 
-
 `<...>`
 
 ## 4. Results
@@ -80,6 +80,9 @@ Applied Groundwater Modelling · `<date>`
 >   in tables/ — do not re-narrate it here. What belongs here is the INTEGRATED result:
 >   what the flow response, the scenario forcing, the water balance and the transport
 >   verdict say TOGETHER about your concession.
+>   Every member's work must be visible in the integrated results. A finding usually
+>   draws on more than one card: say whose analysis established it in the text or
+>   caption, rather than giving each member a subsection.
 >   Every figure and table: caption, units, and the file under figures/ or tables/ it came
 >   from. Every computed number must be traceable to the frozen bundle.
 >   Two traps to handle explicitly:
@@ -88,7 +91,6 @@ Applied Groundwater Modelling · `<date>`
 >    - an advective travel time is not a concentration peak. Do not reconcile them by
 >      arithmetic.
 >   Suggested finding-shaped headings — rename them to YOUR findings:
-
 
 > **Figure and table pattern — copy the shapes below.** Every caption carries the units
 > and the file the figure came from, which is what the brief asks of every one of them.
@@ -131,7 +133,6 @@ Applied Groundwater Modelling · `<date>`
 >    - your card extensions' defensibility answers, synthesised rather than listed.
 >   A limitation you found and measured is worth more than a paragraph of generic caveats.
 
-
 `<...>`
 
 ### 5.1 What this model cannot tell you
@@ -143,7 +144,6 @@ Applied Groundwater Modelling · `<date>`
 >     NOT CLAIMABLE — contaminated-area maps, lateral threshold-contour width, exact plume
 >                     footprint. These are numerical artefacts at any feasible grid.
 >   Then check nothing elsewhere in your report quietly breaks this.
-
 
 `<...>`
 
@@ -157,7 +157,6 @@ Applied Groundwater Modelling · `<date>`
 >   A no-reach or below-threshold result is not a weaker result. "It does not reach the
 >   well, and here is the mechanism" is a strong conclusion when the evidence supports it.
 
-
 `<...>`
 
 ## 7. Contribution statement
@@ -167,7 +166,6 @@ Applied Groundwater Modelling · `<date>`
 > scratch notebooks. That file lists one row per *card*, this one per *member* — different
 > shapes, same people. In a two-member group one member has three cards; mark the short
 > one `(short)`.
-
 
 | Member | Cards | Contribution |
 |---|---|---|
@@ -181,13 +179,10 @@ Applied Groundwater Modelling · `<date>`
 
 `<...>`
 
----
-
 # Appendix
 
 > **GUIDANCE — delete this block.**
 > Not counted in the 10 pages. Capped at 5 pages.
-
 
 ## A. Figure and table index
 
