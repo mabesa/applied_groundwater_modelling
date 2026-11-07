@@ -33,7 +33,7 @@ FLOWS_THAT_ARE_ZERO = [
     "Lateral Groundwater Outflow",
     "Artificial inflow (e.g. injection well)",
     "Artificial outflow (e.g. pumping well)",
-    "Surface Water Infiltration to the Aquifer",
+    "Surface Water Infiltration to the Aquifer (precipitation not included here)",
     #"Surface Water Discharge from the Aquifer",
     "Groundwater Inflow from lower aquifer",
     "Groundwater Outflow to lower aquifer",
@@ -133,6 +133,6 @@ def run_quiz_water_balance():
     # Layout for buttons
     button_box = widgets.HBox([btn_check, btn_reset, btn_solution], layout=widgets.Layout(margin='10px 0'))
 
-    # Display everything
-    display(header, table_box, button_box)
+    # Keep the buttons with the quiz, before the next exercise question.
+    display(widgets.VBox([header, table_box, button_box]))
 
